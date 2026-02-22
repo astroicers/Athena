@@ -1,0 +1,405 @@
+# Athena — 開發路線圖
+
+> 版本：1.0 | 更新日期：2026-02-22
+> 狀態：Phase 0 完成 — 設計與架構
+
+---
+
+## 總覽
+
+Athena 是一套 AI 驅動的 C5ISR 網路作戰指揮平台。本路線圖描述從設計到正式開源發佈的完整旅程。
+
+**目前進度**：全部 UI 設計（6 個 .pen 檔）、資料架構、專案結構已完成。尚無任何原始碼。
+
+---
+
+## Phase 0：設計與架構 `完成`
+
+> 期間：已完成 | 交付物：全部已推送至 GitHub
+
+### 0.1 UI 設計 `完成`
+
+| 交付物 | 檔案 | 狀態 |
+|--------|------|------|
+| 設計系統 | `athena-design-system.pen` | 56 個元件、32 個變數 |
+| 應用外殼 | `athena-shell.pen` | Sidebar + AlertBanner + ContentSlot |
+| C5ISR 指揮看板 | `athena-c5isr-board.pen` | KPI 卡片、OODA 指示器、PentestGPT 推薦 |
+| MITRE 導航器 | `athena-mitre-navigator.pen` | ATT&CK 矩陣、Kill Chain、技術詳情 |
+| 任務規劃器 | `athena-mission-planner.pen` | 任務步驟、OODA 時間軸、主機卡片 |
+| 戰場監控 | `athena-battle-monitor.pen` | 3D 拓樸 Demo、日誌串流、Agent 信標 |
+
+### 0.2 架構文件 `完成`
+
+| 交付物 | 檔案 | 內容 |
+|--------|------|------|
+| 資料架構 | `docs/architecture/data-architecture.md` | 13 個 Enum、12 個 Model、SQLite Schema、REST API、種子資料 |
+| 專案結構 | `docs/architecture/project-structure.md` | Monorepo 佈局、各層職責、開發階段 |
+| AI 上下文 | `CLAUDE.md` | 完整專案上下文（C5ISR、OODA、技術棧） |
+
+### 0.3 關鍵設計決策 `完成`
+
+| 決策 | 選擇 | 理由 |
+|------|------|------|
+| 自動化模式 | 半自動 + 手動覆寫 | 軍事合規 + AI 價值 + PTLR 市場定位 |
+| 拓樸視覺化 | react-force-graph-3d | 3D WebGL、粒子動畫、React 原生元件 |
+| 後端 | Python 3.11 + FastAPI + SQLite | 輕量 POC、Pydantic 模型 |
+| 前端 | Next.js 14 + React 18 + Tailwind v4 | App Router、設計 Token 整合 |
+| 執行引擎 | Caldera（主要）+ Shannon（選用） | Apache 2.0 + AGPL-3.0（API 隔離） |
+
+---
+
+## Phase 1：專案骨架 `待辦`
+
+> 預估範圍：目錄結構、設定檔、.gitignore
+
+### 1.1 建立目錄骨架
+
+```
+Athena/
+├── design/          ← 搬入 6 個 .pen 檔
+├── backend/app/
+│   ├── models/
+│   ├── routers/
+│   ├── services/
+│   ├── clients/
+│   └── seed/
+├── frontend/src/
+│   ├── app/
+│   ├── components/
+│   ├── types/
+│   ├── hooks/
+│   └── lib/
+└── infra/
+```
+
+### 1.2 根目錄設定檔
+
+- [ ] `.gitignore` — Python、Node、SQLite、.env 排除規則
+- [ ] `.env.example` — 所有環境變數及預設值
+- [ ] `Makefile` — dev、seed、test、clean 指令
+- [ ] `docker-compose.yml` — 後端 + 前端服務
+
+### 1.3 搬移設計資產
+
+- [ ] 將所有 `.pen` 檔從根目錄搬至 `design/`
+
+---
+
+## Phase 2：後端基礎 `待辦`
+
+> 預估範圍：模型、資料庫、種子資料、核心 API
+
+### 2.1 Pydantic Models + Enums
+
+- [ ] `backend/app/models/enums.py` — 13 個共用列舉
+  - OODAPhase、OperationStatus、TechniqueStatus、MissionStepStatus
+  - AgentStatus、ExecutionEngine、C5ISRDomain、C5ISRDomainStatus
+  - FactCategory、LogSeverity、KillChainStage、RiskLevel、AutomationMode
+- [ ] 12 個實體模型：Operation、Target、Agent、Technique、TechniqueExecution、Fact、OODAIteration、PentestGPTRecommendation、MissionStep、C5ISRStatus、LogEntry、User
+
+### 2.2 資料庫層
+
+- [ ] `backend/app/database.py` — SQLite 連線 + Session 管理
+- [ ] Schema 初始化 — 13 條 CREATE TABLE 語句
+- [ ] `backend/app/config.py` — Pydantic BaseSettings
+
+### 2.3 種子資料
+
+- [ ] `backend/app/seed/demo_scenario.py` — OP-2024-017「奪取 Domain Admin」
+  - 1 個作戰行動、5 個目標主機、4 個 Agent、4 個任務步驟
+  - 6 個 C5ISR 域狀態、1 則 PentestGPT 推薦
+  - 範例情報、日誌紀錄、OODA 迭代
+
+### 2.4 REST API（核心路由）
+
+- [ ] `routers/operations.py` — CRUD + 摘要端點
+- [ ] `routers/ooda.py` — 觸發、當前、歷史、時間軸
+- [ ] `routers/techniques.py` — 技術目錄 + 執行矩陣
+- [ ] `routers/missions.py` — 任務步驟 CRUD + 執行
+- [ ] `routers/targets.py` — 目標主機 + 拓樸（nodes + edges）
+- [ ] `routers/agents.py` — Agent 列表 + Caldera 同步
+- [ ] `routers/c5isr.py` — C5ISR 六域狀態
+- [ ] `routers/logs.py` — 分頁日誌紀錄
+- [ ] `routers/ws.py` — WebSocket 即時事件串流
+
+### 2.5 FastAPI 入口
+
+- [ ] `backend/app/main.py` — CORS、Lifespan（DB 初始化 + 種子載入）、掛載路由
+
+**驗證**：`cd backend && python -c "from app.models import *"` + `make seed` + API 於 `localhost:8000` 回應
+
+---
+
+## Phase 3：前端基礎 `待辦`
+
+> 預估範圍：型別定義、佈局、API 整合
+
+### 3.1 TypeScript 型別
+
+- [ ] `frontend/src/types/enums.ts` — 對映後端列舉
+- [ ] 11 個實體型別檔：operation、target、agent、technique、fact、ooda、recommendation、mission、c5isr、log、api
+- [ ] `frontend/src/types/index.ts` — 統一匯出
+
+### 3.2 核心佈局（依 Shell 設計稿）
+
+- [ ] `app/layout.tsx` — 根佈局含 Sidebar
+- [ ] `components/layout/Sidebar.tsx` — 導覽 + 系統狀態 + 使用者
+- [ ] `components/layout/AlertBanner.tsx` — 全域警示列
+- [ ] `components/layout/PageHeader.tsx` — 頁面標題列
+- [ ] `components/layout/CommandInput.tsx` — 底部指令輸入
+
+### 3.3 API + WebSocket Hooks
+
+- [ ] `lib/api.ts` — Fetch 封裝（base URL、錯誤處理）
+- [ ] `hooks/useOperation.ts` — 作戰資料管理
+- [ ] `hooks/useWebSocket.ts` — WebSocket 連線 + 事件派發
+- [ ] `hooks/useOODA.ts` — OODA 階段訂閱
+- [ ] `hooks/useLiveLog.ts` — 即時日誌串流
+
+### 3.4 原子元件（依設計系統）
+
+- [ ] Button、Badge、StatusDot、Toggle、ProgressBar、HexIcon
+- [ ] NavItem、TabBar
+- [ ] HexConfirmModal
+
+**驗證**：`npm run dev` 於 `localhost:3000` 渲染含 Sidebar 的應用外殼
+
+---
+
+## Phase 4：畫面實作 `待辦`
+
+> 預估範圍：4 個畫面，像素級對齊 .pen 設計稿
+
+### 4.1 C5ISR 指揮看板（`/c5isr`）— 主儀表板
+
+- [ ] 4 張 KPI MetricCard（Agents、成功率、技術數、已竊取資料）
+- [ ] C5ISR 六域狀態看板含健康度指示列
+- [ ] OODA 階段指示器
+- [ ] PentestGPT 推薦卡片
+- [ ] 作戰行動資料表
+- [ ] 迷你拓樸預覽
+
+### 4.2 MITRE 導航器（`/navigator`）— ATT&CK 矩陣
+
+- [ ] MITRE ATT&CK 矩陣格（按 Tactic 分欄的 MITRECell）
+- [ ] Kill Chain 進度指示器（7 階段）
+- [ ] 技術詳情面板
+- [ ] PentestGPT 建議整合
+
+### 4.3 任務規劃器（`/planner`）— 任務管理
+
+- [ ] 任務步驟 DataTable（步驟#、技術、目標、引擎、狀態）
+- [ ] OODA 時間軸條目
+- [ ] 主機節點卡片（5 個目標）
+- [ ] 步驟執行控制
+
+### 4.4 戰場監控（`/monitor`）— 即時作戰
+
+- [ ] **3D 網路拓樸**（react-force-graph-3d）
+  - 8 種連線類型：攻擊路徑、執行中滲透、C2 通道、掃描、橫向移動、權限提升、資料竊取、網路連結
+  - 依狀態變色的發光球體節點
+  - 邊線上的粒子流動動畫
+  - 節點懸停提示 + 點擊詳情面板
+- [ ] Agent 信標面板（即時狀態燈號）
+- [ ] 即時日誌串流（WebSocket 驅動）
+- [ ] 威脅等級儀表
+
+**驗證**：4 個畫面皆可載入種子資料渲染，WebSocket 事件即時更新
+
+---
+
+## Phase 5：OODA 循環引擎 `待辦`
+
+> 預估範圍：驅動整個平台的核心智慧循環
+
+### 5.1 服務層
+
+- [ ] `services/ooda_controller.py` — OODA 狀態機（Observe → Orient → Decide → Act）
+- [ ] `services/fact_collector.py` — 標準化執行結果為情報
+- [ ] `services/orient_engine.py` — PentestGPT API 整合（態勢評估）
+- [ ] `services/decision_engine.py` — 基於 AI + 風險 + 自動化模式的技術選擇
+- [ ] `services/engine_router.py` — 將技術路由至 Caldera 或 Shannon
+- [ ] `services/c5isr_mapper.py` — 聚合各來源的 C5ISR 域健康度
+
+### 5.2 半自動化邏輯
+
+- [ ] 基於風險等級的自動執行（LOW → 自動、MEDIUM → 排隊、HIGH → 確認、CRITICAL → 手動）
+- [ ] HIGH 風險決策的 HexConfirmModal 整合
+- [ ] 指揮官可隨時手動覆寫
+
+### 5.3 外部客戶端
+
+- [ ] `clients/caldera_client.py` — Caldera REST API（operations、abilities、agents）
+- [ ] `clients/shannon_client.py` — Shannon API（AI 自適應執行）
+
+**驗證**：透過 API 觸發 OODA 循環 → PentestGPT 推薦技術 → Caldera 執行 → 收集情報 → C5ISR 更新
+
+---
+
+## Phase 6：整合與 Demo 場景 `待辦`
+
+> 預估範圍：端對端「奪取 Domain Admin」完整演練
+
+### 6.1 Demo 流程：OP-2024-017「PHANTOM-EYE」
+
+```
+步驟 1：OBSERVE — Agent 回報網路掃描結果
+步驟 2：ORIENT  — PentestGPT 分析：「DC-01 上可執行 LSASS dump」
+步驟 3：DECIDE  — 指揮官審閱 3 個選項，批准 T1003.001
+步驟 4：ACT     — Caldera 執行 LSASS dump，收集憑證
+步驟 5：OBSERVE — 新情報：取得 CORP\Administrator 憑證
+步驟 6：ORIENT  — PentestGPT：「已達成 Domain Admin，建議進行資料竊取」
+→ 循環持續...
+```
+
+### 6.2 WebSocket 事件流
+
+- [ ] `log.new` — 即時日誌出現在戰場監控
+- [ ] `agent.beacon` — Agent 狀態燈號依心跳閃爍
+- [ ] `execution.update` — 技術執行狀態變更傳播至 MITRE 矩陣
+- [ ] `ooda.phase` — OODA 指示器在所有畫面同步切換
+- [ ] `c5isr.update` — 域健康度指示列更新
+- [ ] `fact.new` — 新情報出現在情報面板
+- [ ] `recommendation` — PentestGPT 卡片更新為最新建議
+
+### 6.3 Docker 設定
+
+- [ ] `backend/Dockerfile` — Python 3.11 + uvicorn
+- [ ] `frontend/Dockerfile` — Node 20 + Next.js
+- [ ] `docker-compose.yml` — 一行指令啟動
+- [ ] `make dev` — 全端開發模式
+
+**驗證**：`docker-compose up` → 開啟瀏覽器 → 看到完整 Demo 場景即時運行
+
+---
+
+## Phase 7：文件與開源發佈 `待辦`
+
+> 預估範圍：README、指南、授權、首次公開發佈
+
+### 7.1 文件撰寫
+
+- [ ] 重寫 `README.md` — 專案概覽、截圖、快速啟動
+- [ ] `docs/GETTING_STARTED.md` — 安裝與設定指南
+- [ ] `docs/ARCHITECTURE.md` — 高層系統架構圖
+- [ ] `docs/DEMO_WALKTHROUGH.md` — 逐步 Demo 指南
+- [ ] `CONTRIBUTING.md` — 貢獻指南
+- [ ] `CHANGELOG.md` — 版本歷史
+
+### 7.2 開源合規
+
+- [ ] 選定授權條款（MIT 或 Apache 2.0）
+- [ ] 所有原始碼檔加上 License Header
+- [ ] `SECURITY.md` — 負責任揭露政策
+- [ ] 驗證 Shannon AGPL-3.0 API 隔離合規性
+
+### 7.3 GitHub Repository
+
+- [ ] Repository 描述 + Topics 標籤
+- [ ] GitHub Actions CI（lint + test + build）
+- [ ] Issue 模板（Bug 回報、功能請求）
+- [ ] PR 模板
+- [ ] README 截圖（4 個畫面 + 3D 拓樸）
+
+### 7.4 首次發佈
+
+- [ ] 標記 `v0.1.0` — POC 版本
+- [ ] GitHub Release 含 Changelog
+- [ ] Demo 影片 / GIF 展示 OODA 循環運作
+
+---
+
+## Phase 8：未來增強 `未來`
+
+> POC 之後的產品成熟功能
+
+### 8.1 多作戰支援
+
+- [ ] Sidebar 中的作戰列表 / 切換器
+- [ ] 每個作戰獨立的 OODA 循環
+- [ ] 跨作戰情報共享
+
+### 8.2 進階拓樸
+
+- [ ] VR 模式（react-force-graph-vr）
+- [ ] 網路區段分組 / 叢集
+- [ ] 攻擊路徑重播 / 時間軸拉桿
+- [ ] 匯出拓樸為圖片 / 報告
+
+### 8.3 身份驗證與 RBAC
+
+- [ ] 使用者驗證（JWT）
+- [ ] 角色權限：指揮官 / 操作員 / 觀察員
+- [ ] 稽核日誌（誰在何時批准了什麼）
+
+### 8.4 報告產出
+
+- [ ] 自動產生滲透測試報告（PDF）
+- [ ] MITRE ATT&CK 覆蓋率熱力圖匯出
+- [ ] AI 輔助的高層摘要產生
+
+### 8.5 額外整合
+
+- [ ] BloodHound 整合（AD 攻擊路徑）
+- [ ] Nmap / Masscan 輸出匯入
+- [ ] Cobalt Strike / Havoc C2 連接器
+- [ ] Slack / Teams 關鍵事件通知
+
+### 8.6 正式環境強化
+
+- [ ] PostgreSQL 遷移（從 SQLite）
+- [ ] Redis 用於 WebSocket pub/sub
+- [ ] 速率限制 + 輸入驗證
+- [ ] Helm Chart 用於 Kubernetes 部署
+
+---
+
+## 里程碑總覽
+
+| 階段 | 名稱 | 關鍵交付物 | 相依性 |
+|------|------|-----------|--------|
+| **0** | 設計與架構 | UI 設計稿 + 資料模型文件 | 無 |
+| **1** | 專案骨架 | 目錄結構 + 設定檔 | Phase 0 |
+| **2** | 後端基礎 | 模型 + 資料庫 + API + 種子資料 | Phase 1 |
+| **3** | 前端基礎 | 型別 + 佈局 + Hooks | Phase 1 |
+| **4** | 畫面實作 | 4 個畫面 + 3D 拓樸 | Phase 2 + 3 |
+| **5** | OODA 循環引擎 | AI 驅動決策循環 | Phase 4 |
+| **6** | 整合與 Demo | 端對端 Demo 場景 | Phase 5 |
+| **7** | 開源發佈 | 文件 + CI + v0.1.0 標記 | Phase 6 |
+| **8** | 未來增強 | 多作戰、VR、身份驗證、報告 | Phase 7 |
+
+```
+Phase 0 ████████████████████ 完成
+Phase 1 ░░░░░░░░░░░░░░░░░░░░ 待辦
+Phase 2 ░░░░░░░░░░░░░░░░░░░░ 待辦
+Phase 3 ░░░░░░░░░░░░░░░░░░░░ 待辦（可與 Phase 2 並行）
+Phase 4 ░░░░░░░░░░░░░░░░░░░░ 待辦
+Phase 5 ░░░░░░░░░░░░░░░░░░░░ 待辦
+Phase 6 ░░░░░░░░░░░░░░░░░░░░ 待辦
+Phase 7 ░░░░░░░░░░░░░░░░░░░░ 待辦
+Phase 8 ░░░░░░░░░░░░░░░░░░░░ 未來
+```
+
+---
+
+## 技術棧參考
+
+| 層級 | 技術 | 授權 |
+|------|------|------|
+| 後端 | Python 3.11 + FastAPI + Pydantic | MIT |
+| 資料庫 | SQLite（POC）→ PostgreSQL（正式） | Public Domain |
+| 前端 | Next.js 14 + React 18 + Tailwind v4 | MIT |
+| 3D 拓樸 | react-force-graph-3d + Three.js | MIT |
+| 設計 | Pencil.dev（.pen） | — |
+| 執行引擎 | MITRE Caldera | Apache 2.0 |
+| 執行引擎（選用） | Shannon | AGPL-3.0（API 隔離） |
+| AI 智慧 | PentestGPT | MIT |
+| 容器化 | Docker + docker-compose | Apache 2.0 |
+
+---
+
+## 相關文件
+
+- [資料架構](architecture/data-architecture.md) — 模型、Schema、API、種子資料
+- [專案結構](architecture/project-structure.md) — 目錄佈局、各層職責
+- [CLAUDE.md](../CLAUDE.md) — 完整 AI 上下文文件

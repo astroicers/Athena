@@ -77,6 +77,8 @@ Athena/
 │   │   │   ├── agents.py                  # /api/operations/{id}/agents
 │   │   │   ├── c5isr.py                   # /api/operations/{id}/c5isr
 │   │   │   ├── logs.py                    # /api/operations/{id}/logs
+│   │   │   ├── facts.py                   # /api/operations/{id}/facts
+│   │   │   ├── recommendations.py         # /api/operations/{id}/recommendations
 │   │   │   └── ws.py                      # WebSocket /ws/{operation_id}
 │   │   │
 │   │   ├── services/                      # 業務邏輯層

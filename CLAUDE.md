@@ -1,112 +1,114 @@
-# CLAUDE.md - Athena Project v3
+# CLAUDE.md — Athena 專案 v4
 
-> **Project Context Document for AI Assistants**
-> 
-> This document provides comprehensive context about the Athena project for AI assistants (Claude, ChatGPT, etc.) to understand the project's architecture, philosophy, and technical decisions.
+> **AI 助手專案上下文文件**
 >
-> **Status**: POC Phase - Individual deployment, military consultant focused  
-> **Core Stack**: PentestGPT (Intelligence) + Caldera (Execution)
+> 本文件為 AI 助手（Claude、ChatGPT 等）提供 Athena 專案的完整上下文，
+> 涵蓋架構、設計哲學與技術決策。
+>
+> **狀態**：POC 階段 — 個人部署，軍事顧問定位
+> **核心棧**：PentestGPT（情報）+ Caldera（執行）
 
 ---
 
-## Table of Contents
+## 目錄
 
-1. [Project Overview](#project-overview)
-2. [Core Philosophy](#core-philosophy)
-3. [Architecture](#architecture)
-4. [Component Roles](#component-roles)
-5. [License Strategy](#license-strategy)
-6. [Technical Stack](#technical-stack)
-7. [Integration Strategy](#integration-strategy)
-8. [Development Roadmap](#development-roadmap)
-9. [Key Concepts](#key-concepts)
-10. [POC Phase Constraints](#poc-phase-constraints)
-11. [For AI Assistants](#for-ai-assistants)
+1. [專案概覽](#專案概覽)
+2. [核心哲學](#核心哲學)
+3. [架構](#架構)
+4. [元件角色](#元件角色)
+5. [授權策略](#授權策略)
+6. [技術棧](#技術棧)
+7. [整合策略](#整合策略)
+8. [自動化模式](#自動化模式)
+9. [開發路線圖](#開發路線圖)
+10. [關鍵概念](#關鍵概念)
+11. [POC 階段限制](#poc-階段限制)
+12. [AI 助手指南](#ai-助手指南)
 
 ---
 
-## Project Overview
+## 專案概覽
 
-### What is Athena?
+### Athena 是什麼？
 
-**Athena** is an AI-driven C5ISR (Command, Control, Communications, Computers, Cyber, Intelligence, Surveillance, Reconnaissance) command platform for cyber operations. It is **NOT** another penetration testing tool—it's a **military-grade command and decision platform** that orchestrates execution engines with AI-assisted tactical planning.
+**Athena** 是一套 AI 驅動的 C5ISR（Command, Control, Communications, Computers, Cyber, Intelligence, Surveillance, Reconnaissance）網路作戰指揮平台。它**不是**又一個滲透測試工具——而是一套**軍事級指揮與決策平台**，以 AI 輔助的戰術規劃來編排執行引擎。
 
-### Positioning
+### 定位
 ```
-Traditional Tools          Athena
+傳統工具                    Athena
 ─────────────────         ────────────────────
-"How to exploit"    →     "How to command"
-Operator's console  →     Commander's dashboard
-Technical execution →     Strategic decision-making
-Static scripts      →     Dynamic OODA loop
-Tool-centric        →     Framework-centric
+「如何滲透」           →     「如何指揮」
+操作員控制台           →     指揮官儀表板
+技術執行               →     戰略決策
+靜態腳本               →     動態 OODA 循環
+以工具為中心           →     以框架為中心
 ```
 
-### Key Differentiators
+### 核心差異化
 
-- **Not a tool, but a command platform**: Elevates penetration testing from tactical operations to strategic command
-- **C5ISR framework**: Applies military operational framework to cyber warfare
-- **MITRE ATT&CK native**: Built on MITRE Caldera with deep integration
-- **AI-assisted decision**: Integrates PentestGPT for tactical intelligence (Orient phase)
-- **OODA-driven**: Dynamic adjustment through Observe-Orient-Decide-Act cycles
-- **Multi-engine capable**: Commands Caldera (standard) and optionally Shannon (AI-powered)
+- **不是工具，而是指揮平台**：將滲透測試從戰術操作提升至戰略指揮
+- **C5ISR 框架**：將軍事作戰框架應用於網路戰
+- **MITRE ATT&CK 原生**：基於 MITRE Caldera 深度整合
+- **AI 輔助決策**：整合 PentestGPT 提供戰術情報（Orient 階段）
+- **OODA 驅動**：透過 Observe → Orient → Decide → Act 循環動態調適
+- **多引擎支援**：指揮 Caldera（標準）和選用 Shannon（AI 自適應）
 
 ---
 
-## Core Philosophy
+## 核心哲學
 
-### The Military Analogy
+### 軍事類比
 ```
-Athena is to penetration testing what an Air Force Command Center is to fighter jets.
+Athena 之於滲透測試，就如同空軍指揮中心之於戰鬥機。
 
-PentestGPT = Military Intelligence Officer (analyzes, recommends)
-Caldera    = F-16 Squadron (proven, standardized, reliable)
-Shannon    = F-35 (advanced, AI-capable, adaptive) - Optional
-Athena     = Command Center (decides strategy and which assets to deploy)
+PentestGPT = 軍事情報官（分析、建議）
+Caldera    = F-16 戰鬥機中隊（成熟、標準化、可靠）
+Shannon    = F-35 戰鬥機（先進、AI 能力、自適應）— 選用
+Athena     = 指揮中心（決定戰略及部署哪些資產）
 ```
 
-### Design Principles
+### 設計原則
 
-1. **Commander's Perspective**: Users think in terms of strategic intent, not technical commands
-2. **Framework over Tools**: C5ISR provides structure, tools provide capability
-3. **Decision over Execution**: Focus on "what to do" rather than "how to do"
-4. **Human-AI Collaboration**: AI assists (PentestGPT), humans decide (Commander), engines execute (Caldera/Shannon)
-5. **Dynamic Adaptation**: OODA loop enables real-time tactical adjustment
+1. **指揮官視角**：使用者以戰略意圖思考，而非技術指令
+2. **框架優先於工具**：C5ISR 提供結構，工具提供能力
+3. **決策優先於執行**：聚焦「做什麼」而非「怎麼做」
+4. **人機協作**：AI 輔助（PentestGPT）、人類決策（指揮官）、引擎執行（Caldera/Shannon）
+5. **動態調適**：OODA 循環實現即時戰術調整
 
-### Three Layers of Intelligence
+### 三層智慧架構
 ```
 ┌─────────────────────────────────────────────────┐
-│  Strategic Intelligence (战略智能)              │
-│  └─ PentestGPT: "Why this tactic?"              │
-│     Role: Think, Analyze, Recommend             │
-│     Output: Tactical options with reasoning     │
+│  戰略智慧（Strategic Intelligence）             │
+│  └─ PentestGPT：「為什麼選這個戰術？」          │
+│     角色：思考、分析、建議                       │
+│     輸出：附帶推理的戰術選項                     │
 └─────────────────────────────────────────────────┘
                       ↓
 ┌─────────────────────────────────────────────────┐
-│  Decision Intelligence (决策智能)               │
-│  └─ Athena Engine: "Which engine to use?"      │
-│     Role: Route, Orchestrate, Prioritize       │
-│     Output: Execution plan                      │
+│  決策智慧（Decision Intelligence）              │
+│  └─ Athena 引擎：「該用哪個執行引擎？」         │
+│     角色：路由、編排、排序                       │
+│     輸出：執行計畫                               │
 └─────────────────────────────────────────────────┘
                       ↓
 ┌─────────────────────────────────────────────────┐
-│  Execution Intelligence (执行智能)              │
-│  ├─ Caldera: Standard MITRE techniques          │
-│  └─ Shannon: AI-adaptive execution (optional)   │
-│     Role: Do, Execute, Report                   │
-│     Output: Attack results                      │
+│  執行智慧（Execution Intelligence）             │
+│  ├─ Caldera：標準 MITRE 技術                     │
+│  └─ Shannon：AI 自適應執行（選用）               │
+│     角色：執行、回報                             │
+│     輸出：攻擊結果                               │
 └─────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Architecture
+## 架構
 
-### High-Level Architecture (POC Configuration)
+### 高層架構（POC 配置）
 ```
 ┌─────────────────────────────────────────────────────┐
-│              Pencil.dev UI Layer                    │
-│  (Commander Interface - Visual Command Dashboard)   │
+│              Pencil.dev UI 層                       │
+│  （指揮官介面 — 視覺化指揮儀表板）                  │
 │                                                      │
 │  ┌────────┐ ┌────────┐ ┌────────┐ ┌─────────┐     │
 │  │ C5ISR  │ │ MITRE  │ │ Mission│ │ Battle  │     │
@@ -115,611 +117,485 @@ Athena     = Command Center (decides strategy and which assets to deploy)
 └───────────────────────┬─────────────────────────────┘
                         │
 ┌───────────────────────▼─────────────────────────────┐
-│         Athena Command & Intelligence Layer         │
-│         (Core Innovation - Your IP)                 │
+│         Athena 指揮與情報層                         │
+│         （核心創新 — 你的智慧財產）                  │
 │                                                      │
 │  ┌──────────────────────────────────────────────┐  │
-│  │  Strategic Decision Engine                   │  │
-│  │  ├─ C5ISR Framework Mapper                   │  │
-│  │  ├─ MITRE ATT&CK Orchestrator                │  │
-│  │  ├─ OODA Loop Controller                     │  │
-│  │  └─ Mission Priority Manager                 │  │
+│  │  戰略決策引擎                                │  │
+│  │  ├─ C5ISR 框架映射器                         │  │
+│  │  ├─ MITRE ATT&CK 編排器                      │  │
+│  │  ├─ OODA 循環控制器                          │  │
+│  │  └─ 任務優先順序管理器                       │  │
 │  └──────────────────────────────────────────────┘  │
 │                                                      │
 │  ┌──────────────────────────────────────────────┐  │
-│  │  ⭐ PentestGPT Intelligence Layer (CORE)     │  │
+│  │  PentestGPT 情報層（核心）                    │  │
 │  │  ════════════════════════════════════════    │  │
-│  │  Role: OODA Orient Phase                     │  │
-│  │  License: MIT (Safe Integration)             │  │
+│  │  角色：OODA Orient 階段                       │  │
+│  │  授權：MIT（安全整合）                        │  │
 │  │                                               │  │
-│  │  ├─ Situation Analysis                       │  │
-│  │  ├─ MITRE Technique Recommendation           │  │
-│  │  ├─ Tactical Reasoning                       │  │
-│  │  ├─ Risk Assessment                          │  │
-│  │  └─ Multi-Option Generation                  │  │
+│  │  ├─ 態勢分析                                 │  │
+│  │  ├─ MITRE 技術推薦                            │  │
+│  │  ├─ 戰術推理                                 │  │
+│  │  ├─ 風險評估                                 │  │
+│  │  └─ 多選項方案產生                           │  │
 │  │                                               │  │
-│  │  LLM Backend:                                 │  │
-│  │  ├─ Primary: Claude (Anthropic) - Reasoning  │  │
-│  │  └─ Fallback: GPT-4 (OpenAI)                 │  │
+│  │  LLM 後端：                                   │  │
+│  │  ├─ 主要：Claude（Anthropic）— 推理能力      │  │
+│  │  └─ 備用：GPT-4（OpenAI）                    │  │
 │  └──────────────────────────────────────────────┘  │
 │                                                      │
 │  ┌──────────────────────────────────────────────┐  │
-│  │  Execution Engine Abstraction Layer          │  │
-│  │  ├─ Task Routing Logic                       │  │
-│  │  ├─ Caldera Client (API-based) ✅ Core       │  │
-│  │  ├─ Shannon Client (API-based) ⚠️ Optional   │  │
-│  │  └─ Results Aggregation & Normalization      │  │
+│  │  執行引擎抽象層                              │  │
+│  │  ├─ 任務路由邏輯                             │  │
+│  │  ├─ Caldera 客戶端（API 呼叫）✅ 核心        │  │
+│  │  ├─ Shannon 客戶端（API 呼叫）⚠️ 選用        │  │
+│  │  └─ 結果聚合與標準化                         │  │
 │  └──────────────────────────────────────────────┘  │
 └───────────────────────┬─────────────────────────────┘
                         │
-                  API Boundary
-                  (License Isolation)
+                  API 邊界
+                （授權隔離防火牆）
                         │
           ┌─────────────┴──────────────┐
           ↓                            ↓
 ┌──────────────────┐         ┌──────────────────┐
 │ ✅ Caldera       │         │ ⚠️ Shannon       │
-│  (POC Core)      │         │  (Optional)      │
+│  （POC 核心）    │         │  （選用）        │
 │                  │         │                  │
 │  Apache 2.0      │         │  AGPL-3.0        │
-│  (MITRE Official)│         │  (Independent)   │
+│  （MITRE 官方）  │         │  （獨立運行）    │
 │                  │         │                  │
-│  - MITRE Native  │         │  - AI Reasoning  │
-│  - Standardized  │         │  - Autonomous    │
-│  - Reliable      │         │  - Adaptive      │
-│  - POC-Ready     │         │  - Advanced Demo │
+│  - MITRE 原生    │         │  - AI 推理       │
+│  - 標準化        │         │  - 自主執行      │
+│  - 可靠          │         │  - 自適應        │
+│  - POC 就緒      │         │  - 進階展示      │
 └──────────────────┘         └──────────────────┘
 ```
 
-### Data Flow (OODA Loop with PentestGPT)
+### 資料流（OODA 循環與 PentestGPT）
 ```
 ┌─────────────────────────────────────────┐
-│         Observe (观察)                   │
-│  ├─ User inputs strategic intent        │
-│  ├─ Caldera Agents report results       │
-│  ├─ Facts database updates              │
-│  └─ Environmental state changes         │
+│         Observe（觀察）                 │
+│  ├─ 使用者輸入戰略意圖                 │
+│  ├─ Caldera Agent 回報結果             │
+│  ├─ 情報資料庫更新                     │
+│  └─ 環境狀態變化                       │
 └──────────────┬──────────────────────────┘
                ↓
 ┌──────────────▼──────────────────────────┐
-│         Orient (导向) ⭐ PentestGPT      │
+│         Orient（導向）⭐ PentestGPT     │
 │  ════════════════════════════════════   │
-│  This is where PentestGPT shines:       │
+│  PentestGPT 在此發揮核心價值：          │
 │                                          │
-│  1. Analyze current situation            │
-│  2. Consider completed techniques        │
-│  3. Evaluate failures and obstacles      │
-│  4. Generate 3 tactical options          │
-│  5. Explain reasoning for each           │
-│  6. Recommend best path                  │
+│  1. 分析當前態勢                        │
+│  2. 考量已完成的技術                    │
+│  3. 評估失敗與障礙                      │
+│  4. 產生 3 個戰術選項                   │
+│  5. 解釋每個選項的推理                  │
+│  6. 推薦最佳路徑                        │
 │                                          │
-│  Example Output:                         │
+│  輸出範例：                              │
 │  ┌────────────────────────────────────┐ │
-│  │ "Current: Initial access achieved  │ │
+│  │ 「當前：已取得初始存取              │ │
 │  │                                    │ │
-│  │ Option 1: T1003.001 (LSASS)       │ │
-│  │   Reasoning: Admin access present │ │
-│  │   Risk: Medium (EDR may detect)   │ │
-│  │   Engine: Caldera (standard)      │ │
+│  │ 選項 1：T1003.001（LSASS）        │ │
+│  │   推理：已有 Admin 權限            │ │
+│  │   風險：中（EDR 可能偵測）         │ │
+│  │   引擎：Caldera（標準）            │ │
 │  │                                    │ │
-│  │ Option 2: T1134 (Token Manip)     │ │
-│  │   Reasoning: Stealthier approach  │ │
-│  │   Risk: Low                        │ │
-│  │   Engine: Shannon (adaptive)      │ │
+│  │ 選項 2：T1134（Token 操作）        │ │
+│  │   推理：較隱蔽的方法              │ │
+│  │   風險：低                         │ │
+│  │   引擎：Shannon（自適應）          │ │
 │  │                                    │ │
-│  │ Recommended: Option 1"            │ │
+│  │ 推薦：選項 1」                     │ │
 │  └────────────────────────────────────┘ │
 └──────────────┬──────────────────────────┘
                ↓
 ┌──────────────▼──────────────────────────┐
-│         Decide (决策)                    │
-│  ├─ Athena evaluates PentestGPT advice  │
-│  ├─ Considers operational constraints   │
-│  ├─ Selects technique                   │
-│  ├─ Routes to execution engine:         │
-│  │   ├─ Caldera (standard techniques)   │
-│  │   └─ Shannon (complex scenarios)     │
-│  └─ Updates operation plan              │
+│         Decide（決策）                   │
+│  ├─ Athena 評估 PentestGPT 建議        │
+│  ├─ 考量作戰限制條件                    │
+│  ├─ 選擇技術                            │
+│  ├─ 路由至執行引擎：                    │
+│  │   ├─ Caldera（標準技術）             │
+│  │   └─ Shannon（複雜場景）             │
+│  └─ 更新作戰計畫                        │
 └──────────────┬──────────────────────────┘
                ↓
 ┌──────────────▼──────────────────────────┐
-│         Act (行动)                       │
-│  ├─ Caldera/Shannon executes via API    │
-│  ├─ Agents perform attack operations    │
-│  ├─ Results collected in Facts DB       │
-│  └─ Feedback loops to Observe ──────────┘
+│         Act（行動）                      │
+│  ├─ Caldera/Shannon 透過 API 執行       │
+│  ├─ Agent 執行攻擊操作                  │
+│  ├─ 結果收集至情報資料庫                │
+│  └─ 回饋循環回到 Observe ──────────────┘
 ```
 
 ---
 
-## Component Roles
+## 元件角色
 
-### Critical: Understanding PentestGPT vs Shannon vs Caldera
+### 關鍵：理解 PentestGPT vs Shannon vs Caldera
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  Component Comparison Matrix                             │
+│  元件比較矩陣                                            │
 ├──────────────────────────────────────────────────────────┤
 │                                                           │
-│  PentestGPT (Intelligence Layer)                         │
+│  PentestGPT（情報層）                                    │
 │  ═══════════════════════════════════                     │
-│  What it does:    Thinks, analyzes, recommends           │
-│  What it outputs: Text recommendations & reasoning       │
-│  Role in C5ISR:   Intelligence                           │
-│  Role in OODA:    Orient (THE critical phase)            │
-│  Executes attacks: ❌ No (pure advisory)                 │
-│  License:         MIT ✅ Safe to integrate               │
-│  Resources:       Minimal (LLM API calls only)           │
-│  POC Status:      ✅ REQUIRED - Core differentiator      │
+│  功能：         思考、分析、建議                          │
+│  輸出：         文字建議與推理                            │
+│  C5ISR 角色：   情報（Intelligence）                     │
+│  OODA 角色：    Orient（關鍵階段）                       │
+│  執行攻擊：     ❌ 否（純顧問角色）                      │
+│  授權：         MIT ✅ 可安全整合                         │
+│  資源需求：     極少（僅 LLM API 呼叫）                  │
+│  POC 狀態：     ✅ 必要 — 核心差異化元件                  │
 │                                                           │
-│  Example interaction:                                    │
-│  Input:  "Failed to escalate privileges via T1068"      │
-│  Output: "EDR likely present. Recommend:                │
-│           1. T1548.002 (UAC Bypass) - Lower noise       │
-│           2. T1134 (Token Manip) - Requires SeDebug     │
-│           Suggest: Try #1 first via Caldera"            │
+│  互動範例：                                              │
+│  輸入：「透過 T1068 提權失敗」                           │
+│  輸出：「可能有 EDR。建議：                              │
+│         1. T1548.002（UAC 繞過）— 較低噪音               │
+│         2. T1134（Token 操作）— 需要 SeDebug             │
+│         建議：先透過 Caldera 嘗試方案 1」                │
 │                                                           │
 ├──────────────────────────────────────────────────────────┤
 │                                                           │
-│  Caldera (Standard Execution Engine)                     │
+│  Caldera（標準執行引擎）                                 │
 │  ════════════════════════════════════                    │
-│  What it does:    Executes MITRE techniques              │
-│  What it outputs: Attack results, collected facts        │
-│  Role in C5ISR:   Cyber (Execution)                      │
-│  Role in OODA:    Act                                    │
-│  Executes attacks: ✅ Yes (predefined abilities)         │
-│  License:         Apache 2.0 ✅ MITRE official           │
-│  Resources:       ~2GB RAM, 2 CPU cores                  │
-│  POC Status:      ✅ REQUIRED - Primary executor         │
-│                                                           │
-│  Example interaction:                                    │
-│  Input:  Execute T1003.001 (LSASS Memory)               │
-│  Output: SUCCESS - Retrieved 15 credentials              │
-│          Facts: domain\admin, domain\user1...            │
+│  功能：         執行 MITRE 技術                           │
+│  輸出：         攻擊結果、收集的情報                      │
+│  C5ISR 角色：   Cyber（執行）                            │
+│  OODA 角色：    Act                                      │
+│  執行攻擊：     ✅ 是（預定義的 abilities）               │
+│  授權：         Apache 2.0 ✅ MITRE 官方                  │
+│  資源需求：     ~2GB RAM, 2 CPU cores                     │
+│  POC 狀態：     ✅ 必要 — 主要執行器                      │
 │                                                           │
 ├──────────────────────────────────────────────────────────┤
 │                                                           │
-│  Shannon (AI-Powered Execution Engine)                   │
+│  Shannon（AI 驅動執行引擎）                              │
 │  ══════════════════════════════════════                 │
-│  What it does:    AI-driven adaptive execution           │
-│  What it outputs: Attack results with AI reasoning       │
-│  Role in C5ISR:   Cyber (Advanced Execution)             │
-│  Role in OODA:    Act (with internal Orient)             │
-│  Executes attacks: ✅ Yes (autonomous + adaptive)        │
-│  License:         AGPL-3.0 ⚠️ API-only integration       │
-│  Resources:       ~2GB RAM, 2 CPU cores                  │
-│  POC Status:      ⚠️ OPTIONAL - Advanced feature         │
+│  功能：         AI 驅動的自適應執行                       │
+│  輸出：         攻擊結果 + AI 推理                        │
+│  C5ISR 角色：   Cyber（進階執行）                        │
+│  OODA 角色：    Act（含內部 Orient）                     │
+│  執行攻擊：     ✅ 是（自主 + 自適應）                    │
+│  授權：         AGPL-3.0 ⚠️ 僅 API 整合                  │
+│  資源需求：     ~2GB RAM, 2 CPU cores                     │
+│  POC 狀態：     ⚠️ 選用 — 進階功能                       │
 │                                                           │
-│  Example interaction:                                    │
-│  Input:  Execute privilege escalation (method TBD)      │
-│  Output: SUCCESS - Used T1548.002 with obfuscation       │
-│          AI Note: "Detected AV, switched to LOLBAS"      │
+│  注意：seed data 中 Mission Step #4 使用 Shannon 作為    │
+│  demo placeholder，實際 POC 可 fallback 到 Caldera。     │
 │                                                           │
 └──────────────────────────────────────────────────────────┘
 ```
 
-### When to Use Each
+### 何時使用哪個元件
 ```
-Scenario-Based Selection Guide:
+場景導向選擇指南：
 
 ┌─────────────────────────────────────────────────────────┐
-│  Scenario 1: Planning Attack Strategy                  │
+│  場景 1：規劃攻擊策略                                   │
 ├─────────────────────────────────────────────────────────┤
-│  Use: PentestGPT                                        │
-│  Why: Need tactical analysis and recommendations       │
+│  使用：PentestGPT                                        │
+│  原因：需要戰術分析與建議                                │
 │                                                          │
-│  User: "How do I get domain admin?"                    │
-│  PentestGPT: "Analyze current position...              │
-│               Recommend TA0006 → TA0004 → TA0008       │
-│               Start with T1003.001 because..."         │
+│  使用者：「如何取得 Domain Admin？」                     │
+│  PentestGPT：「分析當前態勢...                          │
+│               建議 TA0006 → TA0004 → TA0008             │
+│               從 T1003.001 開始，因為...」              │
 └─────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────┐
-│  Scenario 2: Standard MITRE Technique Execution        │
+│  場景 2：標準 MITRE 技術執行                             │
 ├─────────────────────────────────────────────────────────┤
-│  Use: Caldera                                           │
-│  Why: Known environment, standard technique             │
+│  使用：Caldera                                           │
+│  原因：已知環境、標準技術                                │
 │                                                          │
-│  Athena: Execute T1003.001 on 192.168.1.10             │
-│  Caldera: [Runs standard LSASS dump ability]           │
-│           Returns: 10 credentials extracted             │
+│  Athena：對 192.168.1.10 執行 T1003.001                 │
+│  Caldera：[執行標準 LSASS dump ability]                 │
+│           回傳：萃取 10 組憑證                           │
 └─────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────┐
-│  Scenario 3: Adaptive Execution (Unknown Defense)      │
+│  場景 3：自適應執行（未知防禦）                          │
 ├─────────────────────────────────────────────────────────┤
-│  Use: Shannon (if available)                            │
-│  Why: Need AI to adapt to unknown defenses             │
+│  使用：Shannon（若可用）                                 │
+│  原因：需要 AI 適應未知防禦                              │
 │                                                          │
-│  Athena: Escalate privileges (environment unknown)     │
-│  Shannon: [AI analyzes] → Detects EDR                  │
-│           [Adapts] → Uses LOLBAS technique             │
-│           Returns: Success via alternate method         │
+│  Athena：提權（環境未知）                                │
+│  Shannon：[AI 分析] → 偵測到 EDR                        │
+│           [自適應] → 改用 LOLBAS 技術                    │
+│           回傳：透過替代方法成功                          │
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Key Insight: PentestGPT Cannot Be Replaced
+### 關鍵洞察：PentestGPT 無法被取代
 ```
-❌ Wrong Mental Model:
-"Shannon is AI, so it can replace PentestGPT"
+❌ 錯誤心智模型：
+「Shannon 是 AI，所以可以取代 PentestGPT」
 
-✅ Correct Understanding:
-PentestGPT = Strategic advisor (explains WHY)
-Shannon    = Smart soldier (figures out HOW)
+✅ 正確理解：
+PentestGPT = 戰略顧問（解釋「為什麼」）
+Shannon    = 精銳士兵（找出「如何做」）
 
-Both use AI, but at different levels:
-├─ PentestGPT: Meta-level tactical reasoning
-│   "Given these facts, what's the best approach?"
-│   Can be questioned: "Why recommend this?"
-│   Provides multiple options for human choice
+兩者都使用 AI，但層級不同：
+├─ PentestGPT：後設層級戰術推理
+│   「根據這些情報，最佳方法是什麼？」
+│   可被質疑：「為什麼推薦這個？」
+│   提供多個選項供人類選擇
 │
-└─ Shannon: Execution-level adaptation
-    "This defense blocked me, try another way"
-    Black-box operation
-    Makes own decisions autonomously
+└─ Shannon：執行層級自適應
+    「這個防禦擋住我了，換另一種方法」
+    黑箱操作
+    自主做出決策
 
-Analogy:
-├─ PentestGPT = General's Chief of Staff (strategic advice)
-└─ Shannon = Special Forces Unit (tactical execution)
+類比：
+├─ PentestGPT = 將軍的參謀長（戰略建議）
+└─ Shannon = 特種部隊（戰術執行）
 
-You need both layers for Athena's value proposition!
+Athena 的價值主張需要兩個層級！
 ```
 
 ---
 
-## License Strategy
+## 授權策略
 
-### Critical: License Isolation Architecture
+### 關鍵：授權隔離架構
 
-**Problem**: Shannon uses AGPL-3.0 license, which has "viral" characteristics that could force Athena to also be AGPL-3.0 if improperly integrated.
+**問題**：Shannon 使用 AGPL-3.0 授權，具有「病毒式」特性，若整合不當可能迫使 Athena 也必須採用 AGPL-3.0。
 
-**Solution**: Strict API-based integration with clear license boundaries.
+**解法**：嚴格的 API 整合，明確的授權邊界。
 
-### License Boundaries
+### 授權邊界
 ```
 ┌─────────────────────────────────────────┐
-│  Athena Core Platform                   │
-│  License: Apache 2.0                    │
+│  Athena 核心平台                        │
+│  授權：Apache 2.0                       │
 │                                          │
-│  ✅ Commercial-friendly                 │
-│  ✅ Patent protection                   │
-│  ✅ Enterprise acceptable               │
+│  ✅ 商業友善                            │
+│  ✅ 專利保護                            │
+│  ✅ 企業可接受                          │
 │                                          │
-│  Includes:                               │
-│  ├─ All decision engine logic           │
-│  ├─ C5ISR framework implementation      │
-│  ├─ MITRE orchestration                 │
-│  ├─ OODA loop controller                │
-│  ├─ PentestGPT integration (MIT)        │
-│  └─ UI/UX layer                         │
+│  包含：                                  │
+│  ├─ 所有決策引擎邏輯                    │
+│  ├─ C5ISR 框架實作                      │
+│  ├─ MITRE 編排                          │
+│  ├─ OODA 循環控制器                     │
+│  ├─ PentestGPT 整合（MIT）              │
+│  └─ UI/UX 層                            │
 └──────────────┬──────────────────────────┘
                │
-          API Boundary
-        (License Firewall)
+          API 邊界
+        （授權防火牆）
                │
       ┌────────┴────────┐
       ↓                 ↓
 ┌──────────┐      ┌──────────┐
 │ Caldera  │      │ Shannon  │
-│          │      │ (Optional)│
+│          │      │（選用）  │
 │ Apache   │      │ AGPL-3.0 │
 │ 2.0      │      │          │
 └──────────┘      └──────────┘
 ```
 
-### Third-Party Components & Licenses
+### 第三方元件與授權
 ```
-Component       License      Integration    Required   Source
+元件             授權         整合方式       必要性    來源
 ─────────────  ──────────   ─────────────  ────────  ────────────────────
-Athena Core    Apache 2.0   -              ✅ Yes    This project
-PentestGPT     MIT          Library import ✅ Yes    github.com/GreyDGL/PentestGPT
-Caldera        Apache 2.0   API            ✅ Yes    github.com/mitre/caldera
-Shannon        AGPL-3.0     API (isolated) ⚠️ No     github.com/KeygraphHQ/shannon
+Athena Core    Apache 2.0   -              ✅ 是     本專案
+PentestGPT     MIT          程式庫匯入     ✅ 是     github.com/GreyDGL/PentestGPT
+Caldera        Apache 2.0   API            ✅ 是     github.com/mitre/caldera
+Shannon        AGPL-3.0     API（隔離）    ⚠️ 否     github.com/KeygraphHQ/shannon
 ```
 
-### Safe Integration Practices
+### 安全整合實務
 
-#### ✅ ALLOWED (License-Safe)
+#### ✅ 允許（授權安全）
 ```python
-# ✅ PentestGPT - MIT License (safe to import directly)
+# ✅ PentestGPT — MIT 授權（可安全直接匯入）
 from pentestgpt import PentestGPTClient
 
 class AthenaIntelligence:
     def __init__(self):
-        # Direct import is safe - MIT license
+        # 直接匯入安全 — MIT 授權
         self.gpt_client = PentestGPTClient(
             api_key=os.getenv("ANTHROPIC_API_KEY"),
             model="claude-opus-4-20250514"
         )
 
-# ✅ Caldera - Apache 2.0 (API integration)
+# ✅ Caldera — Apache 2.0（API 整合）
 class CalderaClient:
     def execute_ability(self, ability_id: str):
-        # HTTP API calls - license-safe
+        # HTTP API 呼叫 — 授權安全
         response = requests.post(
             f"{self.caldera_url}/api/v2/abilities/{ability_id}",
             json={...}
         )
 
-# ✅ Shannon - AGPL-3.0 (API-only, isolated)
+# ✅ Shannon — AGPL-3.0（僅 API，隔離）
 class ShannonClient:
     def execute_task(self, task: dict):
-        # HTTP API calls only - no code import
+        # 僅 HTTP API 呼叫 — 無程式碼匯入
         response = requests.post(
             f"{self.shannon_url}/execute",
             json=task
         )
 ```
 
-#### ❌ FORBIDDEN (License Contamination Risk)
+#### ❌ 禁止（授權污染風險）
 ```python
-# ❌ DO NOT DO THIS - Shannon code import
-from shannon import ShannonEngine  # AGPL contamination!
+# ❌ 不要這樣做 — 匯入 Shannon 程式碼
+from shannon import ShannonEngine  # AGPL 污染！
 
-# ❌ DO NOT DO THIS - Copying Shannon source
-# Copying Shannon modules into Athena repository
+# ❌ 不要這樣做 — 複製 Shannon 原始碼
+# 將 Shannon 模組複製到 Athena 倉庫中
 
-# ❌ DO NOT DO THIS - Static linking
-# Including Shannon binaries in Athena
+# ❌ 不要這樣做 — 靜態連結
+# 將 Shannon 二進位檔包含在 Athena 中
 ```
 
 ---
 
-## Technical Stack
+## 技術棧
 
-### Core Technologies
+### 核心技術
 ```
-Frontend (UI Layer):
-├─ Pencil.dev (Visual design & prototyping)
-├─ React/Next.js (Framework)
-└─ Tailwind CSS (Styling)
+前端（UI 層）：
+├─ Pencil.dev（視覺設計與原型）
+├─ Next.js 14 + React 18（框架）
+└─ Tailwind CSS v4（樣式）
 
-Backend (Decision Engine):
-├─ Python 3.11+ (Core language)
-├─ FastAPI (API framework)
-├─ SQLite (POC phase - simple, file-based)
-└─ Pydantic (Data validation)
+後端（決策引擎）：
+├─ Python 3.11+（核心語言）
+├─ FastAPI（API 框架）
+├─ SQLite（POC 階段 — 簡單、檔案式）
+└─ Pydantic（資料驗證）
 
-AI/ML Components:
-├─ ⭐ PentestGPT (MIT License) - CORE COMPONENT
+AI/ML 元件：
+├─ ⭐ PentestGPT（MIT 授權）— 核心元件
 │   ├─ GitHub: https://github.com/GreyDGL/PentestGPT
-│   ├─ Integration: Direct library import (MIT-safe)
-│   └─ Purpose: OODA Orient phase intelligence
+│   ├─ 整合方式：直接程式庫匯入（MIT 安全）
+│   └─ 用途：OODA Orient 階段情報
 │
-├─ LLM APIs:
-│   ├─ Primary: Claude (Anthropic)
-│   │   └─ Model: claude-opus-4-20250514
-│   │   └─ Why: Superior reasoning for tactical analysis
-│   │   └─ Context: 200K tokens (entire operation)
+├─ LLM API：
+│   ├─ 主要：Claude（Anthropic）
+│   │   └─ 模型：claude-opus-4-20250514
+│   │   └─ 原因：卓越的推理能力，適合戰術分析
+│   │   └─ 上下文：200K tokens（可容納整個作戰歷史）
 │   │
-│   └─ Fallback: GPT-4 Turbo (OpenAI)
-│       └─ Model: gpt-4-turbo-preview
-│       └─ Cost: ~50% cheaper than Claude
+│   └─ 備用：GPT-4 Turbo（OpenAI）
+│       └─ 模型：gpt-4-turbo-preview
+│       └─ 成本：比 Claude 便宜約 50%
 │
-└─ LangChain (Optional - for advanced prompting)
+└─ LangChain（選用 — 進階提示工程）
 
-Execution Engines:
-├─ ✅ Caldera (MITRE official - POC Core)
-│   └─ Apache 2.0 License
-│   └─ Role: Primary execution engine
+執行引擎：
+├─ ✅ Caldera（MITRE 官方 — POC 核心）
+│   └─ Apache 2.0 授權
+│   └─ 角色：主要執行引擎
 │
-└─ ⚠️ Shannon (AI agent - Optional)
-    └─ AGPL-3.0 License (API-isolated)
-    └─ Role: Advanced AI-adaptive execution
+└─ ⚠️ Shannon（AI Agent — 選用）
+    └─ AGPL-3.0 授權（API 隔離）
+    └─ 角色：進階 AI 自適應執行
 
-Infrastructure (POC):
-├─ Docker & Docker Compose (local deployment)
-├─ SQLite (file-based database)
-└─ Simple .env configuration
+3D 拓樸視覺化：
+├─ react-force-graph-3d + Three.js（MIT）
+└─ 用途：Battle Monitor 即時網路拓樸
+
+基礎設施（POC）：
+├─ Docker + Docker Compose（本機部署）
+├─ SQLite（檔案式資料庫）
+└─ .env 環境變數設定
 ```
 
-### LLM Integration Strategy
+### LLM 整合策略
 ```python
-# Flexible LLM configuration with PentestGPT
+# 彈性 LLM 配置，透過 PentestGPT 驅動
 
 class LLMConfig:
     """
-    LLM configuration for Athena's intelligence layer
-    Powered by PentestGPT
+    Athena 情報層的 LLM 配置
+    由 PentestGPT 驅動
     """
-    
-    # Primary LLM (recommended for Athena)
+
+    # 主要 LLM（Athena 推薦）
     PRIMARY_PROVIDER = "claude"
     CLAUDE_MODEL = "claude-opus-4-20250514"
-    
-    # Reasons for Claude as primary:
-    # 1. Superior reasoning for complex tactical analysis
-    # 2. 200K context window (can hold entire operation history)
-    # 3. Better at structured thinking (MITRE mapping)
-    # 4. More conservative/aligned outputs (safer for military use)
-    # 5. Excellent at explaining reasoning (Orient phase key)
-    
-    # Fallback LLM
+
+    # 選擇 Claude 作為主要的原因：
+    # 1. 卓越的推理能力，適合複雜戰術分析
+    # 2. 200K 上下文窗口（可容納整個作戰歷史）
+    # 3. 擅長結構化思考（MITRE 映射）
+    # 4. 較保守/對齊的輸出（適合軍事用途）
+    # 5. 擅長解釋推理（Orient 階段關鍵）
+
+    # 備用 LLM
     FALLBACK_PROVIDER = "openai"
     OPENAI_MODEL = "gpt-4-turbo-preview"
-    
-    # API Keys (loaded from .env)
+
+    # API 金鑰（從 .env 載入）
     ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-    
-    # Generation parameters
+
+    # 產生參數
     MAX_TOKENS = 4000
-    TEMPERATURE = 0.7  # Balance creativity and consistency
-
-# PentestGPT Integration Example
-from pentestgpt import PentestGPTClient
-
-class AthenaOrientPhase:
-    """
-    Wraps PentestGPT for Athena's Orient phase
-    This is the CORE intelligence component
-    """
-    def __init__(self):
-        self.gpt = PentestGPTClient(
-            api_key=LLMConfig.ANTHROPIC_API_KEY,
-            model=LLMConfig.CLAUDE_MODEL
-        )
-    
-    async def analyze_situation(
-        self, 
-        strategic_intent: str,
-        facts: dict,
-        failures: list
-    ) -> TacticalRecommendation:
-        """
-        OODA Orient: Analyze and recommend tactics
-        
-        This is where Athena's AI intelligence shines
-        """
-        prompt = self._build_c5isr_prompt(
-            strategic_intent, facts, failures
-        )
-        
-        # Use PentestGPT's reasoning capabilities
-        analysis = await self.gpt.reasoning_chain(
-            query=prompt,
-            context=facts
-        )
-        
-        return self._parse_recommendations(analysis)
+    TEMPERATURE = 0.7  # 平衡創造力與一致性
 ```
 
 ---
 
-## Integration Strategy
+## 整合策略
 
-### PentestGPT: The Intelligence Core
+### PentestGPT：情報核心
 
-**PentestGPT** is the cornerstone of Athena's intelligence layer. It powers the OODA Orient phase, providing AI-assisted tactical reasoning.
+**PentestGPT** 是 Athena 情報層的基石。它驅動 OODA Orient 階段，提供 AI 輔助的戰術推理。
+
 ```
-Why PentestGPT is Essential:
+PentestGPT 為何不可或缺：
 
-1. Strategic Analysis
-   └─ Analyzes complex operational contexts
-   └─ Considers multiple factors (environment, failures, goals)
-   └─ Generates multi-option recommendations
+1. 戰略分析
+   └─ 分析複雜的作戰情境
+   └─ 考量多重因素（環境、失敗、目標）
+   └─ 產生多選項建議
 
-2. MITRE ATT&CK Native
-   └─ Understands MITRE tactics and techniques
-   └─ Maps situations to appropriate techniques
-   └─ Explains technique selection reasoning
+2. MITRE ATT&CK 原生
+   └─ 理解 MITRE 戰術與技術
+   └─ 將態勢映射至適當技術
+   └─ 解釋技術選擇的推理
 
-3. Human-Centric
-   └─ Designed for human-AI collaboration
-   └─ Provides explanations, not just answers
-   └─ Presents options for human decision
+3. 以人為本
+   └─ 為人機協作而設計
+   └─ 提供解釋，而非僅有答案
+   └─ 呈現選項供人類決策
 
-4. License-Friendly
-   └─ MIT License - safe to integrate directly
-   └─ No viral licensing concerns
-   └─ Can be modified if needed
+4. 授權友善
+   └─ MIT 授權 — 可安全直接整合
+   └─ 無病毒式授權顧慮
+   └─ 可依需求修改
 
-5. Cost-Effective
-   └─ Uses LLM APIs (no local compute needed)
-   └─ POC testing: ~$5-15 for 20-30 operations
-   └─ Pay-per-use model
-```
-
-### PentestGPT in OODA Orient Phase
-```python
-class AthenaOODAController:
-    """
-    Implements OODA loop with PentestGPT at its core
-    """
-    
-    async def execute_ooda_cycle(self, operation: Operation):
-        """
-        Complete OODA cycle for one iteration
-        """
-        
-        # ────────────────────────────────────────
-        # OBSERVE: Collect current state
-        # ────────────────────────────────────────
-        facts = await self.facts_db.get_all(operation.id)
-        agent_status = await self.caldera.get_agent_status()
-        
-        observation = {
-            "completed_techniques": operation.completed,
-            "failures": operation.failures,
-            "facts": facts,
-            "agent_status": agent_status
-        }
-        
-        # ────────────────────────────────────────
-        # ORIENT: ⭐ PentestGPT Analyzes
-        # ────────────────────────────────────────
-        # This is THE critical phase
-        tactical_options = await self.pentestgpt.analyze_situation(
-            strategic_intent=operation.strategic_intent,
-            current_state=observation,
-            environment=operation.environment_profile
-        )
-        
-        # PentestGPT returns structured recommendations:
-        # {
-        #   "situation_assessment": "Current position: initial access...",
-        #   "options": [
-        #     {
-        #       "technique_id": "T1003.001",
-        #       "reasoning": "Admin access present, EDR risk medium",
-        #       "prerequisites": ["SeDebugPrivilege"],
-        #       "risk_level": "MEDIUM",
-        #       "recommended_engine": "caldera"
-        #     },
-        #     ...
-        #   ],
-        #   "recommended": "T1003.001"
-        # }
-        
-        # ────────────────────────────────────────
-        # DECIDE: Athena evaluates and chooses
-        # ────────────────────────────────────────
-        decision = self.decision_engine.evaluate(
-            recommendations=tactical_options,
-            constraints=operation.constraints,
-            commander_preferences=operation.preferences
-        )
-        
-        # Choose execution engine
-        engine = self.router.select_engine(
-            technique=decision.selected_technique,
-            context=operation.context,
-            gpt_recommendation=decision.recommended_engine
-        )
-        
-        # ────────────────────────────────────────
-        # ACT: Execute via chosen engine
-        # ────────────────────────────────────────
-        if engine == "caldera":
-            result = await self.caldera.execute_ability(
-                technique=decision.selected_technique,
-                target=operation.target
-            )
-        elif engine == "shannon":
-            result = await self.shannon.execute_task(
-                technique=decision.selected_technique,
-                target=operation.target,
-                adaptive=True
-            )
-        
-        # Update facts and loop back to OBSERVE
-        await self.facts_db.add(result.facts)
-        operation.iterations += 1
+5. 成本效益
+   └─ 使用 LLM API（無需本地運算）
+   └─ POC 測試：約 $5-15 / 20-30 次作戰
+   └─ 按使用付費模式
 ```
 
-### Execution Engine Selection
+### 執行引擎選擇
 ```python
 class EngineRouter:
     """
-    Routes tasks to appropriate execution engine
-    
-    Decision logic:
-    1. PentestGPT recommendation (if confident)
-    2. Technique standardization (MITRE native → Caldera)
-    3. Environment complexity (unknown → Shannon)
-    4. Stealth requirements (high → Shannon)
-    5. Default: Caldera (proven, reliable)
+    將任務路由至適當的執行引擎
+
+    決策邏輯：
+    1. PentestGPT 建議（若信心度高）
+    2. 技術標準化（MITRE 原生 → Caldera）
+    3. 環境複雜度（未知 → Shannon）
+    4. 隱蔽需求（高 → Shannon）
+    5. 預設：Caldera（穩定、可靠）
     """
-    
+
     def select_engine(
         self,
         technique: str,
@@ -727,591 +603,606 @@ class EngineRouter:
         gpt_recommendation: str = None
     ) -> str:
         """
-        Returns: "caldera" or "shannon"
+        回傳："caldera" 或 "shannon"
         """
-        
-        # Priority 1: Trust PentestGPT if high confidence
+
+        # 優先 1：信任高信心度的 PentestGPT 建議
         if gpt_recommendation and self._is_high_confidence(gpt_recommendation):
-            logger.info(f"Using GPT recommendation: {gpt_recommendation}")
             return gpt_recommendation
-        
-        # Priority 2: Standard MITRE → Caldera
+
+        # 優先 2：標準 MITRE → Caldera
         if self.caldera.has_ability(technique):
-            logger.info(f"{technique} is standard MITRE → Caldera")
             return "caldera"
-        
-        # Priority 3: Unknown environment → Shannon (if available)
+
+        # 優先 3：未知環境 → Shannon（若可用）
         if context.get("environment") == "unknown" and self.shannon.available():
-            logger.info("Unknown environment → Shannon for adaptation")
             return "shannon"
-        
-        # Priority 4: High stealth → Shannon
+
+        # 優先 4：高隱蔽需求 → Shannon
         if context.get("stealth_level") == "maximum" and self.shannon.available():
-            logger.info("High stealth required → Shannon")
             return "shannon"
-        
-        # Default: Caldera (most reliable)
-        logger.info(f"Default routing → Caldera")
+
+        # 預設：Caldera（最可靠）
         return "caldera"
 ```
 
 ---
 
-## Development Roadmap
+## 自動化模式
 
-### POC Phase - Simplified Path (6-8 weeks)
+### 半自動 + 手動覆寫（Semi-Auto with Manual Override）
 
-**Core Configuration: PentestGPT + Caldera**
+基於軍方紅隊顧問定位 + 開源 + PTLR 產品化考量，Athena 採用**可切換的半自動模式**。
+
+### 模式切換
 ```
-Phase 1: Foundation (2 weeks)
-┌────────────────────────────────────────┐
-│  Week 1: Core Setup                    │
-│  ├─ Project structure                  │
-│  ├─ Docker Compose (3 containers)      │
-│  │   ├─ athena-ui                      │
-│  │   ├─ athena-backend                 │
-│  │   └─ caldera                        │
-│  ├─ Basic SQLite models                │
-│  └─ Caldera API client                 │
-│                                         │
-│  Week 2: Intelligence Integration      │
-│  ├─ PentestGPT library integration     │
-│  ├─ Claude API configuration           │
-│  ├─ Basic Orient phase implementation  │
-│  └─ Simple prompting strategies        │
-└────────────────────────────────────────┘
-
-Deliverable: PentestGPT can analyze scenarios
-
-Phase 2: OODA Loop (2 weeks)
-┌────────────────────────────────────────┐
-│  Week 3: Decision & Execution          │
-│  ├─ Decision engine implementation     │
-│  ├─ Caldera integration                │
-│  ├─ Facts database                     │
-│  └─ Basic routing logic                │
-│                                         │
-│  Week 4: OODA Integration              │
-│  ├─ Complete OODA loop                 │
-│  ├─ Observe → Orient → Decide → Act   │
-│  ├─ Feedback mechanism                 │
-│  └─ Iteration tracking                 │
-└────────────────────────────────────────┘
-
-Deliverable: One complete OODA iteration works
-
-Phase 3: UI & Demo (2 weeks)
-┌────────────────────────────────────────┐
-│  Week 5: User Interface                │
-│  ├─ Pencil.dev mockups                 │
-│  ├─ React components                   │
-│  ├─ C5ISR dashboard                    │
-│  └─ MITRE ATT&CK navigator             │
-│                                         │
-│  Week 6: Demo Scenario                 │
-│  ├─ "Obtain Domain Admin" scenario     │
-│  ├─ PentestGPT recommendations visible │
-│  ├─ OODA iterations displayed          │
-│  └─ Presentation materials             │
-└────────────────────────────────────────┘
-
-Deliverable: Demo-ready POC
-
-Phase 4: Optional - Shannon Integration (2 weeks)
-┌────────────────────────────────────────┐
-│  If time permits:                      │
-│  ├─ Shannon API client                 │
-│  ├─ Dual-engine routing                │
-│  ├─ Comparison demo                    │
-│  └─ "Standard vs AI" showcase          │
-└────────────────────────────────────────┘
-
-Deliverable: Advanced capability demo
+UI 上提供兩種模式：
+○ MANUAL      — 每步都需指揮官批准
+● SEMI-AUTO   — 根據風險等級自動/手動（預設）
 ```
 
-### POC Success Criteria
+### 風險閾值規則（Semi-Auto 模式）
 ```
-✅ Must Have (POC Core):
-├─ PentestGPT provides tactical recommendations
-├─ Caldera executes MITRE techniques
-├─ One complete OODA loop iteration
-├─ C5ISR framework visible in UI
-├─ Demo scenario runs smoothly
-└─ Presentation-ready documentation
-
-⚠️ Nice to Have (If time):
-├─ Shannon integration
-├─ Multiple OODA iterations
-├─ Advanced UI features
-└─ Metrics dashboard
-
-❌ Out of Scope (POC):
-├─ Production deployment
-├─ Multi-user support
-├─ Advanced security
-├─ Compliance features
-└─ Extensive testing
+風險等級          行為                     範例
+─────────────   ─────────────────────   ─────────────────────
+RiskLevel.LOW      自動執行               偵察、掃描
+RiskLevel.MEDIUM   自動排入 queue，        LSASS dump
+                   需指揮官 approve
+RiskLevel.HIGH     強制 HexConfirmModal   橫向移動
+                   確認對話框
+RiskLevel.CRITICAL 永遠手動               資料竊取、破壞性操作
 ```
 
----
-
-## POC Phase Constraints
-
-### Resource Requirements
-```
-Minimal Configuration (PentestGPT + Caldera):
-──────────────────────────────────────────────
-
-Container         CPU    Memory   Required
-────────────────  ─────  ───────  ────────
-athena-ui         0.5    512 MB   ✅ Yes
-athena-backend    1.0    1 GB     ✅ Yes
-caldera           2.0    2 GB     ✅ Yes
-────────────────  ─────  ───────  ────────
-Total             3.5    3.5 GB
-
-Host Requirements:
-├─ CPU: 4 cores minimum
-├─ RAM: 8 GB (16 GB recommended)
-├─ Storage: 20 GB
-└─ Network: Stable internet (for LLM APIs)
-
-Full Configuration (+ Shannon):
-──────────────────────────────────────────────
-
-shannon (optional) 2.0   2 GB     ⚠️ No
-────────────────  ─────  ───────  ────────
-Total with Shannon 5.5   5.5 GB
-
-Recommendation: Start without Shannon
-```
-
-### Cost Estimation (POC Phase)
-```
-One-time Setup:
-└─ $0 (all open-source components)
-
-Ongoing Costs (LLM APIs):
-├─ Claude Opus: ~$15 per 1M input tokens
-├─ Per OODA iteration: ~2,000-4,000 tokens
-├─ Per operation: 10-20 iterations
-├─ Per operation cost: ~$0.10 - $0.50
-└─ POC testing (20-30 ops): $5 - $15
-
-Total POC Budget: < $20
-```
-
-### Security Posture (POC)
-```
-Acceptable for POC:
-✅ .env files for API keys (.gitignored)
-✅ Local-only deployment
-✅ Self-signed certificates OK
-✅ Minimal authentication
-✅ Basic logging
-
-Not Acceptable:
-❌ Committing secrets to Git
-❌ Exposing to public internet
-❌ Storing credentials in code
-❌ Running as root
-
-Principle: "Secure enough to not shoot yourself,
-           but don't over-engineer for POC"
-```
-
----
-
-## Key Concepts
-
-### For AI Assistants to Understand
-
-#### 1. Three Layers of Intelligence
-```
-Every AI assistant helping with Athena must understand:
-
-PentestGPT (Think) ≠ Shannon (Do)
-
-PentestGPT:
-├─ Role: Military intelligence analyst
-├─ Function: Analyze, reason, recommend
-├─ Output: "I suggest X because of Y and Z"
-├─ Interacts with: Humans (commander)
-├─ Can be questioned: "Why X and not Y?"
-└─ POC Status: REQUIRED
-
-Shannon:
-├─ Role: Special operations soldier
-├─ Function: Execute, adapt, report
-├─ Output: "I did X, here's the result"
-├─ Interacts with: Target systems
-├─ Black box operation (less explainable)
-└─ POC Status: OPTIONAL
-
-Both use AI, but:
-└─ PentestGPT = Meta-cognitive AI (thinking about tactics)
-└─ Shannon = Autonomous AI (executing tactics)
-
-You need PentestGPT to make Athena intelligent.
-Shannon is just a more capable executor.
-```
-
-#### 2. PentestGPT Powers the Orient Phase
-```
-OODA Loop Breakdown:
-
-Observe: Data collection
-  └─ This is straightforward
-
-Orient: ⭐ CRITICAL - PentestGPT's domain
-  └─ This is where Athena adds value
-  └─ "Given facts, what should we do?"
-  └─ PentestGPT analyzes and recommends
-  └─ Without this, Athena is just automation
-
-Decide: Human + AI collaboration
-  └─ Commander considers PentestGPT's advice
-  └─ Athena engine helps structure decision
-
-Act: Execution (Caldera/Shannon)
-  └─ This is commodity capability
-  └─ Anyone can execute techniques
-```
-
-#### 3. Target User Implications
-```
-User: 10+ years red team experience, military consultant
-
-This means:
-✅ Assume MITRE ATT&CK knowledge
-✅ Use military terminology naturally
-✅ Don't explain basic pentesting concepts
-✅ Focus on strategic value, not execution details
-❌ Don't patronize with over-simplified explanations
-❌ Don't focus on "automation" - they can automate
-✅ Focus on "decision support" - this is the value
-
-When PentestGPT recommends:
-└─ Don't explain what T1003.001 is
-└─ DO explain why it's the best choice NOW
-```
-
-#### 4. POC Scope Management
-```
-When user asks for a feature:
-
-Always ask:
-1. "Is this for POC or future production?"
-2. "Does this help prove the core concept?"
-3. "Does this showcase Athena's unique value?"
-
-Core value = PentestGPT + C5ISR + OODA
-Not core = anything else
-
-Example:
-User: "Can we add multi-user support?"
-Bad: "Sure, let's add role-based access control..."
-Good: "That's a production feature. For POC, let's
-      focus on proving the decision engine works.
-      We can note multi-user as future enhancement."
-```
-
----
-
-## For AI Assistants
-
-### Critical Understanding Checklist
-
-Before helping with Athena development, AI assistants must understand:
-
-- [ ] PentestGPT (Think) vs Shannon (Do) distinction
-- [ ] PentestGPT is REQUIRED, Shannon is OPTIONAL for POC
-- [ ] Orient phase is THE critical innovation
-- [ ] Target user is senior military consultant
-- [ ] C5ISR framework is organizing principle
-- [ ] MITRE ATT&CK is common language
-- [ ] POC scope is limited intentionally
-- [ ] License boundaries (PentestGPT MIT, Shannon AGPL)
-
-### Code Style Guidelines
+### 相關 Model 欄位
 ```python
-# ✅ Good: Clear layer separation + PentestGPT integration
+# Operation 模型
+automation_mode: AutomationMode   # "manual" | "semi_auto"
+risk_threshold: RiskLevel         # Semi-Auto 模式下的閾值
+
+# Technique 模型
+risk_level: RiskLevel             # 每個技術的固有風險等級
+```
+
+### HexConfirmModal
+當風險等級為 HIGH 時，前端會彈出 HexConfirmModal 確認對話框，指揮官必須明確批准才能執行。這確保高風險操作不會在無人監督下進行。
+
+---
+
+## 開發路線圖
+
+### 總覽（9 個階段）
+
+```
+Phase 0 ████████████████████ 完成 — 設計與架構
+Phase 1 ░░░░░░░░░░░░░░░░░░░░ 待辦 — 專案骨架
+Phase 2 ░░░░░░░░░░░░░░░░░░░░ 待辦 — 後端基礎
+Phase 3 ░░░░░░░░░░░░░░░░░░░░ 待辦 — 前端基礎（可與 Phase 2 並行）
+Phase 4 ░░░░░░░░░░░░░░░░░░░░ 待辦 — 畫面實作
+Phase 5 ░░░░░░░░░░░░░░░░░░░░ 待辦 — OODA 循環引擎
+Phase 6 ░░░░░░░░░░░░░░░░░░░░ 待辦 — 整合與 Demo
+Phase 7 ░░░░░░░░░░░░░░░░░░░░ 待辦 — 文件與開源發佈
+Phase 8 ░░░░░░░░░░░░░░░░░░░░ 未來 — 進階增強
+```
+
+### Phase 0：設計與架構 `完成`
+
+已交付：
+- 6 個 .pen 設計檔（56 元件 + 32 變數 + 5 畫面 + 1 個 3D 拓樸 Demo）
+- 資料架構文件（13 Enum、12 Model、SQLite Schema、REST API）
+- 專案結構文件（Monorepo 佈局、各層職責）
+- 本文件（CLAUDE.md — AI 上下文）
+- 開發路線圖（ROADMAP.md）
+
+### POC 成功標準
+```
+✅ 必須達成（POC 核心）：
+├─ PentestGPT 提供戰術建議
+├─ Caldera 執行 MITRE 技術
+├─ 至少一次完整 OODA 循環迭代
+├─ C5ISR 框架在 UI 中可見
+├─ Demo 場景順暢運行
+└─ 可供展示的文件
+
+⚠️ 加分項（若有時間）：
+├─ Shannon 整合
+├─ 多次 OODA 迭代
+├─ 進階 UI 功能
+└─ 3D 拓樸即時互動
+
+❌ 不在範圍內（POC）：
+├─ 正式環境部署
+├─ 多使用者支援
+├─ 進階安全
+├─ 合規功能
+└─ 完整測試
+```
+
+> 詳細路線圖請參閱 [docs/ROADMAP.md](docs/ROADMAP.md)
+
+---
+
+## 關鍵概念
+
+### AI 助手必須理解的概念
+
+#### 1. 三層智慧架構
+```
+協助 Athena 開發的 AI 助手必須理解：
+
+PentestGPT（思考）≠ Shannon（執行）
+
+PentestGPT：
+├─ 角色：軍事情報分析師
+├─ 功能：分析、推理、建議
+├─ 輸出：「我建議 X，因為 Y 和 Z」
+├─ 互動對象：人類（指揮官）
+├─ 可被質疑：「為什麼是 X 而非 Y？」
+└─ POC 狀態：必要
+
+Shannon：
+├─ 角色：特種作戰士兵
+├─ 功能：執行、自適應、回報
+├─ 輸出：「我執行了 X，結果如下」
+├─ 互動對象：目標系統
+├─ 黑箱操作（較難解釋）
+└─ POC 狀態：選用
+
+兩者都使用 AI，但：
+└─ PentestGPT = 後設認知 AI（思考戰術）
+└─ Shannon = 自主 AI（執行戰術）
+
+Athena 需要 PentestGPT 才能具備智慧。
+Shannon 只是一個更強的執行器。
+```
+
+#### 2. PentestGPT 驅動 Orient 階段
+```
+OODA 循環分解：
+
+Observe：資料收集
+  └─ 這是直觀的
+
+Orient：⭐ 關鍵 — PentestGPT 的領域
+  └─ 這是 Athena 創造價值之處
+  └─ 「根據情報，我們該怎麼做？」
+  └─ PentestGPT 分析並建議
+  └─ 沒有這個，Athena 只是自動化工具
+
+Decide：人機協作
+  └─ 指揮官考量 PentestGPT 的建議
+  └─ Athena 引擎協助結構化決策
+
+Act：執行（Caldera/Shannon）
+  └─ 這是商品化能力
+  └─ 任何人都能執行技術
+```
+
+#### 3. 目標使用者
+```
+使用者：10+ 年紅隊經驗、軍事顧問
+
+這意味著：
+✅ 假設具備 MITRE ATT&CK 知識
+✅ 自然使用軍事術語
+✅ 不解釋基本滲透測試概念
+✅ 聚焦戰略價值，而非執行細節
+❌ 不要用過度簡化的解釋
+❌ 不要聚焦「自動化」 — 他們自己能自動化
+✅ 聚焦「決策支援」 — 這才是價值
+
+當 PentestGPT 建議時：
+└─ 不要解釋 T1003.001 是什麼
+└─ 要解釋為什麼「現在」它是最佳選擇
+```
+
+#### 4. POC 範圍管理
+```
+當使用者要求功能時：
+
+總是問：
+1. 「這是 POC 還是未來正式版的？」
+2. 「這有助於證明核心概念嗎？」
+3. 「這能展示 Athena 的獨特價值嗎？」
+
+核心價值 = PentestGPT + C5ISR + OODA
+非核心 = 其他一切
+
+範例：
+使用者：「可以加多使用者支援嗎？」
+不好：「好的，我們來加 RBAC...」
+好的：「這是正式版功能。POC 階段讓我們
+      聚焦在證明決策引擎可行。
+      我們可以記下多使用者為未來增強。」
+```
+
+---
+
+## POC 階段限制
+
+### 資源需求
+```
+最低配置（PentestGPT + Caldera）：
+──────────────────────────────────────────────
+
+服務              CPU    記憶體   必要
+────────────────  ─────  ───────  ────────
+backend           1.0    1 GB     ✅ 是
+frontend          0.5    512 MB   ✅ 是
+caldera（外部）   2.0    2 GB     ✅ 是
+────────────────  ─────  ───────  ────────
+總計              3.5    3.5 GB
+
+主機需求：
+├─ CPU：最少 4 核心
+├─ RAM：8 GB（建議 16 GB）
+├─ 儲存：20 GB
+└─ 網路：穩定（LLM API 需要）
+
+完整配置（+ Shannon）：
+──────────────────────────────────────────────
+shannon（選用）    2.0   2 GB     ⚠️ 否
+────────────────  ─────  ───────  ────────
+含 Shannon 總計   5.5   5.5 GB
+
+建議：先不加 Shannon
+```
+
+### 成本估算（POC 階段）
+```
+一次性設定：
+└─ $0（所有元件皆開源）
+
+持續成本（LLM API）：
+├─ Claude Opus：~$15 / 1M 輸入 tokens
+├─ 每次 OODA 迭代：~2,000-4,000 tokens
+├─ 每個作戰：10-20 次迭代
+├─ 每個作戰成本：~$0.10 - $0.50
+└─ POC 測試（20-30 次作戰）：$5 - $15
+
+POC 總預算：< $20
+```
+
+### 安全態勢（POC）
+```
+POC 可接受：
+✅ 以 .env 檔管理 API 金鑰（已加入 .gitignore）
+✅ 僅本機部署
+✅ 自簽憑證即可
+✅ 最低限度身份驗證
+✅ 基本日誌
+
+不可接受：
+❌ 將機密提交到 Git
+❌ 暴露至公開網路
+❌ 在程式碼中儲存憑證
+❌ 以 root 身份運行
+
+原則：「安全到不會自傷，但不要為 POC 過度設計」
+```
+
+---
+
+## AI 助手指南
+
+### 關鍵理解清單
+
+協助 Athena 開發前，AI 助手必須理解：
+
+- [ ] PentestGPT（思考）vs Shannon（執行）的區別
+- [ ] PentestGPT 是必要的，Shannon 是 POC 選用的
+- [ ] Orient 階段是核心創新
+- [ ] 目標使用者是資深軍事顧問
+- [ ] C5ISR 框架是組織原則
+- [ ] MITRE ATT&CK 是共通語言
+- [ ] POC 範圍是刻意受限的
+- [ ] 授權邊界（PentestGPT MIT, Shannon AGPL）
+- [ ] 半自動模式的風險閾值規則
+
+### 程式碼風格指南
+```python
+# ✅ 好的：清楚的層級分離 + PentestGPT 整合
 
 class AthenaOrientPhase:
     """
-    Intelligence layer - uses PentestGPT for analysis.
-    This is the CORE of Athena's value.
+    情報層 — 使用 PentestGPT 進行分析。
+    這是 Athena 價值的核心。
     """
     def __init__(self):
         from pentestgpt import PentestGPTClient
         self.gpt = PentestGPTClient(...)
-    
+
     async def analyze(self, facts: Facts) -> Recommendations:
-        # PentestGPT reasoning logic
+        # PentestGPT 推理邏輯
         pass
 
 class CalderaExecutor:
     """
-    Execution layer - just sends API calls.
-    No decision logic here.
+    執行層 — 僅發送 API 呼叫。
+    此處不含決策邏輯。
     """
     def execute_ability(self, ability_id: str):
-        # Pure API call
+        # 純 API 呼叫
         pass
 
-# ❌ Bad: Mixed responsibilities
+# ❌ 不好的：混合職責
 
 class AthenaEngine:
-    def exploit_smb(self, target):  # NO! This is execution
-        # Exploitation code doesn't belong in Athena core
+    def exploit_smb(self, target):  # 不！這是執行
+        # 滲透程式碼不屬於 Athena 核心
 ```
 
-### When Suggesting Features
+### 建議功能時的決策樹
 ```
-Decision Tree:
+決策樹：
 
-Does it involve PentestGPT or Orient phase?
-├─ Yes → Likely core to POC
-└─ No  → Is it Command/Control layer?
-         ├─ Yes → Likely valuable
-         └─ No  → Probably defer to production
+是否涉及 PentestGPT 或 Orient 階段？
+├─ 是 → 可能是 POC 核心
+└─ 否 → 是 Command/Control 層嗎？
+         ├─ 是 → 可能有價值
+         └─ 否 → 大概延後到正式版
 
-Is it execution capability?
-├─ Yes → Belongs in Caldera/Shannon, not Athena
-└─ No  → Continue evaluation
+是執行能力嗎？
+├─ 是 → 屬於 Caldera/Shannon，不屬於 Athena
+└─ 否 → 繼續評估
 
-Does Shannon need to be involved?
-├─ User explicitly mentions AI-adaptive execution → Maybe
-├─ Standard MITRE technique → No, use Caldera
-└─ Unknown → Ask for clarification
+需要 Shannon 參與嗎？
+├─ 使用者明確提到 AI 自適應執行 → 也許
+├─ 標準 MITRE 技術 → 否，用 Caldera
+└─ 不確定 → 問清楚
 
-Is it POC scope?
-├─ Proves core concept → Yes, include
-├─ Production feature → No, defer
-└─ Nice-to-have → Note for future
-```
-
----
-
-## Common Questions
-
-### "Why do we need PentestGPT if we have Shannon?"
-```
-Answer: They serve different purposes at different layers.
-
-PentestGPT = Strategic thinking
-"Given the current situation, what tactics make sense?"
-"Why is T1003.001 better than T1110 right now?"
-
-Shannon = Tactical execution
-"Execute this attack and adapt if defenses block you"
-
-Analogy:
-├─ PentestGPT = Military strategist (plans battles)
-└─ Shannon = Special forces operator (wins firefights)
-
-You need both. PentestGPT tells you WHAT to do.
-Shannon helps DO it in complex environments.
-```
-
-### "Can Shannon replace PentestGPT?"
-```
-Answer: No. Different roles, different layers.
-
-Shannon is:
-├─ Black box (hard to explain its reasoning)
-├─ Execution-focused (not strategic)
-├─ Autonomous (doesn't collaborate with humans)
-
-PentestGPT is:
-├─ Explainable (can justify recommendations)
-├─ Strategy-focused (meta-level reasoning)
-├─ Collaborative (designed for human interaction)
-
-Athena's value = Command layer with AI advice.
-Shannon can't provide that - it's an executor.
-```
-
-### "Do we need Shannon for POC?"
-```
-Answer: No. PentestGPT + Caldera is sufficient.
-
-POC Goal: Prove Athena's command platform concept
-
-Required for this:
-✅ AI-assisted tactical planning (PentestGPT)
-✅ MITRE technique execution (Caldera)
-✅ OODA loop (PentestGPT + Caldera)
-✅ C5ISR framework visualization
-
-Shannon adds:
-⚠️ Dual-engine orchestration demo
-⚠️ AI-adaptive execution showcase
-⚠️ But increases complexity and risk
-
-Recommendation: Start without Shannon.
-Add it later if POC succeeds and you want
-to showcase advanced orchestration.
-```
-
-### "Why Claude over GPT-4 for PentestGPT?"
-```
-Answer: Superior reasoning for tactical analysis.
-
-Claude Advantages:
-✅ Better at complex reasoning chains
-✅ 200K context (entire operation history)
-✅ More conservative/aligned (safer for military)
-✅ Excellent at explaining reasoning (key for Orient)
-
-GPT-4 Advantages:
-✅ Cheaper (~50% less)
-✅ Faster API responses
-✅ PentestGPT originally designed for it
-
-Recommendation: Use Claude as primary, GPT-4 as fallback.
-Cost difference is minimal for POC (~$10-15 total).
+是 POC 範圍嗎？
+├─ 證明核心概念 → 是，納入
+├─ 正式版功能 → 否，延後
+└─ 加分項 → 記下，日後再說
 ```
 
 ---
 
-## Environment Setup
+## 環境設定
 
-### Required API Keys
+### 必要的 API 金鑰
 ```bash
-# .env file (NEVER commit to Git)
+# .env 檔（絕對不要提交到 Git）
 
 # ════════════════════════════════════════════════
-# LLM APIs (at least one required)
+# LLM API（至少需要一個）
 # ════════════════════════════════════════════════
-ANTHROPIC_API_KEY=sk-ant-...    # Recommended (Claude)
-OPENAI_API_KEY=sk-...           # Fallback (GPT-4)
+ANTHROPIC_API_KEY=sk-ant-...    # 推薦（Claude）
+OPENAI_API_KEY=sk-...           # 備用（GPT-4）
 
 # ════════════════════════════════════════════════
-# Execution Engines
+# PentestGPT
 # ════════════════════════════════════════════════
-CALDERA_URL=http://caldera:8888
-CALDERA_API_KEY=...             # If Caldera requires auth
-
-# Shannon (optional - comment out if not using)
-# SHANNON_API_URL=http://shannon:8000
+PENTESTGPT_API_URL=http://localhost:8080
+PENTESTGPT_MODEL=gpt-4
 
 # ════════════════════════════════════════════════
-# Database
+# 執行引擎
 # ════════════════════════════════════════════════
-DATABASE_URL=sqlite:///./data/athena.db
+CALDERA_URL=http://localhost:8888
+CALDERA_API_KEY=...             # 若 Caldera 需要身份驗證
+
+# Shannon（選用 — 不用時註解掉）
+# SHANNON_URL=http://localhost:9000
 
 # ════════════════════════════════════════════════
-# Logging
+# 資料庫
+# ════════════════════════════════════════════════
+DATABASE_URL=sqlite:///backend/data/athena.db
+
+# ════════════════════════════════════════════════
+# 自動化模式
+# ════════════════════════════════════════════════
+AUTOMATION_MODE=semi_auto
+RISK_THRESHOLD=medium
+
+# ════════════════════════════════════════════════
+# 前端
+# ════════════════════════════════════════════════
+NEXT_PUBLIC_API_URL=http://localhost:8000/api
+NEXT_PUBLIC_WS_URL=ws://localhost:8000/ws
+
+# ════════════════════════════════════════════════
+# 日誌
 # ════════════════════════════════════════════════
 LOG_LEVEL=INFO
 ```
 
-### Quick Start Commands
+### 快速啟動指令
 ```bash
 # ════════════════════════════════════════════════
-# POC Setup (PentestGPT + Caldera)
+# POC 設定（PentestGPT + Caldera）
 # ════════════════════════════════════════════════
 
-# 1. Clone repository
-git clone https://github.com/[your-org]/athena
-cd athena
+# 1. 複製倉庫
+git clone https://github.com/astroicers/Athena
+cd Athena
 
-# 2. Setup environment
+# 2. 設定環境
 cp .env.example .env
-nano .env  # Add your ANTHROPIC_API_KEY
+nano .env  # 加入你的 ANTHROPIC_API_KEY
 
-# 3. Start core services (no Shannon)
-docker-compose up -d athena-ui athena-backend caldera
+# 3. 啟動核心服務
+docker-compose up -d backend frontend
 
-# 4. Verify services
+# 4. 驗證服務
 docker-compose ps
-docker-compose logs -f athena-backend
+docker-compose logs -f backend
 
-# 5. Access Athena
-# - Athena UI: http://localhost:3000
-# - Athena API: http://localhost:8000/docs
-# - Caldera: http://localhost:8888
+# 5. 存取 Athena
+# - Athena UI：http://localhost:3000
+# - Athena API：http://localhost:8000/docs
+# - Caldera：http://localhost:8888（需另行啟動）
 
 # ════════════════════════════════════════════════
-# Optional: Add Shannon later
+# 選用：稍後加入 Shannon
 # ════════════════════════════════════════════════
 
-# Uncomment shannon in docker-compose.yml
-# Then:
-docker-compose up -d shannon
+# 取消 docker-compose.yml 中 shannon 的註解
+# 然後：
+# docker-compose up -d shannon
 ```
 
 ---
 
-## Project Goals
+## 常見問題
 
-### Immediate (POC - 2 months)
-- [ ] Working PentestGPT + Caldera integration
-- [ ] AI-powered tactical recommendations (Orient phase)
-- [ ] Complete OODA loop (at least 1 iteration)
-- [ ] C5ISR framework visualization
-- [ ] Demo scenario: "Obtain Domain Admin"
-- [ ] Presentation-ready materials
+### 「為什麼有 Shannon 還需要 PentestGPT？」
+```
+回答：它們在不同層級服務不同目的。
 
-### Future (If Continuing)
-- [ ] Shannon integration (dual-engine orchestration)
-- [ ] Enhanced AI reasoning (multi-turn planning)
-- [ ] Full MITRE ATT&CK coverage
-- [ ] Production deployment considerations
-- [ ] Potential commercialization path
+PentestGPT = 戰略思考
+「根據當前態勢，什麼戰術有意義？」
+「為什麼 T1003.001 現在比 T1110 好？」
+
+Shannon = 戰術執行
+「執行這個攻擊，如果防禦擋住就自適應」
+
+類比：
+├─ PentestGPT = 軍事戰略家（規劃戰役）
+└─ Shannon = 特種部隊操作員（贏得戰鬥）
+
+兩者都需要。PentestGPT 告訴你「做什麼」。
+Shannon 幫助你在複雜環境中「完成它」。
+```
+
+### 「Shannon 能取代 PentestGPT 嗎？」
+```
+回答：不能。不同角色，不同層級。
+
+Shannon 是：
+├─ 黑箱（難以解釋其推理）
+├─ 以執行為中心（非戰略性）
+├─ 自主（不與人類協作）
+
+PentestGPT 是：
+├─ 可解釋（可以說明建議的理由）
+├─ 以策略為中心（後設層級推理）
+├─ 協作式（為人機互動而設計）
+
+Athena 的價值 = 指揮層 + AI 建議。
+Shannon 無法提供這些 — 它是執行器。
+```
+
+### 「POC 需要 Shannon 嗎？」
+```
+回答：不需要。PentestGPT + Caldera 即足夠。
+
+POC 目標：證明 Athena 的指揮平台概念
+
+為此所需：
+✅ AI 輔助戰術規劃（PentestGPT）
+✅ MITRE 技術執行（Caldera）
+✅ OODA 循環（PentestGPT + Caldera）
+✅ C5ISR 框架視覺化
+
+Shannon 增加的：
+⚠️ 雙引擎編排展示
+⚠️ AI 自適應執行展示
+⚠️ 但增加複雜度與風險
+
+建議：先不加 Shannon。
+若 POC 成功且想展示進階編排再加入。
+```
+
+### 「為什麼選 Claude 而非 GPT-4？」
+```
+回答：卓越的推理能力，適合戰術分析。
+
+Claude 優勢：
+✅ 複雜推理鏈表現更佳
+✅ 200K 上下文（整個作戰歷史）
+✅ 較保守/對齊（軍事用途更安全）
+✅ 擅長解釋推理（Orient 關鍵能力）
+
+GPT-4 優勢：
+✅ 較便宜（約 50%）
+✅ API 回應速度較快
+✅ PentestGPT 原本為其設計
+
+建議：Claude 為主要，GPT-4 為備用。
+POC 的成本差異極小（總計約 $10-15）。
+```
 
 ---
 
-## Critical Reminders for AI Assistants
+## 專案目標
 
-1. **PentestGPT is CORE** - Not optional, not replaceable by Shannon
-2. **Shannon is OPTIONAL** - POC works without it
-3. **Orient phase is key** - This is where Athena adds value
-4. **POC scope discipline** - Don't over-engineer
-5. **License awareness** - PentestGPT MIT (safe), Shannon AGPL (careful)
-6. **Target user level** - Senior military consultant, assume expertise
-7. **C5ISR framework** - All features must map to it
-8. **MITRE ATT&CK** - Common language for tactics
+### 近期（POC — 2 個月）
+- [ ] PentestGPT + Caldera 整合運作
+- [ ] AI 驅動的戰術建議（Orient 階段）
+- [ ] 完整 OODA 循環（至少 1 次迭代）
+- [ ] C5ISR 框架視覺化
+- [ ] Demo 場景：「奪取 Domain Admin」
+- [ ] 可供展示的文件
 
----
-
-*Last Updated: 2024-02-22*  
-*Version: 0.3.0-poc*  
-*Phase: Early Development - POC (PentestGPT + Caldera)*
-
----
-
-## Appendix: Quick Reference
-
-### Component Checklist
-- [ ] PentestGPT (Intelligence) ✅ Required
-- [ ] Caldera (Execution) ✅ Required
-- [ ] Shannon (Advanced Execution) ⚠️ Optional
-- [ ] Athena UI ✅ Required
-- [ ] Athena Backend ✅ Required
-
-### OODA Checklist
-- [ ] Observe: Fact collection ✅
-- [ ] Orient: PentestGPT analysis ✅ **CORE**
-- [ ] Decide: Athena decision engine ✅
-- [ ] Act: Caldera/Shannon execution ✅
-
-### License Compliance
-- [ ] Athena Core: Apache 2.0 ✅
-- [ ] PentestGPT: MIT (safe import) ✅
-- [ ] Caldera: Apache 2.0 (API) ✅
-- [ ] Shannon: AGPL-3.0 (API-only) ⚠️
-- [ ] No license contamination ✅
-
-### POC Success Metrics
-- [ ] PentestGPT provides recommendations
-- [ ] Recommendations are actionable
-- [ ] Caldera executes techniques
-- [ ] One complete OODA iteration
-- [ ] Demo scenario works
-- [ ] Presentation ready
+### 未來（若繼續發展）
+- [ ] Shannon 整合（雙引擎編排）
+- [ ] 增強 AI 推理（多輪規劃）
+- [ ] 完整 MITRE ATT&CK 覆蓋
+- [ ] 正式環境部署考量
+- [ ] 潛在商業化路徑
 
 ---
 
-**End of CLAUDE.md v3**
+## AI 助手的關鍵提醒
+
+1. **PentestGPT 是核心** — 非選用、Shannon 無法取代
+2. **Shannon 是選用** — POC 不需要它
+3. **Orient 階段是關鍵** — Athena 在此創造價值
+4. **POC 範圍紀律** — 不要過度設計
+5. **授權意識** — PentestGPT MIT（安全）、Shannon AGPL（小心）
+6. **目標使用者水準** — 資深軍事顧問，假設具備專業知識
+7. **C5ISR 框架** — 所有功能必須映射至此
+8. **MITRE ATT&CK** — 戰術的共通語言
+9. **半自動模式** — 風險閾值規則決定自動/手動行為
+
+---
+
+*最後更新：2026-02-22*
+*版本：0.4.0-poc*
+*階段：早期開發 — POC（PentestGPT + Caldera）*
+
+---
+
+## 附錄：快速參考
+
+### 元件清單
+- [ ] PentestGPT（情報）✅ 必要
+- [ ] Caldera（執行）✅ 必要
+- [ ] Shannon（進階執行）⚠️ 選用
+- [ ] Athena UI ✅ 必要
+- [ ] Athena Backend ✅ 必要
+
+### OODA 清單
+- [ ] Observe：情報收集 ✅
+- [ ] Orient：PentestGPT 分析 ✅ **核心**
+- [ ] Decide：Athena 決策引擎 ✅
+- [ ] Act：Caldera/Shannon 執行 ✅
+
+### 授權合規
+- [ ] Athena 核心：Apache 2.0 ✅
+- [ ] PentestGPT：MIT（安全匯入）✅
+- [ ] Caldera：Apache 2.0（API）✅
+- [ ] Shannon：AGPL-3.0（僅 API）⚠️
+- [ ] 無授權污染 ✅
+
+### POC 成功指標
+- [ ] PentestGPT 提供建議
+- [ ] 建議可操作
+- [ ] Caldera 執行技術
+- [ ] 一次完整 OODA 迭代
+- [ ] Demo 場景可運行
+- [ ] 可供展示
+
+---
+
+## 相關文件
+
+- [開發路線圖](docs/ROADMAP.md) — Phase 0-8 完整計畫
+- [資料架構](docs/architecture/data-architecture.md) — 模型、Schema、API、種子資料
+- [專案結構](docs/architecture/project-structure.md) — 目錄佈局、各層職責
+
+---
+
+**CLAUDE.md v4 結束**

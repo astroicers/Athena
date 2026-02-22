@@ -1,0 +1,15 @@
+type: system
+mode: multi-agent
+workflow: vibe-coding
+rag: enabled
+guardrail: enabled
+hitl: strict
+name: merak-platform
+
+# committee 角色（mode: committee 時生效）
+committee:
+  roles:
+    - architect
+    - security
+    - devops
+    - qa

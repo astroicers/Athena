@@ -191,6 +191,7 @@ class Technique(BaseModel):
     name: str                           # "OS Credential Dumping: LSASS Memory"
     tactic: str                         # "Credential Access"
     tactic_id: str                      # "TA0006"
+    description: str | None               # Technique description for UI display
     kill_chain_stage: KillChainStage
     risk_level: RiskLevel               # Inherent risk (drives Semi-Auto behavior)
     caldera_ability_id: str | None
@@ -342,7 +343,7 @@ CREATE TABLE operations (
     data_exfiltrated_bytes INTEGER DEFAULT 0,
     automation_mode TEXT DEFAULT 'semi_auto',
     risk_threshold TEXT DEFAULT 'medium',
-    operator_id TEXT REFERENCES users(id),
+    operator_id TEXT REFERENCES users(id) ON DELETE SET NULL,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
 );
@@ -356,20 +357,20 @@ CREATE TABLE targets (
     network_segment TEXT DEFAULT '10.0.1.0/24',
     is_compromised INTEGER DEFAULT 0,
     privilege_level TEXT,
-    operation_id TEXT REFERENCES operations(id),
+    operation_id TEXT REFERENCES operations(id) ON DELETE CASCADE,
     created_at TEXT DEFAULT (datetime('now'))
 );
 
 CREATE TABLE agents (
     id TEXT PRIMARY KEY,
     paw TEXT NOT NULL,
-    host_id TEXT REFERENCES targets(id),
+    host_id TEXT REFERENCES targets(id) ON DELETE CASCADE,
     status TEXT DEFAULT 'pending',
     privilege TEXT DEFAULT 'User',
     last_beacon TEXT,
     beacon_interval_sec INTEGER DEFAULT 5,
     platform TEXT DEFAULT 'windows',
-    operation_id TEXT REFERENCES operations(id),
+    operation_id TEXT REFERENCES operations(id) ON DELETE CASCADE,
     created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -389,8 +390,8 @@ CREATE TABLE techniques (
 CREATE TABLE technique_executions (
     id TEXT PRIMARY KEY,
     technique_id TEXT NOT NULL,
-    target_id TEXT REFERENCES targets(id),
-    operation_id TEXT REFERENCES operations(id),
+    target_id TEXT REFERENCES targets(id) ON DELETE CASCADE,
+    operation_id TEXT REFERENCES operations(id) ON DELETE CASCADE,
     ooda_iteration_id TEXT,
     engine TEXT DEFAULT 'caldera',
     status TEXT DEFAULT 'queued',
@@ -409,14 +410,14 @@ CREATE TABLE facts (
     category TEXT DEFAULT 'host',
     source_technique_id TEXT,
     source_target_id TEXT,
-    operation_id TEXT REFERENCES operations(id),
+    operation_id TEXT REFERENCES operations(id) ON DELETE CASCADE,
     score INTEGER DEFAULT 1,
     collected_at TEXT DEFAULT (datetime('now'))
 );
 
 CREATE TABLE ooda_iterations (
     id TEXT PRIMARY KEY,
-    operation_id TEXT REFERENCES operations(id),
+    operation_id TEXT REFERENCES operations(id) ON DELETE CASCADE,
     iteration_number INTEGER NOT NULL,
     phase TEXT DEFAULT 'observe',
     observe_summary TEXT,
@@ -431,7 +432,7 @@ CREATE TABLE ooda_iterations (
 
 CREATE TABLE recommendations (
     id TEXT PRIMARY KEY,
-    operation_id TEXT REFERENCES operations(id),
+    operation_id TEXT REFERENCES operations(id) ON DELETE CASCADE,
     ooda_iteration_id TEXT,
     situation_assessment TEXT NOT NULL,
     recommended_technique_id TEXT NOT NULL,
@@ -444,11 +445,11 @@ CREATE TABLE recommendations (
 
 CREATE TABLE mission_steps (
     id TEXT PRIMARY KEY,
-    operation_id TEXT REFERENCES operations(id),
+    operation_id TEXT REFERENCES operations(id) ON DELETE CASCADE,
     step_number INTEGER NOT NULL,
     technique_id TEXT NOT NULL,
     technique_name TEXT NOT NULL,
-    target_id TEXT REFERENCES targets(id),
+    target_id TEXT REFERENCES targets(id) ON DELETE CASCADE,
     target_label TEXT NOT NULL,
     engine TEXT DEFAULT 'caldera',
     status TEXT DEFAULT 'queued',
@@ -459,7 +460,7 @@ CREATE TABLE mission_steps (
 
 CREATE TABLE c5isr_statuses (
     id TEXT PRIMARY KEY,
-    operation_id TEXT REFERENCES operations(id),
+    operation_id TEXT REFERENCES operations(id) ON DELETE CASCADE,
     domain TEXT NOT NULL,
     status TEXT NOT NULL,
     health_pct REAL DEFAULT 100.0,
@@ -532,6 +533,9 @@ GET    /operations/{id}/logs                 Log entries (paginated)
 GET    /operations/{id}/recommendations/latest   Latest PentestGPT recommendation
 POST   /operations/{id}/recommendations/{rid}/accept  Accept recommendation
 
+-- Health --
+GET    /health                               Service health check
+
 -- WebSocket (Real-time) --
 WS     /ws/{operation_id}                    Live event stream
   Events: log.new, agent.beacon, execution.update,
@@ -570,6 +574,12 @@ WS     /ws/{operation_id}                    Live event stream
 ---
 
 ## 8. Demo Seed Data (OP-2024-017 "PHANTOM-EYE")
+
+### User (1)
+| Field | Value |
+|-------|-------|
+| callsign | VIPER-1 |
+| role | Commander |
 
 ### Operation
 | Field | Value |

@@ -152,8 +152,7 @@ Athena/
 │       │   ├── data/                      # 資料展示組件
 │       │   │   ├── DataTable.tsx          # 通用資料表格
 │       │   │   ├── LogEntry.tsx           # 日誌條目
-│       │   │   ├── AgentBeacon.tsx        # Agent 心跳指示
-│       │   │   └── TrafficStream.tsx      # 流量串流視覺化
+│       │   │   └── AgentBeacon.tsx        # Agent 心跳指示
 │       │   │
 │       │   ├── mitre/                     # MITRE 相關組件
 │       │   │   ├── MITRECell.tsx          # ATT&CK 矩陣格
@@ -171,7 +170,8 @@ Athena/
 │       │   │   ├── AttackNode.tsx         # 攻擊路徑節點
 │       │   │   ├── AttackVectorLine.tsx   # 攻擊向量連線
 │       │   │   ├── NetworkTopology.tsx    # 網路拓樸全圖
-│       │   │   └── ThreatLevelGauge.tsx   # 威脅等級儀表
+│       │   │   ├── ThreatLevelGauge.tsx   # 威脅等級儀表
+│       │   │   └── TrafficStream.tsx      # 流量粒子串流動畫
 │       │   │
 │       │   ├── modal/                     # 對話框組件
 │       │   │   └── HexConfirmModal.tsx    # 六角形確認對話框
@@ -232,7 +232,7 @@ Athena/
 | `athena-mitre-navigator.pen` | MITRE ATT&CK 導航 | `/navigator` |
 | `athena-mission-planner.pen` | 任務規劃 | `/planner` |
 
-> 設計檔目前位於根目錄，待實作時搬入 `design/`。
+> 設計檔已搬入 `design/` 目錄。
 
 ### 2. `backend/` — 後端服務層
 
@@ -459,11 +459,11 @@ build/
 
 | 畫面 | 設計檔 | 頁面路由 | 主要組件 | 資料 Hook |
 |------|--------|---------|---------|----------|
-| App Shell | `shell.pen` | `layout.tsx` | `Sidebar`, `AlertBanner` | `useOperation` |
-| C5ISR 指揮看板 | `c5isr-board.pen` | `/c5isr` | `C5ISRStatusBoard`, `MetricCard`, `OODAIndicator`, `RecommendCard` | `useOperation`, `useOODA` |
-| MITRE 導航 | `mitre-navigator.pen` | `/navigator` | `MITRECell`, `KillChainIndicator`, `TechniqueCard` | `useOperation` |
-| 任務規劃 | `mission-planner.pen` | `/planner` | `DataTable`, `OODATimelineEntry`, `HostNodeCard` | `useOperation`, `useOODA` |
-| 戰場監控 | `battle-monitor.pen` | `/monitor` | `NetworkTopology`, `ThreatLevelGauge`, `LogEntry`, `AgentBeacon` | `useWebSocket`, `useLiveLog` |
+| App Shell | `design/athena-shell.pen` | `layout.tsx` | `Sidebar`, `AlertBanner` | `useOperation` |
+| C5ISR 指揮看板 | `design/athena-c5isr-board.pen` | `/c5isr` | `C5ISRStatusBoard`, `MetricCard`, `OODAIndicator`, `RecommendCard` | `useOperation`, `useOODA` |
+| MITRE 導航 | `design/athena-mitre-navigator.pen` | `/navigator` | `MITRECell`, `KillChainIndicator`, `TechniqueCard` | `useOperation` |
+| 任務規劃 | `design/athena-mission-planner.pen` | `/planner` | `DataTable`, `OODATimelineEntry`, `HostNodeCard` | `useOperation`, `useOODA` |
+| 戰場監控 | `design/athena-battle-monitor.pen` | `/monitor` | `NetworkTopology`, `ThreatLevelGauge`, `LogEntry`, `AgentBeacon` | `useWebSocket`, `useLiveLog` |
 
 ---
 

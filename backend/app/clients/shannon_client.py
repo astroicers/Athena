@@ -1,10 +1,14 @@
 """Shannon AI engine REST API client. License: AGPL-3.0 — HTTP API only, no code imports."""
 
+import asyncio
 import uuid
 
 import httpx
 
 from app.clients import BaseEngineClient, ExecutionResult
+
+_POLL_INTERVAL = 2.0
+_POLL_TIMEOUT = 120.0
 
 
 class EngineNotAvailableError(Exception):
@@ -43,8 +47,8 @@ class ShannonClient(BaseEngineClient):
             data = resp.json()
             task_id = data.get("task_id", exec_id)
 
-            # Poll status
-            status = await self.get_status(task_id)
+            # Poll status until terminal
+            status = await self._poll_status(task_id)
             return ExecutionResult(
                 success=status == "completed",
                 execution_id=task_id,
@@ -60,6 +64,21 @@ class ShannonClient(BaseEngineClient):
                 facts=[],
                 error=str(e),
             )
+
+    async def _poll_status(
+        self, task_id: str,
+        timeout: float = _POLL_TIMEOUT,
+        interval: float = _POLL_INTERVAL,
+    ) -> str:
+        """Poll Shannon task status until terminal state or timeout."""
+        elapsed = 0.0
+        while elapsed < timeout:
+            status = await self.get_status(task_id)
+            if status in ("completed", "failed", "error"):
+                return status
+            await asyncio.sleep(interval)
+            elapsed += interval
+        return "timeout"
 
     async def get_status(self, execution_id: str) -> str:
         if not self.enabled or not self._client:
@@ -83,3 +102,8 @@ class ShannonClient(BaseEngineClient):
             return resp.status_code == 200
         except httpx.HTTPError:
             return False
+
+    async def aclose(self):
+        """Close the underlying HTTP client."""
+        if self._client:
+            await self._client.aclose()

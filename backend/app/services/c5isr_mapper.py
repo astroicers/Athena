@@ -52,7 +52,7 @@ class C5ISRMapper:
         # Comms: simplified — assume operational at 60% baseline for POC
         comms_health = 60.0
 
-        # Computers: alive (non-compromised) targets health
+        # Computers: non-compromised targets — for red team, health drops as we compromise more
         cursor = await db.execute(
             "SELECT COUNT(*) as total, "
             "SUM(CASE WHEN is_compromised = 0 THEN 1 ELSE 0 END) as secure "

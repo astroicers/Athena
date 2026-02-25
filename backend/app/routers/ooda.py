@@ -1,5 +1,7 @@
 """OODA loop endpoints."""
 
+import logging
+
 from fastapi import APIRouter, Depends
 import aiosqlite
 
@@ -19,29 +21,37 @@ from app.services.engine_router import EngineRouter
 from app.services.c5isr_mapper import C5ISRMapper
 from app.services.ooda_controller import OODAController
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# Module-level singleton — built once, reused across requests
+_controller: OODAController | None = None
 
-def _build_controller() -> OODAController:
-    """Build the OODA controller with all dependencies."""
+
+def _get_controller() -> OODAController:
+    """Return singleton OODAController, building it on first call."""
+    global _controller
+    if _controller is not None:
+        return _controller
+
     fc = FactCollector(ws_manager)
     orient = OrientEngine(ws_manager)
     decision = DecisionEngine()
     c5isr = C5ISRMapper(ws_manager)
 
-    # Engine clients
-    caldera = MockCalderaClient()
-    if not settings.MOCK_LLM:
+    # Engine clients — MOCK_CALDERA controls mock vs real Caldera independently of MOCK_LLM
+    caldera: MockCalderaClient | CalderaClient = MockCalderaClient()
+    if not settings.MOCK_CALDERA:
         try:
-            real = CalderaClient(settings.CALDERA_URL, settings.CALDERA_API_KEY)
-            caldera = real  # type: ignore[assignment]
+            caldera = CalderaClient(settings.CALDERA_URL, settings.CALDERA_API_KEY)
         except Exception:
-            pass  # fallback to mock
+            logger.warning("Failed to connect to Caldera, falling back to mock")
 
     shannon = ShannonClient(settings.SHANNON_URL)
     router_svc = EngineRouter(caldera, shannon if shannon.enabled else None, fc, ws_manager)
 
-    return OODAController(fc, orient, decision, router_svc, c5isr, ws_manager)
+    _controller = OODAController(fc, orient, decision, router_svc, c5isr, ws_manager)
+    return _controller
 
 
 def _row_to_ooda(row: aiosqlite.Row) -> OODAIteration:
@@ -70,7 +80,7 @@ async def trigger_ooda(
     db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
-    controller = _build_controller()
+    controller = _get_controller()
     result = await controller.trigger_cycle(db, operation_id)
     return result
 

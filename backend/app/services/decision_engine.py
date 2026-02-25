@@ -25,12 +25,13 @@ class DecisionEngine:
     ) -> dict:
         """
         Decision logic per ADR-004:
-        - LOW (< threshold)  → auto_approve=True
-        - MEDIUM             → auto_approve=True, needs_queue=True
-        - HIGH               → auto_approve=False, needs_confirm=True
-        - CRITICAL           → auto_approve=False, needs_manual=True
         - MANUAL mode        → always auto_approved=False
         - confidence < 0.5   → force manual review
+        - CRITICAL            → auto_approved=False, needs_manual=True
+        - HIGH                → auto_approved=False, needs_confirmation=True (HexConfirmModal)
+        - MEDIUM above thresh → auto_approved=False, needs_confirmation=True (queue + approve)
+        - MEDIUM within thresh→ auto_approved=True (auto-queue)
+        - LOW                 → auto_approved=True (auto-execute)
         """
         db.row_factory = aiosqlite.Row
         cursor = await db.execute(
@@ -71,29 +72,30 @@ class DecisionEngine:
         target_row = await cursor.fetchone()
         target_id = target_row["id"] if target_row else None
 
+        base = {
+            "technique_id": rec_technique_id,
+            "target_id": target_id,
+            "engine": engine,
+            "risk_level": technique_risk.value,
+        }
+
         # MANUAL mode → always require human approval
         if automation_mode == AutomationMode.MANUAL:
             return {
-                "technique_id": rec_technique_id,
-                "target_id": target_id,
-                "engine": engine,
+                **base,
                 "auto_approved": False,
                 "needs_confirmation": True,
                 "needs_manual": True,
-                "risk_level": technique_risk.value,
                 "reason": "Manual mode — all decisions require commander approval",
             }
 
         # Low confidence → force manual
         if confidence < 0.5:
             return {
-                "technique_id": rec_technique_id,
-                "target_id": target_id,
-                "engine": engine,
+                **base,
                 "auto_approved": False,
                 "needs_confirmation": True,
                 "needs_manual": False,
-                "risk_level": technique_risk.value,
                 "reason": f"Low confidence ({confidence:.0%}) — requires manual review",
             }
 
@@ -101,50 +103,41 @@ class DecisionEngine:
         tech_level = _RISK_ORDER.get(technique_risk, 1)
         threshold_level = _RISK_ORDER.get(RiskLevel(risk_threshold), 1)
 
+        # CRITICAL → always manual
         if technique_risk == RiskLevel.CRITICAL:
             return {
-                "technique_id": rec_technique_id,
-                "target_id": target_id,
-                "engine": engine,
+                **base,
                 "auto_approved": False,
                 "needs_confirmation": True,
                 "needs_manual": True,
-                "risk_level": technique_risk.value,
                 "reason": "Critical risk — requires manual authorization",
             }
 
+        # HIGH → HexConfirmModal confirmation
         if technique_risk == RiskLevel.HIGH:
             return {
-                "technique_id": rec_technique_id,
-                "target_id": target_id,
-                "engine": engine,
+                **base,
                 "auto_approved": False,
                 "needs_confirmation": True,
                 "needs_manual": False,
-                "risk_level": technique_risk.value,
                 "reason": "High risk — requires HexConfirmModal confirmation",
             }
 
+        # Within threshold → auto-approve
         if tech_level <= threshold_level:
             return {
-                "technique_id": rec_technique_id,
-                "target_id": target_id,
-                "engine": engine,
+                **base,
                 "auto_approved": True,
                 "needs_confirmation": False,
                 "needs_manual": False,
-                "risk_level": technique_risk.value,
                 "reason": f"Risk ({technique_risk.value}) within threshold ({risk_threshold})",
             }
 
-        # MEDIUM above threshold
+        # Above threshold (e.g. MEDIUM when threshold is LOW) → needs commander approval
         return {
-            "technique_id": rec_technique_id,
-            "target_id": target_id,
-            "engine": engine,
-            "auto_approved": True,
-            "needs_confirmation": False,
+            **base,
+            "auto_approved": False,
+            "needs_confirmation": True,
             "needs_manual": False,
-            "risk_level": technique_risk.value,
-            "reason": f"Medium risk — auto-approved with queue",
+            "reason": f"Risk ({technique_risk.value}) exceeds threshold ({risk_threshold}) — requires commander approval",
         }

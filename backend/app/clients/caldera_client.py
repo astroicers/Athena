@@ -1,10 +1,14 @@
 """MITRE Caldera REST API v2 client. License: Apache 2.0 (safe)."""
 
+import asyncio
 import uuid
 
 import httpx
 
 from app.clients import BaseEngineClient, ExecutionResult
+
+_POLL_INTERVAL = 2.0   # seconds between status checks
+_POLL_TIMEOUT = 120.0   # max seconds to wait for completion
 
 
 class CalderaClient(BaseEngineClient):
@@ -52,8 +56,8 @@ class CalderaClient(BaseEngineClient):
                 json=ability_payload,
             )
 
-            # Poll for status
-            status = await self.get_status(op_id)
+            # Poll for completion with timeout
+            status = await self._poll_status(op_id)
 
             # Get report
             report_resp = await self._client.post(
@@ -70,9 +74,9 @@ class CalderaClient(BaseEngineClient):
             return ExecutionResult(
                 success=status in ("finished", "cleanup"),
                 execution_id=op_id,
-                output=str(report.get("steps", {}))[: 500],
+                output=str(report.get("steps", {}))[:500],
                 facts=facts,
-                error=None,
+                error=None if status in ("finished", "cleanup") else f"status={status}",
             )
         except httpx.HTTPError as e:
             return ExecutionResult(
@@ -82,6 +86,21 @@ class CalderaClient(BaseEngineClient):
                 facts=[],
                 error=str(e),
             )
+
+    async def _poll_status(
+        self, op_id: str,
+        timeout: float = _POLL_TIMEOUT,
+        interval: float = _POLL_INTERVAL,
+    ) -> str:
+        """Poll Caldera operation status until terminal state or timeout."""
+        elapsed = 0.0
+        while elapsed < timeout:
+            status = await self.get_status(op_id)
+            if status in ("finished", "cleanup", "failed"):
+                return status
+            await asyncio.sleep(interval)
+            elapsed += interval
+        return "timeout"
 
     async def get_status(self, execution_id: str) -> str:
         try:
@@ -125,3 +144,7 @@ class CalderaClient(BaseEngineClient):
             ]
         except httpx.HTTPError:
             return []
+
+    async def aclose(self):
+        """Close the underlying HTTP client."""
+        await self._client.aclose()

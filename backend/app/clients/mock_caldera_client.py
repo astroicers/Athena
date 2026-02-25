@@ -1,6 +1,7 @@
 """Mock Caldera client for development/demo without a real Caldera instance."""
 
 import asyncio
+import random
 import uuid
 
 from app.clients import BaseEngineClient, ExecutionResult
@@ -54,7 +55,7 @@ class MockCalderaClient(BaseEngineClient):
         self, ability_id: str, target: str, params: dict | None = None
     ) -> ExecutionResult:
         # Simulate 2-5 second execution delay
-        await asyncio.sleep(2)
+        await asyncio.sleep(random.uniform(2, 5))
 
         exec_id = str(uuid.uuid4())
         template = _MOCK_RESULTS.get(ability_id)

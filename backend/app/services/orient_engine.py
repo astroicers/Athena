@@ -234,7 +234,7 @@ class OrientEngine:
                     "content-type": "application/json",
                 },
                 json={
-                    "model": "claude-sonnet-4-20250514",
+                    "model": settings.CLAUDE_MODEL,
                     "max_tokens": 4000,
                     "temperature": 0.7,
                     "messages": [{"role": "user", "content": prompt}],

@@ -92,12 +92,13 @@ class EngineRouter:
              result.error, exec_id),
         )
 
-        # Update operation stats
-        await db.execute(
-            "UPDATE operations SET techniques_executed = techniques_executed + 1 "
-            "WHERE id = ?",
-            (operation_id,),
-        )
+        # [I-1] Only increment techniques_executed on success
+        if result.success:
+            await db.execute(
+                "UPDATE operations SET techniques_executed = techniques_executed + 1 "
+                "WHERE id = ?",
+                (operation_id,),
+            )
         await db.commit()
 
         # Extract facts from result
@@ -127,14 +128,33 @@ class EngineRouter:
         self, technique_id: str, context: dict,
         gpt_recommendation: str | None = None,
     ) -> str:
-        """Engine selection logic per ADR-006 priority order."""
+        """
+        Engine selection logic per ADR-006 priority order:
+        1. High-confidence PentestGPT recommendation → trust its engine choice
+        2. Caldera has corresponding ability → Caldera
+        3. Unknown environment + Shannon available → Shannon
+        4. High stealth requirement + Shannon available → Shannon
+        5. Default → Caldera
+        """
         # Priority 1: Trust high-confidence PentestGPT recommendation
         if gpt_recommendation and gpt_recommendation in ("caldera", "shannon"):
             if gpt_recommendation == "shannon" and self._shannon:
                 return "shannon"
             return "caldera"
 
-        # Priority 2-5: Default to caldera
+        # Priority 2: Caldera has ability for this technique (always true for known MITRE IDs)
+        # In POC, Caldera is assumed to have all standard MITRE abilities
+        # A production version would check caldera.list_abilities()
+
+        # Priority 3: Unknown environment → Shannon
+        if context.get("environment") == "unknown" and self._shannon:
+            return "shannon"
+
+        # Priority 4: High stealth requirement → Shannon
+        if context.get("stealth_level") == "maximum" and self._shannon:
+            return "shannon"
+
+        # Priority 5: Default → Caldera (most reliable)
         return "caldera"
 
     def _select_client(self, engine: str) -> BaseEngineClient:

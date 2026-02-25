@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 import aiosqlite
 
+from app.models.enums import FactCategory
 from app.ws_manager import WebSocketManager
 
 
@@ -38,11 +39,12 @@ class FactCollector:
             if not summary.strip():
                 continue
 
-            # Check if a fact with same trait+value already exists
+            # [M-6] Dedup by trait + value (not just trait)
             trait = f"execution.{technique_id}"
+            value = summary[:500]
             cursor2 = await db.execute(
-                "SELECT id FROM facts WHERE trait = ? AND operation_id = ?",
-                (trait, operation_id),
+                "SELECT id FROM facts WHERE trait = ? AND value = ? AND operation_id = ?",
+                (trait, value, operation_id),
             )
             if await cursor2.fetchone():
                 continue
@@ -53,12 +55,12 @@ class FactCollector:
                 "INSERT INTO facts (id, trait, value, category, source_technique_id, "
                 "source_target_id, operation_id, score, collected_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (fact_id, trait, summary[:500], category, technique_id,
+                (fact_id, trait, value, category.value, technique_id,
                  target_id, operation_id, 1, now),
             )
             fact = {
-                "id": fact_id, "trait": trait, "value": summary[:500],
-                "category": category, "source_technique_id": technique_id,
+                "id": fact_id, "trait": trait, "value": value,
+                "category": category.value, "source_technique_id": technique_id,
                 "source_target_id": target_id, "operation_id": operation_id,
             }
             new_facts.append(fact)
@@ -87,12 +89,12 @@ class FactCollector:
                 "INSERT INTO facts (id, trait, value, category, source_technique_id, "
                 "source_target_id, operation_id, score, collected_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (fact_id, trait, str(value)[:500], category, technique_id,
+                (fact_id, trait, str(value)[:500], category.value, technique_id,
                  target_id, operation_id, 1, now),
             )
             fact = {
                 "id": fact_id, "trait": trait, "value": str(value)[:500],
-                "category": category, "operation_id": operation_id,
+                "category": category.value, "operation_id": operation_id,
             }
             new_facts.append(fact)
             await self._ws.broadcast(operation_id, "fact.new", fact)
@@ -116,24 +118,24 @@ class FactCollector:
         return f"Collected {len(rows)} intelligence items:\n" + "\n".join(lines)
 
     @staticmethod
-    def _infer_category(technique_id: str, summary: str) -> str:
+    def _infer_category(technique_id: str, summary: str) -> FactCategory:
         lower = (technique_id + summary).lower()
         if any(w in lower for w in ("cred", "hash", "password", "lsass", "t1003")):
-            return "credential"
+            return FactCategory.CREDENTIAL
         if any(w in lower for w in ("network", "scan", "host.ip", "t1595")):
-            return "network"
+            return FactCategory.NETWORK
         if any(w in lower for w in ("service", "port")):
-            return "service"
-        return "host"
+            return FactCategory.SERVICE
+        return FactCategory.HOST
 
     @staticmethod
-    def _category_from_trait(trait: str) -> str:
+    def _category_from_trait(trait: str) -> FactCategory:
         if "credential" in trait or "hash" in trait:
-            return "credential"
+            return FactCategory.CREDENTIAL
         if "network" in trait or "ip" in trait:
-            return "network"
+            return FactCategory.NETWORK
         if "service" in trait or "port" in trait:
-            return "service"
+            return FactCategory.SERVICE
         if "host" in trait:
-            return "host"
-        return "host"
+            return FactCategory.HOST
+        return FactCategory.HOST

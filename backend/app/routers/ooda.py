@@ -1,17 +1,47 @@
 """OODA loop endpoints."""
 
-import uuid
-from datetime import datetime, timezone
-
 from fastapi import APIRouter, Depends
 import aiosqlite
 
+from app.config import settings
 from app.database import get_db
 from app.models import OODAIteration
 from app.models.api_schemas import OODATimelineEntry
 from app.routers._deps import ensure_operation
+from app.ws_manager import ws_manager
+from app.clients.mock_caldera_client import MockCalderaClient
+from app.clients.caldera_client import CalderaClient
+from app.clients.shannon_client import ShannonClient
+from app.services.fact_collector import FactCollector
+from app.services.orient_engine import OrientEngine
+from app.services.decision_engine import DecisionEngine
+from app.services.engine_router import EngineRouter
+from app.services.c5isr_mapper import C5ISRMapper
+from app.services.ooda_controller import OODAController
 
 router = APIRouter()
+
+
+def _build_controller() -> OODAController:
+    """Build the OODA controller with all dependencies."""
+    fc = FactCollector(ws_manager)
+    orient = OrientEngine(ws_manager)
+    decision = DecisionEngine()
+    c5isr = C5ISRMapper(ws_manager)
+
+    # Engine clients
+    caldera = MockCalderaClient()
+    if not settings.MOCK_LLM:
+        try:
+            real = CalderaClient(settings.CALDERA_URL, settings.CALDERA_API_KEY)
+            caldera = real  # type: ignore[assignment]
+        except Exception:
+            pass  # fallback to mock
+
+    shannon = ShannonClient(settings.SHANNON_URL)
+    router_svc = EngineRouter(caldera, shannon if shannon.enabled else None, fc, ws_manager)
+
+    return OODAController(fc, orient, decision, router_svc, c5isr, ws_manager)
 
 
 def _row_to_ooda(row: aiosqlite.Row) -> OODAIteration:
@@ -31,40 +61,18 @@ def _row_to_ooda(row: aiosqlite.Row) -> OODAIteration:
     )
 
 
-@router.post("/operations/{operation_id}/ooda/trigger", response_model=OODAIteration)
+@router.post("/operations/{operation_id}/ooda/trigger")
 async def trigger_ooda(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
-    """STUB — Create a new OODA iteration in observe phase."""
+    """Trigger a full OODA cycle: Observe -> Orient -> Decide -> Act."""
     db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
-    # Determine next iteration number
-    cursor = await db.execute(
-        "SELECT COALESCE(MAX(iteration_number), 0) + 1 AS next_num "
-        "FROM ooda_iterations WHERE operation_id = ?",
-        (operation_id,),
-    )
-    row = await cursor.fetchone()
-    next_num = row["next_num"]
-
-    ooda_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
-
-    await db.execute(
-        "INSERT INTO ooda_iterations "
-        "(id, operation_id, iteration_number, phase, started_at) "
-        "VALUES (?, ?, ?, 'observe', ?)",
-        (ooda_id, operation_id, next_num, now),
-    )
-    await db.commit()
-
-    cursor = await db.execute(
-        "SELECT * FROM ooda_iterations WHERE id = ?", (ooda_id,)
-    )
-    row = await cursor.fetchone()
-    return _row_to_ooda(row)
+    controller = _build_controller()
+    result = await controller.trigger_cycle(db, operation_id)
+    return result
 
 
 @router.get("/operations/{operation_id}/ooda/current", response_model=OODAIteration | None)

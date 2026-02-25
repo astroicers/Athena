@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+/* ============================================
+   Athena Design Tokens (CSS Custom Properties)
+   Populated from design system in later phases.
+   ============================================ */
+
+:root {
+  /* -- Colors -- */
+  /* --color-primary: ; */
+  /* --color-secondary: ; */
+  /* --color-accent: ; */
+  /* --color-background: ; */
+  /* --color-surface: ; */
+  /* --color-text: ; */
+
+  /* -- Typography -- */
+  /* --font-sans: ; */
+  /* --font-mono: ; */
+
+  /* -- Spacing -- */
+  /* --spacing-unit: ; */
+
+  /* -- Border Radius -- */
+  /* --radius-sm: ; */
+  /* --radius-md: ; */
+  /* --radius-lg: ; */
+}

@@ -6,7 +6,7 @@ APP_NAME ?= Athena
 VERSION  ?= latest
 
 .PHONY: help \
-        build clean deploy logs dev dev-backend dev-frontend seed \
+        build clean deploy logs up down docker-clean dev dev-backend dev-frontend seed \
         test test-backend test-frontend test-filter coverage lint \
         diagram \
         adr-new adr-list \
@@ -60,6 +60,21 @@ deploy:
 
 logs:
 	docker-compose logs -f --tail=100
+
+up:
+	@echo "🚀 Starting Athena (detached)..."
+	docker-compose up --build -d
+	@echo "✅ Backend: http://localhost:8000/api/health"
+	@echo "✅ Frontend: http://localhost:3000"
+	@echo "📋 Logs: make logs"
+
+down:
+	@echo "⏹  Stopping Athena..."
+	docker-compose down
+
+docker-clean:
+	@echo "🧹 Cleaning Docker (images + volumes)..."
+	docker-compose down -v --rmi local
 
 #---------------------------------------------------------------------------
 # Development

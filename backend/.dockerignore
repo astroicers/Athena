@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+tests/
+data/*.db
+data/*.db-*
+.env
+.env.*
+.pytest_cache/
+htmlcov/

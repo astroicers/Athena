@@ -1,3 +1,4 @@
+from collections.abc import AsyncGenerator
 from pathlib import Path
 
 import aiosqlite
@@ -205,12 +206,12 @@ async def init_db() -> None:
         await db.commit()
 
 
-async def get_db() -> aiosqlite.Connection:
+async def get_db() -> AsyncGenerator[aiosqlite.Connection, None]:
     """Async generator for FastAPI Depends injection."""
     db_path = Path(_DB_FILE)
     db = await aiosqlite.connect(str(db_path))
     await db.execute("PRAGMA foreign_keys = ON;")
     try:
-        yield db  # type: ignore[misc]
+        yield db
     finally:
         await db.close()

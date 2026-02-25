@@ -21,9 +21,24 @@ from .enums import (
     TechniqueStatus,
 )
 from .c5isr import C5ISRStatus
+from .enums import C5ISRDomainStatus
 from .log_entry import LogEntry
 from .operation import Operation
 from .recommendation import PentestGPTRecommendation
+
+
+# ---------------------------------------------------------------------------
+# Operation
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# C5ISR
+# ---------------------------------------------------------------------------
+
+class C5ISRUpdate(BaseModel):
+    status: C5ISRDomainStatus | None = None
+    health_pct: float | None = None
+    detail: str | None = None
 
 
 # ---------------------------------------------------------------------------

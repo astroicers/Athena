@@ -9,6 +9,7 @@ import aiosqlite
 from app.database import get_db
 from app.models import PentestGPTRecommendation
 from app.models.recommendation import TacticalOption
+from app.routers._deps import ensure_operation
 
 router = APIRouter()
 
@@ -29,12 +30,6 @@ def _row_to_recommendation(row: aiosqlite.Row) -> PentestGPTRecommendation:
     )
 
 
-async def _ensure_operation(db: aiosqlite.Connection, operation_id: str):
-    cursor = await db.execute("SELECT id FROM operations WHERE id = ?", (operation_id,))
-    if not await cursor.fetchone():
-        raise HTTPException(status_code=404, detail="Operation not found")
-
-
 @router.get(
     "/operations/{operation_id}/recommendations/latest",
     response_model=PentestGPTRecommendation | None,
@@ -44,7 +39,7 @@ async def get_latest_recommendation(
     db: aiosqlite.Connection = Depends(get_db),
 ):
     db.row_factory = aiosqlite.Row
-    await _ensure_operation(db, operation_id)
+    await ensure_operation(db, operation_id)
 
     cursor = await db.execute(
         "SELECT * FROM recommendations WHERE operation_id = ? "
@@ -67,7 +62,7 @@ async def accept_recommendation(
     db: aiosqlite.Connection = Depends(get_db),
 ):
     db.row_factory = aiosqlite.Row
-    await _ensure_operation(db, operation_id)
+    await ensure_operation(db, operation_id)
 
     cursor = await db.execute(
         "SELECT * FROM recommendations WHERE id = ? AND operation_id = ?",

@@ -3,20 +3,15 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
 import aiosqlite
 
 from app.database import get_db
 from app.models import C5ISRStatus
-from app.models.enums import C5ISRDomain, C5ISRDomainStatus
+from app.models.api_schemas import C5ISRUpdate
+from app.models.enums import C5ISRDomain
+from app.routers._deps import ensure_operation
 
 router = APIRouter()
-
-
-class C5ISRUpdate(BaseModel):
-    status: C5ISRDomainStatus | None = None
-    health_pct: float | None = None
-    detail: str | None = None
 
 
 def _row_to_c5isr(row: aiosqlite.Row) -> C5ISRStatus:
@@ -30,12 +25,6 @@ def _row_to_c5isr(row: aiosqlite.Row) -> C5ISRStatus:
     )
 
 
-async def _ensure_operation(db: aiosqlite.Connection, operation_id: str):
-    cursor = await db.execute("SELECT id FROM operations WHERE id = ?", (operation_id,))
-    if not await cursor.fetchone():
-        raise HTTPException(status_code=404, detail="Operation not found")
-
-
 @router.get(
     "/operations/{operation_id}/c5isr",
     response_model=list[C5ISRStatus],
@@ -45,7 +34,7 @@ async def list_c5isr(
     db: aiosqlite.Connection = Depends(get_db),
 ):
     db.row_factory = aiosqlite.Row
-    await _ensure_operation(db, operation_id)
+    await ensure_operation(db, operation_id)
 
     cursor = await db.execute(
         "SELECT * FROM c5isr_statuses WHERE operation_id = ?", (operation_id,)
@@ -65,7 +54,7 @@ async def update_c5isr(
     db: aiosqlite.Connection = Depends(get_db),
 ):
     db.row_factory = aiosqlite.Row
-    await _ensure_operation(db, operation_id)
+    await ensure_operation(db, operation_id)
 
     # Validate domain
     valid_domains = {d.value for d in C5ISRDomain}

@@ -1,11 +1,12 @@
 """Target and topology endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 import aiosqlite
 
 from app.database import get_db
 from app.models import Target
 from app.models.api_schemas import TopologyData, TopologyEdge, TopologyNode
+from app.routers._deps import ensure_operation
 
 router = APIRouter()
 
@@ -24,19 +25,13 @@ def _row_to_target(row: aiosqlite.Row) -> Target:
     )
 
 
-async def _ensure_operation(db: aiosqlite.Connection, operation_id: str):
-    cursor = await db.execute("SELECT id FROM operations WHERE id = ?", (operation_id,))
-    if not await cursor.fetchone():
-        raise HTTPException(status_code=404, detail="Operation not found")
-
-
 @router.get("/operations/{operation_id}/targets", response_model=list[Target])
 async def list_targets(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
     db.row_factory = aiosqlite.Row
-    await _ensure_operation(db, operation_id)
+    await ensure_operation(db, operation_id)
 
     cursor = await db.execute(
         "SELECT * FROM targets WHERE operation_id = ? ORDER BY hostname",
@@ -53,7 +48,7 @@ async def get_topology(
 ):
     """Build topology graph from targets and agents."""
     db.row_factory = aiosqlite.Row
-    await _ensure_operation(db, operation_id)
+    await ensure_operation(db, operation_id)
 
     # Targets → host nodes
     cursor = await db.execute(

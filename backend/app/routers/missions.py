@@ -9,6 +9,7 @@ import aiosqlite
 from app.database import get_db
 from app.models import MissionStep
 from app.models.api_schemas import MissionStepCreate, MissionStepUpdate
+from app.routers._deps import ensure_operation
 
 router = APIRouter()
 
@@ -27,12 +28,6 @@ def _row_to_step(row: aiosqlite.Row) -> MissionStep:
     )
 
 
-async def _ensure_operation(db: aiosqlite.Connection, operation_id: str):
-    cursor = await db.execute("SELECT id FROM operations WHERE id = ?", (operation_id,))
-    if not await cursor.fetchone():
-        raise HTTPException(status_code=404, detail="Operation not found")
-
-
 @router.get(
     "/operations/{operation_id}/mission/steps",
     response_model=list[MissionStep],
@@ -42,7 +37,7 @@ async def list_mission_steps(
     db: aiosqlite.Connection = Depends(get_db),
 ):
     db.row_factory = aiosqlite.Row
-    await _ensure_operation(db, operation_id)
+    await ensure_operation(db, operation_id)
 
     cursor = await db.execute(
         "SELECT * FROM mission_steps WHERE operation_id = ? ORDER BY step_number",
@@ -63,7 +58,7 @@ async def create_mission_step(
     db: aiosqlite.Connection = Depends(get_db),
 ):
     db.row_factory = aiosqlite.Row
-    await _ensure_operation(db, operation_id)
+    await ensure_operation(db, operation_id)
 
     step_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
@@ -103,7 +98,7 @@ async def update_mission_step(
     db: aiosqlite.Connection = Depends(get_db),
 ):
     db.row_factory = aiosqlite.Row
-    await _ensure_operation(db, operation_id)
+    await ensure_operation(db, operation_id)
 
     cursor = await db.execute(
         "SELECT * FROM mission_steps WHERE id = ? AND operation_id = ?",
@@ -152,7 +147,7 @@ async def execute_mission(
 ):
     """STUB — Queue all mission steps for execution."""
     db.row_factory = aiosqlite.Row
-    await _ensure_operation(db, operation_id)
+    await ensure_operation(db, operation_id)
 
     cursor = await db.execute(
         "SELECT COUNT(*) AS cnt FROM mission_steps WHERE operation_id = ?",

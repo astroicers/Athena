@@ -3,12 +3,13 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 import aiosqlite
 
 from app.database import get_db
 from app.models import OODAIteration
 from app.models.api_schemas import OODATimelineEntry
+from app.routers._deps import ensure_operation
 
 router = APIRouter()
 
@@ -30,12 +31,6 @@ def _row_to_ooda(row: aiosqlite.Row) -> OODAIteration:
     )
 
 
-async def _ensure_operation(db: aiosqlite.Connection, operation_id: str):
-    cursor = await db.execute("SELECT id FROM operations WHERE id = ?", (operation_id,))
-    if not await cursor.fetchone():
-        raise HTTPException(status_code=404, detail="Operation not found")
-
-
 @router.post("/operations/{operation_id}/ooda/trigger", response_model=OODAIteration)
 async def trigger_ooda(
     operation_id: str,
@@ -43,7 +38,7 @@ async def trigger_ooda(
 ):
     """STUB — Create a new OODA iteration in observe phase."""
     db.row_factory = aiosqlite.Row
-    await _ensure_operation(db, operation_id)
+    await ensure_operation(db, operation_id)
 
     # Determine next iteration number
     cursor = await db.execute(
@@ -78,7 +73,7 @@ async def get_current_ooda(
     db: aiosqlite.Connection = Depends(get_db),
 ):
     db.row_factory = aiosqlite.Row
-    await _ensure_operation(db, operation_id)
+    await ensure_operation(db, operation_id)
 
     cursor = await db.execute(
         "SELECT * FROM ooda_iterations WHERE operation_id = ? "
@@ -97,7 +92,7 @@ async def get_ooda_history(
     db: aiosqlite.Connection = Depends(get_db),
 ):
     db.row_factory = aiosqlite.Row
-    await _ensure_operation(db, operation_id)
+    await ensure_operation(db, operation_id)
 
     cursor = await db.execute(
         "SELECT * FROM ooda_iterations WHERE operation_id = ? "
@@ -118,7 +113,7 @@ async def get_ooda_timeline(
 ):
     """Flatten iterations into per-phase timeline entries."""
     db.row_factory = aiosqlite.Row
-    await _ensure_operation(db, operation_id)
+    await ensure_operation(db, operation_id)
 
     cursor = await db.execute(
         "SELECT * FROM ooda_iterations WHERE operation_id = ? "

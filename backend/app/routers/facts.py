@@ -1,10 +1,11 @@
 """Fact endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 import aiosqlite
 
 from app.database import get_db
 from app.models import Fact
+from app.routers._deps import ensure_operation
 
 router = APIRouter()
 
@@ -23,19 +24,13 @@ def _row_to_fact(row: aiosqlite.Row) -> Fact:
     )
 
 
-async def _ensure_operation(db: aiosqlite.Connection, operation_id: str):
-    cursor = await db.execute("SELECT id FROM operations WHERE id = ?", (operation_id,))
-    if not await cursor.fetchone():
-        raise HTTPException(status_code=404, detail="Operation not found")
-
-
 @router.get("/operations/{operation_id}/facts", response_model=list[Fact])
 async def list_facts(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
     db.row_factory = aiosqlite.Row
-    await _ensure_operation(db, operation_id)
+    await ensure_operation(db, operation_id)
 
     cursor = await db.execute(
         "SELECT * FROM facts WHERE operation_id = ? ORDER BY collected_at DESC",

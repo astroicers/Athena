@@ -1,11 +1,11 @@
 "use client";
 
 const VARIANT_COLORS = {
-  default: "text-athena-accent",
-  success: "text-athena-success",
-  warning: "text-athena-warning",
-  error: "text-athena-error",
-  muted: "text-athena-text-secondary",
+  default: { text: "text-athena-accent", bg: "bg-athena-accent/10" },
+  success: { text: "text-athena-success", bg: "bg-athena-success/10" },
+  warning: { text: "text-athena-warning", bg: "bg-athena-warning/10" },
+  error: { text: "text-athena-error", bg: "bg-athena-error/10" },
+  muted: { text: "text-athena-text-secondary", bg: "bg-athena-text-secondary/10" },
 } as const;
 
 const SIZE_MAP = {
@@ -25,13 +25,13 @@ export function HexIcon({
   size = "md",
   variant = "default",
 }: HexIconProps) {
+  const { text, bg } = VARIANT_COLORS[variant];
   return (
     <div
-      className={`inline-flex items-center justify-center font-mono font-bold
-        ${SIZE_MAP[size]} ${VARIANT_COLORS[variant]}
-        bg-current/10 rounded-lg`}
+      className={`inline-flex items-center justify-center font-mono font-bold rounded-lg
+        ${SIZE_MAP[size]} ${text} ${bg}`}
     >
-      <span className="opacity-100">{icon}</span>
+      <span>{icon}</span>
     </div>
   );
 }

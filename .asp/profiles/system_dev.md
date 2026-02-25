@@ -38,11 +38,55 @@ Draft → Proposed → Accepted → Deprecated / Superseded by ADR-XXX
 ADR（為什麼）→ SDD（如何設計）→ TDD（驗證標準）→ BDD（業務確認）→ 實作 → 文件
 ```
 
-**允許的簡化路徑（需在回覆中說明）：**
+**Bug 修復流程：**
 
-- 緊急 Bug 修復：直接實作 → 測試 → 補 ADR（若涉及架構）
+| Bug 類型 | 流程 |
+|----------|------|
+| 非 trivial（跨模組、邏輯修正、行為變更） | `make spec-new TITLE="BUG-..."` → 分析 → TDD → 實作 → 文件 |
+| trivial（單行修復、typo、配置錯誤） | 直接修復，但需在回覆中說明豁免理由 |
+| 涉及架構決策 | 同上 + 補 ADR |
+
+**其他允許的簡化路徑（需在回覆中說明）：**
+
 - 原型驗證：實作 → 測試後補（標記 `tech-debt: test-pending`）
 - 明確小功能：可跳過 BDD，直接 TDD
+
+---
+
+## Pre-Implementation Gate
+
+修改原始碼（非 trivial）前，執行此檢查：
+
+```
+1. SPEC 確認
+   └── make spec-list
+       ├── 有對應 SPEC → 確認理解 Goal 和 Done When
+       └── 無對應 SPEC → make spec-new TITLE="..."
+           └── 至少填寫：Goal、Done When、Edge Cases
+
+2. ADR 確認（僅架構變更時）
+   └── make adr-list → 有相關 ADR 且為 Accepted → 繼續
+       └── 無相關 ADR → make adr-new TITLE="..."
+
+3. ADR↔SPEC 連動（僅涉及架構變更時）
+   └── ADR 狀態為 Accepted → 才能建立對應 SPEC
+       ├── SPEC「關聯 ADR」欄位必須填入 ADR-NNN
+       └── ADR 為 Draft → 先完成 ADR 審議，不建 SPEC、不寫生產代碼
+
+4. 回覆格式：
+   「SPEC-NNN（關聯 ADR-NNN）已確認/已建立，開始實作。」
+   或
+   「SPEC-NNN 已確認/已建立，無架構影響，開始實作。」
+   或
+   「trivial 修改，豁免 SPEC，理由：...」
+```
+
+**豁免路徑**（需在回覆中明確說明）：
+- trivial（單行/typo/配置）→ 直接修復，說明理由
+- 原型驗證 → 標記 `tech-debt: spec-pending`，24h 內補 SPEC
+
+> **技術執行**：此規則由 `.asp/hooks/enforce-workflow.sh` 透過 SPEC 存在性檢查技術輔助。
+> 修改原始碼時，Hook 會依據 docs/specs/ 的 SPEC 狀態顯示不同層級的提醒。
 
 ---
 

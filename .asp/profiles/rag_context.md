@@ -9,48 +9,39 @@
 
 ---
 
-## 查詢優先原則
-
-在 RAG 模式下，**回答任何專案相關問題前必須先查詢知識庫**：
+## 查詢決策流程
 
 ```
-收到問題
-  ↓
-屬於專案範疇？
-  ├── 否 → 參考 guardrail.md 處理
-  └── 是 → make rag-search Q="問題關鍵字"
-              ↓
-          找到相關文件？
-          ├── 是 → 引用來源後回答（標明文件路徑與相似度）
-          └── 否 → 說明「知識庫無此規格」並建議建立 SPEC 或 ADR
-```
+FUNCTION answer_project_question(question, project_scope, knowledge_base):
 
-**禁止**：在未查詢知識庫的情況下，從訓練記憶回答專案架構問題。
-原因：訓練記憶可能與當前 ADR 決策衝突。
+  // 範疇判斷 — 非專案問題委派 guardrail 處理
+  IF NOT question.is_within(project_scope):
+    RETURN CALL guardrail.handle_question(question)
 
----
+  // 查詢知識庫 — 回答前必須先查
+  results = EXECUTE("make rag-search Q='{question.keywords}'")
 
-## 引用格式
+  IF results.has_matches:
+    best = results.top(1)
+    RETURN format_answer(
+      content    = best.content,
+      source     = best.file_path,
+      similarity = best.score,
+      template   = "根據 {source}（相似度 {similarity}），{content}\n\n"
+                 + "來源：{source}（相似度 {similarity}）"
+    )
+  ELSE:
+    RETURN suggest_create(
+      message = "知識庫找不到相關規格",
+      options = [
+        "make spec-new TITLE='...'",
+        "make adr-new TITLE='...'"
+      ]
+    )
 
-查詢到內容後，回答必須標明來源：
-
-```
-根據 ADR-003（API 閘道選型，Accepted 2024-11-20），
-選擇 Kong 的原因是...
-
-來源：docs/adr/ADR-003-api-gateway.md（相似度 0.91）
-```
-
----
-
-## 知識庫缺失的處理
-
-```
-❌ 禁止：用訓練記憶猜測專案架構
-✅ 正確：「知識庫找不到相關規格，建議：
-         make spec-new TITLE="功能名稱"
-         或
-         make adr-new TITLE="決策標題"」
+  // ─── 不可違反的約束 ───
+  INVARIANT: never_use_training_memory_for(project_architecture)
+  // 原因：訓練記憶可能與當前 ADR 決策衝突
 ```
 
 ---

@@ -29,9 +29,14 @@
 3. **等待確認**（HITL: standard / strict 時）
 4. **自我驗收**：執行 Done When 清單並回報結果
 
+**無 SPEC 時的處理：**
+- 人類直接描述需求（非提供 SPEC）→ AI 主動建議 `make spec-new TITLE="..."` 並協助填寫
+- 至少確認 Goal 和 Done When 後再開始實作
+- 對話中可簡化為「口頭 SPEC」：AI 複述 Goal + Done When，人類確認後視為等效
+
 ---
 
-## HITL 等級
+## HITL 等級與暫停決策
 
 ```yaml
 hitl: minimal   # 僅副作用前暫停（適合熟悉任務）
@@ -39,11 +44,28 @@ hitl: standard  # 每個實作計畫需確認（預設）
 hitl: strict    # 每個檔案修改需確認（涉及生產/安全系統）
 ```
 
-**任何 HITL 等級下都必須暫停的情況：**
-- 刪除現有代碼（非新增）
-- 修改共用介面或 API 合約
-- 觸及 auth / crypto 相關模組
-- 版本發布（tag、publish）
+```
+FUNCTION should_pause(file_path, operation, hitl_level):
+
+  category = classify(file_path)
+
+  // 無條件暫停 — 任何 HITL 等級
+  UNCONDITIONAL_PAUSE = [
+    category == "sensitive",          // auth / crypto 相關模組
+    category == "interface",          // 共用介面或 API 合約
+    operation == "delete_existing",   // 刪除現有代碼（非新增）
+    operation IN ["tag", "publish"]   // 版本發布
+  ]
+  IF ANY(UNCONDITIONAL_PAUSE): RETURN MUST_ASK
+
+  // 條件暫停 — 依 HITL 等級
+  MATCH (category, hitl_level):
+    ("source", "standard") → RETURN ASK
+    ("source", "strict")   → RETURN ASK
+    ("test",   "strict")   → RETURN ASK
+    ("doc",    "strict")   → RETURN ASK
+    _                      → RETURN PASS
+```
 
 ---
 
@@ -74,13 +96,15 @@ hitl: strict    # 每個檔案修改需確認（涉及生產/安全系統）
 ## Rate Limit 保護
 
 ```
-觸發 Rate Limit 時：
-  → 切換至文件工作（寫 SPEC、更新 ADR）
-  → 此為有效利用等待時間，非浪費
+FUNCTION on_rate_limit():
 
-並行準備原則：
-  AI 執行 TASK-A 時，人類已在準備 TASK-B 的 SPEC。
-  TASK-A 完成 → 立刻丟入 TASK-B，無等待。
+  // 觸發 Rate Limit 時 → 切換至文件工作
+  SWITCH_TO document_tasks(["寫 SPEC", "更新 ADR", "整理文件"])
+  // 此為有效利用等待時間，非浪費
+
+  // 並行準備原則：
+  // AI 執行 TASK-A 時，人類已在準備 TASK-B 的 SPEC
+  // TASK-A 完成 → 立刻丟入 TASK-B，無等待
 ```
 
 使用 `make session-checkpoint NEXT="下一個任務描述"` 在切換前儲存進度。

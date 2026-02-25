@@ -53,18 +53,14 @@ locked_files:
     expires: 2025-01-15T12:00:00Z   # 超時自動解鎖
 ```
 
-### 解鎖規則
-
 ```bash
 make agent-unlock FILE=src/store/user.go   # 正常完成後解鎖
 make agent-lock-gc                          # 清理逾時鎖定（> 2 小時視為異常）
 ```
 
-**死鎖處理**：若 Worker crash 導致鎖未釋放，超過 `expires` 時間後 Orchestrator 自動執行 `agent-lock-gc`。
-
 ---
 
-## 事件 Hook
+## 事件 Hook 與驗證流程
 
 Worker 完成任務後，**禁止靜默完成**，必須觸發 Hook：
 
@@ -73,14 +69,34 @@ make agent-done TASK=TASK-001 STATUS=success
 make agent-done TASK=TASK-001 STATUS=failed REASON="測試未通過：TestUserCreate"
 ```
 
-Orchestrator 輪詢 `.agent-events/completed.jsonl`（每分鐘一次），收到事件後獨立驗證：
+Orchestrator 輪詢 `.agent-events/completed.jsonl`（每分鐘一次），收到事件後執行：
 
 ```
-收到 Worker Done 事件
-  ↓
-make test-filter FILTER=<task_scope>   # 不信任 Worker 自報
-  ├── 通過 → 解鎖文件 → 合併（需人工確認）
-  └── 失敗 → 重新指派 / escalate 給人類
+FUNCTION on_worker_done(event, lock_registry):
+  MAX_RETRIES = 2
+
+  task   = event.task_id
+  scope  = task.manifest.scope
+
+  // 獨立驗證 — 不信任 Worker 自報
+  test_result = EXECUTE("make test-filter FILTER={scope.filter}")
+
+  IF test_result.passed:
+    lock_registry.unlock(task.locked_files)
+    NOTIFY orchestrator("✅ {task} 驗證通過，待人工確認合併")
+    AWAIT human_confirm("merge")
+  ELSE:
+    IF task.retry_count < MAX_RETRIES:
+      task.retry_count += 1
+      reassign(task, reason = test_result.failures)
+    ELSE:
+      escalate_to_human(task,
+        reason  = "重試 {MAX_RETRIES} 次仍失敗",
+        details = test_result.failures)
+
+  // 死鎖處理：鎖超過 expires 時間 → 自動 gc
+  IF lock_registry.has_expired_locks():
+    EXECUTE("make agent-lock-gc")
 ```
 
 ---

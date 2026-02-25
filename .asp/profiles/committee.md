@@ -30,47 +30,46 @@ committee:
 
 ## 辯論流程
 
-### 啟動委員會
-
 ```
-觸發條件（任一）：
-- 使用者說「召開委員會」或「committee review」
-- 新建 ADR 且狀態為 Draft
-- 涉及跨模組的架構變動
+FUNCTION committee_debate(topic, roles, adr_template):
+
+  // ─── 觸發條件（任一即啟動）───
+  TRIGGER = [
+    user_says("召開委員會") OR user_says("committee review"),
+    new_adr AND adr.status == "Draft",
+    change.affects_multiple_modules()
+  ]
+
+  // ─── Round 1：各角色獨立陳述立場 ───
+  positions = {}
+  FOR role IN roles:
+    positions[role] = role.state_position(topic,
+      perspective = role.expertise,
+      constraint  = "必須提出至少 1 個其他角色未提及的觀點")
+
+  // 回音室偵測 — 第 1 輪即一致 = 沒有真正思考
+  IF all_positions_agree(positions):
+    INJECT devils_advocate(topic)
+    WARN "⚠️ 回音室警示：所有角色在第 1 輪就達成一致"
+
+  // ─── Round 2：質疑與回應 ───
+  challenges = {}
+  FOR role IN roles:
+    challenges[role] = role.challenge(positions,
+      rule = "質疑必須有具體技術依據，不可只說不同意")
+
+  // 回音室偵測 — Security 從未指出風險 = 異常
+  IF NOT challenges["security"].has_risk_concerns:
+    WARN "⚠️ 回音室警示：Security 角色從未指出任何風險"
+
+  // ─── Round 3：收斂與共識 ───
+  synthesis = roles["architect"].synthesize(positions, challenges)
+
+  IF synthesis.has_unresolved_tradeoffs:
+    synthesis.mark_for_human_decision(synthesis.tradeoffs)
+
+  RETURN fill_template(adr_template, synthesis)
 ```
-
-### 標準辯論輪次
-
-```
-第 1 輪：各角色獨立陳述立場
-  Architect：[從擴展性角度]...
-  Security：[從攻擊面角度]...
-  DevOps：[從部署角度]...
-  QA：[從可測試性角度]...
-
-第 2 輪：質疑與回應
-  各角色可對其他角色的論點提出質疑
-  規則：質疑必須有具體的技術依據，不可只說「我不同意」
-
-第 3 輪：收斂與共識
-  Architect 角色負責整合各方觀點，提出最終建議
-  若有根本分歧：明確標記 Trade-off，由人類決策者裁定
-
-輸出：ADR 草稿（自動填入 .asp/templates/ADR_Template.md）
-```
-
-### 防止回音室效應
-
-委員會辯論的品質指標：
-
-```
-✅ 健康的辯論：每個角色至少提出 1 個其他角色未提及的觀點
-✅ 健康的辯論：至少有 1 輪明確的意見衝突與解決
-❌ 回音室警示：所有角色在第 1 輪就達成一致（太快 = 沒有真正思考）
-❌ 回音室警示：Security 角色從未指出任何風險
-```
-
-若辯論進入回音室模式，必須主動扮演「魔鬼代言人（Devil's Advocate）」提出反對觀點。
 
 ---
 

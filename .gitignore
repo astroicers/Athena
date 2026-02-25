@@ -79,3 +79,12 @@ logs/
 # ====================================
 backend/data/*.db
 !backend/data/.gitkeep
+.rag/index/
+.guardrail/
+.agent-events/
+.agent-lock.yaml
+docs/session-log.md
+CLAUDE.md.pre-asp
+CLAUDE.md.pre-upgrade
+.asp-tmp/
+*.out

@@ -8,6 +8,7 @@
 
 - 精簡直接，省略開場白，進入技術核心
 - 多步驟任務前，先提供 Step-by-Step 計畫供確認
+- 修改原始碼前，先確認對應 SPEC 存在（詳見 system_dev.md「Pre-Implementation Gate」）
 - 副作用操作前，主動說明「等待確認」
 
 ---
@@ -34,9 +35,17 @@ publish / release / tag
 [Y] 確認執行 | 輸入其他說明調整計畫
 ```
 
+> **技術執行**：此規則由 `.asp/hooks/enforce-side-effects.sh` 透過 Claude Code Hooks 技術強制。
+> 即使 AI 忽略提示指令，Claude Code 仍會在執行前彈出原生確認對話框。
+
 ---
 
 ## 連帶修復
+
+修復 Bug 前：
+
+- **非 trivial Bug**（跨模組、邏輯修正、行為變更）→ 先 `make spec-new TITLE="BUG-..."` 建立 SPEC
+- **trivial Bug**（單行修復、typo、配置錯誤）→ 可直接修復，但需說明豁免理由
 
 修復 Bug 後：
 

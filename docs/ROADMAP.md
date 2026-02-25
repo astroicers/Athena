@@ -1,7 +1,7 @@
 # Athena — 開發路線圖
 
-> 版本：1.0 | 更新日期：2026-02-22
-> 狀態：Phase 0 完成 — 設計與架構
+> 版本：1.1 | 更新日期：2026-02-26
+> 狀態：Phase 0~6 完成 — Phase 7 文件撰寫進行中
 
 ---
 
@@ -9,7 +9,7 @@
 
 Athena 是一套 AI 驅動的 C5ISR 網路作戰指揮平台。本路線圖描述從設計到正式開源發佈的完整旅程。
 
-**目前進度**：全部 UI 設計（6 個 .pen 檔）、資料架構、專案結構已完成。尚無任何原始碼。
+**目前進度**：Phase 0~6 全部完成（設計、後端、前端、4 畫面、OODA 引擎、Docker 部署）。Phase 7.1 文件撰寫進行中。
 
 ---
 
@@ -48,9 +48,9 @@ Athena 是一套 AI 驅動的 C5ISR 網路作戰指揮平台。本路線圖描�
 
 ---
 
-## Phase 1：專案骨架 `待辦`
+## Phase 1：專案骨架 `完成`
 
-> 預估範圍：目錄結構、設定檔、.gitignore
+> 完成日期：2026-02-25 | SPEC-001
 
 ### 1.1 建立目錄骨架
 
@@ -85,9 +85,9 @@ Athena/
 
 ---
 
-## Phase 2：後端基礎 `待辦`
+## Phase 2：後端基礎 `完成`
 
-> 預估範圍：模型、資料庫、種子資料、核心 API
+> 完成日期：2026-02-25 | SPEC-002 / SPEC-003 / SPEC-004
 
 ### 2.1 Pydantic Models + Enums
 
@@ -130,9 +130,9 @@ Athena/
 
 ---
 
-## Phase 3：前端基礎 `待辦`
+## Phase 3：前端基礎 `完成`
 
-> 預估範圍：型別定義、佈局、API 整合
+> 完成日期：2026-02-26 | SPEC-005
 
 ### 3.1 TypeScript 型別
 
@@ -166,9 +166,9 @@ Athena/
 
 ---
 
-## Phase 4：畫面實作 `待辦`
+## Phase 4：畫面實作 `完成`
 
-> 預估範圍：4 個畫面，像素級對齊 .pen 設計稿
+> 完成日期：2026-02-26 | SPEC-006
 
 ### 4.1 C5ISR 指揮看板（`/c5isr`）— 主儀表板
 
@@ -208,9 +208,9 @@ Athena/
 
 ---
 
-## Phase 5：OODA 循環引擎 `待辦`
+## Phase 5：OODA 循環引擎 `完成`
 
-> 預估範圍：驅動整個平台的核心智慧循環
+> 完成日期：2026-02-26 | SPEC-007 / SPEC-008
 
 ### 5.1 服務層
 
@@ -236,9 +236,9 @@ Athena/
 
 ---
 
-## Phase 6：整合與 Demo 場景 `待辦`
+## Phase 6：整合與 Docker 部署 `完成`
 
-> 預估範圍：端對端「奪取 Domain Admin」完整演練
+> 完成日期：2026-02-26 | SPEC-009 / SPEC-010
 
 ### 6.1 Demo 流程：OP-2024-017「PHANTOM-EYE」
 
@@ -273,18 +273,18 @@ Athena/
 
 ---
 
-## Phase 7：文件與開源發佈 `待辦`
+## Phase 7：文件與開源發佈 `進行中`
 
-> 預估範圍：README、指南、授權、首次公開發佈
+> Phase 7.1 文件撰寫已完成 | Phase 7.2~7.4 待辦
 
 ### 7.1 文件撰寫
 
-- [ ] 重寫 `README.md` — 專案概覽、截圖、快速啟動
-- [ ] `docs/GETTING_STARTED.md` — 安裝與設定指南
-- [ ] `docs/ARCHITECTURE.md` — 高層系統架構圖
-- [ ] `docs/DEMO_WALKTHROUGH.md` — 逐步 Demo 指南
+- [x] 重寫 `README.md` — 專案概覽、截圖、快速啟動
+- [x] `docs/GETTING_STARTED.md` — 安裝與設定指南
+- [x] `docs/architecture.md` — 高層系統架構圖（Phase 0 已完成）
+- [x] `docs/DEMO_WALKTHROUGH.md` — 逐步 Demo 指南
 - [ ] `CONTRIBUTING.md` — 貢獻指南
-- [ ] `CHANGELOG.md` — 版本歷史
+- [x] `CHANGELOG.md` — 版本歷史
 
 ### 7.2 開源合規
 
@@ -370,13 +370,13 @@ Athena/
 
 ```
 Phase 0 ████████████████████ 完成
-Phase 1 ░░░░░░░░░░░░░░░░░░░░ 待辦
-Phase 2 ░░░░░░░░░░░░░░░░░░░░ 待辦
-Phase 3 ░░░░░░░░░░░░░░░░░░░░ 待辦（可與 Phase 2 並行）
-Phase 4 ░░░░░░░░░░░░░░░░░░░░ 待辦
-Phase 5 ░░░░░░░░░░░░░░░░░░░░ 待辦
-Phase 6 ░░░░░░░░░░░░░░░░░░░░ 待辦
-Phase 7 ░░░░░░░░░░░░░░░░░░░░ 待辦
+Phase 1 ████████████████████ 完成
+Phase 2 ████████████████████ 完成
+Phase 3 ████████████████████ 完成
+Phase 4 ████████████████████ 完成
+Phase 5 ████████████████████ 完成
+Phase 6 ████████████████████ 完成
+Phase 7 ██████░░░░░░░░░░░░░░ 進行中（7.1 文件完成）
 Phase 8 ░░░░░░░░░░░░░░░░░░░░ 未來
 ```
 
@@ -400,6 +400,10 @@ Phase 8 ░░░░░░░░░░░░░░░░░░░░ 未來
 
 ## 相關文件
 
+- [安裝指南](GETTING_STARTED.md) — 從零開始安裝與開發
+- [Demo 操作手冊](DEMO_WALKTHROUGH.md) — 6 步 OODA 循環 Demo
+- [系統架構](architecture.md) — 高層架構與 Mermaid 圖
 - [資料架構](architecture/data-architecture.md) — 模型、Schema、API、種子資料
 - [專案結構](architecture/project-structure.md) — 目錄佈局、各層職責
-- [CLAUDE.md](../CLAUDE.md) — 完整 AI 上下文文件
+- [CHANGELOG](../CHANGELOG.md) — 版本歷史（Phase 0~6）
+- [CLAUDE.md](../CLAUDE.md) — ASP 行為憲法

@@ -77,16 +77,7 @@ class OODAController:
         await db.commit()
 
         # Set operation status to active on first cycle
-        cursor2 = await db.execute(
-            "SELECT status FROM operations WHERE id = ?", (operation_id,),
-        )
-        op_row = await cursor2.fetchone()
-        if op_row and op_row["status"] == "planning":
-            await db.execute(
-                "UPDATE operations SET status = 'active' WHERE id = ?",
-                (operation_id,),
-            )
-            await db.commit()
+        await self._activate_if_planning(db, operation_id)
         await self._broadcast_phase(operation_id, OODAPhase.OBSERVE)
 
         # ── 1. OBSERVE ──
@@ -99,18 +90,6 @@ class OODAController:
         )
         await db.commit()
 
-        # Set operation status to active on first cycle
-        cursor2 = await db.execute(
-            "SELECT status FROM operations WHERE id = ?", (operation_id,),
-        )
-        op_row = await cursor2.fetchone()
-        if op_row and op_row["status"] == "planning":
-            await db.execute(
-                "UPDATE operations SET status = 'active' WHERE id = ?",
-                (operation_id,),
-            )
-            await db.commit()
-
         # ── 2. ORIENT ──
         await self._update_phase(db, operation_id, ooda_id, OODAPhase.ORIENT)
         logger.info("OODA[%s] Orient phase — calling PentestGPT", ooda_id[:8])
@@ -122,18 +101,6 @@ class OODAController:
         )
         await db.commit()
 
-        # Set operation status to active on first cycle
-        cursor2 = await db.execute(
-            "SELECT status FROM operations WHERE id = ?", (operation_id,),
-        )
-        op_row = await cursor2.fetchone()
-        if op_row and op_row["status"] == "planning":
-            await db.execute(
-                "UPDATE operations SET status = 'active' WHERE id = ?",
-                (operation_id,),
-            )
-            await db.commit()
-
         # ── 3. DECIDE ──
         await self._update_phase(db, operation_id, ooda_id, OODAPhase.DECIDE)
         logger.info("OODA[%s] Decide phase", ooda_id[:8])
@@ -144,18 +111,6 @@ class OODAController:
             (decide_summary[:1000], ooda_id),
         )
         await db.commit()
-
-        # Set operation status to active on first cycle
-        cursor2 = await db.execute(
-            "SELECT status FROM operations WHERE id = ?", (operation_id,),
-        )
-        op_row = await cursor2.fetchone()
-        if op_row and op_row["status"] == "planning":
-            await db.execute(
-                "UPDATE operations SET status = 'active' WHERE id = ?",
-                (operation_id,),
-            )
-            await db.commit()
 
         # ── 4. ACT ──
         await self._update_phase(db, operation_id, ooda_id, OODAPhase.ACT)
@@ -193,18 +148,6 @@ class OODAController:
         )
         await db.commit()
 
-        # Set operation status to active on first cycle
-        cursor2 = await db.execute(
-            "SELECT status FROM operations WHERE id = ?", (operation_id,),
-        )
-        op_row = await cursor2.fetchone()
-        if op_row and op_row["status"] == "planning":
-            await db.execute(
-                "UPDATE operations SET status = 'active' WHERE id = ?",
-                (operation_id,),
-            )
-            await db.commit()
-
         # ── 5. C5ISR UPDATE ──
         logger.info("OODA[%s] C5ISR update", ooda_id[:8])
         await self._c5isr.update(db, operation_id)
@@ -222,18 +165,6 @@ class OODAController:
             await db.execute(
                 "UPDATE operations SET success_rate = ? WHERE id = ?",
                 (rate, operation_id),
-            )
-            await db.commit()
-
-        # Set operation status to active on first cycle
-        cursor2 = await db.execute(
-            "SELECT status FROM operations WHERE id = ?", (operation_id,),
-        )
-        op_row = await cursor2.fetchone()
-        if op_row and op_row["status"] == "planning":
-            await db.execute(
-                "UPDATE operations SET status = 'active' WHERE id = ?",
-                (operation_id,),
             )
             await db.commit()
 
@@ -265,18 +196,6 @@ class OODAController:
             (phase.value, operation_id),
         )
         await db.commit()
-
-        # Set operation status to active on first cycle
-        cursor2 = await db.execute(
-            "SELECT status FROM operations WHERE id = ?", (operation_id,),
-        )
-        op_row = await cursor2.fetchone()
-        if op_row and op_row["status"] == "planning":
-            await db.execute(
-                "UPDATE operations SET status = 'active' WHERE id = ?",
-                (operation_id,),
-            )
-            await db.commit()
         await self._broadcast_phase(operation_id, phase)
 
     async def get_current(self, db: aiosqlite.Connection, operation_id: str) -> dict | None:
@@ -288,6 +207,21 @@ class OODAController:
         )
         row = await cursor.fetchone()
         return dict(row) if row else None
+
+    async def _activate_if_planning(
+        self, db: aiosqlite.Connection, operation_id: str
+    ):
+        """Set operation status to 'active' if currently 'planning'."""
+        cursor = await db.execute(
+            "SELECT status FROM operations WHERE id = ?", (operation_id,),
+        )
+        op_row = await cursor.fetchone()
+        if op_row and op_row["status"] == "planning":
+            await db.execute(
+                "UPDATE operations SET status = 'active' WHERE id = ?",
+                (operation_id,),
+            )
+            await db.commit()
 
     async def _update_phase(
         self, db: aiosqlite.Connection, operation_id: str,
@@ -302,18 +236,6 @@ class OODAController:
             (phase.value, operation_id),
         )
         await db.commit()
-
-        # Set operation status to active on first cycle
-        cursor2 = await db.execute(
-            "SELECT status FROM operations WHERE id = ?", (operation_id,),
-        )
-        op_row = await cursor2.fetchone()
-        if op_row and op_row["status"] == "planning":
-            await db.execute(
-                "UPDATE operations SET status = 'active' WHERE id = ?",
-                (operation_id,),
-            )
-            await db.commit()
         await self._broadcast_phase(operation_id, phase)
 
     async def _broadcast_phase(self, operation_id: str, phase: OODAPhase):

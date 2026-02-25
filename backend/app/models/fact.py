@@ -13,5 +13,5 @@ class Fact(BaseModel):
     source_technique_id: str | None = None
     source_target_id: str | None = None
     operation_id: str
-    score: int = 0
+    score: int = 1
     collected_at: datetime

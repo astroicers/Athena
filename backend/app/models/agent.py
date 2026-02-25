@@ -12,6 +12,6 @@ class Agent(BaseModel):
     status: AgentStatus
     privilege: str                      # "SYSTEM"
     last_beacon: datetime | None = None
-    beacon_interval_sec: int = 60
+    beacon_interval_sec: int = 5
     platform: str                       # "windows"
     operation_id: str

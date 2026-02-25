@@ -2,27 +2,46 @@
 
 /* ============================================
    Athena Design Tokens (CSS Custom Properties)
-   Populated from design system in later phases.
+   Mapped from athena-design-system.pen
    ============================================ */
 
 :root {
-  /* -- Colors -- */
-  /* --color-primary: ; */
-  /* --color-secondary: ; */
-  /* --color-accent: ; */
-  /* --color-background: ; */
-  /* --color-surface: ; */
-  /* --color-text: ; */
+  /* -- Background Colors -- */
+  --color-bg-primary: #0a0a1a;
+  --color-bg-surface: #1a1a2e;
+  --color-bg-elevated: #25253e;
+
+  /* -- Accent Colors -- */
+  --color-accent: #00d4ff;
+  --color-accent-hover: #33ddff;
+
+  /* -- Text Colors -- */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #a0a0b0;
+
+  /* -- Border -- */
+  --color-border: #2a2a4a;
+
+  /* -- Status Colors -- */
+  --color-success: #00ff88;
+  --color-warning: #ffaa00;
+  --color-error: #ff4444;
+  --color-critical: #ff0040;
+  --color-info: #00d4ff;
 
   /* -- Typography -- */
-  /* --font-sans: ; */
-  /* --font-mono: ; */
-
-  /* -- Spacing -- */
-  /* --spacing-unit: ; */
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+  --font-sans: "Inter", system-ui, sans-serif;
 
   /* -- Border Radius -- */
-  /* --radius-sm: ; */
-  /* --radius-md: ; */
-  /* --radius-lg: ; */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+}
+
+/* Global base styles */
+body {
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
 }

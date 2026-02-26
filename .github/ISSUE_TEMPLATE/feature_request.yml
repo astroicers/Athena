@@ -1,0 +1,69 @@
+name: Feature Request
+description: 提出新功能建議
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感謝您的建議！Athena 目前處於 POC 階段，我們優先考慮與 C5ISR / OODA 核心概念相關的功能。
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 問題描述 Problem Statement
+      description: 這個功能要解決什麼問題？
+      placeholder: "目前我在使用 Athena 時遇到..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: 建議方案 Proposed Solution
+      description: 您希望如何解決這個問題？
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 替代方案 Alternatives Considered
+      description: 您考慮過哪些替代方案？
+    validations:
+      required: false
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: 功能類別 Category
+      options:
+        - C5ISR Framework
+        - OODA Loop
+        - MITRE ATT&CK Integration
+        - Caldera Execution
+        - UI / UX
+        - API / Backend
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 建議優先級 Suggested Priority
+      options:
+        - POC 核心 (Core — needed for demo)
+        - 加分項 (Nice to have)
+        - 未來版本 (Future release)
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: 額外資訊 Additional Context
+      description: 任何有助於理解需求的額外資訊、截圖、參考連結等
+    validations:
+      required: false

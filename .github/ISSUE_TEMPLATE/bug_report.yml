@@ -1,0 +1,83 @@
+name: Bug Report
+description: 回報 Bug 或非預期行為
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感謝您花時間回報 Bug！請盡量提供完整資訊以利重現問題。
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 問題描述 Description
+      description: 清楚描述 Bug 的行為
+      placeholder: "當我執行 X 時，預期發生 Y，但實際發生 Z..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 重現步驟 Steps to Reproduce
+      description: 詳細列出重現問題的步驟
+      placeholder: |
+        1. 啟動服務 `make up`
+        2. 前往 http://localhost:3333/navigator
+        3. 點擊 ...
+        4. 觀察到 ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 預期行為 Expected Behavior
+      description: 預期應該發生什麼
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 實際行為 Actual Behavior
+      description: 實際發生了什麼
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: 受影響元件 Affected Component
+      options:
+        - Backend (FastAPI)
+        - Frontend (Next.js)
+        - Docker / Infrastructure
+        - OODA Loop Engine
+        - Caldera Integration
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 環境資訊 Environment
+      description: 請提供環境資訊
+      placeholder: |
+        - OS: Ubuntu 22.04 / macOS 14 / Windows 11 + WSL2
+        - Docker: 25.0.3
+        - Browser: Chrome 122
+        - Athena Version: v0.1.0
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日誌 / 截圖 Logs / Screenshots
+      description: 相關錯誤日誌或截圖
+      render: shell
+    validations:
+      required: false

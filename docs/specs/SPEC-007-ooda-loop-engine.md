@@ -249,16 +249,16 @@ class C5ISRMapper:
 
 ## ✅ 驗收標準（Done When）
 
-- [ ] `make test-filter FILTER=spec_007` 全數通過
-- [ ] `POST /api/operations/{id}/ooda/trigger` → 觸發完整 OODA 循環
-- [ ] Orient 階段：PentestGPT 回傳含 3 個 TacticalOption 的推薦
-- [ ] Decide 階段：LOW 風險技術自動通過、HIGH 風險技術標記需確認
-- [ ] Act 階段：Caldera client 被正確呼叫（或 mock）
-- [ ] `GET /api/operations/{id}/ooda/current` → 回傳正確的當前迭代狀態
-- [ ] WebSocket 推送 `ooda.phase`、`recommendation`、`execution.update` 事件
-- [ ] C5ISR 六域 health 在每次 OODA 迭代後更新
-- [ ] `MOCK_LLM=true` 時完整循環可在無 API key 下運行
-- [ ] `automation_mode=manual` 時所有決策需人工批准（`auto_approved=False`）
+- [x] `make test-filter FILTER=spec_007` 全數通過
+- [x] `POST /api/operations/{id}/ooda/trigger` → 觸發完整 OODA 循環
+- [x] Orient 階段：PentestGPT 回傳含 3 個 TacticalOption 的推薦
+- [x] Decide 階段：LOW 風險技術自動通過、HIGH 風險技術標記需確認
+- [x] Act 階段：Caldera client 被正確呼叫（或 mock）
+- [x] `GET /api/operations/{id}/ooda/current` → 回傳正確的當前迭代狀態
+- [x] WebSocket 推送 `ooda.phase`、`recommendation`、`execution.update` 事件
+- [x] C5ISR 六域 health 在每次 OODA 迭代後更新
+- [x] `MOCK_LLM=true` 時完整循環可在無 API key 下運行
+- [x] `automation_mode=manual` 時所有決策需人工批准（`auto_approved=False`）
 
 ---
 

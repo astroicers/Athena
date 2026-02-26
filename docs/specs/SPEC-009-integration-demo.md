@@ -175,16 +175,16 @@ GET /api/health
 
 ## ✅ 驗收標準（Done When）
 
-- [ ] `docker-compose up` + 開啟 `localhost:3000` → 種子資料自動載入，4 畫面渲染正確
-- [ ] 手動觸發 `POST /api/operations/{id}/ooda/trigger` → 完整 OODA 循環執行
-- [ ] 所有 7 種 WebSocket 事件可在 browser console 觀察到
-- [ ] `/c5isr` 的 OODA 指示器在循環中正確切換（observe → orient → decide → act）
-- [ ] `/c5isr` 的 RecommendCard 在 Orient 完成後更新
-- [ ] `/navigator` 的 MITRECell 在 execution.update 後變色
-- [ ] `/monitor` 的日誌串流在 log.new 事件後自動滾動
-- [ ] `/monitor` 的 Agent 信標在 agent.beacon 後閃爍
-- [ ] `GET /api/health` 回傳所有服務狀態
-- [ ] `MOCK_LLM=true` + 無 Caldera 下完整 Demo 可執行
+- [x] `docker-compose up` + 開啟 `localhost:3000` → 種子資料自動載入，4 畫面渲染正確
+- [x] 手動觸發 `POST /api/operations/{id}/ooda/trigger` → 完整 OODA 循環執行
+- [x] 所有 7 種 WebSocket 事件可在 browser console 觀察到
+- [x] `/c5isr` 的 OODA 指示器在循環中正確切換（observe → orient → decide → act）
+- [x] `/c5isr` 的 RecommendCard 在 Orient 完成後更新
+- [x] `/navigator` 的 MITRECell 在 execution.update 後變色
+- [x] `/monitor` 的日誌串流在 log.new 事件後自動滾動
+- [x] `/monitor` 的 Agent 信標在 agent.beacon 後閃爍
+- [x] `GET /api/health` 回傳所有服務狀態
+- [x] `MOCK_LLM=true` + 無 Caldera 下完整 Demo 可執行
 
 ---
 

@@ -22,24 +22,24 @@
 
 ### 7.2 開源合規
 
-- [ ] 選定授權條款（Apache 2.0 — 與核心平台一致）
-- [ ] 所有原始碼檔案加上 License Header
-- [ ] `LICENSE` 檔案放置於根目錄
-- [ ] `SECURITY.md` — 負責任揭露政策
-- [ ] `CONTRIBUTING.md` — 貢獻指南（開發環境設定、PR 流程、Coding Style）
-- [ ] 驗證 Shannon AGPL-3.0 API 隔離合規性（僅 HTTP 呼叫，無 import）
+- [x] 選定授權條款（Apache 2.0 — 與核心平台一致）
+- [x] 所有原始碼檔案加上 License Header
+- [x] `LICENSE` 檔案放置於根目錄
+- [x] `SECURITY.md` — 負責任揭露政策
+- [x] `CONTRIBUTING.md` — 貢獻指南（開發環境設定、PR 流程、Coding Style）
+- [x] 驗證 Shannon AGPL-3.0 API 隔離合規性（僅 HTTP 呼叫，無 import）
 
 ### 7.3 GitHub Repository
 
 - [ ] Repository 描述 + Topics 標籤（c5isr, mitre-attack, penetration-testing, ooda-loop, ai-security）
-- [ ] GitHub Actions CI（lint + type-check + build）
-- [ ] Issue 模板（Bug 回報、功能請求）
-- [ ] PR 模板
+- [x] GitHub Actions CI（lint + type-check + build）
+- [x] Issue 模板（Bug 回報、功能請求）
+- [x] PR 模板
 - [ ] README 截圖（4 個畫面 + 3D 拓樸）
 
 ### 7.4 首次發佈
 
-- [ ] 標記 `v0.1.0` — POC 版本
+- [x] 標記 `v0.1.0` — POC 版本
 - [ ] GitHub Release 含 Changelog（從 CHANGELOG.md 擷取）
 - [ ] Demo 影片 / GIF 展示 OODA 循環運作
 
@@ -55,14 +55,14 @@
 
 ## ✅ 驗收標準（Done When）
 
-- [ ] `LICENSE` 檔存在且為 Apache 2.0
-- [ ] `SECURITY.md` 存在，包含揭露流程
-- [ ] `CONTRIBUTING.md` 存在，包含開發設定步驟
-- [ ] 所有 `.py` 和 `.ts/.tsx` 檔案含 License Header
-- [ ] GitHub Actions CI 於 push 時自動執行
-- [ ] `git tag v0.1.0` 已建立
+- [x] `LICENSE` 檔存在且為 Apache 2.0
+- [x] `SECURITY.md` 存在，包含揭露流程
+- [x] `CONTRIBUTING.md` 存在，包含開發設定步驟
+- [x] 所有 `.py` 和 `.ts/.tsx` 檔案含 License Header
+- [x] GitHub Actions CI 於 push 時自動執行
+- [x] `git tag v0.1.0` 已建立
 - [ ] GitHub Release 頁面包含 Changelog 內容
-- [ ] 已更新 `CHANGELOG.md`
+- [x] 已更新 `CHANGELOG.md`
 
 ---
 

@@ -198,12 +198,12 @@ from .user import User
 
 ## ✅ 驗收標準（Done When）
 
-- [ ] `cd backend && python -c "from app.models import *; print('OK')"` — 成功
-- [ ] `cd backend && python -c "from app.models.enums import OODAPhase, C5ISRDomain; print(len(OODAPhase), len(C5ISRDomain))"` — 輸出 `4 6`
-- [ ] `cd backend && python -c "from app.models import Operation; o = Operation(id='test', code='OP-001', name='Test', codename='TEST', strategic_intent='test', status='active', current_ooda_phase='observe', created_at='2026-01-01T00:00:00', updated_at='2026-01-01T00:00:00'); print(o.model_dump())"` — 成功
-- [ ] `cd backend && python -c "from app.models import PentestGPTRecommendation, TacticalOption; print('TacticalOption fields:', list(TacticalOption.model_fields.keys()))"` — 印出 7 個欄位
-- [ ] 13 個 Enum class 全部繼承 `(str, Enum)`
-- [ ] 12 個 Model 檔案全部存在且可獨立 import
+- [x] `cd backend && python -c "from app.models import *; print('OK')"` — 成功
+- [x] `cd backend && python -c "from app.models.enums import OODAPhase, C5ISRDomain; print(len(OODAPhase), len(C5ISRDomain))"` — 輸出 `4 6`
+- [x] `cd backend && python -c "from app.models import Operation; o = Operation(id='test', code='OP-001', name='Test', codename='TEST', strategic_intent='test', status='active', current_ooda_phase='observe', created_at='2026-01-01T00:00:00', updated_at='2026-01-01T00:00:00'); print(o.model_dump())"` — 成功
+- [x] `cd backend && python -c "from app.models import PentestGPTRecommendation, TacticalOption; print('TacticalOption fields:', list(TacticalOption.model_fields.keys()))"` — 印出 7 個欄位
+- [x] 13 個 Enum class 全部繼承 `(str, Enum)`
+- [x] 12 個 Model 檔案全部存在且可獨立 import
 
 ---
 

@@ -236,14 +236,14 @@ docker-clean:
 
 ## ✅ 驗收標準（Done When）
 
-- [ ] `docker-compose up --build` — 30 秒內啟動成功
-- [ ] `curl http://localhost:8000/api/health` — 回傳 `{"status": "ok"}`
-- [ ] `curl http://localhost:8000/api/operations` — 回傳種子資料
-- [ ] 瀏覽器開啟 `http://localhost:3000` — 顯示 Athena C5ISR Board
-- [ ] `docker-compose down && docker-compose up` — 資料持久化（volume）
+- [x] `docker-compose up --build` — 30 秒內啟動成功
+- [x] `curl http://localhost:8000/api/health` — 回傳 `{"status": "ok"}`
+- [x] `curl http://localhost:8000/api/operations` — 回傳種子資料
+- [x] 瀏覽器開啟 `http://localhost:3000` — 顯示 Athena C5ISR Board
+- [x] `docker-compose down && docker-compose up` — 資料持久化（volume）
 - [ ] `docker images | grep athena` — backend 映像 < 500MB，frontend 映像 < 200MB
-- [ ] `docker-compose ps` — 兩個服務均為 healthy
-- [ ] `make up` / `make down` — Makefile 指令正常運作
+- [x] `docker-compose ps` — 兩個服務均為 healthy
+- [x] `make up` / `make down` — Makefile 指令正常運作
 
 ---
 

@@ -138,16 +138,16 @@ settings = Settings()
 
 ## ✅ 驗收標準（Done When）
 
-- [ ] `cd backend && python -c "from app.config import settings; print(settings.DATABASE_URL)"` — 成功
-- [ ] `cd backend && python -c "import asyncio; from app.database import init_db; asyncio.run(init_db())"` — 成功建表
-- [ ] `cd backend && python -m app.seed.demo_scenario` — 成功載入種子資料
-- [ ] `sqlite3 backend/data/athena.db ".tables"` — 顯示 12 張表
-- [ ] `sqlite3 backend/data/athena.db "SELECT count(*) FROM operations"` — 輸出 1
-- [ ] `sqlite3 backend/data/athena.db "SELECT count(*) FROM targets"` — 輸出 5
-- [ ] `sqlite3 backend/data/athena.db "SELECT count(*) FROM agents"` — 輸出 4
-- [ ] `sqlite3 backend/data/athena.db "SELECT count(*) FROM c5isr_statuses"` — 輸出 6
-- [ ] `sqlite3 backend/data/athena.db "SELECT domain, health_pct FROM c5isr_statuses ORDER BY domain"` — 6 筆正確值
-- [ ] `sqlite3 backend/data/athena.db "PRAGMA foreign_key_list(targets)"` — 顯示 operations 外鍵
+- [x] `cd backend && python -c "from app.config import settings; print(settings.DATABASE_URL)"` — 成功
+- [x] `cd backend && python -c "import asyncio; from app.database import init_db; asyncio.run(init_db())"` — 成功建表
+- [x] `cd backend && python -m app.seed.demo_scenario` — 成功載入種子資料
+- [x] `sqlite3 backend/data/athena.db ".tables"` — 顯示 12 張表
+- [x] `sqlite3 backend/data/athena.db "SELECT count(*) FROM operations"` — 輸出 1
+- [x] `sqlite3 backend/data/athena.db "SELECT count(*) FROM targets"` — 輸出 5
+- [x] `sqlite3 backend/data/athena.db "SELECT count(*) FROM agents"` — 輸出 4
+- [x] `sqlite3 backend/data/athena.db "SELECT count(*) FROM c5isr_statuses"` — 輸出 6
+- [ ] `sqlite3 backend/data/athena.db "SELECT domain, health_pct FROM c5isr_statuses ORDER BY domain"` — 6 筆正確值 — ⚠️ 實際值由 OODA 循環動態更新，與初始設計值不同
+- [x] `sqlite3 backend/data/athena.db "PRAGMA foreign_key_list(targets)"` — 顯示 operations 外鍵
 
 ---
 

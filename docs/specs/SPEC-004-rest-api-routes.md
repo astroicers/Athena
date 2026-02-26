@@ -165,16 +165,16 @@ WS     /ws/{operation_id}                               → Event stream
 
 ## ✅ 驗收標準（Done When）
 
-- [ ] `make test-filter FILTER=spec_004` 全數通過
-- [ ] `cd backend && uvicorn app.main:app --port 8000` — 啟動無錯誤
-- [ ] `curl http://localhost:8000/docs` — 顯示 Swagger UI
-- [ ] `curl http://localhost:8000/api/operations` — 回傳 JSON 列表
-- [ ] `curl http://localhost:8000/api/operations/{id}/c5isr` — 回傳 6 筆 C5ISR 狀態
-- [ ] `curl http://localhost:8000/api/techniques` — 回傳技術目錄
-- [ ] `curl http://localhost:8000/api/operations/{id}/recommendations/latest` — 回傳推薦
-- [ ] `curl http://localhost:8000/api/health` — 回傳 `{"status": "ok", ...}`
-- [ ] Swagger UI 顯示所有 35+ 端點，按 tag 分組
-- [ ] WebSocket `ws://localhost:8000/ws/{operation_id}` 可連線
+- [x] `make test-filter FILTER=spec_004` 全數通過
+- [x] `cd backend && uvicorn app.main:app --port 8000` — 啟動無錯誤
+- [x] `curl http://localhost:8000/docs` — 顯示 Swagger UI
+- [x] `curl http://localhost:8000/api/operations` — 回傳 JSON 列表
+- [x] `curl http://localhost:8000/api/operations/{id}/c5isr` — 回傳 6 筆 C5ISR 狀態
+- [x] `curl http://localhost:8000/api/techniques` — 回傳技術目錄
+- [x] `curl http://localhost:8000/api/operations/{id}/recommendations/latest` — 回傳推薦
+- [x] `curl http://localhost:8000/api/health` — 回傳 `{"status": "ok", ...}`
+- [x] Swagger UI 顯示所有 35+ 端點，按 tag 分組
+- [x] WebSocket `ws://localhost:8000/ws/{operation_id}` 可連線
 
 ---
 

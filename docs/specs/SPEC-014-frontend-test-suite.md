@@ -81,12 +81,12 @@
 
 ## ✅ 驗收標準（Done When）
 
-- [ ] `cd frontend && npm test` 全數通過（40+ tests, 0 failures）
-- [ ] `cd frontend && npm run test:coverage` 報告 > 50% 覆蓋率
-- [ ] `make test-frontend` 通過
-- [ ] `make test` 前後端皆通過
-- [ ] `make lint` 無 error
-- [ ] 已更新 `CHANGELOG.md` + `docs/ROADMAP.md`
+- [x] `cd frontend && npm test` 全數通過（40+ tests, 0 failures）
+- [x] `cd frontend && npm run test:coverage` 報告 > 50% 覆蓋率
+- [x] `make test-frontend` 通過
+- [x] `make test` 前後端皆通過
+- [x] `make lint` 無 error
+- [x] 已更新 `CHANGELOG.md` + `docs/ROADMAP.md`
 
 ---
 

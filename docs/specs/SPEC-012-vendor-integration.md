@@ -102,21 +102,21 @@ Mock 模式：
 
 ## ✅ 驗收標準（Done When）
 
-- [ ] `make vendor-init` 可成功 clone 兩個外部專案到 `~/vendor/`
-- [ ] `make caldera-up` 可啟動 Caldera Docker 容器
-- [ ] `make caldera-status` 可查看 Caldera 健康狀態與版本
-- [ ] `curl :8500/api/health` 在 mock 模式回報 `caldera: "mock"`
-- [ ] `curl :8500/api/health` 在真實模式回報 `caldera: "connected"` 或 `"unreachable"`
-- [ ] CalderaClient.execute() 有 3 次重試機制
-- [ ] CalderaClient.check_version() 可檢查版本相容性
-- [ ] Agent sync endpoint 在 mock 模式回傳 `synced: 0`
-- [ ] Agent sync endpoint 在真實模式可從 Caldera 同步 agents
-- [ ] `config.py` 已移除未使用的 `PENTESTGPT_API_URL` 和 `PENTESTGPT_MODEL`
-- [ ] `.env.example` 包含 Docker 網路說明
-- [ ] `infra/README.md` 包含 Caldera 管理指引
-- [ ] `make lint` 無 error
-- [ ] Demo runner 在 mock 模式仍正常執行
-- [ ] 已更新 `docs/architecture.md`
+- [x] `make vendor-init` 可成功 clone 兩個外部專案到 `~/vendor/`
+- [x] `make caldera-up` 可啟動 Caldera Docker 容器
+- [x] `make caldera-status` 可查看 Caldera 健康狀態與版本
+- [x] `curl :8500/api/health` 在 mock 模式回報 `caldera: "mock"`
+- [x] `curl :8500/api/health` 在真實模式回報 `caldera: "connected"` 或 `"unreachable"`
+- [x] CalderaClient.execute() 有 3 次重試機制
+- [x] CalderaClient.check_version() 可檢查版本相容性
+- [x] Agent sync endpoint 在 mock 模式回傳 `synced: 0`
+- [x] Agent sync endpoint 在真實模式可從 Caldera 同步 agents
+- [x] `config.py` 已移除未使用的 `PENTESTGPT_API_URL` 和 `PENTESTGPT_MODEL`
+- [x] `.env.example` 包含 Docker 網路說明
+- [x] `infra/README.md` 包含 Caldera 管理指引
+- [x] `make lint` 無 error
+- [x] Demo runner 在 mock 模式仍正常執行
+- [x] 已更新 `docs/architecture.md`
 
 ---
 

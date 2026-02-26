@@ -144,16 +144,16 @@
 
 ## ✅ 驗收標準（Done When）
 
-- [ ] `cd frontend && npm test` — 畫面元件測試全數通過
-- [ ] `/c5isr` — 4 張 KPI 卡片 + C5ISR 六域面板 + OODA 指示器 + 推薦卡 + 執行表 渲染正確
-- [ ] `/navigator` — ATT&CK 矩陣依 Tactic 分欄 + Kill Chain 進度 + 技術詳情面板 渲染正確
-- [ ] `/planner` — 任務步驟表 + OODA 時間軸 + 5 張主機卡片 渲染正確
-- [ ] `/monitor` — 3D 拓樸 + Agent 信標 + 即時日誌 + 威脅儀表 渲染正確
-- [ ] 3D 拓樸在 `/monitor` 載入後無 SSR 錯誤
-- [ ] 所有畫面的種子資料正確渲染（數值、狀態、色彩對映）
-- [ ] C5ISR 六域 health bar 顯示正確百分比（100%, 90%, 60%, 93%, 73%, 67%）
-- [ ] KPI 卡片顯示種子資料值（12 Agents、73% Success、47 Techniques、7.4 Threat）
-- [ ] 頁面切換無全頁重載（Next.js client-side navigation）
+- [x] `cd frontend && npm test` — 畫面元件測試全數通過
+- [x] `/c5isr` — 4 張 KPI 卡片 + C5ISR 六域面板 + OODA 指示器 + 推薦卡 + 執行表 渲染正確
+- [x] `/navigator` — ATT&CK 矩陣依 Tactic 分欄 + Kill Chain 進度 + 技術詳情面板 渲染正確
+- [x] `/planner` — 任務步驟表 + OODA 時間軸 + 5 張主機卡片 渲染正確
+- [x] `/monitor` — 3D 拓樸 + Agent 信標 + 即時日誌 + 威脅儀表 渲染正確
+- [x] 3D 拓樸在 `/monitor` 載入後無 SSR 錯誤
+- [x] 所有畫面的種子資料正確渲染（數值、狀態、色彩對映）
+- [ ] C5ISR 六域 health bar 顯示正確百分比（100%, 90%, 60%, 93%, 73%, 67%）— ⚠️ 實際值由 OODA 循環動態更新，與初始設計值不同
+- [x] KPI 卡片顯示種子資料值（12 Agents、73% Success、47 Techniques、7.4 Threat）
+- [x] 頁面切換無全頁重載（Next.js client-side navigation）
 
 ---
 

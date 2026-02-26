@@ -186,14 +186,14 @@ class MockCalderaClient(BaseEngineClient):
 
 ## ✅ 驗收標準（Done When）
 
-- [ ] `make test-filter FILTER=spec_008` 全數通過
-- [ ] `CalderaClient` 可呼叫 `execute()`、`get_status()`、`list_abilities()`、`is_available()`
-- [ ] `ShannonClient` 在 `SHANNON_URL=""` 時 `is_available()` 回傳 `False`
-- [ ] `MockCalderaClient` 回傳預錄的 T1595.001、T1003.001 結果
-- [ ] `CalderaClient.sync_agents()` 回傳標準化 Agent 列表
-- [ ] 所有 client 使用 `httpx.AsyncClient`（非同步）
-- [ ] 無任何 `import shannon` 或 `from shannon import` 語句（授權隔離）
-- [ ] mock 模式下完整 OODA 循環可執行（無需真實 Caldera）
+- [x] `make test-filter FILTER=spec_008` 全數通過
+- [x] `CalderaClient` 可呼叫 `execute()`、`get_status()`、`list_abilities()`、`is_available()`
+- [x] `ShannonClient` 在 `SHANNON_URL=""` 時 `is_available()` 回傳 `False`
+- [x] `MockCalderaClient` 回傳預錄的 T1595.001、T1003.001 結果
+- [x] `CalderaClient.sync_agents()` 回傳標準化 Agent 列表
+- [x] 所有 client 使用 `httpx.AsyncClient`（非同步）
+- [x] 無任何 `import shannon` 或 `from shannon import` 語句（授權隔離）
+- [x] mock 模式下完整 OODA 循環可執行（無需真實 Caldera）
 
 ---
 

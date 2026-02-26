@@ -206,15 +206,15 @@ export const RISK_COLORS = { low: "green", medium: "yellow", high: "orange", cri
 
 ## ✅ 驗收標準（Done When）
 
-- [ ] `cd frontend && npm test` — 前端基礎元件測試全數通過
-- [ ] `cd frontend && npm run dev` — 啟動成功
-- [ ] `localhost:3000` — 渲染含 Sidebar 的 App Shell
-- [ ] `localhost:3000` — 自動 redirect 至 `/c5isr`
-- [ ] Sidebar 顯示 4 個導航項目，當前頁面高亮
-- [ ] `frontend/src/types/index.ts` — 匯出所有 13 個 enum + 12 個 interface
-- [ ] `frontend/src/hooks/useWebSocket.ts` — 可建立 WebSocket 連線（console 無錯誤）
-- [ ] Button、Badge、StatusDot 等原子元件可在頁面中渲染
-- [ ] 頁面背景色為 `--color-bg-primary`（深色軍事主題）
+- [x] `cd frontend && npm test` — 前端基礎元件測試全數通過
+- [x] `cd frontend && npm run dev` — 啟動成功
+- [x] `localhost:3000` — 渲染含 Sidebar 的 App Shell
+- [x] `localhost:3000` — 自動 redirect 至 `/c5isr`
+- [x] Sidebar 顯示 4 個導航項目，當前頁面高亮
+- [x] `frontend/src/types/index.ts` — 匯出所有 13 個 enum + 12 個 interface
+- [x] `frontend/src/hooks/useWebSocket.ts` — 可建立 WebSocket 連線（console 無錯誤）
+- [x] Button、Badge、StatusDot 等原子元件可在頁面中渲染
+- [x] 頁面背景色為 `--color-bg-primary`（深色軍事主題）
 
 ---
 

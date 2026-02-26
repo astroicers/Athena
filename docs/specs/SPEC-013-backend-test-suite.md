@@ -84,13 +84,13 @@
 
 ## ✅ 驗收標準（Done When）
 
-- [ ] `make test-backend` 全數通過（40+ tests, 0 failures）
-- [ ] `make test-filter FILTER=spec_004` 通過
-- [ ] `make test-filter FILTER=spec_007` 通過
-- [ ] `make test-filter FILTER=spec_008` 通過
-- [ ] `make coverage` 報告 > 60% 覆蓋率
-- [ ] `make lint` 無 error
-- [ ] 已更新 `CHANGELOG.md`
+- [x] `make test-backend` 全數通過（40+ tests, 0 failures）
+- [x] `make test-filter FILTER=spec_004` 通過
+- [x] `make test-filter FILTER=spec_007` 通過
+- [x] `make test-filter FILTER=spec_008` 通過
+- [x] `make coverage` 報告 > 60% 覆蓋率
+- [x] `make lint` 無 error
+- [x] 已更新 `CHANGELOG.md`
 
 ---
 

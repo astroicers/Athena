@@ -1,5 +1,12 @@
 FROM python:3.11-slim
 
+LABEL org.opencontainers.image.title="Athena Backend" \
+      org.opencontainers.image.description="AI-driven C5ISR cyber operations command platform" \
+      org.opencontainers.image.url="https://github.com/astroicers/Athena" \
+      org.opencontainers.image.source="https://github.com/astroicers/Athena" \
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.version="0.1.0"
+
 WORKDIR /app
 
 # Copy dependency specifications first for better Docker cache

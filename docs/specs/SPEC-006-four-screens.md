@@ -144,6 +144,7 @@
 
 ## ✅ 驗收標準（Done When）
 
+- [ ] `cd frontend && npm test` — 畫面元件測試全數通過
 - [ ] `/c5isr` — 4 張 KPI 卡片 + C5ISR 六域面板 + OODA 指示器 + 推薦卡 + 執行表 渲染正確
 - [ ] `/navigator` — ATT&CK 矩陣依 Tactic 分欄 + Kill Chain 進度 + 技術詳情面板 渲染正確
 - [ ] `/planner` — 任務步驟表 + OODA 時間軸 + 5 張主機卡片 渲染正確

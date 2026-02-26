@@ -206,6 +206,7 @@ export const RISK_COLORS = { low: "green", medium: "yellow", high: "orange", cri
 
 ## ✅ 驗收標準（Done When）
 
+- [ ] `cd frontend && npm test` — 前端基礎元件測試全數通過
 - [ ] `cd frontend && npm run dev` — 啟動成功
 - [ ] `localhost:3000` — 渲染含 Sidebar 的 App Shell
 - [ ] `localhost:3000` — 自動 redirect 至 `/c5isr`

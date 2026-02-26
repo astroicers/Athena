@@ -18,8 +18,8 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends
 import aiosqlite
+from fastapi import APIRouter, Depends
 
 from app.config import settings
 from app.database import get_db

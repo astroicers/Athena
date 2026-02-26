@@ -16,8 +16,8 @@
 
 import json
 
-from fastapi import APIRouter, Depends, HTTPException
 import aiosqlite
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.database import get_db
 from app.models import Technique

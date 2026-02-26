@@ -153,5 +153,8 @@ class DecisionEngine:
             "auto_approved": False,
             "needs_confirmation": True,
             "needs_manual": False,
-            "reason": f"Risk ({technique_risk.value}) exceeds threshold ({risk_threshold}) — requires commander approval",
+            "reason": (
+                f"Risk ({technique_risk.value}) exceeds threshold ({risk_threshold})"
+                " — requires commander approval"
+            ),
         }

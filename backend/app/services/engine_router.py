@@ -21,8 +21,8 @@ from datetime import datetime, timezone
 import aiosqlite
 
 from app.clients import BaseEngineClient, ExecutionResult
-from app.ws_manager import WebSocketManager
 from app.services.fact_collector import FactCollector
+from app.ws_manager import WebSocketManager
 
 logger = logging.getLogger(__name__)
 

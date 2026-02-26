@@ -16,24 +16,24 @@
 
 import logging
 
-from fastapi import APIRouter, Depends
 import aiosqlite
+from fastapi import APIRouter, Depends
 
+from app.clients.caldera_client import CalderaClient
+from app.clients.mock_caldera_client import MockCalderaClient
+from app.clients.shannon_client import ShannonClient
 from app.config import settings
 from app.database import get_db
 from app.models import OODAIteration
 from app.models.api_schemas import OODATimelineEntry
 from app.routers._deps import ensure_operation
-from app.ws_manager import ws_manager
-from app.clients.mock_caldera_client import MockCalderaClient
-from app.clients.caldera_client import CalderaClient
-from app.clients.shannon_client import ShannonClient
-from app.services.fact_collector import FactCollector
-from app.services.orient_engine import OrientEngine
+from app.services.c5isr_mapper import C5ISRMapper
 from app.services.decision_engine import DecisionEngine
 from app.services.engine_router import EngineRouter
-from app.services.c5isr_mapper import C5ISRMapper
+from app.services.fact_collector import FactCollector
 from app.services.ooda_controller import OODAController
+from app.services.orient_engine import OrientEngine
+from app.ws_manager import ws_manager
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

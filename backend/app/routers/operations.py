@@ -18,11 +18,11 @@ import json
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
 import aiosqlite
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.database import get_db
-from app.models import Operation, C5ISRStatus, PentestGPTRecommendation
+from app.models import C5ISRStatus, Operation, PentestGPTRecommendation
 from app.models.api_schemas import (
     OperationCreate,
     OperationSummary,

@@ -19,8 +19,8 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-import httpx
 import aiosqlite
+import httpx
 
 from app.config import settings
 from app.ws_manager import WebSocketManager

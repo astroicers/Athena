@@ -14,8 +14,8 @@
 
 """Shared dependencies for router modules."""
 
-from fastapi import HTTPException
 import aiosqlite
+from fastapi import HTTPException
 
 
 async def ensure_operation(db: aiosqlite.Connection, operation_id: str) -> None:

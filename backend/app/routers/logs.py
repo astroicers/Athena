@@ -14,8 +14,8 @@
 
 """Log entry endpoints (paginated)."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query
 import aiosqlite
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.database import get_db
 from app.models import LogEntry

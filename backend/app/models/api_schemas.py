@@ -23,6 +23,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
+from .c5isr import C5ISRStatus
 from .enums import (
     AutomationMode,
     C5ISRDomainStatus,
@@ -34,12 +35,9 @@ from .enums import (
     RiskLevel,
     TechniqueStatus,
 )
-from .c5isr import C5ISRStatus
-from .enums import C5ISRDomainStatus
 from .log_entry import LogEntry
 from .operation import Operation
 from .recommendation import PentestGPTRecommendation
-
 
 # ---------------------------------------------------------------------------
 # Operation

@@ -186,6 +186,7 @@ class MockCalderaClient(BaseEngineClient):
 
 ## ✅ 驗收標準（Done When）
 
+- [ ] `make test-filter FILTER=spec_008` 全數通過
 - [ ] `CalderaClient` 可呼叫 `execute()`、`get_status()`、`list_abilities()`、`is_available()`
 - [ ] `ShannonClient` 在 `SHANNON_URL=""` 時 `is_available()` 回傳 `False`
 - [ ] `MockCalderaClient` 回傳預錄的 T1595.001、T1003.001 結果

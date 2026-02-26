@@ -249,6 +249,7 @@ class C5ISRMapper:
 
 ## ✅ 驗收標準（Done When）
 
+- [ ] `make test-filter FILTER=spec_007` 全數通過
 - [ ] `POST /api/operations/{id}/ooda/trigger` → 觸發完整 OODA 循環
 - [ ] Orient 階段：PentestGPT 回傳含 3 個 TacticalOption 的推薦
 - [ ] Decide 階段：LOW 風險技術自動通過、HIGH 風險技術標記需確認

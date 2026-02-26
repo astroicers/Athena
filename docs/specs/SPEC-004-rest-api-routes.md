@@ -165,6 +165,7 @@ WS     /ws/{operation_id}                               → Event stream
 
 ## ✅ 驗收標準（Done When）
 
+- [ ] `make test-filter FILTER=spec_004` 全數通過
 - [ ] `cd backend && uvicorn app.main:app --port 8000` — 啟動無錯誤
 - [ ] `curl http://localhost:8000/docs` — 顯示 Swagger UI
 - [ ] `curl http://localhost:8000/api/operations` — 回傳 JSON 列表

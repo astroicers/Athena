@@ -7,7 +7,24 @@
 
 ## [Unreleased]
 
-> Phase 7 完成 — v0.1.0 POC 發佈。
+### Phase 8：後端測試套件（SPEC-013）
+
+#### Added
+- `docs/specs/SPEC-013-backend-test-suite.md` — 後端測試套件規格書
+- `backend/tests/conftest.py` — 測試基礎設施（in-memory SQLite + 4 個 fixtures）
+- `backend/tests/test_spec_004_api.py` — 15 個 API smoke tests（health、operations CRUD、techniques、agents、C5ISR、logs、recommendations）
+- `backend/tests/test_spec_007_ooda_services.py` — 20 個 OODA 服務單元測試（DecisionEngine 7 + OrientEngine 3 + FactCollector 3 + C5ISRMapper 4 + OODAController 3）
+- `backend/tests/test_spec_008_clients.py` — 9 個執行引擎客戶端測試（MockCalderaClient 5 + ShannonClient 3 + CalderaClient 1）
+- `backend/pyproject.toml` — 新增 `pytest-cov` 依賴 + pytest asyncio_mode=auto 配置
+
+#### Changed
+- `docs/specs/SPEC-004-rest-api-routes.md` — Done When 加入 `make test-filter FILTER=spec_004`
+- `docs/specs/SPEC-007-ooda-loop-engine.md` — Done When 加入 `make test-filter FILTER=spec_007`
+- `docs/specs/SPEC-008-execution-engine-clients.md` — Done When 加入 `make test-filter FILTER=spec_008`
+
+#### Metrics
+- 44 個 pytest 測試全數通過（0.21s）
+- 程式碼覆蓋率：60%（`app/` 套件）
 
 ---
 

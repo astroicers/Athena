@@ -1,7 +1,7 @@
 # Athena — 開發路線圖
 
-> 版本：1.2 | 更新日期：2026-02-26
-> 狀態：Phase 0~7 完成 — v0.1.0 POC 發佈
+> 版本：1.3 | 更新日期：2026-02-26
+> 狀態：Phase 0~7 完成 — v0.1.0 POC 發佈 | Phase 8 測試套件進行中
 
 ---
 
@@ -322,43 +322,80 @@ Athena/
 
 ---
 
-## Phase 8：未來增強 `未來`
+## Phase 8：後端測試套件 `進行中`
+
+> 開始日期：2026-02-26 | SPEC-013
+
+### 8.0 測試基礎設施
+
+- [x] `backend/tests/conftest.py` — in-memory SQLite + 4 fixtures（tmp_db、seeded_db、client、mock_ws_manager）
+- [x] `backend/pyproject.toml` — pytest-cov 依賴 + asyncio_mode=auto 配置
+
+### 8.1 API Smoke Tests（SPEC-004）
+
+- [x] 15 個 API 端點 smoke tests — health、operations CRUD、techniques、targets、agents、facts、C5ISR、logs、recommendations、operation summary
+
+### 8.2 OODA Services 單元測試（SPEC-007）
+
+- [x] DecisionEngine（7 tests）— ADR-004 風險閾值規則：手動模式、低信心度、4 種風險等級
+- [x] OrientEngine（3 tests）— Mock 推薦驗證：結構、信心度、推薦技術
+- [x] FactCollector（3 tests）— 情報萃取：從 execution、空結果、摘要
+- [x] C5ISRMapper（4 tests）— 健康度映射：OPERATIONAL/DEGRADED/CRITICAL + 六域更新
+- [x] OODAController（3 tests）— 完整循環觸發、DB 記錄、階段更新
+
+### 8.3 Client Mock Tests（SPEC-008）
+
+- [x] MockCalderaClient（5 tests）— execute 已知/未知技術、get_status、list_abilities、is_available
+- [x] ShannonClient（3 tests）— disabled 狀態、execute 拋出異常、get_status
+- [x] CalderaClient（1 test）— 結構驗證（check_version、sync_agents 可呼叫）
+
+### 8.4 測試指標
+
+- [x] 44 個 pytest 測試全數通過（0.21s）
+- [x] `make test-filter FILTER=spec_004` — 15 passed
+- [x] `make test-filter FILTER=spec_007` — 20 passed
+- [x] `make test-filter FILTER=spec_008` — 9 passed
+- [x] 程式碼覆蓋率 60%（`app/` 套件）
+
+---
+
+## Phase 9：未來增強 `未來`
 
 > POC 之後的產品成熟功能
 
-### 8.1 多作戰支援
+### 9.1 多作戰支援
 
 - [ ] Sidebar 中的作戰列表 / 切換器
 - [ ] 每個作戰獨立的 OODA 循環
 - [ ] 跨作戰情報共享
 
-### 8.2 進階拓樸
+### 9.2 進階拓樸
 
 - [ ] VR 模式（react-force-graph-vr）
 - [ ] 網路區段分組 / 叢集
 - [ ] 攻擊路徑重播 / 時間軸拉桿
 - [ ] 匯出拓樸為圖片 / 報告
 
-### 8.3 身份驗證與 RBAC
+### 9.3 身份驗證與 RBAC
 
 - [ ] 使用者驗證（JWT）
 - [ ] 角色權限：指揮官 / 操作員 / 觀察員
 - [ ] 稽核日誌（誰在何時批准了什麼）
 
-### 8.4 報告產出
+### 9.4 報告產出
 
 - [ ] 自動產生滲透測試報告（PDF）
 - [ ] MITRE ATT&CK 覆蓋率熱力圖匯出
 - [ ] AI 輔助的高層摘要產生
 
-### 8.5 額外整合
+### 9.5 額外整合
 
 - [ ] BloodHound 整合（AD 攻擊路徑）
 - [ ] Nmap / Masscan 輸出匯入
 - [ ] Cobalt Strike / Havoc C2 連接器
 - [ ] Slack / Teams 關鍵事件通知
 
-### 8.6 正式環境強化
+### 9.6 正式環境強化
 
 - [ ] PostgreSQL 遷移（從 SQLite）
 - [ ] Redis 用於 WebSocket pub/sub
@@ -379,7 +416,8 @@ Athena/
 | **5** | OODA 循環引擎 | AI 驅動決策循環 | Phase 4 |
 | **6** | 整合與 Demo | 端對端 Demo 場景 | Phase 5 |
 | **7** | 開源發佈 | 文件 + CI + v0.1.0 標記 | Phase 6 |
-| **8** | 未來增強 | 多作戰、VR、身份驗證、報告 | Phase 7 |
+| **8** | 後端測試套件 | 44 pytest 測試 + 60% 覆蓋率 | Phase 7 |
+| **9** | 未來增強 | 多作戰、VR、身份驗證、報告 | Phase 8 |
 
 ```
 Phase 0 ████████████████████ 完成
@@ -390,7 +428,8 @@ Phase 4 ████████████████████ 完成
 Phase 5 ████████████████████ 完成
 Phase 6 ████████████████████ 完成
 Phase 7 ████████████████████ 完成 ← v0.1.0 POC Release
-Phase 8 ░░░░░░░░░░░░░░░░░░░░ 未來
+Phase 8 ████████████████████ 完成 ← 44 pytest tests, 60% coverage
+Phase 9 ░░░░░░░░░░░░░░░░░░░░ 未來
 ```
 
 ---

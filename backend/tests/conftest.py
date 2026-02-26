@@ -89,12 +89,12 @@ _SEED_STATEMENTS: list[str] = [
     """
     INSERT INTO c5isr_statuses (id, operation_id, domain, status, health_pct)
     VALUES
-        ('c5-cmd',   'test-op-1', 'command',   'OPERATIONAL', 95.0),
-        ('c5-ctrl',  'test-op-1', 'control',   'ACTIVE',      88.0),
-        ('c5-comms', 'test-op-1', 'comms',     'NOMINAL',     78.0),
-        ('c5-comp',  'test-op-1', 'computers', 'ENGAGED',     70.0),
-        ('c5-cyber', 'test-op-1', 'cyber',     'SCANNING',    55.0),
-        ('c5-isr',   'test-op-1', 'isr',       'DEGRADED',    40.0);
+        ('c5-cmd',   'test-op-1', 'command',   'operational', 95.0),
+        ('c5-ctrl',  'test-op-1', 'control',   'active',      88.0),
+        ('c5-comms', 'test-op-1', 'comms',     'nominal',     78.0),
+        ('c5-comp',  'test-op-1', 'computers', 'engaged',     70.0),
+        ('c5-cyber', 'test-op-1', 'cyber',     'scanning',    55.0),
+        ('c5-isr',   'test-op-1', 'isr',       'degraded',    40.0);
     """,
 ]
 

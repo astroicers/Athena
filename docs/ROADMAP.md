@@ -1,7 +1,7 @@
 # Athena — 開發路線圖
 
-> 版本：1.3 | 更新日期：2026-02-26
-> 狀態：Phase 0~7 完成 — v0.1.0 POC 發佈 | Phase 8 測試套件進行中
+> 版本：1.4 | 更新日期：2026-02-26
+> 狀態：Phase 0~8.5 完成 — v0.1.0 POC 發佈 | 84 個測試（44 pytest + 40 Vitest）
 
 ---
 
@@ -9,7 +9,7 @@
 
 Athena 是一套 AI 驅動的 C5ISR 網路作戰指揮平台。本路線圖描述從設計到正式開源發佈的完整旅程。
 
-**目前進度**：Phase 0~7 全部完成。v0.1.0 POC 版本已發佈（設計、後端、前端、4 畫面、OODA 引擎、Docker 部署、文件、開源合規、CI）。
+**目前進度**：Phase 0~8.5 全部完成。v0.1.0 POC 版本已發佈。後端 44 pytest（60% 覆蓋率）+ 前端 40 Vitest 測試全數通過。
 
 ---
 
@@ -322,9 +322,9 @@ Athena/
 
 ---
 
-## Phase 8：後端測試套件 `進行中`
+## Phase 8：後端測試套件 `完成`
 
-> 開始日期：2026-02-26 | SPEC-013
+> 完成日期：2026-02-26 | SPEC-013
 
 ### 8.0 測試基礎設施
 
@@ -356,6 +356,49 @@ Athena/
 - [x] `make test-filter FILTER=spec_007` — 20 passed
 - [x] `make test-filter FILTER=spec_008` — 9 passed
 - [x] 程式碼覆蓋率 60%（`app/` 套件）
+
+---
+
+## Phase 8.5：前端測試套件 `完成`
+
+> 完成日期：2026-02-26 | SPEC-014
+
+### 8.5.0 測試基礎設施
+
+- [x] `frontend/vitest.config.ts` — Vitest 配置（jsdom + @vitejs/plugin-react + vite-tsconfig-paths）
+- [x] `frontend/src/test/setup.ts` — @testing-library/jest-dom 全域設定
+- [x] `frontend/package.json` — 8 個 devDependencies + test/test:watch/test:coverage scripts
+
+### 8.5.1 API 工具函式測試
+
+- [x] 7 個測試 — toSnakeCase（simple + nested + array + primitives）、fromApiResponse（simple + nested）、api.get（mock fetch）
+
+### 8.5.2 元件測試（28 tests）
+
+- [x] Atom 元件（12 tests）— Button 3 + Toggle 3 + Badge 2 + StatusDot 1 + ProgressBar 2 + HexIcon 1
+- [x] Card 元件（4 tests）— MetricCard 2 + TechniqueCard 1 + RecommendCard 1
+- [x] Data 元件（4 tests）— DataTable 3 + LogEntryRow 1
+- [x] Modal 元件（3 tests）— HexConfirmModal（hidden + visible + critical double confirm）
+- [x] OODA 元件（2 tests）— OODAIndicator 1 + OODATimeline 1
+- [x] MITRE 元件（1 test）— MITRECell
+- [x] C5ISR 元件（1 test）— DomainCard
+- [x] Nav 元件（1 test）— TabBar
+
+### 8.5.3 Hook 測試（5 tests）
+
+- [x] useOperation（2 tests）— fetches data + loading state
+- [x] useOODA（2 tests）— null initial + phase update on event
+- [x] useLiveLog（1 test）— empty array initially
+
+### 8.5.4 CI 整合
+
+- [x] `.github/workflows/ci.yml` — frontend job 加入 `npm test` 步驟
+- [x] `make test-frontend` + `make test` 正常運作
+
+### 8.5.5 測試指標
+
+- [x] 40 個 Vitest 測試全數通過（1.55s）
+- [x] 21 個測試檔案涵蓋 API utils + 15 個元件 + 3 個 Hooks
 
 ---
 
@@ -417,7 +460,8 @@ Athena/
 | **6** | 整合與 Demo | 端對端 Demo 場景 | Phase 5 |
 | **7** | 開源發佈 | 文件 + CI + v0.1.0 標記 | Phase 6 |
 | **8** | 後端測試套件 | 44 pytest 測試 + 60% 覆蓋率 | Phase 7 |
-| **9** | 未來增強 | 多作戰、VR、身份驗證、報告 | Phase 8 |
+| **8.5** | 前端測試套件 | 40 Vitest 測試 + CI 整合 | Phase 8 |
+| **9** | 未來增強 | 多作戰、VR、身份驗證、報告 | Phase 8.5 |
 
 ```
 Phase 0 ████████████████████ 完成
@@ -428,8 +472,9 @@ Phase 4 ████████████████████ 完成
 Phase 5 ████████████████████ 完成
 Phase 6 ████████████████████ 完成
 Phase 7 ████████████████████ 完成 ← v0.1.0 POC Release
-Phase 8 ████████████████████ 完成 ← 44 pytest tests, 60% coverage
-Phase 9 ░░░░░░░░░░░░░░░░░░░░ 未來
+Phase 8   ████████████████████ 完成 ← 44 pytest tests, 60% coverage
+Phase 8.5 ████████████████████ 完成 ← 40 Vitest tests, 21 test files
+Phase 9   ░░░░░░░░░░░░░░░░░░░░ 未來
 ```
 
 ---

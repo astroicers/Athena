@@ -7,6 +7,35 @@
 
 ## [Unreleased]
 
+### Phase 8.5：前端測試套件（SPEC-014）
+
+#### Added
+- `docs/specs/SPEC-014-frontend-test-suite.md` — 前端測試套件規格書
+- `frontend/vitest.config.ts` — Vitest 配置（jsdom + react plugin + tsconfig paths）
+- `frontend/src/test/setup.ts` — @testing-library/jest-dom 全域設定
+- `frontend/src/lib/__tests__/api.test.ts` — 7 個 API 工具函式測試（toSnakeCase、fromApiResponse、api.get）
+- `frontend/src/components/atoms/__tests__/*.test.tsx` — 12 個原子元件測試（Button 3 + Toggle 3 + Badge 2 + StatusDot 1 + ProgressBar 2 + HexIcon 1）
+- `frontend/src/components/cards/__tests__/*.test.tsx` — 4 個卡片元件測試（MetricCard 2 + TechniqueCard 1 + RecommendCard 1）
+- `frontend/src/components/data/__tests__/*.test.tsx` — 4 個資料元件測試（DataTable 3 + LogEntryRow 1）
+- `frontend/src/components/modal/__tests__/HexConfirmModal.test.tsx` — 3 個模態元件測試（hidden/visible/critical double confirm）
+- `frontend/src/components/ooda/__tests__/*.test.tsx` — 2 個 OODA 元件測試（OODAIndicator 1 + OODATimeline 1）
+- `frontend/src/components/mitre/__tests__/MITRECell.test.tsx` — 1 個 MITRE 元件測試
+- `frontend/src/components/c5isr/__tests__/DomainCard.test.tsx` — 1 個 C5ISR 元件測試
+- `frontend/src/components/nav/__tests__/TabBar.test.tsx` — 1 個導覽元件測試
+- `frontend/src/hooks/__tests__/*.test.ts` — 5 個 Hook 測試（useOperation 2 + useOODA 2 + useLiveLog 1）
+
+#### Changed
+- `frontend/package.json` — 新增 8 個 devDependencies（vitest、@vitest/coverage-v8、jsdom、@testing-library/react、@testing-library/jest-dom、@testing-library/user-event、vite-tsconfig-paths、@vitejs/plugin-react）+ test scripts
+- `docs/specs/SPEC-005-frontend-foundation.md` — Done When 加入 `npm test` 要求
+- `docs/specs/SPEC-006-four-screens.md` — Done When 加入 `npm test` 要求
+- `.github/workflows/ci.yml` — frontend job 加入 `npm test` 步驟
+
+#### Metrics
+- 40 個 Vitest 測試全數通過（1.55s）
+- 21 個測試檔案覆蓋 API utils + 6 原子元件 + 3 卡片 + 2 資料 + 1 模態 + 2 OODA + 1 MITRE + 1 C5ISR + 1 導覽 + 3 Hooks
+
+---
+
 ### Phase 8：後端測試套件（SPEC-013）
 
 #### Added

@@ -7,6 +7,22 @@
 
 ## [Unreleased]
 
+### Phase 9.0：Caldera + LLM 真實整合修復
+
+#### Fixed
+- `orient_engine.py` — Anthropic API 版本從 `2023-06-01` 更新至 `2024-10-22`
+- `orient_engine.py` — OpenAI 模型從已棄用的 `gpt-4-turbo-preview` 改為 `gpt-4-turbo`（可設定）
+- `orient_engine.py` — Claude/OpenAI 回應空陣列安全存取（防止 IndexError）
+- `orient_engine.py` — LLM 回傳 markdown 包裹 JSON（\`\`\`json...\`\`\`）時自動剝離
+- `orient_engine.py` — LLM 回應缺少必要欄位時 fallback 至 mock（而非後續 dict 存取出錯）
+- `.env` — 新增 `MOCK_CALDERA=true` 和 `MOCK_LLM=true`（之前缺少導致 `make real-mode` 的 sed 無效）
+- `.env` — 移除從未被讀取的孤兒設定 `PENTESTGPT_API_URL` 和 `PENTESTGPT_MODEL`
+- `Makefile` — `real-mode` / `mock-mode` targets 改用 `grep -q + sed || echo append` 確保即使 `.env` 缺少行也能切換
+
+#### Added
+- `backend/app/config.py` — 新增 `OPENAI_MODEL` 設定（預設 `gpt-4-turbo`）
+- `backend/tests/test_integration_real_mode.py` — 8 個整合測試（4 LLM + 4 Caldera），無 API key 時自動跳過
+
 ### Phase 8.5：前端測試套件（SPEC-014）
 
 #### Added

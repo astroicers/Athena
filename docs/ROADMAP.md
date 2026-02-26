@@ -1,7 +1,7 @@
 # Athena — 開發路線圖
 
-> 版本：1.4 | 更新日期：2026-02-26
-> 狀態：Phase 0~8.5 完成 — v0.1.0 POC 發佈 | 84 個測試（44 pytest + 40 Vitest）
+> 版本：1.5 | 更新日期：2026-02-26
+> 狀態：Phase 0~9.0 完成 — v0.1.0 POC 發佈 | 92 個測試（52 pytest + 40 Vitest）
 
 ---
 
@@ -402,6 +402,35 @@ Athena/
 
 ---
 
+## Phase 9.0：Caldera + LLM 真實整合修復 `完成`
+
+> 完成日期：2026-02-26
+
+### 9.0.1 LLM API Bug 修復
+
+- [x] Anthropic API 版本更新（`2023-06-01` → `2024-10-22`）
+- [x] OpenAI 模型更新（`gpt-4-turbo-preview` → `gpt-4-turbo`，可設定）
+- [x] Claude/OpenAI 回應空陣列安全存取
+- [x] LLM 回傳 markdown 包裹 JSON 自動剝離
+- [x] LLM 回應缺少必要欄位時 graceful fallback
+
+### 9.0.2 模式切換修復
+
+- [x] `.env` 新增 `MOCK_CALDERA` / `MOCK_LLM` 行
+- [x] Makefile `real-mode` / `mock-mode` 改用 grep+sed+append 確保可靠
+- [x] 移除孤兒設定（`PENTESTGPT_API_URL`、`PENTESTGPT_MODEL`）
+- [x] 新增 `OPENAI_MODEL` 可設定項
+
+### 9.0.3 整合測試
+
+- [x] 4 個 LLM 整合測試（真實 Claude API 呼叫、markdown 剝離、欄位驗證）
+- [x] 4 個 Caldera 整合測試（health check、version、abilities、health endpoint）
+- [x] 無 API key 時自動 skip（CI 友善）
+
+**驗證**：`make real-mode` + 設定 API key → 真實 OODA Orient 階段可呼叫 Claude API
+
+---
+
 ## Phase 9：未來增強 `未來`
 
 > POC 之後的產品成熟功能
@@ -461,7 +490,8 @@ Athena/
 | **7** | 開源發佈 | 文件 + CI + v0.1.0 標記 | Phase 6 |
 | **8** | 後端測試套件 | 44 pytest 測試 + 60% 覆蓋率 | Phase 7 |
 | **8.5** | 前端測試套件 | 40 Vitest 測試 + CI 整合 | Phase 8 |
-| **9** | 未來增強 | 多作戰、VR、身份驗證、報告 | Phase 8.5 |
+| **9.0** | Caldera + LLM 整合修復 | 8 個 bug fix + 8 整合測試 | Phase 8.5 |
+| **9.x** | 未來增強 | 多作戰、VR、身份驗證、報告 | Phase 9.0 |
 
 ```
 Phase 0 ████████████████████ 完成
@@ -474,7 +504,8 @@ Phase 6 ████████████████████ 完成
 Phase 7 ████████████████████ 完成 ← v0.1.0 POC Release
 Phase 8   ████████████████████ 完成 ← 44 pytest tests, 60% coverage
 Phase 8.5 ████████████████████ 完成 ← 40 Vitest tests, 21 test files
-Phase 9   ░░░░░░░░░░░░░░░░░░░░ 未來
+Phase 9.0 ████████████████████ 完成 ← Caldera + LLM 真實整合修復
+Phase 9.x ░░░░░░░░░░░░░░░░░░░░ 未來
 ```
 
 ---

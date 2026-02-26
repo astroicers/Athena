@@ -16,6 +16,7 @@
 
 import json
 import logging
+import re
 import uuid
 from datetime import datetime, timezone
 
@@ -143,10 +144,28 @@ class OrientEngine:
         # Call LLM
         llm_response = await self._call_llm(prompt)
 
+        # Strip markdown code blocks if present (e.g. ```json ... ```)
+        cleaned = llm_response.strip()
+        md_match = re.match(r"```(?:json)?\s*\n?(.*?)\n?```", cleaned, re.DOTALL)
+        if md_match:
+            cleaned = md_match.group(1).strip()
+
         try:
-            parsed = json.loads(llm_response)
+            parsed = json.loads(cleaned)
         except json.JSONDecodeError:
-            logger.warning("LLM returned non-JSON, falling back to mock")
+            logger.warning("LLM returned non-JSON: %.200s", llm_response)
+            parsed = _MOCK_RECOMMENDATION
+
+        # Validate required fields
+        _required = ("situation_assessment", "recommended_technique_id", "confidence", "options")
+        if not all(k in parsed for k in _required):
+            logger.warning(
+                "LLM response missing required fields: %s",
+                [k for k in _required if k not in parsed],
+            )
+            parsed = _MOCK_RECOMMENDATION
+        elif not isinstance(parsed.get("options"), list) or len(parsed["options"]) < 1:
+            logger.warning("LLM response has no valid options, falling back to mock")
             parsed = _MOCK_RECOMMENDATION
 
         rec = await self._store_recommendation(db, operation_id, parsed)
@@ -244,7 +263,7 @@ class OrientEngine:
                 "https://api.anthropic.com/v1/messages",
                 headers={
                     "x-api-key": settings.ANTHROPIC_API_KEY,
-                    "anthropic-version": "2023-06-01",
+                    "anthropic-version": "2024-10-22",
                     "content-type": "application/json",
                 },
                 json={
@@ -256,7 +275,10 @@ class OrientEngine:
             )
             resp.raise_for_status()
             data = resp.json()
-            return data["content"][0]["text"]
+            content = data.get("content", [])
+            if not content:
+                raise ValueError("Empty content in Claude response")
+            return content[0]["text"]
 
     async def _call_openai(self, prompt: str) -> str:
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -267,7 +289,7 @@ class OrientEngine:
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": "gpt-4-turbo-preview",
+                    "model": settings.OPENAI_MODEL,
                     "max_tokens": 4000,
                     "temperature": 0.7,
                     "messages": [{"role": "user", "content": prompt}],
@@ -275,7 +297,10 @@ class OrientEngine:
             )
             resp.raise_for_status()
             data = resp.json()
-            return data["choices"][0]["message"]["content"]
+            choices = data.get("choices", [])
+            if not choices:
+                raise ValueError("Empty choices in OpenAI response")
+            return choices[0]["message"]["content"]
 
     async def _store_recommendation(
         self, db: aiosqlite.Connection, operation_id: str, parsed: dict

@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
     CLAUDE_MODEL: str = "claude-opus-4-20250514"
+    OPENAI_MODEL: str = "gpt-4-turbo"
     AUTOMATION_MODE: str = "semi_auto"
     RISK_THRESHOLD: str = "medium"
     LOG_LEVEL: str = "INFO"

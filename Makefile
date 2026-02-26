@@ -351,14 +351,14 @@ caldera-backup:  ## 備份 Caldera data volume
 
 real-mode:  ## .env 切為真實模式（MOCK_*=false）
 	@if [ ! -f .env ]; then cp .env.example .env; fi
-	@sed -i 's/^MOCK_CALDERA=.*/MOCK_CALDERA=false/' .env
-	@sed -i 's/^MOCK_LLM=.*/MOCK_LLM=false/' .env
+	@grep -q '^MOCK_CALDERA=' .env && sed -i 's/^MOCK_CALDERA=.*/MOCK_CALDERA=false/' .env || echo 'MOCK_CALDERA=false' >> .env
+	@grep -q '^MOCK_LLM=' .env && sed -i 's/^MOCK_LLM=.*/MOCK_LLM=false/' .env || echo 'MOCK_LLM=false' >> .env
 	@echo "✅ Real mode enabled. Restart Athena to apply."
 	@echo "   確認 Caldera 運行中: make caldera-status"
 	@echo "   確認 LLM API key 已設定: grep API_KEY .env"
 
 mock-mode:  ## .env 切為 mock 模式（MOCK_*=true）
 	@if [ ! -f .env ]; then cp .env.example .env; fi
-	@sed -i 's/^MOCK_CALDERA=.*/MOCK_CALDERA=true/' .env
-	@sed -i 's/^MOCK_LLM=.*/MOCK_LLM=true/' .env
+	@grep -q '^MOCK_CALDERA=' .env && sed -i 's/^MOCK_CALDERA=.*/MOCK_CALDERA=true/' .env || echo 'MOCK_CALDERA=true' >> .env
+	@grep -q '^MOCK_LLM=' .env && sed -i 's/^MOCK_LLM=.*/MOCK_LLM=true/' .env || echo 'MOCK_LLM=true' >> .env
 	@echo "✅ Mock mode enabled. Restart Athena to apply."

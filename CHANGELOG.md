@@ -7,13 +7,57 @@
 
 ## [Unreleased]
 
-> Phase 7.1 文件撰寫進行中。
+> Phase 7 完成 — v0.1.0 POC 發佈。
 
-### Added
+---
+
+## [0.7.0] — 2026-02-26
+
+### Phase 7：文件與開源發佈（SPEC-011 / SPEC-012）
+
+#### 7.1 文件撰寫
+
 - 重寫 `README.md`：專案首頁含架構圖、快速啟動、功能亮點、進度追蹤
 - 新增 `docs/GETTING_STARTED.md`：從零開始的安裝與開發指南
 - 新增 `docs/DEMO_WALKTHROUGH.md`：6 步 OODA 循環 Demo 操作手冊
 - 更新 `CHANGELOG.md`：補齊 Phase 1~6 所有變更紀錄
+
+#### 7.1.5 Vendor 整合（SPEC-012）
+
+- 新增 `infra/caldera/docker-compose.caldera.yml` — 獨立 Caldera Docker 配置
+- 新增 `infra/README.md` — 基礎設施管理指南（Caldera 操作、備份、版本相容性）
+- 新增 `infra/pentestgpt/README.md` — PentestGPT 研究參考說明
+- 修正 `health.py` — 真實 Caldera 連線檢查（G2）
+- 實作 `agents.py` sync — 真實 Agent 同步（G3 + G8）
+- 加入 `caldera_client.py` retry 邏輯 + 版本檢查（G4 + G7）
+- 清理 `config.py` — 移除未使用的 PentestGPT 設定（G9）
+- Makefile 新增 9 個 vendor 管理 targets
+
+#### 7.2 開源合規
+
+- 新增 `LICENSE` — Apache License 2.0 全文
+- 所有 48 個 Python 原始碼檔加入 14 行 Apache 2.0 License Header
+- 所有 54 個 TypeScript/TSX 原始碼檔加入 Apache 2.0 License Header
+- 新增 `CONTRIBUTING.md` — 貢獻指南（開發設定、程式碼規範、PR 流程）
+- 新增 `SECURITY.md` — 安全政策（漏洞揭露流程、範圍、時間表）
+- 更新 `backend/pyproject.toml` — 加入 license、description 欄位
+- 更新 `frontend/package.json` — 加入 license、description、repository 欄位
+- Shannon AGPL-3.0 合規驗證通過（僅 HTTP API 呼叫，無程式碼匯入）
+
+#### 7.3 GitHub Repository
+
+- 新增 `.github/workflows/ci.yml` — GitHub Actions CI（ruff lint + pytest + npm lint + build + docker）
+- 新增 `.github/ISSUE_TEMPLATE/bug_report.yml` — Bug 回報模板（YAML 表單）
+- 新增 `.github/ISSUE_TEMPLATE/feature_request.yml` — 功能請求模板
+- 新增 `.github/PULL_REQUEST_TEMPLATE.md` — PR 模板含 Checklist
+- 新增 `frontend/.eslintrc.json` — ESLint 配置（next/core-web-vitals）
+- Ruff lint 配置 + 自動修正 18 處 import 排序問題
+- Dockerfile 加入 OCI image labels（title、description、license、version）
+
+#### 7.4 首次發佈
+
+- 標記 `v0.1.0` — Athena POC Release
+- 新增 `scripts/add_license_headers.py` — License Header 批次新增工具
 
 ---
 
@@ -139,7 +183,8 @@
 
 ---
 
-[Unreleased]: https://github.com/astroicers/Athena/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/astroicers/Athena/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/astroicers/Athena/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/astroicers/Athena/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/astroicers/Athena/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/astroicers/Athena/compare/v0.3.0...v0.4.0

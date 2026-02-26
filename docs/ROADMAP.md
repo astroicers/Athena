@@ -1,7 +1,7 @@
 # Athena — 開發路線圖
 
-> 版本：1.1 | 更新日期：2026-02-26
-> 狀態：Phase 0~6 完成 — Phase 7 文件撰寫進行中
+> 版本：1.2 | 更新日期：2026-02-26
+> 狀態：Phase 0~7 完成 — v0.1.0 POC 發佈
 
 ---
 
@@ -9,7 +9,7 @@
 
 Athena 是一套 AI 驅動的 C5ISR 網路作戰指揮平台。本路線圖描述從設計到正式開源發佈的完整旅程。
 
-**目前進度**：Phase 0~6 全部完成（設計、後端、前端、4 畫面、OODA 引擎、Docker 部署）。Phase 7.1 文件撰寫進行中。
+**目前進度**：Phase 0~7 全部完成。v0.1.0 POC 版本已發佈（設計、後端、前端、4 畫面、OODA 引擎、Docker 部署、文件、開源合規、CI）。
 
 ---
 
@@ -273,39 +273,52 @@ Athena/
 
 ---
 
-## Phase 7：文件與開源發佈 `進行中`
+## Phase 7：文件與開源發佈 `完成`
 
-> Phase 7.1 文件撰寫已完成 | Phase 7.2~7.4 待辦
+> 完成日期：2026-02-26 | SPEC-011 / SPEC-012
 
 ### 7.1 文件撰寫
 
 - [x] 重寫 `README.md` — 專案概覽、截圖、快速啟動
 - [x] `docs/GETTING_STARTED.md` — 安裝與設定指南
-- [x] `docs/architecture.md` — 高層系統架構圖（Phase 0 已完成）
+- [x] `docs/architecture.md` — 高層系統架構圖
 - [x] `docs/DEMO_WALKTHROUGH.md` — 逐步 Demo 指南
-- [ ] `CONTRIBUTING.md` — 貢獻指南
+- [x] `CONTRIBUTING.md` — 貢獻指南
 - [x] `CHANGELOG.md` — 版本歷史
+
+### 7.1.5 Vendor 整合（SPEC-012）
+
+- [x] Caldera Docker 配置（`infra/caldera/docker-compose.caldera.yml`）
+- [x] 基礎設施管理文件（`infra/README.md`）
+- [x] Health endpoint 真實連線檢查
+- [x] Agent sync 實作
+- [x] CalderaClient retry + 版本檢查
+- [x] Makefile vendor 管理 targets
 
 ### 7.2 開源合規
 
-- [ ] 選定授權條款（MIT 或 Apache 2.0）
-- [ ] 所有原始碼檔加上 License Header
-- [ ] `SECURITY.md` — 負責任揭露政策
-- [ ] 驗證 Shannon AGPL-3.0 API 隔離合規性
+- [x] 選定授權條款 — Apache 2.0
+- [x] `LICENSE` — Apache License 2.0 全文
+- [x] 102 個原始碼檔加上 14 行 License Header（48 Python + 54 TypeScript）
+- [x] `SECURITY.md` — 負責任揭露政策
+- [x] 驗證 Shannon AGPL-3.0 API 隔離合規性 ✅
 
 ### 7.3 GitHub Repository
 
-- [ ] Repository 描述 + Topics 標籤
-- [ ] GitHub Actions CI（lint + test + build）
-- [ ] Issue 模板（Bug 回報、功能請求）
-- [ ] PR 模板
-- [ ] README 截圖（4 個畫面 + 3D 拓樸）
+- [x] GitHub Actions CI（ruff + pytest + npm lint + build + docker）
+- [x] Issue 模板（Bug 回報、功能請求）
+- [x] PR 模板
+- [x] ESLint 配置（next/core-web-vitals）
+- [x] Ruff 配置（py311, E/F/I rules）
+- [x] Dockerfile OCI image labels
+- [ ] Repository 描述 + Topics 標籤（需在 GitHub 設定）
+- [ ] README 截圖（需手動截圖）
 
 ### 7.4 首次發佈
 
-- [ ] 標記 `v0.1.0` — POC 版本
-- [ ] GitHub Release 含 Changelog
-- [ ] Demo 影片 / GIF 展示 OODA 循環運作
+- [x] 標記 `v0.1.0` — POC 版本
+- [ ] GitHub Release 含 Changelog（需 push 後在 GitHub 建立）
+- [ ] Demo 影片 / GIF 展示 OODA 循環運作（需手動錄製）
 
 ---
 
@@ -376,7 +389,7 @@ Phase 3 ████████████████████ 完成
 Phase 4 ████████████████████ 完成
 Phase 5 ████████████████████ 完成
 Phase 6 ████████████████████ 完成
-Phase 7 ██████░░░░░░░░░░░░░░ 進行中（7.1 文件完成）
+Phase 7 ████████████████████ 完成 ← v0.1.0 POC Release
 Phase 8 ░░░░░░░░░░░░░░░░░░░░ 未來
 ```
 

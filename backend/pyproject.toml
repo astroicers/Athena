@@ -1,6 +1,8 @@
 [project]
 name = "athena-backend"
 version = "0.1.0"
+description = "AI-driven C5ISR cyber operations command platform — backend"
+license = {text = "Apache-2.0"}
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.109.0",

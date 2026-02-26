@@ -304,25 +304,15 @@ if [ ! -f "docs/architecture.md" ]; then
     echo "✅ 已建立 docs/architecture.md"
 fi
 
-# 設定 Claude Code Hooks（技術強制 ASP 規則）
+# 設定 Claude Code Hooks（SessionStart: 清理危險 allow 規則）
 HOOKS_JSON='{
   "hooks": {
-    "PreToolUse": [
+    "SessionStart": [
       {
-        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.asp/hooks/enforce-side-effects.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.asp/hooks/enforce-workflow.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.asp/hooks/clean-allow-list.sh"
           }
         ]
       }
@@ -334,43 +324,47 @@ mkdir -p .claude
 
 if [ "$JQ_AVAILABLE" = true ]; then
     if [ -f ".claude/settings.json" ]; then
-        # 加法合併：保留使用者自訂 hooks，移除舊 ASP hooks 後加入新的
+        # 升級：移除舊版 ASP hooks（PreToolUse enforce-*），加入新版 SessionStart hook
         EXISTING=$(cat .claude/settings.json)
-        NEW_HOOKS=$(echo "$HOOKS_JSON" | jq '.hooks.PreToolUse')
-        echo "$EXISTING" | jq --argjson asp_hooks "$NEW_HOOKS" '
-            .hooks.PreToolUse = (
-                [(.hooks.PreToolUse // [])[] | select(
-                    (.hooks // []) | all(.command | test("enforce-(side-effects|workflow)\\.sh$") | not)
-                )] + $asp_hooks
-            )
+        echo "$EXISTING" | jq '
+            # 移除舊版 ASP PreToolUse hooks
+            .hooks.PreToolUse = [(.hooks.PreToolUse // [])[] | select(
+                (.hooks // []) | all(.command | test("enforce-(side-effects|workflow)\\.sh$") | not)
+            )] |
+            # 如果 PreToolUse 為空則移除
+            if (.hooks.PreToolUse | length) == 0 then del(.hooks.PreToolUse) else . end |
+            # 加入 SessionStart hook（移除舊的 ASP SessionStart hook 後加入）
+            .hooks.SessionStart = [
+                ((.hooks.SessionStart // [])[] | select(
+                    (.hooks // []) | all(.command | test("clean-allow-list\\.sh$") | not)
+                )),
+                {
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": "\"$CLAUDE_PROJECT_DIR\"/.asp/hooks/clean-allow-list.sh"
+                        }
+                    ]
+                }
+            ]
         ' > .claude/settings.json.tmp \
             && mv .claude/settings.json.tmp .claude/settings.json
-        echo "✅ 已將 ASP Hooks 合併至 .claude/settings.json（保留現有設定）"
+        echo "✅ 已將 ASP Hook 合併至 .claude/settings.json（SessionStart: 清理危險 allow 規則）"
     else
         echo "$HOOKS_JSON" | jq '.' > .claude/settings.json
-        echo "✅ 已建立 .claude/settings.json（含 ASP Hooks）"
+        echo "✅ 已建立 .claude/settings.json（含 ASP SessionStart Hook）"
     fi
 else
     if [ ! -f ".claude/settings.json" ]; then
         cat > .claude/settings.json << 'HOOKJSON'
 {
   "hooks": {
-    "PreToolUse": [
+    "SessionStart": [
       {
-        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.asp/hooks/enforce-side-effects.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.asp/hooks/enforce-workflow.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.asp/hooks/clean-allow-list.sh"
           }
         ]
       }
@@ -378,10 +372,28 @@ else
   }
 }
 HOOKJSON
-        echo "✅ 已建立 .claude/settings.json（含 ASP Hooks）"
+        echo "✅ 已建立 .claude/settings.json（含 ASP SessionStart Hook）"
     else
         echo "⚠️  .claude/settings.json 已存在且無 jq 可用，請手動加入 hooks 設定"
         echo "   參考：.asp/hooks/ 目錄內的腳本"
+    fi
+fi
+
+# --- 清理 settings.local.json 中的危險 allow 規則（安裝時執行一次）---
+if [ "$JQ_AVAILABLE" = true ] && [ -f ".claude/settings.local.json" ]; then
+    DANGEROUS_PATTERNS='git\s+rebase|git\s+push|docker\s+(push|deploy)|rm\s+-[a-z]*r|find\s+.*-delete'
+    BEFORE_COUNT=$(jq -r '[.permissions.allow // [] | .[] | select(startswith("Bash("))] | length' .claude/settings.local.json 2>/dev/null || echo 0)
+    jq --arg pattern "$DANGEROUS_PATTERNS" '
+      .permissions.allow = [
+        (.permissions.allow // [])[] |
+        select((startswith("Bash(") and test($pattern)) | not)
+      ]
+    ' .claude/settings.local.json > .claude/settings.local.json.tmp \
+        && mv .claude/settings.local.json.tmp .claude/settings.local.json
+    AFTER_COUNT=$(jq -r '[.permissions.allow // [] | .[] | select(startswith("Bash("))] | length' .claude/settings.local.json 2>/dev/null || echo 0)
+    REMOVED_COUNT=$((BEFORE_COUNT - AFTER_COUNT))
+    if [ "$REMOVED_COUNT" -gt 0 ]; then
+        echo "🔒 已從 allow list 移除 ${REMOVED_COUNT} 條危險規則（git rebase/push, docker push, rm -r 等）"
     fi
 fi
 

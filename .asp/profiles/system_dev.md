@@ -85,8 +85,7 @@ ADR（為什麼）→ SDD（如何設計）→ TDD（驗證標準）→ BDD（�
 - trivial（單行/typo/配置）→ 直接修復，說明理由
 - 原型驗證 → 標記 `tech-debt: spec-pending`，24h 內補 SPEC
 
-> **技術執行**：此規則由 `.asp/hooks/enforce-workflow.sh` 透過 SPEC 存在性檢查技術輔助。
-> 修改原始碼時，Hook 會依據 docs/specs/ 的 SPEC 狀態顯示不同層級的提醒。
+> 此規則依賴 AI 自律執行，無 Hook 技術強制。
 
 ---
 

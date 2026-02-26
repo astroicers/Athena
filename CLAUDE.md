@@ -1,7 +1,6 @@
 # AI-SOP-Protocol (ASP) — 行為憲法
 
-> 本專案遵循 ASP 協議。讀取順序：本區塊 → `.ai_profile` → 對應 `.asp/profiles/`（按需）
-> 鐵則與 Profile 對應表請見：.asp/profiles/global_core.md
+> 讀取順序：本檔案 → `.ai_profile` → 對應 `.asp/profiles/`（按需）
 
 ---
 
@@ -43,7 +42,7 @@ name:      your-project-name
 
 | 鐵則 | 說明 |
 |------|------|
-| **副作用防護** | `deploy / rm -rf / merge / rebase` 由 Hooks 技術強制攔截；`git push` 由內建權限系統確認 |
+| **副作用防護** | `rebase / rm -rf / docker push / git push` 等危險操作由 Claude Code 內建權限系統確認（SessionStart hook 自動清理 allow list） |
 | **不擅自推版** | 禁止未經人類明確同意執行 `git push`；必須先列出變更摘要並等待人類確認 |
 | **敏感資訊保護** | 禁止輸出任何 API Key、密碼、憑證，無論何種包裝方式 |
 | **Makefile 優先** | 有對應 make 目標時，禁止輸出原生長指令 |
@@ -58,7 +57,7 @@ name:      your-project-name
 | TDD：測試先於代碼 | 原型驗證階段，需標記 `tech-debt: test-pending` |
 | 非 trivial Bug 修復需建 SPEC | trivial（單行/typo/配置）可豁免，需說明理由 |
 | 文件同步更新 | 緊急修復可延後，但必須在 24h 內補文件 |
-| SPEC 先於原始碼修改 | trivial（單行/typo/配置）可豁免，需說明理由（由 Hook 技術提醒） |
+| SPEC 先於原始碼修改 | trivial（單行/typo/配置）可豁免，需說明理由 |
 | Bug 修復後 grep 全專案 | 確認為單點配置錯誤時可豁免 |
 
 ---
@@ -91,86 +90,14 @@ name:      your-project-name
 
 ---
 
-## 技術執行層（Hooks）
+## 技術執行層（Hooks + 內建權限）
 
-ASP 使用 Claude Code Hooks 技術強制執行鐵則，不依賴 AI 自律：
+ASP 使用 Claude Code 內建權限系統 + SessionStart Hook 保護危險操作：
 
-| Hook | 攔截對象 | 行為 |
-|------|---------|------|
-| `enforce-side-effects.sh` | deploy, rm -rf, merge, rebase, kubectl, docker push | deny 阻止執行，告知原因 |
-| `enforce-workflow.sh` | 原始碼修改（Edit/Write） | 依 HITL 等級 deny 攔截 + SPEC 存在性檢查 |
+| 機制 | 說明 |
+|------|------|
+| **內建權限系統** | 危險指令（git push/rebase, docker push, rm -rf 等）不在 allow list 中時，Claude Code 自動彈出「Allow this bash command?」確認框 |
+| **SessionStart Hook** | `clean-allow-list.sh` 每次 session 啟動時自動清理 allow list 中的危險規則，確保內建權限系統持續生效 |
 
-> Hooks 使用 `permissionDecision: "deny"` + `exit 2` 雙保險攔截（[GitHub #3514](https://github.com/anthropics/claude-code/issues/3514)）。
-> `git push` 不由 hook 攔截，改由 Claude Code 內建權限系統處理（VSCode 中顯示 GUI 確認框）。
-> 原因：hook `"ask"` 在 VSCode 中被忽略（[#13339](https://github.com/anthropics/claude-code/issues/13339)），`"deny"` 會截斷對話。
 > 設定檔位於 `.claude/settings.json`，hook 腳本位於 `.asp/hooks/`。
-
----
-
-# Athena — 專案上下文
-
-> **狀態**：POC 階段 — Phase 0~6 完成，Phase 7 文件撰寫進行中
-> **核心棧**：PentestGPT（情報）+ Caldera（執行）
-
-## 專案定位
-
-Athena 是 AI 驅動的 **C5ISR 網路作戰指揮平台**。不是滲透測試工具，而是軍事級指揮與決策平台。
-目標使用者：10+ 年紅隊經驗的軍事顧問 — 假設具備 MITRE ATT&CK 專業知識。
-
-## 三層智慧架構
-
-| 層級 | 元件 | 角色 | OODA 階段 |
-|------|------|------|-----------|
-| 戰略智慧 | OrientEngine（受 PentestGPT 啟發的 LLM 戰術分析） | 思考、分析、建議 | **Orient** — 核心創新 |
-| 決策智慧 | Athena 引擎 | 路由、編排、排序 | Decide |
-| 執行智慧 | Caldera (Apache 2.0) | 執行 MITRE 技術 | Act |
-| 執行智慧（選用） | Shannon (AGPL-3.0, **僅 API**) | AI 自適應執行 | Act |
-
-**關鍵**：Orient 階段是核心差異化，Shannon 是 POC 選用的。兩者都用 AI 但層級不同。
-
-**整合現狀**：OrientEngine 使用自製 LLM prompt 工程（Claude/GPT-4），受 PentestGPT 方法論啟發。
-PentestGPT 原始碼在 `~/vendor/PentestGPT/` 供研究參考，不直接 import（Python 3.12 vs 3.11 版本衝突）。
-Caldera 透過獨立 Docker 容器運行，Athena 的 `CalderaClient` 已完整實作 REST API v2 對接。
-
-## 技術棧
-
-- **後端**：Python 3.11 + FastAPI + SQLite + Pydantic
-- **前端**：Next.js 14 + React 18 + Tailwind v4
-- **3D 拓樸**：react-force-graph-3d + Three.js
-- **容器化**：Docker + docker-compose
-- **LLM**：Claude（主要）/ GPT-4（備用），預設 `MOCK_LLM=True`
-
-## 自動化模式
-
-半自動 + 手動覆寫。風險等級決定行為：
-- LOW → 自動執行 | MEDIUM → 排隊待批 | HIGH → HexConfirmModal | CRITICAL → 手動
-
-## 授權邊界（鐵則）
-
-- Athena 核心：Apache 2.0
-- PentestGPT：MIT — **可安全 import**
-- Caldera：Apache 2.0 — API 整合
-- Shannon：AGPL-3.0 — **僅限 API 呼叫，禁止 import 程式碼**
-
-## 詳細文件指引
-
-| 需要瞭解… | 請讀… |
-|-----------|-------|
-| 完整架構圖 | `docs/architecture.md` |
-| 資料模型 / Schema / API | `docs/architecture/data-architecture.md` |
-| 目錄結構 / 各層職責 | `docs/architecture/project-structure.md` |
-| 開發路線圖 / Phase 進度 | `docs/ROADMAP.md` |
-| Demo 操作手冊 | `docs/DEMO_WALKTHROUGH.md` |
-| 安裝設定 | `docs/GETTING_STARTED.md` |
-| 版本歷史 | `CHANGELOG.md` |
-| SPEC 規格書列表 | `make spec-list` |
-| ADR 決策記錄列表 | `make adr-list` |
-
-## AI 助手關鍵提醒
-
-1. **說中文** — 使用者以繁體中文溝通
-2. **PentestGPT 是核心** — Orient 階段是 Athena 創造價值之處
-3. **POC 範圍紀律** — 不過度設計，聚焦核心概念驗證
-4. **授權意識** — Shannon AGPL 僅 API 隔離，絕不 import
-5. **C5ISR 框架** — 所有功能映射至 Command/Control/Comms/Computers/Cyber/ISR
-6. **MITRE ATT&CK** — 共通語言，假設使用者已具備知識
+> 使用者可在確認框中選擇 "Allow"（一次性）或 "Always allow"（永久），但後者會在下次 session 啟動時被自動清理。

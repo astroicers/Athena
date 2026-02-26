@@ -18,25 +18,14 @@
 以下操作執行前，必須列出完整計畫並等待 `Y` / `Confirm`：
 
 ```
-git push / git merge / git rebase
-helm upgrade / kubectl apply / kubectl delete
-docker push / docker deploy
-rm -rf / find ... -delete
-publish / release / tag
+git rebase          # 內建權限系統確認（SessionStart hook 清理 allow list）
+docker push/deploy  # 內建權限系統確認（SessionStart hook 清理 allow list）
+rm -r* / find -delete  # 內建權限系統確認（SessionStart hook 清理 allow list）
+git push            # 內建權限系統確認（SessionStart hook 清理 allow list）
 ```
 
-**格式：**
-```
-🔒 副作用操作，請確認：
-
-  1. docker build -t api:v1.2.3 .
-  2. kubectl set image deployment/api api=api:v1.2.3
-
-[Y] 確認執行 | 輸入其他說明調整計畫
-```
-
-> **技術執行**：此規則由 `.asp/hooks/enforce-side-effects.sh` 透過 Claude Code Hooks 技術強制。
-> 即使 AI 忽略提示指令，Claude Code 仍會在執行前彈出原生確認對話框。
+> **技術執行**：Claude Code 內建權限系統對不在 allow list 的指令彈出「Allow this bash command?」確認框。
+> SessionStart hook（`clean-allow-list.sh`）每次 session 啟動時自動清理 allow list 中的危險規則。
 
 ---
 

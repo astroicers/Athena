@@ -45,26 +45,17 @@ hitl: strict    # 每個檔案修改需確認（涉及生產/安全系統）
 ```
 
 ```
-FUNCTION should_pause(file_path, operation, hitl_level):
+FUNCTION should_pause(operation, hitl_level):
 
-  category = classify(file_path)
+  // Bash 副作用指令 — 由 Claude Code 內建權限系統確認
+  // git rebase, docker push/deploy, rm -r*, find -delete, git push
+  // → 不依賴此決策樹，內建權限系統彈出確認框
 
-  // 無條件暫停 — 任何 HITL 等級
-  UNCONDITIONAL_PAUSE = [
-    category == "sensitive",          // auth / crypto 相關模組
-    category == "interface",          // 共用介面或 API 合約
-    operation == "delete_existing",   // 刪除現有代碼（非新增）
-    operation IN ["tag", "publish"]   // 版本發布
-  ]
-  IF ANY(UNCONDITIONAL_PAUSE): RETURN MUST_ASK
-
-  // 條件暫停 — 依 HITL 等級
-  MATCH (category, hitl_level):
-    ("source", "standard") → RETURN ASK
-    ("source", "strict")   → RETURN ASK
-    ("test",   "strict")   → RETURN ASK
-    ("doc",    "strict")   → RETURN ASK
-    _                      → RETURN PASS
+  // 檔案修改 — 依 HITL 等級（AI 自律）
+  MATCH hitl_level:
+    "minimal"  → RETURN PASS           // 信任 AI 判斷
+    "standard" → RETURN ASK            // 每個實作計畫需確認
+    "strict"   → RETURN MUST_ASK       // 每個檔案修改需確認
 ```
 
 ---

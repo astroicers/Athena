@@ -1,0 +1,28 @@
+# Caldera Docker Compose — 獨立於 Athena 主服務
+# 用途：啟動 MITRE Caldera 執行引擎
+# 使用：make caldera-up / make caldera-down
+#
+# 注意：此容器獨立於 Athena 的 docker-compose.yml
+# Athena backend 透過 HTTP API 與 Caldera 通訊
+
+services:
+  caldera:
+    image: ghcr.io/mitre/caldera:latest
+    container_name: athena-caldera
+    ports:
+      - "127.0.0.1:8888:8888"
+    volumes:
+      - caldera-data:/usr/src/app/data
+    environment:
+      - CALDERA_ADMIN_PWD=admin
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8888"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  caldera-data:
+    driver: local

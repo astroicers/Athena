@@ -121,12 +121,16 @@ Athena 是 AI 驅動的 **C5ISR 網路作戰指揮平台**。不是滲透測試�
 
 | 層級 | 元件 | 角色 | OODA 階段 |
 |------|------|------|-----------|
-| 戰略智慧 | PentestGPT (MIT) | 思考、分析、建議 | **Orient** — 核心創新 |
+| 戰略智慧 | OrientEngine（受 PentestGPT 啟發的 LLM 戰術分析） | 思考、分析、建議 | **Orient** — 核心創新 |
 | 決策智慧 | Athena 引擎 | 路由、編排、排序 | Decide |
 | 執行智慧 | Caldera (Apache 2.0) | 執行 MITRE 技術 | Act |
 | 執行智慧（選用） | Shannon (AGPL-3.0, **僅 API**) | AI 自適應執行 | Act |
 
-**關鍵**：PentestGPT 是必要的（核心差異化），Shannon 是 POC 選用的。兩者都用 AI 但層級不同。
+**關鍵**：Orient 階段是核心差異化，Shannon 是 POC 選用的。兩者都用 AI 但層級不同。
+
+**整合現狀**：OrientEngine 使用自製 LLM prompt 工程（Claude/GPT-4），受 PentestGPT 方法論啟發。
+PentestGPT 原始碼在 `~/vendor/PentestGPT/` 供研究參考，不直接 import（Python 3.12 vs 3.11 版本衝突）。
+Caldera 透過獨立 Docker 容器運行，Athena 的 `CalderaClient` 已完整實作 REST API v2 對接。
 
 ## 技術棧
 

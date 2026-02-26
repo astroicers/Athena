@@ -1,11 +1,15 @@
 """Health check endpoint."""
 
+import logging
+
 from fastapi import APIRouter, Depends
 import aiosqlite
 
 from app.config import settings
 from app.database import get_db
 from app.models.api_schemas import HealthStatus
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -22,8 +26,17 @@ async def health_check(db: aiosqlite.Connection = Depends(get_db)):
     except Exception:
         db_status = "error"
 
-    # Caldera status: mock mode or connected
-    caldera_status = "mock" if settings.MOCK_CALDERA else "connected"
+    # Caldera status: mock or real connectivity check
+    if settings.MOCK_CALDERA:
+        caldera_status = "mock"
+    else:
+        try:
+            from app.clients.caldera_client import CalderaClient
+            client = CalderaClient(settings.CALDERA_URL, settings.CALDERA_API_KEY)
+            caldera_status = "connected" if await client.is_available() else "unreachable"
+            await client.aclose()
+        except Exception:
+            caldera_status = "unreachable"
 
     # Shannon status: disabled by default (no SHANNON_URL set for POC)
     # If SHANNON_URL is configured, report disconnected (no live ping for POC)

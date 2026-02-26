@@ -1,14 +1,20 @@
 """MITRE Caldera REST API v2 client. License: Apache 2.0 (safe)."""
 
 import asyncio
+import logging
 import uuid
 
 import httpx
 
 from app.clients import BaseEngineClient, ExecutionResult
 
+logger = logging.getLogger(__name__)
+
 _POLL_INTERVAL = 2.0   # seconds between status checks
 _POLL_TIMEOUT = 120.0   # max seconds to wait for completion
+_MAX_RETRIES = 3
+_RETRY_BASE_DELAY = 1.0  # seconds, exponential backoff
+SUPPORTED_CALDERA_VERSIONS = ("4.", "5.")
 
 
 class CalderaClient(BaseEngineClient):
@@ -28,64 +34,79 @@ class CalderaClient(BaseEngineClient):
         self, ability_id: str, target: str, params: dict | None = None
     ) -> ExecutionResult:
         exec_id = str(uuid.uuid4())
-        try:
-            # Create a Caldera operation with the specified ability
-            payload = {
-                "name": f"athena-{exec_id[:8]}",
-                "adversary": {"adversary_id": "", "name": ""},
-                "source": {"id": "basic", "name": ""},
-                "planner": {"id": "atomic", "name": ""},
-                "auto_close": True,
-            }
-            resp = await self._client.post("/api/v2/operations", json=payload)
-            resp.raise_for_status()
-            op_data = resp.json()
-            op_id = op_data.get("id", exec_id)
+        last_error = None
+        for attempt in range(_MAX_RETRIES):
+            try:
+                return await self._execute_once(ability_id, target, exec_id, params)
+            except httpx.HTTPError as e:
+                last_error = e
+                if attempt < _MAX_RETRIES - 1:
+                    delay = _RETRY_BASE_DELAY * (2 ** attempt)
+                    logger.warning(
+                        "Caldera request failed (attempt %d/%d): %s — retrying in %.1fs",
+                        attempt + 1, _MAX_RETRIES, e, delay,
+                    )
+                    await asyncio.sleep(delay)
+        return ExecutionResult(
+            success=False,
+            execution_id=exec_id,
+            output=None,
+            facts=[],
+            error=f"After {_MAX_RETRIES} retries: {last_error}",
+        )
 
-            # Add ability to the operation
-            ability_payload = {
-                "paw": target,
-                "ability_id": ability_id,
-            }
-            if params:
-                ability_payload["facts"] = [
-                    {"trait": k, "value": v} for k, v in params.items()
-                ]
-            await self._client.post(
-                f"/api/v2/operations/{op_id}/potential-links",
-                json=ability_payload,
-            )
+    async def _execute_once(
+        self, ability_id: str, target: str, exec_id: str, params: dict | None = None
+    ) -> ExecutionResult:
+        # Create a Caldera operation with the specified ability
+        payload = {
+            "name": f"athena-{exec_id[:8]}",
+            "adversary": {"adversary_id": "", "name": ""},
+            "source": {"id": "basic", "name": ""},
+            "planner": {"id": "atomic", "name": ""},
+            "auto_close": True,
+        }
+        resp = await self._client.post("/api/v2/operations", json=payload)
+        resp.raise_for_status()
+        op_data = resp.json()
+        op_id = op_data.get("id", exec_id)
 
-            # Poll for completion with timeout
-            status = await self._poll_status(op_id)
-
-            # Get report
-            report_resp = await self._client.post(
-                f"/api/v2/operations/{op_id}/report",
-                json={"enable_agent_output": True},
-            )
-            report = report_resp.json() if report_resp.status_code == 200 else {}
-
-            facts = [
-                {"trait": f.get("trait", ""), "value": f.get("value", "")}
-                for f in report.get("facts", [])
+        # Add ability to the operation
+        ability_payload = {
+            "paw": target,
+            "ability_id": ability_id,
+        }
+        if params:
+            ability_payload["facts"] = [
+                {"trait": k, "value": v} for k, v in params.items()
             ]
+        await self._client.post(
+            f"/api/v2/operations/{op_id}/potential-links",
+            json=ability_payload,
+        )
 
-            return ExecutionResult(
-                success=status in ("finished", "cleanup"),
-                execution_id=op_id,
-                output=str(report.get("steps", {}))[:500],
-                facts=facts,
-                error=None if status in ("finished", "cleanup") else f"status={status}",
-            )
-        except httpx.HTTPError as e:
-            return ExecutionResult(
-                success=False,
-                execution_id=exec_id,
-                output=None,
-                facts=[],
-                error=str(e),
-            )
+        # Poll for completion with timeout
+        status = await self._poll_status(op_id)
+
+        # Get report
+        report_resp = await self._client.post(
+            f"/api/v2/operations/{op_id}/report",
+            json={"enable_agent_output": True},
+        )
+        report = report_resp.json() if report_resp.status_code == 200 else {}
+
+        facts = [
+            {"trait": f.get("trait", ""), "value": f.get("value", "")}
+            for f in report.get("facts", [])
+        ]
+
+        return ExecutionResult(
+            success=status in ("finished", "cleanup"),
+            execution_id=op_id,
+            output=str(report.get("steps", {}))[:500],
+            facts=facts,
+            error=None if status in ("finished", "cleanup") else f"status={status}",
+        )
 
     async def _poll_status(
         self, op_id: str,
@@ -144,6 +165,24 @@ class CalderaClient(BaseEngineClient):
             ]
         except httpx.HTTPError:
             return []
+
+    async def check_version(self) -> str:
+        """Check Caldera version compatibility."""
+        try:
+            resp = await self._client.get("/api/v2/config/main")
+            resp.raise_for_status()
+            version = resp.json().get("version", "unknown")
+            if not any(version.startswith(v) for v in SUPPORTED_CALDERA_VERSIONS):
+                logger.warning(
+                    "Caldera version %s is untested — supported prefixes: %s",
+                    version, SUPPORTED_CALDERA_VERSIONS,
+                )
+            else:
+                logger.info("Caldera version: %s", version)
+            return version
+        except httpx.HTTPError as e:
+            logger.error("Failed to check Caldera version: %s", e)
+            return "unknown"
 
     async def aclose(self):
         """Close the underlying HTTP client."""

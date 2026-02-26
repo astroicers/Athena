@@ -1,11 +1,18 @@
 """Agent endpoints."""
 
+import logging
+import uuid
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends
 import aiosqlite
 
+from app.config import settings
 from app.database import get_db
 from app.models import Agent
 from app.routers._deps import ensure_operation
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -45,8 +52,45 @@ async def sync_agents(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
-    """STUB — Sync agents from Caldera (not implemented in POC)."""
+    """Sync agents from Caldera into Athena's database."""
     db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
-    return {"message": "Sync not implemented (POC stub)", "synced": 0}
+    if settings.MOCK_CALDERA:
+        return {"message": "Mock mode — using seed agents", "synced": 0}
+
+    try:
+        from app.clients.caldera_client import CalderaClient
+        client = CalderaClient(settings.CALDERA_URL, settings.CALDERA_API_KEY)
+        caldera_agents = await client.sync_agents(operation_id)
+        await client.aclose()
+    except Exception as e:
+        logger.error("Failed to sync agents from Caldera: %s", e)
+        return {"message": f"Caldera sync failed: {e}", "synced": 0}
+
+    synced = 0
+    for agent in caldera_agents:
+        agent_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+        await db.execute(
+            """INSERT OR REPLACE INTO agents
+               (id, paw, host_id, status, privilege, last_beacon,
+                beacon_interval_sec, platform, operation_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                agent_id,
+                agent.get("paw", ""),
+                agent.get("host", "unknown"),
+                agent.get("status", "alive"),
+                agent.get("privilege", "User"),
+                now,
+                60,
+                agent.get("platform", "unknown"),
+                operation_id,
+            ),
+        )
+        synced += 1
+
+    await db.commit()
+    logger.info("Synced %d agents from Caldera for operation %s", synced, operation_id)
+    return {"synced": synced}

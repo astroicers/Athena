@@ -9,8 +9,6 @@ class Settings(BaseSettings):
     CALDERA_API_KEY: str = ""
     MOCK_CALDERA: bool = True
     SHANNON_URL: str = ""
-    PENTESTGPT_API_URL: str = "http://localhost:8080"
-    PENTESTGPT_MODEL: str = "gpt-4"
     ANTHROPIC_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
     CLAUDE_MODEL: str = "claude-opus-4-20250514"

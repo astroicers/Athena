@@ -97,7 +97,7 @@ graph LR
 |------|------|------|
 | OODA Controller | `services/ooda_controller.py` | OODA 狀態機，驅動四階段循環 |
 | Fact Collector | `services/fact_collector.py` | 標準化執行結果為情報 |
-| Orient Engine | `services/orient_engine.py` | PentestGPT API 整合（Mock/Real） |
+| Orient Engine | `services/orient_engine.py` | LLM 戰術分析（Claude/GPT-4，受 PentestGPT 啟發） |
 | Decision Engine | `services/decision_engine.py` | 基於 AI + 風險的技術選擇 |
 | Engine Router | `services/engine_router.py` | 路由至 Caldera 或 Shannon |
 | C5ISR Mapper | `services/c5isr_mapper.py` | 聚合各來源的 C5ISR 域健康度 |

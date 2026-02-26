@@ -4,7 +4,7 @@
 |------|------|
 | **專案** | Athena |
 | **版本** | v0.1.0-poc |
-| **最後更新** | 2026-02-23 |
+| **最後更新** | 2026-02-26 |
 
 ---
 
@@ -90,6 +90,32 @@ graph LR
 | frontend | 指揮官儀表板 UI（4 個畫面 + 3D 拓樸） | Next.js 14 / React 18 / Tailwind v4 | 3000 | athena-frontend |
 | caldera | MITRE ATT&CK 技術執行引擎 | Python / MITRE 官方 | 8888 | 外部（獨立部署） |
 | shannon | AI 自適應執行引擎（選用） | Python / Keygraph | 9000 | 外部（獨立部署） |
+
+### 後端服務模組（Phase 5 實作）
+
+| 模組 | 路徑 | 職責 |
+|------|------|------|
+| OODA Controller | `services/ooda_controller.py` | OODA 狀態機，驅動四階段循環 |
+| Fact Collector | `services/fact_collector.py` | 標準化執行結果為情報 |
+| Orient Engine | `services/orient_engine.py` | PentestGPT API 整合（Mock/Real） |
+| Decision Engine | `services/decision_engine.py` | 基於 AI + 風險的技術選擇 |
+| Engine Router | `services/engine_router.py` | 路由至 Caldera 或 Shannon |
+| C5ISR Mapper | `services/c5isr_mapper.py` | 聚合各來源的 C5ISR 域健康度 |
+| Mock Caldera | `clients/mock_caldera_client.py` | Caldera Mock 客戶端（POC 預設） |
+| Demo Runner | `seed/demo_runner.py` | 6 步自動 OODA 循環展示 |
+
+### Docker 部署拓樸（Phase 6 實作）
+
+```
+docker-compose.yml
+├── backend (python:3.11-slim)  → :8000
+│   ├── healthcheck: httpx GET /api/health
+│   └── volume: backend-data (SQLite)
+└── frontend (node:20-alpine, multi-stage)  → :3000
+    └── depends_on: backend (service_healthy)
+```
+
+WSL2 使用者：建立 `docker-compose.override.yml`（已在 `.gitignore`）覆寫 port 綁定。
 
 ---
 
@@ -216,7 +242,8 @@ graph TD
 
 - [ ] SQLite 需遷移至 PostgreSQL（Phase 8 正式版）
 - [ ] 3D 拓樸元件需 `dynamic import` + `"use client"`（Next.js SSR 限制）
-- [ ] LLM API 離線測試需 mock 層（Phase 5 建立）
+- [x] LLM API 離線測試需 mock 層（Phase 5 已建立 — `MOCK_LLM=True`）
+- [x] Caldera mock 客戶端（Phase 5 已建立 — `mock_caldera_client.py`）
 - [ ] WebSocket 無 Redis pub/sub 背壓機制（Phase 8 正式版）
 - [ ] 身份驗證與 RBAC 尚未實作（Phase 8）
 

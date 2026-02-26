@@ -1,6 +1,7 @@
 # AI-SOP-Protocol (ASP) — 行為憲法
 
-> 讀取順序：本檔案 → `.ai_profile` → 對應 `.asp/profiles/`（按需）
+> 本專案遵循 ASP 協議。讀取順序：本區塊 → `.ai_profile` → 對應 `.asp/profiles/`（按需）
+> 鐵則與 Profile 對應表請見：.asp/profiles/global_core.md
 
 ---
 
@@ -103,3 +104,69 @@ ASP 使用 Claude Code Hooks 技術強制執行鐵則，不依賴 AI 自律：
 > `git push` 不由 hook 攔截，改由 Claude Code 內建權限系統處理（VSCode 中顯示 GUI 確認框）。
 > 原因：hook `"ask"` 在 VSCode 中被忽略（[#13339](https://github.com/anthropics/claude-code/issues/13339)），`"deny"` 會截斷對話。
 > 設定檔位於 `.claude/settings.json`，hook 腳本位於 `.asp/hooks/`。
+
+---
+
+# Athena — 專案上下文
+
+> **狀態**：POC 階段 — Phase 0~6 完成，Phase 7 文件撰寫進行中
+> **核心棧**：PentestGPT（情報）+ Caldera（執行）
+
+## 專案定位
+
+Athena 是 AI 驅動的 **C5ISR 網路作戰指揮平台**。不是滲透測試工具，而是軍事級指揮與決策平台。
+目標使用者：10+ 年紅隊經驗的軍事顧問 — 假設具備 MITRE ATT&CK 專業知識。
+
+## 三層智慧架構
+
+| 層級 | 元件 | 角色 | OODA 階段 |
+|------|------|------|-----------|
+| 戰略智慧 | PentestGPT (MIT) | 思考、分析、建議 | **Orient** — 核心創新 |
+| 決策智慧 | Athena 引擎 | 路由、編排、排序 | Decide |
+| 執行智慧 | Caldera (Apache 2.0) | 執行 MITRE 技術 | Act |
+| 執行智慧（選用） | Shannon (AGPL-3.0, **僅 API**) | AI 自適應執行 | Act |
+
+**關鍵**：PentestGPT 是必要的（核心差異化），Shannon 是 POC 選用的。兩者都用 AI 但層級不同。
+
+## 技術棧
+
+- **後端**：Python 3.11 + FastAPI + SQLite + Pydantic
+- **前端**：Next.js 14 + React 18 + Tailwind v4
+- **3D 拓樸**：react-force-graph-3d + Three.js
+- **容器化**：Docker + docker-compose
+- **LLM**：Claude（主要）/ GPT-4（備用），預設 `MOCK_LLM=True`
+
+## 自動化模式
+
+半自動 + 手動覆寫。風險等級決定行為：
+- LOW → 自動執行 | MEDIUM → 排隊待批 | HIGH → HexConfirmModal | CRITICAL → 手動
+
+## 授權邊界（鐵則）
+
+- Athena 核心：Apache 2.0
+- PentestGPT：MIT — **可安全 import**
+- Caldera：Apache 2.0 — API 整合
+- Shannon：AGPL-3.0 — **僅限 API 呼叫，禁止 import 程式碼**
+
+## 詳細文件指引
+
+| 需要瞭解… | 請讀… |
+|-----------|-------|
+| 完整架構圖 | `docs/architecture.md` |
+| 資料模型 / Schema / API | `docs/architecture/data-architecture.md` |
+| 目錄結構 / 各層職責 | `docs/architecture/project-structure.md` |
+| 開發路線圖 / Phase 進度 | `docs/ROADMAP.md` |
+| Demo 操作手冊 | `docs/DEMO_WALKTHROUGH.md` |
+| 安裝設定 | `docs/GETTING_STARTED.md` |
+| 版本歷史 | `CHANGELOG.md` |
+| SPEC 規格書列表 | `make spec-list` |
+| ADR 決策記錄列表 | `make adr-list` |
+
+## AI 助手關鍵提醒
+
+1. **說中文** — 使用者以繁體中文溝通
+2. **PentestGPT 是核心** — Orient 階段是 Athena 創造價值之處
+3. **POC 範圍紀律** — 不過度設計，聚焦核心概念驗證
+4. **授權意識** — Shannon AGPL 僅 API 隔離，絕不 import
+5. **C5ISR 框架** — 所有功能映射至 Command/Control/Comms/Computers/Cyber/ISR
+6. **MITRE ATT&CK** — 共通語言，假設使用者已具備知識

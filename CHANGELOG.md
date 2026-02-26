@@ -7,6 +7,39 @@
 
 ## [Unreleased]
 
+### Phase 10：Orient Prompt 工程升級（SPEC-015）
+
+#### Added
+- `docs/adr/ADR-013-orient-prompt-engineering-strategy.md` — Orient prompt 策略決策記錄（借鏡 PentestGPT/hackingBuddyGPT/autopentest-ai/AttackGen/PentAGI 等 5 個開源專案）
+- `docs/specs/SPEC-015-orient-prompt-engineering.md` — Orient prompt 工程實作規格
+- `orient_engine.py` — 新增 `_ORIENT_SYSTEM_PROMPT`（靜態角色合約 + 5 個分析框架指令）
+- `orient_engine.py` — 新增 `_ORIENT_USER_PROMPT_TEMPLATE`（動態 8 段落上下文模板）
+- `orient_engine.py` — 新增 `_KILL_CHAIN_STAGES` MITRE ATT&CK 戰術進程常數
+- `orient_engine.py` — 新增 5 個 helper 方法：`_format_task_tree`、`_format_ooda_history`、`_format_previous_assessments`、`_format_categorized_facts`、`_infer_kill_chain_stage`
+- `test_spec_007_ooda_services.py` — 5 個新 prompt 結構測試：tuple 回傳、任務樹、OODA 歷史、分類情報、Claude system 參數
+
+#### Changed
+- `orient_engine.py` — `_build_prompt()` 回傳 `tuple[str, str]`（system + user），新增 5 個 SQL 查詢（mission_steps、ooda_iterations、recommendations、techniques tactic、facts）
+- `orient_engine.py` — `_call_claude()` 使用 Anthropic API `system` 參數（不再嵌入 user message）
+- `orient_engine.py` — `_call_openai()` 前置 `{"role": "system", ...}` message
+- `orient_engine.py` — `_call_llm()` 簽章更新為 `(system_prompt, user_prompt)`
+
+#### Removed
+- `orient_engine.py` — 移除舊 `_ORIENT_PROMPT_TEMPLATE`（40 行單一 user message）
+
+#### Prompt Engineering Patterns Adopted
+| 模式 | 來源 | 授權 |
+|------|------|------|
+| 任務樹 / PTT | PentestGPT | MIT |
+| Action + Reflection 雙 prompt | hackingBuddyGPT | MIT |
+| 角色合約 | autopentest-ai | Apache 2.0 |
+| MITRE ATT&CK 接地 | AttackGen / Threats2MITRE | 研究參考 |
+| 三層記憶（輕量版） | PentAGI | MIT |
+
+#### Metrics
+- 25 個 SPEC-007 測試全數通過（20 existing + 5 new）
+- 51 個 pytest 測試全數通過
+
 ### Phase 9.0：Caldera + LLM 真實整合修復
 
 #### Fixed

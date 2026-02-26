@@ -1,7 +1,7 @@
 # Athena — 開發路線圖
 
-> 版本：1.5 | 更新日期：2026-02-26
-> 狀態：Phase 0~9.0 完成 — v0.1.0 POC 發佈 | 92 個測試（52 pytest + 40 Vitest）
+> 版本：1.6 | 更新日期：2026-02-26
+> 狀態：Phase 0~10 完成 — v0.1.0 POC 發佈 | 91 個測試（51 pytest + 40 Vitest）
 
 ---
 
@@ -9,7 +9,7 @@
 
 Athena 是一套 AI 驅動的 C5ISR 網路作戰指揮平台。本路線圖描述從設計到正式開源發佈的完整旅程。
 
-**目前進度**：Phase 0~8.5 全部完成。v0.1.0 POC 版本已發佈。後端 44 pytest（60% 覆蓋率）+ 前端 40 Vitest 測試全數通過。
+**目前進度**：Phase 0~10 全部完成。v0.1.0 POC 版本已發佈。後端 51 pytest + 前端 40 Vitest 測試全數通過。
 
 ---
 
@@ -431,6 +431,50 @@ Athena/
 
 ---
 
+## Phase 10：Orient Prompt 工程升級 `完成`
+
+> 完成日期：2026-02-26 | ADR-013 / SPEC-015
+
+### 10.1 研究與決策
+
+- [x] 研究 15+ 個開源滲透測試 AI 專案的 prompt 設計
+- [x] 提取 6 個可借鏡的 prompt 工程模式，採用 5 個
+- [x] `docs/adr/ADR-013-orient-prompt-engineering-strategy.md` — 決策記錄
+
+### 10.2 Prompt 結構升級
+
+- [x] `_ORIENT_SYSTEM_PROMPT` — 靜態角色合約 + 5 個分析框架指令
+  - Kill Chain 推理（ATT&CK 戰術進程判斷）
+  - 死分支修剪（失敗技術的同類消除）
+  - 先決條件驗證（僅推薦情報確認的技術）
+  - 引擎路由（Caldera vs Shannon 決策規則）
+  - 風險校準（基於偵測可能性而非影響力）
+- [x] `_ORIENT_USER_PROMPT_TEMPLATE` — 動態 8 段落上下文
+  - Operation Brief（增加 automation_mode、risk_threshold）
+  - Mission Task Tree（Pattern 1 — PTT）
+  - Kill Chain Position（Pattern 4 — 戰術進程）
+  - Operational History（Pattern 5 — 近 3 輪 OODA 摘要）
+  - Previous Assessments（Pattern 5 — 前 2 次建議）
+  - Categorized Intelligence（Pattern 2 — 分類情報）
+  - Asset Status（Targets + Agents + Techniques）
+  - Observe Summary + Output Schema
+
+### 10.3 API 呼叫升級
+
+- [x] `_build_prompt()` → 回傳 `tuple[str, str]`（system + user）
+- [x] `_call_claude()` → 使用 Anthropic `system` 參數
+- [x] `_call_openai()` → 前置 `{"role": "system", ...}` message
+- [x] 新增 5 個 SQL 查詢（mission_steps、ooda_iterations、recommendations、techniques tactic JOIN、facts）
+
+### 10.4 測試
+
+- [x] 5 個新 prompt 結構測試
+- [x] 20 個既有 SPEC-007 測試無迴歸
+
+**借鏡來源**：PentestGPT (MIT)、hackingBuddyGPT (MIT)、autopentest-ai (Apache 2.0)、AttackGen (GPL-3.0, 研究參考)、PentAGI (MIT)
+
+---
+
 ## Phase 9：未來增強 `未來`
 
 > POC 之後的產品成熟功能
@@ -491,7 +535,8 @@ Athena/
 | **8** | 後端測試套件 | 44 pytest 測試 + 60% 覆蓋率 | Phase 7 |
 | **8.5** | 前端測試套件 | 40 Vitest 測試 + CI 整合 | Phase 8 |
 | **9.0** | Caldera + LLM 整合修復 | 8 個 bug fix + 8 整合測試 | Phase 8.5 |
-| **9.x** | 未來增強 | 多作戰、VR、身份驗證、報告 | Phase 9.0 |
+| **10** | Orient Prompt 工程升級 | 5 模式借鏡 + system/user 分離 + 5 新測試 | Phase 9.0 |
+| **9.x** | 未來增強 | 多作戰、VR、身份驗證、報告 | Phase 10 |
 
 ```
 Phase 0 ████████████████████ 完成
@@ -505,6 +550,7 @@ Phase 7 ████████████████████ 完成 ← 
 Phase 8   ████████████████████ 完成 ← 44 pytest tests, 60% coverage
 Phase 8.5 ████████████████████ 完成 ← 40 Vitest tests, 21 test files
 Phase 9.0 ████████████████████ 完成 ← Caldera + LLM 真實整合修復
+Phase 10  ████████████████████ 完成 ← Orient Prompt 工程升級
 Phase 9.x ░░░░░░░░░░░░░░░░░░░░ 未來
 ```
 

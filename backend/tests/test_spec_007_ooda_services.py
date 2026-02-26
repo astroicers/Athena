@@ -15,7 +15,7 @@
 """OODA service unit tests — SPEC-007 acceptance criteria."""
 
 import json
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiosqlite
 
@@ -220,6 +220,116 @@ async def test_orient_mock_recommended_technique(seeded_db):
     )
     row = await cursor.fetchone()
     assert row is not None
+
+
+# ===================================================================
+# OrientEngine — Prompt Structure (5 tests, SPEC-015)
+# ===================================================================
+
+
+async def test_orient_build_prompt_returns_tuple(seeded_db):
+    """_build_prompt() returns (system_prompt, user_prompt) tuple."""
+    seeded_db.row_factory = aiosqlite.Row
+    ws = _make_ws()
+    orient = OrientEngine(ws)
+    result = await orient._build_prompt(seeded_db, "test-op-1", "Test summary")
+    assert isinstance(result, tuple)
+    assert len(result) == 2
+    system_prompt, user_prompt = result
+    assert isinstance(system_prompt, str)
+    assert isinstance(user_prompt, str)
+    # System prompt contains analytical framework keywords
+    assert "Kill Chain" in system_prompt
+    assert "Dead Branch Pruning" in system_prompt
+    assert "Prerequisite Verification" in system_prompt
+
+
+async def test_orient_build_prompt_includes_mission_steps(seeded_db):
+    """User prompt includes mission task tree when mission_steps exist."""
+    await seeded_db.execute(
+        "INSERT INTO mission_steps "
+        "(id, operation_id, step_number, technique_id, technique_name, "
+        "target_id, target_label, engine, status) "
+        "VALUES ('ms-1', 'test-op-1', 1, 'T1003.001', 'LSASS Memory', "
+        "'test-target-1', 'DC-01', 'caldera', 'completed')"
+    )
+    await seeded_db.commit()
+
+    seeded_db.row_factory = aiosqlite.Row
+    ws = _make_ws()
+    orient = OrientEngine(ws)
+    _, user_prompt = await orient._build_prompt(seeded_db, "test-op-1", "Test summary")
+    assert "LSASS Memory" in user_prompt
+    assert "MISSION TASK TREE" in user_prompt
+
+
+async def test_orient_build_prompt_includes_ooda_history(seeded_db):
+    """User prompt includes OODA history when iterations exist."""
+    await seeded_db.execute(
+        "INSERT INTO ooda_iterations "
+        "(id, operation_id, iteration_number, phase, observe_summary, act_summary) "
+        "VALUES ('iter-1', 'test-op-1', 1, 'act', 'Scanned network', 'Ran T1046')"
+    )
+    await seeded_db.execute(
+        "INSERT INTO ooda_iterations "
+        "(id, operation_id, iteration_number, phase, observe_summary, act_summary) "
+        "VALUES ('iter-2', 'test-op-1', 2, 'act', 'Found open SMB', 'Ran T1021.002')"
+    )
+    await seeded_db.commit()
+
+    seeded_db.row_factory = aiosqlite.Row
+    ws = _make_ws()
+    orient = OrientEngine(ws)
+    _, user_prompt = await orient._build_prompt(seeded_db, "test-op-1", "Test summary")
+    assert "OPERATIONAL HISTORY" in user_prompt
+    assert "Scanned network" in user_prompt
+    assert "Cycle #" in user_prompt
+
+
+async def test_orient_build_prompt_categorized_facts(seeded_db):
+    """User prompt includes categorized intelligence when facts exist."""
+    await seeded_db.execute(
+        "INSERT INTO facts (id, trait, value, category, operation_id) "
+        "VALUES ('fact-1', 'credential.ntlm', 'aad3b435b51404ee', 'credential', 'test-op-1')"
+    )
+    await seeded_db.commit()
+
+    seeded_db.row_factory = aiosqlite.Row
+    ws = _make_ws()
+    orient = OrientEngine(ws)
+    _, user_prompt = await orient._build_prompt(seeded_db, "test-op-1", "Test summary")
+    assert "CREDENTIAL INTELLIGENCE" in user_prompt
+    assert "credential.ntlm" in user_prompt
+
+
+async def test_orient_call_claude_sends_system_param(seeded_db):
+    """_call_claude() sends system parameter in API payload."""
+    ws = _make_ws()
+    orient = OrientEngine(ws)
+
+    captured_payload = {}
+
+    async def mock_post(url, headers=None, json=None):
+        captured_payload.update(json or {})
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.json = MagicMock(return_value={
+            "content": [{"text": '{"test": true}'}]
+        })
+        return mock_resp
+
+    with patch("app.services.orient_engine.httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.post = mock_post
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client_cls.return_value = mock_client
+
+        await orient._call_claude("Test system prompt", "Test user prompt")
+
+    assert "system" in captured_payload
+    assert captured_payload["system"] == "Test system prompt"
+    assert captured_payload["messages"] == [{"role": "user", "content": "Test user prompt"}]
 
 
 # ===================================================================

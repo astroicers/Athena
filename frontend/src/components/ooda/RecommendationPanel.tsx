@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// tech-debt: test-pending (SPEC-018)
+
 "use client";
 
 import { useState } from "react";

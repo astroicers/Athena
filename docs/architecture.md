@@ -4,7 +4,7 @@
 |------|------|
 | **專案** | Athena |
 | **版本** | v0.1.0-poc |
-| **最後更新** | 2026-02-26 |
+| **最後更新** | 2026-02-27 |
 
 ---
 
@@ -53,7 +53,7 @@ graph TD
     OODA --> ORIENT
     OODA --> DECIDE
     OODA --> ROUTER
-    ORIENT -->|LLM API 呼叫| LLM
+    ORIENT -->|Anthropic/OpenAI SDK| LLM
     ROUTER -->|HTTP API| CAL
     ROUTER -.->|HTTP API 選用| SHA
     Core --> SQLITE
@@ -103,6 +103,8 @@ graph LR
 | C5ISR Mapper | `services/c5isr_mapper.py` | 聚合各來源的 C5ISR 域健康度 |
 | Mock Caldera | `clients/mock_caldera_client.py` | Caldera Mock 客戶端（POC 預設） |
 | Demo Runner | `seed/demo_runner.py` | 6 步自動 OODA 循環展示 |
+| Reports API | `routers/reports.py` | 作戰報告匯出（10 段落 JSON） |
+| Admin API | `routers/admin.py` | 管理操作（Reset 作戰資料） |
 
 ### Docker 部署拓樸（Phase 6 實作）
 
@@ -173,6 +175,7 @@ graph LR
         E5["c5isr.update"]
         E6["fact.new"]
         E7["recommendation"]
+        E8["operation.reset"]
     end
 ```
 
@@ -185,8 +188,8 @@ graph LR
 | MITRE Caldera | 標準 MITRE ATT&CK 技術執行 | 4.x | Apache 2.0 | REST API | —（核心） |
 | Shannon | AI 自適應攻擊執行（選用） | latest | AGPL-3.0 | REST API（隔離） | 僅用 Caldera |
 | PentestGPT | OODA Orient 階段情報分析 | latest | MIT | Python import | —（核心） |
-| Claude API | 主要 LLM 後端 | claude-opus-4-20250514 | 商業 API | HTTP API | GPT-4 |
-| GPT-4 API | 備用 LLM 後端 | gpt-4-turbo-preview | 商業 API | HTTP API | Claude |
+| Claude API | 主要 LLM 後端 | claude-opus-4-20250514 | 商業 API | Anthropic Python SDK | GPT-4 |
+| GPT-4 API | 備用 LLM 後端 | gpt-4-turbo | 商業 API | OpenAI Python SDK | Claude |
 | react-force-graph-3d | 3D 網路拓樸視覺化 | latest | MIT | npm 套件 | D3.js (2D) |
 | Three.js | WebGL 3D 渲染引擎 | latest | MIT | 透過 r-f-g-3d | — |
 
@@ -246,6 +249,7 @@ graph TD
 - [x] Caldera mock 客戶端（Phase 5 已建立 — `mock_caldera_client.py`）
 - [ ] WebSocket 無 Redis pub/sub 背壓機制（Phase 8 正式版）
 - [ ] 身份驗證與 RBAC 尚未實作（Phase 8）
+- [ ] Phase 11 新模組（reports.py、admin.py、Toast、PageLoading、RecommendationPanel）缺少單元測試 `tech-debt: test-pending`
 
 ---
 
@@ -265,6 +269,7 @@ graph TD
 | [ADR-010](adr/ADR-010-docker-compose-deployment.md) | Docker Compose 部署拓樸 | `Accepted` |
 | [ADR-011](adr/ADR-011-no-auth-for-poc.md) | POC 階段不實作身份驗證 | `Accepted` |
 | [ADR-012](adr/ADR-012-c5isr-framework-mapping.md) | C5ISR 框架映射架構 | `Accepted` |
+| [ADR-013](adr/ADR-013-orient-prompt-engineering-strategy.md) | Orient Prompt 工程策略 | `Accepted` |
 
 ---
 

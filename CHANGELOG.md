@@ -7,6 +7,38 @@
 
 ## [Unreleased]
 
+### Phase 11：Demo 就緒 — UI/UX 精修 + OODA 資料完整性
+
+#### Added
+- `backend/app/routers/reports.py` — 報告匯出 API（GET `/operations/{op_id}/report`，含 10 段落 JSON）
+- `backend/app/routers/admin.py` — 管理 API（POST `/operations/{op_id}/reset`，重置全部作戰資料）
+- `frontend/src/contexts/ToastContext.tsx` — 全域 Toast 通知 Context + Provider
+- `frontend/src/components/ui/Toast.tsx` — 堆疊式 Toast 元件（4 種 severity，3 秒自動消失）
+- `frontend/src/components/ui/PageLoading.tsx` — 軍事風格掃描動畫 Loading 覆蓋層
+- `frontend/src/components/ooda/RecommendationPanel.tsx` — OODA 建議面板元件
+
+#### Changed
+- `backend/app/services/ooda_controller.py` — OODA 四階段 side-effects：寫入 `log_entries`、推進 `mission_steps`、標記 `targets.is_compromised`、啟動 `agents`、更新 `operations` 計數器
+- `backend/app/main.py` — 註冊 `reports` + `admin` 路由
+- `frontend/src/app/c5isr/page.tsx` — 加入 `useWebSocket` 監聽 `c5isr.update`、Loading 狀態、Toast 錯誤處理
+- `frontend/src/app/navigator/page.tsx` — 加入 `useWebSocket` 監聽 `execution.update`、Loading 狀態、Toast 錯誤處理
+- `frontend/src/app/planner/page.tsx` — 加入多事件 WebSocket 監聽、自動刷新、Loading 狀態、Toast 錯誤處理、EXPORT 按鈕
+- `frontend/src/app/monitor/page.tsx` — Loading 狀態、Toast 錯誤處理
+- `frontend/src/components/layout/client-shell.tsx` — 掛載 ToastProvider、移除 CommandInput
+- `frontend/src/lib/api.ts` — 新增 `createApiHelpers`（`fetchSafe` / `postSafe` 封裝）
+
+#### Fixed
+- `ooda_controller.py` — OODA 觸發後 `mission_steps` 不再永遠 QUEUED
+- `ooda_controller.py` — OODA 觸發後 `log_entries` 不再永遠空白
+- `ooda_controller.py` — 成功執行後 `targets.is_compromised` 正確更新
+- `ooda_controller.py` — Agent status 從 pending 變 alive
+- 四頁面 15 個靜默 `.catch(() => {})` 替換為 Toast 錯誤通知
+- `.env` — `MOCK_CALDERA=false` → `true`、`CALDERA_URL` 修正為 Docker 內部位址 `http://caldera:8888`
+- UI 對比度修復：C5ISR 域卡片、Navigator MITRE 矩陣、Monitor OODA 指示器、Sidebar 圖示
+
+#### Removed
+- `frontend/src/components/layout/CommandInput.tsx` — 從 `client-shell` 移除渲染（無後端 endpoint 的裝飾品）
+
 ### Phase 10：Orient Prompt 工程升級（SPEC-015）
 
 #### Added

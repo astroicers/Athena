@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Mission report export endpoint."""
+"""Mission report export endpoint.
+
+tech-debt: test-pending (SPEC-018)
+"""
 
 import aiosqlite
 from fastapi import APIRouter, Depends

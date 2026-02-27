@@ -100,9 +100,9 @@ make up
 
 | 服務 | 網址 |
 |-----|------|
-| Athena UI | http://localhost:3000 |
-| API 健康檢查 | http://localhost:8000/api/health |
-| Swagger 文件 | http://localhost:8000/docs |
+| Athena UI | http://localhost:58080 |
+| API 健康檢查 | http://localhost:58000/api/health |
+| Swagger 文件 | http://localhost:58000/docs |
 
 > 詳細安裝步驟請參閱 [安裝指南](docs/GETTING_STARTED.md)
 

@@ -10,17 +10,17 @@
 
 ```bash
 # 確認後端健康狀態
-curl http://localhost:8000/api/health
+curl http://localhost:58000/api/health
 # 預期回應：
 # {"status":"ok","version":"0.1.0","services":{"database":"ok","caldera":"ok","pentestgpt":"ok"}}
 
 # 確認前端可存取
-curl -s -o /dev/null -w "%{http_code}" http://localhost:3000
+curl -s -o /dev/null -w "%{http_code}" http://localhost:58080
 # 預期：200
 ```
 
 種子資料在後端啟動時自動載入，包含：
-- 作戰：`OP-2024-017 PHANTOM-EYE`（operation ID：`op-phantom-eye-001`）
+- 作戰：`OP-2024-017 PHANTOM-EYE`（operation ID：`op-0001`）
 - 目標主機：5 台（DC-01、WEB-SRV-01、FILE-SRV-01、DEV-WRK-01、ADMIN-WRK-01）
 - 部署 Agent：4 個（alpha、bravo、charlie、delta）
 - 任務步驟：4 個（初始存取 → 偵察 → 橫向移動 → 權限提升）
@@ -81,7 +81,7 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:3000
 ### Step 1：OBSERVE — 觸發第一輪 OODA 循環
 
 ```bash
-curl -X POST http://localhost:8000/api/operations/op-phantom-eye-001/ooda/trigger
+curl -X POST http://localhost:58000/api/operations/op-0001/ooda/trigger
 ```
 
 **說明：** 系統啟動完整的 Observe → Orient → Decide → Act 循環。後端依序執行：
@@ -109,7 +109,7 @@ curl -X POST http://localhost:8000/api/operations/op-phantom-eye-001/ooda/trigge
 ### Step 2：ORIENT — 查看 PentestGPT 推薦
 
 ```bash
-curl http://localhost:8000/api/operations/op-phantom-eye-001/recommendations
+curl http://localhost:58000/api/operations/op-0001/recommendations
 ```
 
 **說明：** 取得最新的 PentestGPT 情報分析結果，包含戰術推薦與推理說明。
@@ -161,7 +161,7 @@ curl http://localhost:8000/api/operations/op-phantom-eye-001/recommendations
 ### Step 3：DECIDE — 審閱 C5ISR 域狀態
 
 ```bash
-curl http://localhost:8000/api/operations/op-phantom-eye-001/c5isr
+curl http://localhost:58000/api/operations/op-0001/c5isr
 ```
 
 **說明：** 查看 6 個 C5ISR 域的當前健康度，輔助指揮官做出決策。
@@ -188,7 +188,7 @@ curl http://localhost:8000/api/operations/op-phantom-eye-001/c5isr
 ### Step 4：ACT — 查看執行結果
 
 ```bash
-curl http://localhost:8000/api/operations/op-phantom-eye-001/techniques
+curl http://localhost:58000/api/operations/op-0001/techniques
 ```
 
 **說明：** 取得所有已排程或執行中的技術列表，確認作戰行動的實際執行狀態。
@@ -232,7 +232,7 @@ curl http://localhost:8000/api/operations/op-phantom-eye-001/techniques
 ### Step 5：OBSERVE (Round 2) — 再次觸發 OODA
 
 ```bash
-curl -X POST http://localhost:8000/api/operations/op-phantom-eye-001/ooda/trigger
+curl -X POST http://localhost:58000/api/operations/op-0001/ooda/trigger
 ```
 
 **說明：** 啟動第二輪 OODA 循環。PentestGPT 將根據 Round 1 的執行結果（包含 T1068 失敗）重新分析，調整戰術建議。
@@ -257,18 +257,18 @@ curl -X POST http://localhost:8000/api/operations/op-phantom-eye-001/ooda/trigge
 
 ```bash
 # 查看作戰整體狀態
-curl http://localhost:8000/api/operations/op-phantom-eye-001
+curl http://localhost:58000/api/operations/op-0001
 ```
 
 ```bash
 # 查看 OODA 完整時間軸
-curl http://localhost:8000/api/operations/op-phantom-eye-001/ooda/timeline
+curl http://localhost:58000/api/operations/op-0001/ooda/timeline
 ```
 
 **預期（作戰狀態）：**
 ```json
 {
-  "id": "op-phantom-eye-001",
+  "id": "op-0001",
   "name": "OP-2024-017 PHANTOM-EYE",
   "status": "active",
   "ooda_iteration_count": 2,
@@ -316,7 +316,7 @@ cd backend && python3 -m app.seed.demo_runner
 DEMO_STEP_DELAY=5 python3 -m app.seed.demo_runner
 
 # 指定作戰 ID
-DEMO_OPERATION_ID=op-phantom-eye-001 python3 -m app.seed.demo_runner
+DEMO_OPERATION_ID=op-0001 python3 -m app.seed.demo_runner
 ```
 
 **Demo Runner 行為：**
@@ -347,7 +347,7 @@ Athena 透過 WebSocket 推送即時事件至前端畫面。在瀏覽器 Console
 
 ```javascript
 // 在瀏覽器 Console 執行
-const ws = new WebSocket('ws://localhost:8000/ws/op-phantom-eye-001');
+const ws = new WebSocket('ws://localhost:58000/ws/op-0001');
 ws.onopen    = ()  => console.log('[WS] 已連線');
 ws.onmessage = (e) => console.log('[WS] 事件：', JSON.parse(e.data));
 ws.onerror   = (e) => console.error('[WS] 錯誤：', e);
@@ -356,7 +356,7 @@ ws.onerror   = (e) => console.error('[WS] 錯誤：', e);
 連線後，觸發一次 OODA 循環，觀察以下事件依序出現：
 
 ```bash
-curl -X POST http://localhost:8000/api/operations/op-phantom-eye-001/ooda/trigger
+curl -X POST http://localhost:58000/api/operations/op-0001/ooda/trigger
 ```
 
 **預期 WebSocket 事件序列：**

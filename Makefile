@@ -316,23 +316,23 @@ vendor-update:  ## 更新外部專案到已鎖定版本
 	@cd $(VENDOR_DIR)/PentestGPT && git fetch --tags && git checkout v1.0.0
 	@echo "✅ Vendor update complete."
 
-caldera-up:  ## 啟動 Caldera 容器
+caldera-up:  ## 啟動 Caldera 容器（Docker Compose profile）
 	@echo "🚀 Starting Caldera..."
-	docker compose -f $(CALDERA_COMPOSE) up -d
-	@echo "✅ Caldera: http://localhost:8888"
+	docker compose --profile caldera up -d caldera
+	@echo "✅ Caldera: http://localhost:58888"
 
 caldera-down:  ## 停止 Caldera 容器
 	@echo "⏹  Stopping Caldera..."
-	docker compose -f $(CALDERA_COMPOSE) down
+	docker compose --profile caldera stop caldera
 
 caldera-logs:  ## 查看 Caldera 日誌
-	docker compose -f $(CALDERA_COMPOSE) logs -f --tail=100
+	docker compose --profile caldera logs -f --tail=100 caldera
 
 caldera-status:  ## 檢查 Caldera 健康 + 版本
 	@echo "=== Caldera Status ==="
-	@docker compose -f $(CALDERA_COMPOSE) ps 2>/dev/null || echo "  Container: not running"
+	@docker compose --profile caldera ps caldera 2>/dev/null || echo "  Container: not running"
 	@echo ""
-	@curl -sf http://localhost:8888/api/v2/health > /dev/null 2>&1 \
+	@curl -sf http://localhost:58888/api/v2/health > /dev/null 2>&1 \
 		&& echo "  Health: OK" \
 		|| echo "  Health: unreachable"
 

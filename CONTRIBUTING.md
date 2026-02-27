@@ -27,7 +27,7 @@ cp .env.example .env
 make up
 
 # 4. 驗證
-curl http://localhost:8000/api/health
+curl http://localhost:58000/api/health
 ```
 
 ### 本地開發（不使用 Docker）

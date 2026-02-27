@@ -59,7 +59,8 @@ async def test_call_claude_returns_json():
 
     engine = OrientEngine(WebSocketManager())
     response = await engine._call_claude(
-        "You are a security advisor. Return exactly this JSON: "
+        "You are a security advisor. Respond with ONLY valid JSON, no extra text.",
+        "Return exactly this JSON: "
         '{"situation_assessment":"test","recommended_technique_id":"T1003.001",'
         '"confidence":0.85,"reasoning_text":"test","options":[{"technique_id":'
         '"T1003.001","technique_name":"LSASS","reasoning":"test","risk_level":'

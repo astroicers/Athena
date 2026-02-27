@@ -25,9 +25,8 @@ from app.services.c5isr_mapper import C5ISRMapper
 from app.services.decision_engine import DecisionEngine
 from app.services.engine_router import EngineRouter
 from app.services.fact_collector import FactCollector
-from app.services.orient_engine import OrientEngine
 from app.services.ooda_controller import OODAController
-
+from app.services.orient_engine import OrientEngine
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -303,33 +302,31 @@ async def test_orient_build_prompt_categorized_facts(seeded_db):
 
 
 async def test_orient_call_claude_sends_system_param(seeded_db):
-    """_call_claude() sends system parameter in API payload."""
+    """_call_claude() sends system parameter to Anthropic SDK."""
     ws = _make_ws()
     orient = OrientEngine(ws)
 
-    captured_payload = {}
+    captured_kwargs = {}
 
-    async def mock_post(url, headers=None, json=None):
-        captured_payload.update(json or {})
-        mock_resp = MagicMock()
-        mock_resp.raise_for_status = MagicMock()
-        mock_resp.json = MagicMock(return_value={
-            "content": [{"text": '{"test": true}'}]
-        })
-        return mock_resp
+    async def mock_create(**kwargs):
+        captured_kwargs.update(kwargs)
+        mock_msg = MagicMock()
+        mock_block = MagicMock()
+        mock_block.text = '{"test": true}'
+        mock_msg.content = [mock_block]
+        return mock_msg
 
-    with patch("app.services.orient_engine.httpx.AsyncClient") as mock_client_cls:
-        mock_client = AsyncMock()
-        mock_client.post = mock_post
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-        mock_client_cls.return_value = mock_client
+    mock_client = MagicMock()
+    mock_client.messages = MagicMock()
+    mock_client.messages.create = mock_create
+    orient._anthropic_client = mock_client
 
-        await orient._call_claude("Test system prompt", "Test user prompt")
+    await orient._call_claude("Test system prompt", "Test user prompt")
 
-    assert "system" in captured_payload
-    assert captured_payload["system"] == "Test system prompt"
-    assert captured_payload["messages"] == [{"role": "user", "content": "Test user prompt"}]
+    assert "system" in captured_kwargs
+    assert captured_kwargs["system"] == "Test system prompt"
+    assert captured_kwargs["messages"] == [{"role": "user", "content": "Test user prompt"}]
+    assert captured_kwargs["max_tokens"] == 4000
 
 
 # ===================================================================

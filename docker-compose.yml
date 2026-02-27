@@ -13,6 +13,11 @@ services:
       - .env
     environment:
       - DATABASE_URL=sqlite:///app/data/athena.db
+      - CALDERA_URL=http://caldera:8888
+      - CALDERA_API_KEY=${CALDERA_API_KEY:-ADMIN123456}
+    depends_on:
+      caldera:
+        condition: service_started
     healthcheck:
       test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/api/health')"]
       interval: 30s
@@ -36,8 +41,6 @@ services:
     restart: unless-stopped
 
   # MITRE Caldera — 攻擊執行引擎 (Apache 2.0)
-  # 啟用方式：docker compose --profile caldera up -d caldera
-  # 然後在 .env 設定 MOCK_CALDERA=false, CALDERA_URL=http://caldera:8888
   caldera:
     image: ghcr.io/mitre/caldera:latest
     ports:
@@ -46,8 +49,6 @@ services:
       - ./caldera/local.yml:/usr/src/app/conf/local.yml
       - caldera-data:/usr/src/app/data
     restart: unless-stopped
-    profiles:
-      - caldera
 
 volumes:
   backend-data:

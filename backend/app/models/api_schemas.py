@@ -95,6 +95,18 @@ class MissionStepUpdate(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Target
+# ---------------------------------------------------------------------------
+
+class TargetCreate(BaseModel):
+    hostname: str
+    ip_address: str
+    os: str | None = None
+    role: str | None = None
+    network_segment: str | None = None
+
+
+# ---------------------------------------------------------------------------
 # Topology
 # ---------------------------------------------------------------------------
 
@@ -132,6 +144,18 @@ class OODATimelineEntry(BaseModel):
 # ---------------------------------------------------------------------------
 # Technique
 # ---------------------------------------------------------------------------
+
+class TechniqueCreate(BaseModel):
+    mitre_id: str
+    name: str
+    tactic: str
+    tactic_id: str
+    description: str | None = None
+    kill_chain_stage: str = "exploit"
+    risk_level: str = "medium"
+    caldera_ability_id: str | None = None
+    platforms: list[str] = ["linux"]
+
 
 class TechniqueWithStatus(BaseModel):
     id: str

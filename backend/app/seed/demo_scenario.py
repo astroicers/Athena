@@ -57,6 +57,12 @@ TECH_T1595 = "tech-0001"
 TECH_T1003 = "tech-0002"
 TECH_T1021 = "tech-0003"
 TECH_T1059 = "tech-0004"
+TECH_T1059_004 = "tech-t1059-004"
+TECH_T1078_001 = "tech-t1078-001"
+TECH_T1021_004 = "tech-t1021-004"
+TECH_T1110_001 = "tech-t1110-001"
+TECH_T1190 = "tech-t1190"
+TECH_T1046 = "tech-t1046"
 
 # Mission Steps
 MS_01 = "ms-0001"
@@ -211,6 +217,43 @@ async def seed() -> None:
              "Execute commands via PowerShell.",
              "exploit", "medium", None,
              json.dumps(["windows"])),
+            # Linux techniques for Metasploitable
+            (TECH_T1059_004, "T1059.004",
+             "Command and Scripting Interpreter: Unix Shell",
+             "Execution", "TA0002",
+             "Execute commands via Unix shell (bash/sh).",
+             "exploit", "medium", None,
+             json.dumps(["linux"])),
+            (TECH_T1078_001, "T1078.001",
+             "Valid Accounts: Default Accounts",
+             "Initial Access", "TA0001",
+             "Use default credentials to gain access to systems.",
+             "recon", "low", None,
+             json.dumps(["linux", "windows"])),
+            (TECH_T1021_004, "T1021.004",
+             "Remote Services: SSH",
+             "Lateral Movement", "TA0008",
+             "Use SSH for remote access and lateral movement.",
+             "c2", "medium", None,
+             json.dumps(["linux"])),
+            (TECH_T1110_001, "T1110.001",
+             "Brute Force: Password Guessing",
+             "Credential Access", "TA0006",
+             "Attempt to guess passwords for user accounts.",
+             "exploit", "medium", None,
+             json.dumps(["linux", "windows"])),
+            (TECH_T1190, "T1190",
+             "Exploit Public-Facing Application",
+             "Initial Access", "TA0001",
+             "Exploit vulnerabilities in public-facing applications.",
+             "exploit", "medium", None,
+             json.dumps(["linux", "windows"])),
+            (TECH_T1046, "T1046",
+             "Network Service Discovery",
+             "Discovery", "TA0007",
+             "Enumerate services running on remote hosts.",
+             "recon", "low", None,
+             json.dumps(["linux", "windows"])),
         ]
         await db.executemany(
             "INSERT OR IGNORE INTO techniques "

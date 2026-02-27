@@ -67,6 +67,18 @@ async def test_reset_resets_operation_state(client, seeded_db):
     assert data["operation"]["active_agents"] == 0
 
 
+async def test_reset_deletes_targets_agents_steps(client, seeded_db):
+    """After reset, targets/agents/mission_steps are fully deleted (not just reset)."""
+    with patch("app.routers.admin.ws_manager") as mock_ws:
+        mock_ws.broadcast = AsyncMock()
+        await client.post("/api/operations/test-op-1/reset")
+
+    data = (await client.get("/api/operations/test-op-1/report")).json()
+    assert data["targets"] == []
+    assert data["agents"] == []
+    assert data["mission_steps"] == []
+
+
 async def test_reset_nonexistent_operation(client):
     """POST /api/operations/no-such-op/reset → 404."""
     with patch("app.routers.admin.ws_manager") as mock_ws:

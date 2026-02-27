@@ -14,12 +14,16 @@
 
 """Target and topology endpoints."""
 
+import uuid
+from datetime import datetime, timezone
+
 import aiosqlite
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from starlette.responses import Response
 
 from app.database import get_db
 from app.models import Target
-from app.models.api_schemas import TopologyData, TopologyEdge, TopologyNode
+from app.models.api_schemas import TargetCreate, TopologyData, TopologyEdge, TopologyNode
 from app.routers._deps import ensure_operation
 
 router = APIRouter()
@@ -53,6 +57,50 @@ async def list_targets(
     )
     rows = await cursor.fetchall()
     return [_row_to_target(r) for r in rows]
+
+
+@router.post("/operations/{operation_id}/targets", response_model=Target, status_code=201)
+async def create_target(
+    operation_id: str,
+    body: TargetCreate,
+    db: aiosqlite.Connection = Depends(get_db),
+):
+    """Add a target host to an operation."""
+    db.row_factory = aiosqlite.Row
+    await ensure_operation(db, operation_id)
+    target_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    await db.execute(
+        "INSERT INTO targets (id, hostname, ip_address, os, role, "
+        "network_segment, is_compromised, privilege_level, operation_id, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, 0, NULL, ?, ?)",
+        (target_id, body.hostname, body.ip_address, body.os, body.role,
+         body.network_segment, operation_id, now),
+    )
+    await db.commit()
+    cursor = await db.execute("SELECT * FROM targets WHERE id = ?", (target_id,))
+    row = await cursor.fetchone()
+    return _row_to_target(row)
+
+
+@router.delete("/operations/{operation_id}/targets/{target_id}", status_code=204)
+async def delete_target(
+    operation_id: str,
+    target_id: str,
+    db: aiosqlite.Connection = Depends(get_db),
+):
+    """Remove a target from an operation."""
+    await ensure_operation(db, operation_id)
+    cursor = await db.execute(
+        "SELECT id FROM targets WHERE id = ? AND operation_id = ?",
+        (target_id, operation_id),
+    )
+    if not await cursor.fetchone():
+        raise HTTPException(status_code=404, detail="Target not found")
+    # FK CASCADE will handle agents referencing this target
+    await db.execute("DELETE FROM targets WHERE id = ?", (target_id,))
+    await db.commit()
+    return Response(status_code=204)
 
 
 @router.get("/operations/{operation_id}/topology", response_model=TopologyData)

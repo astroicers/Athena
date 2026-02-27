@@ -15,13 +15,18 @@
 """Technique catalog and per-operation technique status endpoints."""
 
 import json
+import logging
+import uuid
 
 import aiosqlite
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.config import settings
 from app.database import get_db
 from app.models import Technique
-from app.models.api_schemas import TechniqueWithStatus
+from app.models.api_schemas import TechniqueCreate, TechniqueWithStatus
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -50,6 +55,92 @@ async def list_techniques(db: aiosqlite.Connection = Depends(get_db)):
     cursor = await db.execute("SELECT * FROM techniques ORDER BY mitre_id")
     rows = await cursor.fetchall()
     return [_row_to_technique(r) for r in rows]
+
+
+@router.post("/techniques", status_code=201)
+async def create_technique(
+    body: TechniqueCreate,
+    db: aiosqlite.Connection = Depends(get_db),
+):
+    """Add a new MITRE ATT&CK technique."""
+    tech_id = str(uuid.uuid4())
+    await db.execute(
+        "INSERT INTO techniques "
+        "(id, mitre_id, name, tactic, tactic_id, description, "
+        "kill_chain_stage, risk_level, caldera_ability_id, platforms) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            tech_id,
+            body.mitre_id,
+            body.name,
+            body.tactic,
+            body.tactic_id,
+            body.description,
+            body.kill_chain_stage,
+            body.risk_level,
+            body.caldera_ability_id,
+            json.dumps(body.platforms),
+        ),
+    )
+    await db.commit()
+    db.row_factory = aiosqlite.Row
+    cursor = await db.execute("SELECT * FROM techniques WHERE id = ?", (tech_id,))
+    row = await cursor.fetchone()
+    return dict(row)
+
+
+@router.post("/techniques/sync-caldera")
+async def sync_caldera_abilities(
+    db: aiosqlite.Connection = Depends(get_db),
+):
+    """Sync caldera_ability_id from Caldera's ability catalog.
+
+    Fetches all abilities from Caldera, matches by MITRE technique ID,
+    and updates the caldera_ability_id field.
+    """
+    if settings.MOCK_CALDERA:
+        return {"synced": 0, "message": "Mock mode — using seed data"}
+
+    try:
+        from app.clients.caldera_client import CalderaClient
+
+        client = CalderaClient(settings.CALDERA_URL, settings.CALDERA_API_KEY)
+        abilities = await client.list_abilities()
+        await client.aclose()
+    except Exception as e:
+        logger.error("Failed to fetch abilities from Caldera: %s", e)
+        return {"synced": 0, "message": f"Caldera sync failed: {e}"}
+
+    if not abilities:
+        return {"synced": 0, "message": "No abilities found (is Caldera running?)"}
+
+    # Build mitre_id -> ability_id mapping
+    mapping: dict[str, str] = {}
+    for ab in abilities:
+        tech_id = ab.get("technique_id") or ab.get("technique", {}).get(
+            "attack_id", ""
+        )
+        ab_id = ab.get("ability_id") or ab.get("id", "")
+        if tech_id and ab_id:
+            # Keep first match per technique
+            mapping.setdefault(tech_id, ab_id)
+
+    synced = 0
+    for mitre_id, ability_id in mapping.items():
+        result = await db.execute(
+            "UPDATE techniques SET caldera_ability_id = ? "
+            "WHERE mitre_id = ? AND (caldera_ability_id IS NULL OR caldera_ability_id = '')",
+            (ability_id, mitre_id),
+        )
+        if result.rowcount > 0:
+            synced += 1
+    await db.commit()
+
+    return {
+        "synced": synced,
+        "total_abilities": len(abilities),
+        "mapped_techniques": len(mapping),
+    }
 
 
 @router.get(

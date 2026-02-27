@@ -82,29 +82,78 @@ async def sync_agents(
         logger.error("Failed to sync agents from Caldera: %s", e)
         return {"message": f"Caldera sync failed: {e}", "synced": 0}
 
+    # Load targets for this operation to match Caldera agents by host/IP
+    cursor = await db.execute(
+        "SELECT id, hostname, ip_address FROM targets WHERE operation_id = ?",
+        (operation_id,),
+    )
+    target_rows = await cursor.fetchall()
+    # Build lookup: hostname→target_id, ip→target_id
+    target_by_host: dict[str, str] = {}
+    for t in target_rows:
+        if t["hostname"]:
+            target_by_host[t["hostname"].lower()] = t["id"]
+        if t["ip_address"]:
+            target_by_host[t["ip_address"]] = t["id"]
+
     synced = 0
+    skipped = 0
     for agent in caldera_agents:
-        agent_id = str(uuid.uuid4())
+        caldera_host = agent.get("host", "")
+        # Match to Athena target by hostname or IP
+        host_id = target_by_host.get(caldera_host.lower()) or target_by_host.get(caldera_host)
+        if not host_id:
+            logger.warning(
+                "Caldera agent paw=%s host=%s — no matching target in operation %s, skipping",
+                agent.get("paw"), caldera_host, operation_id,
+            )
+            skipped += 1
+            continue
+
+        paw = agent.get("paw", "")
         now = datetime.now(timezone.utc).isoformat()
-        await db.execute(
-            """INSERT OR REPLACE INTO agents
-               (id, paw, host_id, status, privilege, last_beacon,
-                beacon_interval_sec, platform, operation_id)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                agent_id,
-                agent.get("paw", ""),
-                agent.get("host", "unknown"),
-                agent.get("status", "alive"),
-                agent.get("privilege", "User"),
-                now,
-                60,
-                agent.get("platform", "unknown"),
-                operation_id,
-            ),
+
+        # Upsert by paw: check if agent with this paw already exists
+        cursor = await db.execute(
+            "SELECT id FROM agents WHERE paw = ? AND operation_id = ?",
+            (paw, operation_id),
         )
+        existing = await cursor.fetchone()
+
+        if existing:
+            await db.execute(
+                "UPDATE agents SET host_id = ?, status = ?, privilege = ?, "
+                "last_beacon = ?, platform = ? WHERE id = ?",
+                (
+                    host_id,
+                    agent.get("status", "alive"),
+                    agent.get("privilege", "User"),
+                    now,
+                    agent.get("platform", "unknown"),
+                    existing["id"],
+                ),
+            )
+        else:
+            agent_id = str(uuid.uuid4())
+            await db.execute(
+                "INSERT INTO agents "
+                "(id, paw, host_id, status, privilege, last_beacon, "
+                "beacon_interval_sec, platform, operation_id) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    agent_id, paw, host_id,
+                    agent.get("status", "alive"),
+                    agent.get("privilege", "User"),
+                    now, 60,
+                    agent.get("platform", "unknown"),
+                    operation_id,
+                ),
+            )
         synced += 1
 
     await db.commit()
-    logger.info("Synced %d agents from Caldera for operation %s", synced, operation_id)
-    return {"synced": synced}
+    logger.info(
+        "Synced %d agents from Caldera for operation %s (%d skipped — no matching target)",
+        synced, operation_id, skipped,
+    )
+    return {"synced": synced, "skipped": skipped}

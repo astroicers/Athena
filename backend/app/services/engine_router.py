@@ -66,12 +66,27 @@ class EngineRouter:
         tech_row = await cursor.fetchone()
         ability_id = (tech_row["caldera_ability_id"] if tech_row else None) or technique_id
 
-        # Get target paw/hostname for engine
+        # Get agent paw for the target — Caldera needs the agent's paw, not hostname
         cursor = await db.execute(
-            "SELECT hostname FROM targets WHERE id = ?", (target_id,)
+            "SELECT paw FROM agents WHERE host_id = ? AND operation_id = ? "
+            "AND status = 'alive' LIMIT 1",
+            (target_id, operation_id),
         )
-        target_row = await cursor.fetchone()
-        target_label = target_row["hostname"] if target_row else target_id
+        agent_row = await cursor.fetchone()
+        if not agent_row:
+            # No alive agent on this target — cannot execute
+            logger.warning("No alive agent on target %s for operation %s", target_id, operation_id)
+            return {
+                "execution_id": exec_id,
+                "technique_id": technique_id,
+                "target_id": target_id,
+                "engine": engine,
+                "status": "failed",
+                "result_summary": None,
+                "facts_collected_count": 0,
+                "error": f"No alive agent on target {target_id}",
+            }
+        agent_paw = agent_row["paw"]
 
         # Create execution record
         await db.execute(
@@ -91,7 +106,7 @@ class EngineRouter:
 
         # Select and call engine
         client = self._select_client(engine)
-        result: ExecutionResult = await client.execute(ability_id, target_label)
+        result: ExecutionResult = await client.execute(ability_id, agent_paw)
 
         # Update execution record
         completed_at = datetime.now(timezone.utc).isoformat()

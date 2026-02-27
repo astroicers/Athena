@@ -34,9 +34,9 @@ async def reset_operation(
     """Reset an operation to its initial planning state.
 
     Deletes all execution history (logs, recommendations, facts, technique
-    executions, OODA iterations) and resets config data (operation counters,
-    targets, agents, mission steps, C5ISR statuses) back to their initial
-    values.
+    executions, OODA iterations) and all operational data (targets, agents,
+    mission steps).  Resets operation counters and C5ISR statuses back to
+    their initial values.
     """
     await ensure_operation(db, operation_id)
 
@@ -59,7 +59,18 @@ async def reset_operation(
         "DELETE FROM ooda_iterations WHERE operation_id = ?", (operation_id,)
     )
 
-    # ── UPDATE config data back to initial state ─────────────────────────
+    # ── DELETE operational data (FK-safe order) ──────────────────────────
+    await db.execute(
+        "DELETE FROM mission_steps WHERE operation_id = ?", (operation_id,)
+    )
+    await db.execute(
+        "DELETE FROM agents WHERE operation_id = ?", (operation_id,)
+    )
+    await db.execute(
+        "DELETE FROM targets WHERE operation_id = ?", (operation_id,)
+    )
+
+    # ── RESET operation counters & C5ISR statuses ──────────────────────
     await db.execute(
         "UPDATE operations SET "
         "status = 'planning', "
@@ -73,29 +84,6 @@ async def reset_operation(
         "updated_at = ? "
         "WHERE id = ?",
         (now, operation_id),
-    )
-    await db.execute(
-        "UPDATE targets SET "
-        "is_compromised = 0, "
-        "privilege_level = NULL "
-        "WHERE operation_id = ?",
-        (operation_id,),
-    )
-    await db.execute(
-        "UPDATE agents SET "
-        "status = 'pending', "
-        "privilege = 'User', "
-        "last_beacon = NULL "
-        "WHERE operation_id = ?",
-        (operation_id,),
-    )
-    await db.execute(
-        "UPDATE mission_steps SET "
-        "status = 'queued', "
-        "started_at = NULL, "
-        "completed_at = NULL "
-        "WHERE operation_id = ?",
-        (operation_id,),
     )
     await db.execute(
         "UPDATE c5isr_statuses SET "

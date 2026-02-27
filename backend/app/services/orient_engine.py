@@ -21,6 +21,7 @@ import uuid
 from datetime import datetime, timezone
 
 import aiosqlite
+import anthropic
 import httpx
 
 from app.config import settings
@@ -210,6 +211,7 @@ class OrientEngine:
 
     def __init__(self, ws_manager: WebSocketManager):
         self._ws = ws_manager
+        self._anthropic_client: anthropic.AsyncAnthropic | None = None
 
     async def analyze(
         self, db: aiosqlite.Connection, operation_id: str,
@@ -484,7 +486,7 @@ class OrientEngine:
     async def _call_llm(self, system_prompt: str, user_prompt: str) -> str:
         """LLM API call with dual-backend fallback."""
         # Try Claude first
-        if settings.ANTHROPIC_API_KEY:
+        if settings.ANTHROPIC_API_KEY or settings.ANTHROPIC_AUTH_TOKEN:
             try:
                 return await self._call_claude(system_prompt, user_prompt)
             except Exception as e:
@@ -501,28 +503,33 @@ class OrientEngine:
         return json.dumps(_MOCK_RECOMMENDATION)
 
     async def _call_claude(self, system_prompt: str, user_prompt: str) -> str:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key": settings.ANTHROPIC_API_KEY,
-                    "anthropic-version": "2024-10-22",
-                    "content-type": "application/json",
-                },
-                json={
-                    "model": settings.CLAUDE_MODEL,
-                    "max_tokens": 4000,
-                    "temperature": 0.7,
-                    "system": system_prompt,
-                    "messages": [{"role": "user", "content": user_prompt}],
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            content = data.get("content", [])
-            if not content:
-                raise ValueError("Empty content in Claude response")
-            return content[0]["text"]
+        """Call Claude API via official Anthropic SDK.
+
+        Features over raw httpx:
+        - Automatic retry with exponential backoff (default max_retries=2)
+        - Typed error handling via anthropic exception hierarchy
+        - Connection reuse via persistent AsyncAnthropic client
+        """
+        if self._anthropic_client is None:
+            client_kwargs: dict = {"max_retries": 2}
+            if settings.ANTHROPIC_API_KEY:
+                client_kwargs["api_key"] = settings.ANTHROPIC_API_KEY
+            if settings.ANTHROPIC_AUTH_TOKEN:
+                client_kwargs["auth_token"] = settings.ANTHROPIC_AUTH_TOKEN
+            self._anthropic_client = anthropic.AsyncAnthropic(**client_kwargs)
+
+        message = await self._anthropic_client.messages.create(
+            model=settings.CLAUDE_MODEL,
+            max_tokens=4000,
+            temperature=0.7,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+            timeout=60.0,
+        )
+
+        if not message.content:
+            raise ValueError("Empty content in Claude response")
+        return message.content[0].text
 
     async def _call_openai(self, system_prompt: str, user_prompt: str) -> str:
         async with httpx.AsyncClient(timeout=60.0) as client:

@@ -16,7 +16,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
 
     DATABASE_URL: str = "sqlite:///backend/data/athena.db"
     CALDERA_URL: str = "http://localhost:8888"
@@ -24,8 +26,9 @@ class Settings(BaseSettings):
     MOCK_CALDERA: bool = True
     SHANNON_URL: str = ""
     ANTHROPIC_API_KEY: str = ""
+    ANTHROPIC_AUTH_TOKEN: str = ""
     OPENAI_API_KEY: str = ""
-    CLAUDE_MODEL: str = "claude-opus-4-20250514"
+    CLAUDE_MODEL: str = "claude-opus-4-6"
     OPENAI_MODEL: str = "gpt-4-turbo"
     AUTOMATION_MODE: str = "semi_auto"
     RISK_THRESHOLD: str = "medium"

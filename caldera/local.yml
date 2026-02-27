@@ -1,0 +1,43 @@
+ability_refresh: 60
+api_key_blue: BLUEADMIN123456
+api_key_red: ADMIN123456
+app.contact.dns.domain: mycaldera.caldera
+app.contact.dns.socket: 0.0.0.0:8853
+app.contact.ftp.host: 0.0.0.0
+app.contact.ftp.port: 2222
+app.contact.ftp.pword: caldera
+app.contact.ftp.server.dir: ftp_dir
+app.contact.ftp.user: caldera_user
+app.contact.gist: API_KEY
+app.contact.html: /weather
+app.contact.http: http://0.0.0.0:8888
+app.contact.tcp: 0.0.0.0:7010
+app.contact.tunnel.ssh.host_key_file: REPLACE_WITH_KEY_FILE_PATH
+app.contact.tunnel.ssh.host_key_passphrase: REPLACE_WITH_KEY_FILE_PASSPHRASE
+app.contact.tunnel.ssh.socket: 0.0.0.0:8022
+app.contact.tunnel.ssh.user_name: sandcat
+app.contact.tunnel.ssh.user_password: s4ndc4t!
+app.contact.udp: 0.0.0.0:7011
+app.contact.websocket: 0.0.0.0:7012
+auth.login.handler.module: default
+crypt_salt: AthenaP0CSaltValue2026
+encryption_key: AthenaP0CEncryptionKey2026
+exfil_dir: /tmp/caldera
+host: 0.0.0.0
+objects.planners.default: atomic
+plugins:
+- access
+- compass
+- debrief
+- fieldmanual
+- manx
+- response
+- sandcat
+- stockpile
+- training
+port: 8888
+users:
+  blue:
+    blue: admin
+  red:
+    red: admin

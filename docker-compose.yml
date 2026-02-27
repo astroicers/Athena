@@ -35,6 +35,22 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # MITRE Caldera — 攻擊執行引擎 (Apache 2.0)
+  # 啟用方式：docker compose --profile caldera up -d caldera
+  # 然後在 .env 設定 MOCK_CALDERA=false, CALDERA_URL=http://caldera:8888
+  caldera:
+    image: ghcr.io/mitre/caldera:latest
+    ports:
+      - "0.0.0.0:58888:8888"
+    volumes:
+      - ./caldera/local.yml:/usr/src/app/conf/local.yml
+      - caldera-data:/usr/src/app/data
+    restart: unless-stopped
+    profiles:
+      - caldera
+
 volumes:
   backend-data:
+    driver: local
+  caldera-data:
     driver: local

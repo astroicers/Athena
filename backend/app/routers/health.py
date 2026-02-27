@@ -62,7 +62,7 @@ async def health_check(db: aiosqlite.Connection = Depends(get_db)):
     # LLM status: mock > claude > openai > unavailable
     if settings.MOCK_LLM:
         llm_status = "mock"
-    elif settings.ANTHROPIC_API_KEY:
+    elif settings.ANTHROPIC_API_KEY or settings.ANTHROPIC_AUTH_TOKEN:
         llm_status = "claude"
     elif settings.OPENAI_API_KEY:
         llm_status = "openai"

@@ -183,9 +183,13 @@ class CalderaClient(BaseEngineClient):
     async def check_version(self) -> str:
         """Check Caldera version compatibility."""
         try:
-            resp = await self._client.get("/api/v2/config/main")
+            resp = await self._client.get("/api/v2/health")
             resp.raise_for_status()
             version = resp.json().get("version", "unknown")
+            if version == "unknown":
+                resp2 = await self._client.get("/api/v2/config/main")
+                resp2.raise_for_status()
+                version = resp2.json().get("version", "unknown")
             if not any(version.startswith(v) for v in SUPPORTED_CALDERA_VERSIONS):
                 logger.warning(
                     "Caldera version %s is untested — supported prefixes: %s",

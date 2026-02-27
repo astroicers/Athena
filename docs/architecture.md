@@ -249,7 +249,7 @@ graph TD
 - [x] Caldera mock 客戶端（Phase 5 已建立 — `mock_caldera_client.py`）
 - [ ] WebSocket 無 Redis pub/sub 背壓機制（Phase 8 正式版）
 - [ ] 身份驗證與 RBAC 尚未實作（Phase 8）
-- [ ] Phase 11 新模組（reports.py、admin.py、Toast、PageLoading、RecommendationPanel）缺少單元測試 `tech-debt: test-pending`
+- [x] Phase 11 新模組測試已補齊（24 tests：backend 10 + frontend 14）
 
 ---
 

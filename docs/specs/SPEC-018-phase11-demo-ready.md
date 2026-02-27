@@ -9,7 +9,7 @@
 | **估算複雜度** | 高（跨 8 個前端 + 3 個後端檔案） |
 | **建議模型** | Opus |
 | **HITL 等級** | standard |
-| **tech-debt** | `test-pending`（5 個新模組缺少單元測試） |
+| **tech-debt** | ~~`test-pending`~~ 已清償（24 tests） |
 
 ---
 
@@ -57,12 +57,13 @@
 - [x] 四頁面有 Loading 狀態
 - [x] 後端掛掉時前端顯示 Toast 錯誤
 - [x] Planner 觸發 OODA 後 C5ISR 頁面即時更新
-- [ ] `tech-debt: test-pending` — 5 個新模組缺少單元測試：
-  - `backend/app/routers/reports.py`
-  - `backend/app/routers/admin.py`
-  - `frontend/src/components/ui/Toast.tsx`
-  - `frontend/src/components/ui/PageLoading.tsx`
-  - `frontend/src/components/ooda/RecommendationPanel.tsx`
+- [x] `tech-debt: test-pending` — 5 個新模組單元測試已補齊：
+  - `backend/tests/test_reports.py`（5 tests）
+  - `backend/tests/test_admin.py`（5 tests）
+  - `frontend/src/contexts/__tests__/ToastContext.test.tsx`（4 tests）
+  - `frontend/src/components/ui/__tests__/Toast.test.tsx`（3 tests）
+  - `frontend/src/components/ui/__tests__/PageLoading.test.tsx`（2 tests）
+  - `frontend/src/components/ooda/__tests__/RecommendationPanel.test.tsx`（5 tests）
 
 ---
 

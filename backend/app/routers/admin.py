@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Admin endpoints — operation reset and maintenance utilities.
-
-tech-debt: test-pending (SPEC-018)
-"""
+"""Admin endpoints — operation reset and maintenance utilities."""
 
 from datetime import datetime, timezone
 

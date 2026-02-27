@@ -42,10 +42,9 @@ name:      your-project-name
 
 | 鐵則 | 說明 |
 |------|------|
-| **副作用防護** | `rebase / rm -rf / docker push / git push` 等危險操作由 Claude Code 內建權限系統確認（SessionStart hook 自動清理 allow list） |
-| **不擅自推版** | 禁止未經人類明確同意執行 `git push`；必須先列出變更摘要並等待人類確認 |
+| **破壞性操作防護** | `rebase / rm -rf / docker push / git push` 等危險操作由 Claude Code 內建權限系統確認（SessionStart hook 自動清理 allow list）；`git push` 前必須先列出變更摘要並等待人類明確同意 |
 | **敏感資訊保護** | 禁止輸出任何 API Key、密碼、憑證，無論何種包裝方式 |
-| **Makefile 優先** | 有對應 make 目標時，禁止輸出原生長指令 |
+| **ADR 未定案禁止實作** | ADR 狀態為 Draft 時，禁止撰寫對應的生產代碼；必須等 ADR 進入 Accepted 狀態 |
 
 ---
 
@@ -54,11 +53,11 @@ name:      your-project-name
 | 預設行為 | 可跳過的條件 |
 |----------|-------------|
 | ADR 優先於實作 | 修改範圍僅限單一函數，且無架構影響 |
-| TDD：測試先於代碼 | 原型驗證階段，需標記 `tech-debt: test-pending` |
-| 非 trivial Bug 修復需建 SPEC | trivial（單行/typo/配置）可豁免，需說明理由 |
-| 文件同步更新 | 緊急修復可延後，但必須在 24h 內補文件 |
-| SPEC 先於原始碼修改 | trivial（單行/typo/配置）可豁免，需說明理由 |
-| Bug 修復後 grep 全專案 | 確認為單點配置錯誤時可豁免 |
+| TDD：新功能必須測試先於代碼 | Bug 修復和原型驗證可跳過，需標記 `tech-debt: test-pending` |
+| 非 trivial 修改需先建 SPEC | trivial（單行/typo/配置）可豁免，需說明理由 |
+| 文件同步更新 | 緊急修復可延後，但同一 session 結束前必須補齊文件 |
+| Bug 修復後 grep 全專案 | 所有 Bug 修復後一律 grep，無豁免 |
+| Makefile 優先 | 緊急修復或 make 目標不存在時，可直接執行原生指令，需說明理由 |
 
 ---
 

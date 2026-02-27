@@ -13,15 +13,15 @@
 
 ---
 
-## 副作用防護
+## 破壞性操作防護
 
-以下操作執行前，必須列出完整計畫並等待 `Y` / `Confirm`：
+以下操作由 Claude Code 內建權限系統確認，`git push` 前另需列出變更摘要並等待人類明確同意：
 
 ```
 git rebase          # 內建權限系統確認（SessionStart hook 清理 allow list）
 docker push/deploy  # 內建權限系統確認（SessionStart hook 清理 allow list）
 rm -r* / find -delete  # 內建權限系統確認（SessionStart hook 清理 allow list）
-git push            # 內建權限系統確認（SessionStart hook 清理 allow list）
+git push            # 內建權限系統確認 + 必須先列出變更摘要並等待人類同意
 ```
 
 > **技術執行**：Claude Code 內建權限系統對不在 allow list 的指令彈出「Allow this bash command?」確認框。
@@ -38,17 +38,15 @@ git push            # 內建權限系統確認（SessionStart hook 清理 allow 
 
 修復 Bug 後：
 
-1. 判斷 bug 類型
-   - **模式性錯誤**（邏輯、型別、邊界）→ 必須 `grep -r` 全專案，找出相似位置一次修復
-   - **單點配置錯誤**（環境變數、路徑）→ 可豁免，但需在回覆中說明判斷理由
+1. 所有 Bug 修復後一律 `grep -r` 全專案，找出相似位置一次修復，無豁免
 
-2. 回覆格式：「已檢查全專案，共 N 處相同問題」或「判斷為單點錯誤，豁免全域掃描，原因：...」
+2. 回覆格式：「已檢查全專案，共 N 處相同問題」或「已檢查全專案，無其他相同問題」
 
 ---
 
 ## 文件原子化
 
-代碼邏輯變動 **必須** 同步更新（延後需說明理由）：
+代碼邏輯變動 **必須** 同步更新（緊急修復可延後，但同一 session 結束前必須補齊）：
 
 - 架構異動 → `docs/architecture.md`
 - 技術決策 → `docs/adr/ADR-XXX.md`

@@ -27,7 +27,7 @@ Draft → Proposed → Accepted → Deprecated / Superseded by ADR-XXX
 ### 執行規則
 
 - 提議方案前，先 `make adr-list` 確認是否與現有決策衝突
-- ADR 狀態為 `Draft` 時，不應有對應的生產代碼
+- ADR 狀態為 `Draft` 時，禁止撰寫對應的生產代碼（鐵則）
 - `Accepted` ADR 被推翻時，必須建立新 ADR 說明原因，不可直接修改舊 ADR
 
 ---
@@ -46,9 +46,16 @@ ADR（為什麼）→ SDD（如何設計）→ TDD（驗證標準）→ BDD（�
 | trivial（單行修復、typo、配置錯誤） | 直接修復，但需在回覆中說明豁免理由 |
 | 涉及架構決策 | 同上 + 補 ADR |
 
+**TDD 場景區分：**
+
+| 場景 | TDD 要求 |
+|------|----------|
+| 新功能 | 🔴 必須測試先於代碼 |
+| Bug 修復 | 🟡 可跳過，需標記 `tech-debt: test-pending` |
+| 原型驗證 | 🟡 可跳過，需標記 `tech-debt: test-pending` |
+
 **其他允許的簡化路徑（需在回覆中說明）：**
 
-- 原型驗證：實作 → 測試後補（標記 `tech-debt: test-pending`）
 - 明確小功能：可跳過 BDD，直接 TDD
 
 ---
@@ -62,7 +69,7 @@ ADR（為什麼）→ SDD（如何設計）→ TDD（驗證標準）→ BDD（�
    └── make spec-list
        ├── 有對應 SPEC → 確認理解 Goal 和 Done When
        └── 無對應 SPEC → make spec-new TITLE="..."
-           └── 至少填寫：Goal、Done When、Edge Cases
+           └── 至少填寫：Goal、Inputs、Expected Output、Done When（含測試條件）、Edge Cases
 
 2. ADR 確認（僅架構變更時）
    └── make adr-list → 有相關 ADR 且為 Accepted → 繼續

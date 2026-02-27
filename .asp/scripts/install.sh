@@ -107,14 +107,16 @@ mkdir -p docs/adr docs/specs
 if git ls-remote "$PROTOCOL_REPO" &>/dev/null 2>&1; then
     git clone --depth=1 "$PROTOCOL_REPO" "$PROTOCOL_DIR" 2>/dev/null
 
-    # 讀取新版本號
+    # 讀取新版本號與 commit hash
     NEW_VERSION="unknown"
+    NEW_COMMIT="unknown"
     if [ -f "$PROTOCOL_DIR/.asp/VERSION" ]; then
         NEW_VERSION=$(cat "$PROTOCOL_DIR/.asp/VERSION" | tr -d '[:space:]')
     fi
+    NEW_COMMIT=$(git -C "$PROTOCOL_DIR" rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
     if [ "$IS_UPGRADE" = true ]; then
-        echo "🔄 升級 ASP: v${INSTALLED_VERSION} → v${NEW_VERSION}"
+        echo "🔄 升級 ASP: v${INSTALLED_VERSION} → v${NEW_VERSION} (${NEW_COMMIT})"
     fi
 
     # --- CLAUDE.md 處理 ---
@@ -430,12 +432,12 @@ echo ""
 if [ "$IS_UPGRADE" = true ]; then
     echo "🎉 升級完成！"
     echo ""
-    echo "升級摘要 (v${INSTALLED_VERSION} → v${NEW_VERSION:-unknown})："
+    echo "升級摘要 (v${INSTALLED_VERSION} → v${NEW_VERSION:-unknown} @ ${NEW_COMMIT:-unknown})："
     echo "  ✅ 已更新：.asp/profiles, .asp/templates, .asp/scripts, .asp/hooks"
     echo "  🔒 已保留：.ai_profile, docs/adr/*, docs/specs/*, docs/architecture.md"
     echo ""
 else
-    echo "🎉 安裝完成！"
+    echo "🎉 安裝完成！（v${NEW_VERSION:-unknown} @ ${NEW_COMMIT:-unknown}）"
     echo ""
     echo "啟動 Claude Code，輸入："
     echo ""

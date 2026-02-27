@@ -56,6 +56,8 @@
 
 ## ✅ 驗收標準（Done When）
 
+> 必須包含至少一項可驗證的測試條件。
+
 - [ ] `make test-filter FILTER=spec-000` 全數通過
 - [ ] `make lint` 無 error
 - [ ] 回應時間 < ____ms（留空則不限制）

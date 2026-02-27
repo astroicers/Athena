@@ -146,10 +146,13 @@ Phase 1 ████████████████████ 完成 — 
 Phase 2 ████████████████████ 完成 — 後端基礎
 Phase 3 ████████████████████ 完成 — 前端基礎
 Phase 4 ████████████████████ 完成 — 畫面實作
-Phase 5 ████████████████████ 完成 — OODA 循環引擎
-Phase 6 ████████████████████ 完成 — 整合與 Docker
-Phase 7 ██████░░░░░░░░░░░░░░ 進行中 — 文件
-Phase 8 ░░░░░░░░░░░░░░░░░░░░ 未來 — 進階增強
+Phase 5  ████████████████████ 完成 — OODA 循環引擎
+Phase 6  ████████████████████ 完成 — 整合與 Docker
+Phase 7  ████████████████████ 完成 — 文件與開源發佈
+Phase 8  ████████████████████ 完成 — 測試套件（61 pytest + 54 Vitest）
+Phase 9  ████████████████████ 完成 — Caldera + LLM 真實整合
+Phase 10 ████████████████████ 完成 — Orient Prompt 工程
+Phase 11 ████████████████████ 完成 — Demo 就緒
 ```
 
 ---
@@ -161,7 +164,7 @@ Phase 8 ░░░░░░░░░░░░░░░░░░░░ 未來 — 
 | [安裝指南](docs/GETTING_STARTED.md) | 環境需求、安裝步驟、常見問題 |
 | [Demo 演練](docs/DEMO_WALKTHROUGH.md) | 「奪取 Domain Admin」完整 Demo 場景 |
 | [系統架構](docs/architecture.md) | 高層架構、資料流、元件關係 |
-| [開發路線圖](docs/ROADMAP.md) | Phase 0-8 完整計畫 |
+| [開發路線圖](docs/ROADMAP.md) | Phase 0-11 完整計畫 |
 | [資料架構](docs/architecture/data-architecture.md) | 模型、Schema、REST API、種子資料 |
 | [專案結構](docs/architecture/project-structure.md) | 目錄佈局、各層職責 |
 | [AI 上下文](CLAUDE.md) | 完整專案上下文（供 AI 助手參閱） |
@@ -179,13 +182,11 @@ Phase 8 ░░░░░░░░░░░░░░░░░░░░ 未來 — 
 
 ## 授權
 
-授權條款選定中（暫定 Apache 2.0）
-
-- Athena 核心：暫定 Apache 2.0
+- Athena 核心：Apache 2.0
 - PentestGPT 整合：MIT（安全匯入）
 - MITRE Caldera：Apache 2.0（API 整合）
 - Shannon（選用）：AGPL-3.0（僅 API，授權隔離）
 
 ---
 
-*版本：0.4.0-poc | 階段：POC（PentestGPT + Caldera）| 最後更新：2026-02-26*
+*版本：0.1.0-poc | 階段：POC（PentestGPT + Caldera）| 最後更新：2026-02-27*

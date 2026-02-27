@@ -7,6 +7,6 @@ describe("OODAIndicator", () => {
   it("highlights the active phase", () => {
     render(<OODAIndicator currentPhase={OODAPhase.ORIENT} />);
     const orient = screen.getByText("ORIENT");
-    expect(orient.closest("div")).toHaveClass("bg-athena-accent");
+    expect(orient.closest("div")).toHaveClass("bg-athena-accent/20");
   });
 });

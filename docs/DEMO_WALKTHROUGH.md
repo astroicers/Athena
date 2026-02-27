@@ -12,7 +12,7 @@
 # 確認後端健康狀態
 curl http://localhost:58000/api/health
 # 預期回應：
-# {"status":"ok","version":"0.1.0","services":{"database":"ok","caldera":"ok","pentestgpt":"ok"}}
+# {"status":"ok","version":"0.1.0","services":{"database":"connected","caldera":"mock","shannon":"disabled","websocket":"active","llm":"mock"}}
 
 # 確認前端可存取
 curl -s -o /dev/null -w "%{http_code}" http://localhost:58080

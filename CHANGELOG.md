@@ -7,6 +7,30 @@
 
 ## [Unreleased]
 
+### SPEC-018：Tech-Debt 清償（2026-02-27）
+
+#### Added
+- 24 個新測試覆蓋 Phase 11 新模組
+  - `backend/tests/test_reports.py`（5 tests）— 報告 API 10 段落、seed data、404
+  - `backend/tests/test_admin.py`（5 tests）— Reset 204、WS broadcast、資料清除、狀態歸零、404
+  - `frontend/src/contexts/__tests__/ToastContext.test.tsx`（4 tests）— provider 隔離、add/remove、auto-dismiss
+  - `frontend/src/components/ui/__tests__/Toast.test.tsx`（3 tests）— 空狀態、severity labels、click dismiss
+  - `frontend/src/components/ui/__tests__/PageLoading.test.tsx`（2 tests）— 文字、動畫點數
+  - `frontend/src/components/ooda/__tests__/RecommendationPanel.test.tsx`（5 tests）— null、選項、展開、API accept、badge
+
+#### Fixed
+- `OODAIndicator.test.tsx` — Tailwind opacity class 斷言修正（`bg-athena-accent` → `bg-athena-accent/20`）
+
+#### Changed
+- 5 個模組移除 `tech-debt: test-pending` 標記
+- `docs/specs/SPEC-018-phase11-demo-ready.md` — 全部 10 項 Done When ✅
+- `docs/architecture.md` — tech-debt 條目標記已完成
+
+#### Metrics
+- 後端：61 pytest passed + 6 skipped
+- 前端：54 Vitest passed
+- 總計：115 個測試
+
 ### Phase 11：Demo 就緒 — UI/UX 精修 + OODA 資料完整性
 
 #### Added

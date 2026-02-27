@@ -2,7 +2,7 @@
 
 > **Athena** C5ISR 網路作戰指揮平台 — 從零開始安裝
 >
-> **版本**：v0.4.0-poc
+> **版本**：v0.1.0-poc
 > **更新日期**：2026-02-26
 
 ---
@@ -106,7 +106,7 @@ make logs
 
 ```bash
 # 等待 backend 就緒（通常約 15-30 秒）
-until curl -sf http://localhost:8000/api/health > /dev/null; do
+until curl -sf http://localhost:58000/api/health > /dev/null; do
   echo "Waiting for backend..."
   sleep 3
 done
@@ -116,7 +116,7 @@ echo "Backend is ready!"
 ### 步驟 5：開啟瀏覽器
 
 ```
-http://localhost:3000
+http://localhost:58080
 ```
 
 你應該看到 Athena C5ISR Board — 指揮官主儀表板。
@@ -179,27 +179,36 @@ make dev
 
 安裝完成後，執行以下指令確認各服務正常運作。
 
+> **Port 對照**：Docker 模式使用 `58000`（後端）/ `58080`（前端）。
+> 本機開發模式使用 `8000`（後端）/ `3000`（前端）。
+> 以下範例以 Docker 模式為準。
+
 ### 1. 後端健康檢查
 
 ```bash
-curl http://localhost:8000/api/health
+curl http://localhost:58000/api/health
 ```
 
 預期回應：
 
 ```json
 {
-  "status": "healthy",
-  "version": "0.4.0-poc",
-  "mock_llm": true,
-  "mock_caldera": true
+  "status": "ok",
+  "version": "0.1.0",
+  "services": {
+    "database": "connected",
+    "caldera": "mock",
+    "shannon": "disabled",
+    "websocket": "active",
+    "llm": "mock"
+  }
 }
 ```
 
 ### 2. 確認種子資料載入
 
 ```bash
-curl http://localhost:8000/api/operations
+curl http://localhost:58000/api/operations
 ```
 
 預期回應：回傳包含種子作戰資料的 JSON 陣列，
@@ -207,7 +216,7 @@ curl http://localhost:8000/api/operations
 
 ### 3. 瀏覽器介面確認
 
-開啟 http://localhost:3000，確認以下畫面可正常載入：
+開啟 http://localhost:58080，確認以下畫面可正常載入：
 
 - **C5ISR Board**：指揮官主儀表板（首頁）
 - **MITRE Navigator**：ATT&CK 技術矩陣
@@ -216,7 +225,7 @@ curl http://localhost:8000/api/operations
 
 ### 4. API 文件
 
-開啟 http://localhost:8000/docs 確認 Swagger UI 正常顯示所有 API 端點。
+開啟 http://localhost:58000/docs 確認 Swagger UI 正常顯示所有 API 端點。
 
 ---
 
@@ -236,7 +245,10 @@ curl http://localhost:8000/api/operations
 | 變數 | 說明 | 預設值 |
 |------|------|--------|
 | `ANTHROPIC_API_KEY` | Claude API key（`MOCK_LLM=false` 時需要） | （空） |
+| `ANTHROPIC_AUTH_TOKEN` | Bearer token 認證（企業閘道 / Vertex AI） | （空） |
 | `OPENAI_API_KEY` | GPT-4 API key（備用 LLM） | （空） |
+| `CLAUDE_MODEL` | Claude 模型名稱覆寫 | `claude-opus-4-6` |
+| `OPENAI_MODEL` | OpenAI 模型名稱覆寫 | `gpt-4-turbo` |
 
 ### 執行引擎
 
@@ -263,8 +275,8 @@ curl http://localhost:8000/api/operations
 
 | 變數 | 說明 | 預設值 |
 |------|------|--------|
-| `NEXT_PUBLIC_API_URL` | 前端呼叫後端 API 的 URL | `http://localhost:8000/api` |
-| `NEXT_PUBLIC_WS_URL` | WebSocket URL（即時更新） | `ws://localhost:8000/ws` |
+| `NEXT_PUBLIC_API_URL` | 前端呼叫後端 API 的 URL | `http://localhost:58000/api` |
+| `NEXT_PUBLIC_WS_URL` | WebSocket URL（即時更新） | `ws://localhost:58000/ws` |
 
 ### 日誌
 
@@ -450,7 +462,7 @@ make help
 3. **[專案結構](architecture/project-structure.md)** — 了解 Monorepo 目錄佈局
    和各層職責分工。
 
-4. **[開發路線圖](ROADMAP.md)** — 了解 Phase 0-8 完整計畫和 POC 成功標準。
+4. **[開發路線圖](ROADMAP.md)** — 了解 Phase 0-11 完整計畫和 POC 成功標準。
 
 ---
 

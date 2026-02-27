@@ -17,6 +17,9 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useOperation } from "@/hooks/useOperation";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import { useToast } from "@/contexts/ToastContext";
+import { PageLoading } from "@/components/ui/PageLoading";
 import { MetricCard } from "@/components/cards/MetricCard";
 import { RecommendCard } from "@/components/cards/RecommendCard";
 import { C5ISRStatusBoard } from "@/components/c5isr/C5ISRStatusBoard";
@@ -64,15 +67,32 @@ const EXEC_COLUMNS: Column<TechRow>[] = [
 
 export default function C5ISRPage() {
   const { operation } = useOperation(DEFAULT_OP_ID);
+  const { addToast } = useToast();
+  const ws = useWebSocket(DEFAULT_OP_ID);
+  const [isLoading, setIsLoading] = useState(true);
   const [domains, setDomains] = useState<C5ISRStatus[]>([]);
   const [recommendation, setRecommendation] = useState<PentestGPTRecommendation | null>(null);
   const [execRows, setExecRows] = useState<TechniqueWithStatus[]>([]);
 
   useEffect(() => {
-    api.get<C5ISRStatus[]>(`/operations/${DEFAULT_OP_ID}/c5isr`).then(setDomains).catch(() => {});
-    api.get<PentestGPTRecommendation>(`/operations/${DEFAULT_OP_ID}/recommendations/latest`).then(setRecommendation).catch(() => {});
-    api.get<TechniqueWithStatus[]>(`/operations/${DEFAULT_OP_ID}/techniques`).then(setExecRows).catch(() => {});
+    Promise.all([
+      api.get<C5ISRStatus[]>(`/operations/${DEFAULT_OP_ID}/c5isr`).then(setDomains),
+      api.get<PentestGPTRecommendation>(`/operations/${DEFAULT_OP_ID}/recommendations/latest`).then(setRecommendation),
+      api.get<TechniqueWithStatus[]>(`/operations/${DEFAULT_OP_ID}/techniques`).then(setExecRows),
+    ]).catch(() => addToast("Failed to load C5ISR data", "error"))
+      .finally(() => setIsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // WebSocket: live C5ISR domain updates
+  useEffect(() => {
+    return ws.subscribe("c5isr.update", (data: any) => {
+      if (data?.domains) setDomains(data.domains);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ws.subscribe]);
+
+  if (isLoading) return <PageLoading />;
 
   const op: Operation | null = operation;
 

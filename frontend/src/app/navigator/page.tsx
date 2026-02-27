@@ -16,6 +16,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import { useToast } from "@/contexts/ToastContext";
+import { PageLoading } from "@/components/ui/PageLoading";
 import { MITRECell } from "@/components/mitre/MITRECell";
 import { KillChainIndicator } from "@/components/mitre/KillChainIndicator";
 import { TechniqueCard } from "@/components/cards/TechniqueCard";
@@ -72,14 +75,31 @@ function tacticLabel(tactic: string): string {
 }
 
 export default function NavigatorPage() {
+  const { addToast } = useToast();
+  const ws = useWebSocket(DEFAULT_OP_ID);
+  const [isLoading, setIsLoading] = useState(true);
   const [techniques, setTechniques] = useState<TechniqueWithStatus[]>([]);
   const [selected, setSelected] = useState<TechniqueWithStatus | null>(null);
   const [recommendation, setRecommendation] = useState<PentestGPTRecommendation | null>(null);
 
   useEffect(() => {
-    api.get<TechniqueWithStatus[]>(`/operations/${DEFAULT_OP_ID}/techniques`).then(setTechniques).catch(() => {});
-    api.get<PentestGPTRecommendation>(`/operations/${DEFAULT_OP_ID}/recommendations/latest`).then(setRecommendation).catch(() => {});
+    Promise.all([
+      api.get<TechniqueWithStatus[]>(`/operations/${DEFAULT_OP_ID}/techniques`).then(setTechniques),
+      api.get<PentestGPTRecommendation>(`/operations/${DEFAULT_OP_ID}/recommendations/latest`).then(setRecommendation),
+    ]).catch(() => addToast("Failed to load navigator data", "error"))
+      .finally(() => setIsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // WebSocket: refresh techniques on execution updates
+  useEffect(() => {
+    return ws.subscribe("execution.update", () => {
+      api.get<TechniqueWithStatus[]>(`/operations/${DEFAULT_OP_ID}/techniques`)
+        .then(setTechniques)
+        .catch(() => addToast("Failed to refresh techniques", "error"));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ws.subscribe]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, TechniqueWithStatus[]>();
@@ -105,6 +125,8 @@ export default function NavigatorPage() {
     }
     return counts;
   }, [techniques]);
+
+  if (isLoading) return <PageLoading />;
 
   return (
     <div className="space-y-4">

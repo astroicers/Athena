@@ -19,12 +19,18 @@ import { api } from "@/lib/api";
 import { useOperation } from "@/hooks/useOperation";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useLiveLog } from "@/hooks/useLiveLog";
+import { useToast } from "@/contexts/ToastContext";
+import { PageLoading } from "@/components/ui/PageLoading";
 import { MetricCard } from "@/components/cards/MetricCard";
 import { NetworkTopology } from "@/components/topology/NetworkTopology";
 import { ThreatLevelGauge } from "@/components/topology/ThreatLevelGauge";
+import { OODAIndicator } from "@/components/ooda/OODAIndicator";
+import { RecommendationPanel } from "@/components/ooda/RecommendationPanel";
 import { AgentBeacon } from "@/components/data/AgentBeacon";
 import { LogEntryRow } from "@/components/data/LogEntryRow";
+import { useOODA } from "@/hooks/useOODA";
 import type { TopologyData } from "@/types/api";
+import type { PentestGPTRecommendation } from "@/types/recommendation";
 import type { Agent } from "@/types/agent";
 import type { LogEntry } from "@/types/log";
 import { AgentStatus } from "@/types/enums";
@@ -39,24 +45,47 @@ function formatBytes(bytes: number): string {
 
 export default function MonitorPage() {
   const { operation } = useOperation(DEFAULT_OP_ID);
+  const { addToast } = useToast();
   const ws = useWebSocket(DEFAULT_OP_ID);
+  const oodaPhase = useOODA(ws);
   const liveLogs = useLiveLog(ws);
+  const [isLoading, setIsLoading] = useState(true);
   const [topology, setTopology] = useState<TopologyData | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [initialLogs, setInitialLogs] = useState<LogEntry[]>([]);
+  const [recommendation, setRecommendation] = useState<PentestGPTRecommendation | null>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
 
+  const fetchRecommendation = () => {
+    api.get<PentestGPTRecommendation>(`/operations/${DEFAULT_OP_ID}/recommendations/latest`)
+      .then(setRecommendation)
+      .catch(() => addToast("Failed to load recommendation", "error"));
+  };
+
   useEffect(() => {
-    api.get<TopologyData>(`/operations/${DEFAULT_OP_ID}/topology`).then(setTopology).catch(() => {});
-    api.get<Agent[]>(`/operations/${DEFAULT_OP_ID}/agents`).then(setAgents).catch(() => {});
-    api.get<{ items: LogEntry[] }>(`/operations/${DEFAULT_OP_ID}/logs?page_size=50`).then((r) => setInitialLogs(r.items || [])).catch(() => {});
+    Promise.all([
+      api.get<TopologyData>(`/operations/${DEFAULT_OP_ID}/topology`).then(setTopology),
+      api.get<Agent[]>(`/operations/${DEFAULT_OP_ID}/agents`).then(setAgents),
+      api.get<{ items: LogEntry[] }>(`/operations/${DEFAULT_OP_ID}/logs?page_size=50`).then((r) => setInitialLogs(r.items || [])),
+      api.get<PentestGPTRecommendation>(`/operations/${DEFAULT_OP_ID}/recommendations/latest`).then(setRecommendation),
+    ]).catch(() => addToast("Failed to load monitor data", "error"))
+      .finally(() => setIsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Refresh recommendation when OODA phase changes (new recommendation may be available)
+  useEffect(() => {
+    if (oodaPhase) fetchRecommendation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [oodaPhase]);
 
   const allLogs = [...initialLogs, ...liveLogs];
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [allLogs.length]);
+
+  if (isLoading) return <PageLoading />;
 
   return (
     <div className="space-y-4 h-full">
@@ -96,6 +125,7 @@ export default function MonitorPage() {
 
         {/* Right sidebar */}
         <div className="space-y-4">
+          <OODAIndicator currentPhase={oodaPhase} />
           <ThreatLevelGauge level={operation?.threatLevel ?? 0} />
 
           {/* Agent Beacons */}
@@ -124,6 +154,13 @@ export default function MonitorPage() {
           </div>
         </div>
       </div>
+
+      {/* PentestGPT Recommendation */}
+      <RecommendationPanel
+        recommendation={recommendation}
+        operationId={DEFAULT_OP_ID}
+        onAccepted={fetchRecommendation}
+      />
 
       {/* Live Log Stream */}
       <div>

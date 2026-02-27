@@ -17,13 +17,16 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useOperation } from "@/hooks/useOperation";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import { useToast } from "@/contexts/ToastContext";
+import { PageLoading } from "@/components/ui/PageLoading";
 import { DataTable, Column } from "@/components/data/DataTable";
 import { OODATimeline } from "@/components/ooda/OODATimeline";
 import { HostNodeCard } from "@/components/cards/HostNodeCard";
 import { Button } from "@/components/atoms/Button";
 import { Badge } from "@/components/atoms/Badge";
 import { HexConfirmModal } from "@/components/modal/HexConfirmModal";
-import { MissionStepStatus, RiskLevel } from "@/types/enums";
+import { MissionStepStatus, RiskLevel, OODAPhase } from "@/types/enums";
 import type { MissionStep } from "@/types/mission";
 import type { OODATimelineEntry } from "@/types/ooda";
 import type { Target } from "@/types/target";
@@ -61,21 +64,102 @@ const STEP_COLUMNS: Column<StepRow>[] = [
 
 export default function PlannerPage() {
   const { operation } = useOperation(DEFAULT_OP_ID);
+  const { addToast } = useToast();
+  const ws = useWebSocket(DEFAULT_OP_ID);
+  const [isLoading, setIsLoading] = useState(true);
   const [steps, setSteps] = useState<MissionStep[]>([]);
   const [timeline, setTimeline] = useState<OODATimelineEntry[]>([]);
   const [targets, setTargets] = useState<Target[]>([]);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [oodaStatus, setOodaStatus] = useState<"idle" | "running" | "done" | "error">("idle");
+  const [oodaPhase, setOodaPhase] = useState<string | null>(null);
+  const [showOodaConfirm, setShowOodaConfirm] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetStatus, setResetStatus] = useState<"idle" | "resetting" | "done">("idle");
+
+  function refreshAllData() {
+    api.get<MissionStep[]>(`/operations/${DEFAULT_OP_ID}/mission/steps`).then(setSteps).catch(() => addToast("Failed to load steps", "error"));
+    api.get<OODATimelineEntry[]>(`/operations/${DEFAULT_OP_ID}/ooda/timeline`).then(setTimeline).catch(() => addToast("Failed to load timeline", "error"));
+    api.get<Target[]>(`/operations/${DEFAULT_OP_ID}/targets`).then(setTargets).catch(() => addToast("Failed to load targets", "error"));
+  }
 
   useEffect(() => {
-    api.get<MissionStep[]>(`/operations/${DEFAULT_OP_ID}/mission/steps`).then(setSteps).catch(() => {});
-    api.get<OODATimelineEntry[]>(`/operations/${DEFAULT_OP_ID}/ooda/timeline`).then(setTimeline).catch(() => {});
-    api.get<Target[]>(`/operations/${DEFAULT_OP_ID}/targets`).then(setTargets).catch(() => {});
+    Promise.all([
+      api.get<MissionStep[]>(`/operations/${DEFAULT_OP_ID}/mission/steps`).then(setSteps),
+      api.get<OODATimelineEntry[]>(`/operations/${DEFAULT_OP_ID}/ooda/timeline`).then(setTimeline),
+      api.get<Target[]>(`/operations/${DEFAULT_OP_ID}/targets`).then(setTargets),
+    ]).catch(() => addToast("Failed to load mission data", "error"))
+      .finally(() => setIsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // WebSocket: refresh data on OODA, execution, and reset events
+  useEffect(() => {
+    const unsubs = [
+      ws.subscribe("ooda.phase", () => refreshAllData()),
+      ws.subscribe("execution.update", () => refreshAllData()),
+      ws.subscribe("operation.reset", () => refreshAllData()),
+    ];
+    return () => unsubs.forEach((fn) => fn());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ws.subscribe]);
 
   function handleExecute() {
     setShowConfirm(false);
-    api.post(`/operations/${DEFAULT_OP_ID}/mission/execute`).catch(() => {});
+    api.post(`/operations/${DEFAULT_OP_ID}/mission/execute`)
+      .catch(() => addToast("Failed to execute mission", "error"));
   }
+
+  async function handleReset() {
+    setShowResetConfirm(false);
+    setResetStatus("resetting");
+    try {
+      await api.post(`/operations/${DEFAULT_OP_ID}/reset`);
+      setResetStatus("done");
+      refreshAllData();
+      setOodaStatus("idle");
+      setTimeout(() => setResetStatus("idle"), 2000);
+    } catch {
+      setResetStatus("idle");
+      addToast("Failed to reset operation", "error");
+    }
+  }
+
+  async function handleOodaTrigger() {
+    setShowOodaConfirm(false);
+    setOodaStatus("running");
+    setOodaPhase(OODAPhase.OBSERVE);
+    try {
+      await api.post(`/operations/${DEFAULT_OP_ID}/ooda/trigger`);
+      setOodaStatus("done");
+      setOodaPhase(null);
+      api.get<OODATimelineEntry[]>(`/operations/${DEFAULT_OP_ID}/ooda/timeline`)
+        .then(setTimeline)
+        .catch(() => addToast("Failed to refresh timeline", "error"));
+    } catch {
+      setOodaStatus("error");
+      setOodaPhase(null);
+      addToast("OODA cycle failed", "error");
+    }
+  }
+
+  async function handleExport() {
+    try {
+      const report = await api.get(`/operations/${DEFAULT_OP_ID}/report`);
+      const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `athena-report-${new Date().toISOString().slice(0, 19).replace(/:/g, "")}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      addToast("Report exported", "success");
+    } catch {
+      addToast("Failed to export report", "error");
+    }
+  }
+
+  if (isLoading) return <PageLoading />;
 
   return (
     <div className="space-y-4">
@@ -84,9 +168,44 @@ export default function PlannerPage() {
         <h2 className="text-xs font-mono text-athena-text-secondary uppercase tracking-wider">
           Mission Steps — {operation?.codename || "PHANTOM-EYE"}
         </h2>
-        <Button variant="primary" size="sm" onClick={() => setShowConfirm(true)}>
-          EXECUTE MISSION
-        </Button>
+        <div className="flex items-center gap-2">
+          {resetStatus === "done" && (
+            <span className="text-[10px] font-mono text-athena-success">RESET OK</span>
+          )}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowResetConfirm(true)}
+            disabled={resetStatus === "resetting" || oodaStatus === "running"}
+          >
+            {resetStatus === "resetting" ? "RESETTING..." : "RESET"}
+          </Button>
+          {oodaStatus === "done" && (
+            <span className="text-[10px] font-mono text-athena-success">OODA COMPLETE</span>
+          )}
+          {oodaStatus === "error" && (
+            <span className="text-[10px] font-mono text-athena-error">OODA FAILED</span>
+          )}
+          {oodaStatus === "running" && oodaPhase && (
+            <span className="text-[10px] font-mono text-athena-accent animate-pulse">
+              {oodaPhase.toUpperCase()}...
+            </span>
+          )}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowOodaConfirm(true)}
+            disabled={oodaStatus === "running"}
+          >
+            {oodaStatus === "running" ? "OODA RUNNING..." : "OODA CYCLE"}
+          </Button>
+          <Button variant="secondary" size="sm" onClick={handleExport}>
+            EXPORT
+          </Button>
+          <Button variant="primary" size="sm" onClick={() => setShowConfirm(true)}>
+            EXECUTE MISSION
+          </Button>
+        </div>
       </div>
       <DataTable columns={STEP_COLUMNS} data={steps as StepRow[]} keyField="id" emptyMessage="No mission steps defined" />
 
@@ -124,6 +243,22 @@ export default function PlannerPage() {
         riskLevel={RiskLevel.HIGH}
         onConfirm={handleExecute}
         onCancel={() => setShowConfirm(false)}
+      />
+
+      <HexConfirmModal
+        isOpen={showOodaConfirm}
+        title="Trigger OODA Cycle"
+        riskLevel={RiskLevel.MEDIUM}
+        onConfirm={handleOodaTrigger}
+        onCancel={() => setShowOodaConfirm(false)}
+      />
+
+      <HexConfirmModal
+        isOpen={showResetConfirm}
+        title="Reset Operation"
+        riskLevel={RiskLevel.HIGH}
+        onConfirm={handleReset}
+        onCancel={() => setShowResetConfirm(false)}
       />
     </div>
   );

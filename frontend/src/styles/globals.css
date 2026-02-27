@@ -39,6 +39,17 @@
   --radius-lg: 12px;
 }
 
+/* Animations */
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(1rem); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scanLine {
+  0%   { top: 0; }
+  100% { top: 100%; }
+}
+
 /* Global base styles */
 body {
   background-color: var(--color-bg-primary);

@@ -17,12 +17,12 @@
 import { TechniqueStatus } from "@/types/enums";
 
 const STATUS_COLORS: Record<string, string> = {
-  [TechniqueStatus.SUCCESS]: "bg-athena-success/80 text-black",
+  [TechniqueStatus.SUCCESS]: "bg-athena-success/20 text-athena-success border border-athena-success/50",
   [TechniqueStatus.RUNNING]: "bg-athena-accent/60 text-white animate-pulse",
   [TechniqueStatus.FAILED]: "bg-athena-error/80 text-white",
   [TechniqueStatus.QUEUED]: "bg-athena-text-secondary/30 text-athena-text-secondary",
   [TechniqueStatus.UNTESTED]: "bg-athena-border/40 text-athena-text-secondary/60",
-  [TechniqueStatus.PARTIAL]: "bg-athena-warning/60 text-black",
+  [TechniqueStatus.PARTIAL]: "bg-athena-warning/20 text-athena-warning border border-athena-warning/50",
 };
 
 interface MITRECellProps {

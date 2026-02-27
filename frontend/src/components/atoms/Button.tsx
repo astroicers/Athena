@@ -18,7 +18,7 @@ import { ButtonHTMLAttributes } from "react";
 
 const VARIANT_STYLES = {
   primary:
-    "bg-athena-accent text-black hover:bg-athena-accent-hover",
+    "bg-athena-accent/20 text-athena-accent border border-athena-accent hover:bg-athena-accent/30",
   secondary:
     "bg-athena-surface text-athena-text border border-athena-border hover:bg-athena-elevated",
   danger:

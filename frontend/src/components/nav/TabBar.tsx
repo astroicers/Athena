@@ -35,7 +35,7 @@ export function TabBar({ tabs, activeTab, onChange }: TabBarProps) {
           className={`px-4 py-1.5 text-xs font-mono rounded-athena-sm transition-colors
             ${
               activeTab === tab.id
-                ? "bg-athena-accent text-black"
+                ? "bg-athena-accent/20 text-athena-accent border border-athena-accent"
                 : "text-athena-text-secondary hover:text-athena-text"
             }`}
         >

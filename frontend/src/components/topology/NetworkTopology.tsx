@@ -175,7 +175,7 @@ export function NetworkTopology({ data }: NetworkTopologyProps) {
 
   if (!mounted || !ForceGraph2DComp || containerWidth === 0) {
     return (
-      <div ref={wrapperRef} className="bg-[#060612] rounded-athena-md border border-athena-border flex items-center justify-center" style={{ height: GRAPH_HEIGHT }}>
+      <div ref={wrapperRef} className="bg-athena-bg rounded-athena-md border border-athena-border flex items-center justify-center" style={{ height: GRAPH_HEIGHT }}>
         <span className="text-xs font-mono text-athena-text-secondary animate-pulse">
           Loading topology...
         </span>
@@ -186,7 +186,7 @@ export function NetworkTopology({ data }: NetworkTopologyProps) {
   return (
     <div
       ref={wrapperRef}
-      className="bg-[#060612] rounded-athena-md overflow-hidden border border-athena-border relative"
+      className="bg-athena-bg rounded-athena-md overflow-hidden border border-athena-border relative"
       style={{ height: GRAPH_HEIGHT }}
     >
       {/* Reset view button */}
@@ -215,7 +215,7 @@ export function NetworkTopology({ data }: NetworkTopologyProps) {
         linkDirectionalParticleWidth={3}
         linkDirectionalParticleColor={() => "#00ff88"}
         linkCurvature={0.2}
-        backgroundColor="#060612"
+        backgroundColor="#0a0a1a"
         width={containerWidth}
         height={GRAPH_HEIGHT}
         d3AlphaDecay={0.03}

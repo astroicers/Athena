@@ -44,7 +44,7 @@ export function OODAIndicator({ currentPhase }: OODAIndicatorProps) {
               <div
                 className={`flex items-center justify-center w-full py-2 rounded-athena-sm text-[10px] font-mono font-bold transition-all ${
                   isActive
-                    ? "bg-athena-accent text-black"
+                    ? "bg-athena-accent/20 text-athena-accent border border-athena-accent"
                     : isPast
                       ? "bg-athena-accent/20 text-athena-accent"
                       : "bg-athena-border/30 text-athena-text-secondary"

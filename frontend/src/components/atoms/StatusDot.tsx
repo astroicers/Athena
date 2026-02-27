@@ -24,7 +24,7 @@ const STATUS_COLORS: Record<string, string> = {
   pending: "bg-athena-warning",
   degraded: "bg-athena-warning",
   untrusted: "bg-athena-error",
-  offline: "bg-gray-500",
+  offline: "bg-athena-border",
   dead: "bg-athena-error",
   critical: "bg-athena-critical",
 };
@@ -35,7 +35,7 @@ interface StatusDotProps {
 }
 
 export function StatusDot({ status, pulse = false }: StatusDotProps) {
-  const color = STATUS_COLORS[status] || "bg-gray-500";
+  const color = STATUS_COLORS[status] || "bg-athena-border";
   return (
     <span className="relative inline-flex h-2.5 w-2.5">
       {pulse && (

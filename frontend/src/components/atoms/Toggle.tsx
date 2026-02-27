@@ -31,7 +31,7 @@ export function Toggle({ checked, onChange, label }: ToggleProps) {
           ${checked ? "bg-athena-accent" : "bg-athena-border"}`}
       >
         <span
-          className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform
+          className={`inline-block h-3.5 w-3.5 rounded-full bg-athena-bg transition-transform
             ${checked ? "translate-x-4" : "translate-x-0.5"}`}
         />
       </button>

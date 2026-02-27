@@ -29,7 +29,7 @@ import type { Agent } from "@/types/agent";
 import type { LogEntry } from "@/types/log";
 import { AgentStatus } from "@/types/enums";
 
-const DEFAULT_OP_ID = "op-phantom-eye-001";
+const DEFAULT_OP_ID = "op-0001";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

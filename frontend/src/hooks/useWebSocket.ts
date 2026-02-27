@@ -18,7 +18,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { WebSocketEvent } from "@/types/api";
 
 const WS_BASE =
-  process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/ws";
+  process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:58000/ws";
 const MAX_RECONNECT_DELAY = 30_000;
 
 type EventCallback = (data: unknown) => void;

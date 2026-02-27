@@ -24,21 +24,14 @@ import { OODAIndicator } from "@/components/ooda/OODAIndicator";
 import { DataTable, Column } from "@/components/data/DataTable";
 import type { C5ISRStatus } from "@/types/c5isr";
 import type { PentestGPTRecommendation } from "@/types/recommendation";
+import type { TechniqueWithStatus } from "@/types/technique";
 import type { Operation } from "@/types/operation";
 import { Badge } from "@/components/atoms/Badge";
 import { TechniqueStatus } from "@/types/enums";
 
-const DEFAULT_OP_ID = "op-phantom-eye-001";
+const DEFAULT_OP_ID = "op-0001";
 
-interface TechExecRow {
-  id: string;
-  mitreId: string;
-  name: string;
-  targetLabel: string;
-  engine: string;
-  status: string;
-  [key: string]: unknown;
-}
+type TechRow = TechniqueWithStatus & Record<string, unknown>;
 
 const STATUS_VARIANT: Record<string, "success" | "warning" | "error" | "info"> = {
   [TechniqueStatus.SUCCESS]: "success",
@@ -48,20 +41,24 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "error" | "info"> =
   [TechniqueStatus.QUEUED]: "info",
 };
 
-const EXEC_COLUMNS: Column<TechExecRow>[] = [
+const EXEC_COLUMNS: Column<TechRow>[] = [
   { key: "mitreId", header: "MITRE ID", sortable: true },
   { key: "name", header: "Technique" },
-  { key: "targetLabel", header: "Target" },
-  { key: "engine", header: "Engine", render: (r) => r.engine.toUpperCase() },
+  { key: "tactic", header: "Tactic" },
+  { key: "riskLevel", header: "Risk", render: (r) => String(r.riskLevel ?? "—").toUpperCase() },
   {
-    key: "status",
+    key: "latestStatus",
     header: "Status",
     sortable: true,
-    render: (r) => (
-      <Badge variant={STATUS_VARIANT[r.status] || "info"}>
-        {r.status.toUpperCase()}
-      </Badge>
-    ),
+    render: (r) => {
+      const status = r.latestStatus;
+      if (!status) return <span className="text-athena-text-secondary">—</span>;
+      return (
+        <Badge variant={STATUS_VARIANT[status] || "info"}>
+          {status.toUpperCase()}
+        </Badge>
+      );
+    },
   },
 ];
 
@@ -69,12 +66,12 @@ export default function C5ISRPage() {
   const { operation } = useOperation(DEFAULT_OP_ID);
   const [domains, setDomains] = useState<C5ISRStatus[]>([]);
   const [recommendation, setRecommendation] = useState<PentestGPTRecommendation | null>(null);
-  const [execRows, setExecRows] = useState<TechExecRow[]>([]);
+  const [execRows, setExecRows] = useState<TechniqueWithStatus[]>([]);
 
   useEffect(() => {
     api.get<C5ISRStatus[]>(`/operations/${DEFAULT_OP_ID}/c5isr`).then(setDomains).catch(() => {});
     api.get<PentestGPTRecommendation>(`/operations/${DEFAULT_OP_ID}/recommendations/latest`).then(setRecommendation).catch(() => {});
-    api.get<TechExecRow[]>(`/operations/${DEFAULT_OP_ID}/techniques`).then(setExecRows).catch(() => {});
+    api.get<TechniqueWithStatus[]>(`/operations/${DEFAULT_OP_ID}/techniques`).then(setExecRows).catch(() => {});
   }, []);
 
   const op: Operation | null = operation;
@@ -121,7 +118,7 @@ export default function C5ISRPage() {
         <h2 className="text-xs font-mono text-athena-text-secondary uppercase tracking-wider mb-2">
           Active Operations
         </h2>
-        <DataTable columns={EXEC_COLUMNS} data={execRows} keyField="id" emptyMessage="No technique executions" />
+        <DataTable columns={EXEC_COLUMNS} data={execRows as TechRow[]} keyField="id" emptyMessage="No technique executions" />
       </div>
     </div>
   );

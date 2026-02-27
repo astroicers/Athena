@@ -24,7 +24,28 @@ import type { TechniqueWithStatus } from "@/types/technique";
 import type { PentestGPTRecommendation } from "@/types/recommendation";
 import type { TechniqueStatus } from "@/types/enums";
 
-const DEFAULT_OP_ID = "op-phantom-eye-001";
+const DEFAULT_OP_ID = "op-0001";
+
+function normalizeTactic(tactic: string): string {
+  return tactic.toLowerCase().replace(/\s+/g, "-");
+}
+
+const TACTIC_ID_TO_SLUG: Record<string, string> = {
+  "TA0043": "reconnaissance",
+  "TA0042": "resource-development",
+  "TA0001": "initial-access",
+  "TA0002": "execution",
+  "TA0003": "persistence",
+  "TA0004": "privilege-escalation",
+  "TA0005": "defense-evasion",
+  "TA0006": "credential-access",
+  "TA0007": "discovery",
+  "TA0008": "lateral-movement",
+  "TA0009": "collection",
+  "TA0011": "command-and-control",
+  "TA0010": "exfiltration",
+  "TA0040": "impact",
+};
 
 const TACTIC_ORDER = [
   "reconnaissance",
@@ -63,7 +84,7 @@ export default function NavigatorPage() {
   const grouped = useMemo(() => {
     const map = new Map<string, TechniqueWithStatus[]>();
     for (const t of techniques) {
-      const key = t.tacticId || t.tactic;
+      const key = TACTIC_ID_TO_SLUG[t.tacticId] || normalizeTactic(t.tactic);
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(t);
     }

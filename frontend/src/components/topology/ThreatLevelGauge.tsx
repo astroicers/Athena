@@ -20,7 +20,9 @@ interface ThreatLevelGaugeProps {
 
 export function ThreatLevelGauge({ level }: ThreatLevelGaugeProps) {
   const clamped = Math.max(0, Math.min(10, level));
-  const angle = (clamped / 10) * 180 - 90;
+  // Needle angle: 0 → left (180° in math), 10 → right (0° in math)
+  // In SVG coords (Y-down): angle in radians from center (100,100)
+  const needleRad = Math.PI * (1 - clamped / 10);
   const color =
     clamped >= 8 ? "var(--color-critical)" :
     clamped >= 6 ? "var(--color-error)" :
@@ -54,8 +56,8 @@ export function ThreatLevelGauge({ level }: ThreatLevelGaugeProps) {
         <line
           x1="100"
           y1="100"
-          x2={100 + 60 * Math.cos((angle * Math.PI) / 180)}
-          y2={100 + 60 * Math.sin((angle * Math.PI) / 180)}
+          x2={100 + 60 * Math.cos(needleRad)}
+          y2={100 - 60 * Math.sin(needleRad)}
           stroke={color}
           strokeWidth="2"
           strokeLinecap="round"

@@ -28,7 +28,7 @@ import type { MissionStep } from "@/types/mission";
 import type { OODATimelineEntry } from "@/types/ooda";
 import type { Target } from "@/types/target";
 
-const DEFAULT_OP_ID = "op-phantom-eye-001";
+const DEFAULT_OP_ID = "op-0001";
 
 const STEP_VARIANT: Record<string, "success" | "warning" | "error" | "info"> = {
   [MissionStepStatus.COMPLETED]: "success",

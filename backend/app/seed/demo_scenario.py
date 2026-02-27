@@ -60,6 +60,7 @@ TECH_T1059 = "tech-0004"
 
 # Technique Executions
 TEXEC_01 = "texec-0001"
+TEXEC_02 = "texec-0002"
 
 # Facts
 FACT_01 = "fact-0001"
@@ -262,6 +263,31 @@ async def seed() -> None:
                 "2024-11-15T08:35:00",
                 None,
                 TS_EXEC_START,
+            ),
+        )
+
+        # T1595.001 Active Scanning (recon stage) — for Kill Chain Progress
+        await db.execute(
+            "INSERT OR IGNORE INTO technique_executions "
+            "(id, technique_id, target_id, operation_id, "
+            "ooda_iteration_id, engine, status, result_summary, "
+            "facts_collected_count, started_at, completed_at, "
+            "error_message, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                TEXEC_02,
+                TECH_T1595,
+                TGT_DC01,
+                OP_PHANTOM,
+                OODA_01,
+                "caldera",
+                "success",
+                "Network scan completed. 5 hosts discovered in 10.0.1.0/24.",
+                1,
+                TS_SCAN_START,
+                TS_SCAN_END,
+                None,
+                TS_SCAN_START,
             ),
         )
 

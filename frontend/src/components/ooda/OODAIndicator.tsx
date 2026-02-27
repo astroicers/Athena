@@ -33,14 +33,14 @@ export function OODAIndicator({ currentPhase }: OODAIndicatorProps) {
       <h3 className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-3">
         OODA Cycle
       </h3>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
         {PHASES.map((phase, i) => {
           const isActive = currentPhase === phase.key;
           const isPast =
             currentPhase != null &&
             PHASES.findIndex((p) => p.key === currentPhase) > i;
           return (
-            <div key={phase.key} className="flex items-center gap-2 flex-1">
+            <div key={phase.key} className="flex items-center gap-1 flex-1">
               <div
                 className={`flex items-center justify-center w-full py-2 rounded-athena-sm text-[10px] font-mono font-bold transition-all ${
                   isActive

@@ -13,10 +13,10 @@
 // limitations under the License.
 
 export const NAV_ITEMS = [
-  { href: "/c5isr", icon: "command", label: "C5ISR Board" },
-  { href: "/navigator", icon: "mitre", label: "MITRE Navigator" },
-  { href: "/planner", icon: "mission", label: "Mission Planner" },
-  { href: "/monitor", icon: "monitor", label: "Battle Monitor" },
+  { href: "/c5isr", icon: "⌘", label: "C5ISR Board" },
+  { href: "/navigator", icon: "◎", label: "MITRE Navigator" },
+  { href: "/planner", icon: "⚑", label: "Mission Planner" },
+  { href: "/monitor", icon: "◉", label: "Battle Monitor" },
 ] as const;
 
 export const C5ISR_DOMAINS = [

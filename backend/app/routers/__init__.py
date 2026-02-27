@@ -15,6 +15,7 @@
 """Router package — re-exports all router modules for convenient mounting."""
 
 from . import (
+    admin,
     agents,
     c5isr,
     facts,
@@ -24,12 +25,14 @@ from . import (
     ooda,
     operations,
     recommendations,
+    reports,
     targets,
     techniques,
     ws,
 )
 
 __all__ = [
+    "admin",
     "agents",
     "c5isr",
     "facts",
@@ -39,6 +42,7 @@ __all__ = [
     "ooda",
     "operations",
     "recommendations",
+    "reports",
     "targets",
     "techniques",
     "ws",

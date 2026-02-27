@@ -31,6 +31,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import _DB_FILE, get_db, init_db
 from app.routers import (
+    admin,
     agents,
     c5isr,
     facts,
@@ -40,6 +41,7 @@ from app.routers import (
     ooda,
     operations,
     recommendations,
+    reports,
     targets,
     techniques,
     ws,
@@ -92,6 +94,8 @@ app.include_router(facts.router, prefix="/api", tags=["Facts"])
 app.include_router(c5isr.router, prefix="/api", tags=["C5ISR"])
 app.include_router(logs.router, prefix="/api", tags=["Logs"])
 app.include_router(recommendations.router, prefix="/api", tags=["Recommendations"])
+app.include_router(admin.router, prefix="/api", tags=["Admin"])
+app.include_router(reports.router, prefix="/api", tags=["Reports"])
 
 # ── WebSocket (no /api prefix) ───────────────────────────────────────────
 app.include_router(ws.router, tags=["WebSocket"])

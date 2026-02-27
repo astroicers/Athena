@@ -103,6 +103,8 @@ class OODAController:
             (observe_summary[:1000], ooda_id),
         )
         await db.commit()
+        await self._write_log(db, operation_id, "info",
+            f"OODA #{next_num} Observe: collected {len(new_facts)} new facts")
 
         # ── 2. ORIENT ──
         await self._update_phase(db, operation_id, ooda_id, OODAPhase.ORIENT)
@@ -114,6 +116,10 @@ class OODAController:
             (orient_summary[:1000], ooda_id),
         )
         await db.commit()
+        await self._advance_mission_step(db, operation_id, step_index=0, status="completed")
+        await self._advance_mission_step(db, operation_id, step_index=1, status="running")
+        await self._write_log(db, operation_id, "info",
+            f"OODA #{next_num} Orient: {orient_summary[:80]}")
 
         # ── 3. DECIDE ──
         await self._update_phase(db, operation_id, ooda_id, OODAPhase.DECIDE)
@@ -125,6 +131,10 @@ class OODAController:
             (decide_summary[:1000], ooda_id),
         )
         await db.commit()
+        await self._advance_mission_step(db, operation_id, step_index=1, status="completed")
+        await self._advance_mission_step(db, operation_id, step_index=2, status="running")
+        await self._write_log(db, operation_id, "info",
+            f"OODA #{next_num} Decide: {decide_summary[:80]}")
 
         # ── 4. ACT ──
         await self._update_phase(db, operation_id, ooda_id, OODAPhase.ACT)
@@ -151,9 +161,43 @@ class OODAController:
                     "UPDATE ooda_iterations SET technique_execution_id = ? WHERE id = ?",
                     (execution_result["execution_id"], ooda_id),
                 )
+            if execution_result and execution_result.get("status") == "success":
+                # Mark target as compromised
+                if decision.get("target_id"):
+                    await db.execute(
+                        "UPDATE targets SET is_compromised = 1, privilege_level = 'User' "
+                        "WHERE id = ? AND operation_id = ?",
+                        (decision["target_id"], operation_id),
+                    )
+                # Activate one pending agent
+                completed_at_now = datetime.now(timezone.utc).isoformat()
+                await db.execute(
+                    "UPDATE agents SET status = 'alive', last_beacon = ? "
+                    "WHERE operation_id = ? AND status = 'pending' "
+                    "ORDER BY ROWID LIMIT 1",
+                    (completed_at_now, operation_id),
+                )
+                # Advance mission steps
+                await self._advance_mission_step(db, operation_id, step_index=2, status="completed")
+                await self._advance_mission_step(db, operation_id, step_index=3, status="running")
+                # Update operation counters
+                await db.execute(
+                    "UPDATE operations SET techniques_executed = techniques_executed + 1, "
+                    "active_agents = (SELECT COUNT(*) FROM agents WHERE operation_id = ? AND status = 'alive') "
+                    "WHERE id = ?",
+                    (operation_id, operation_id),
+                )
+                await db.commit()
+                await self._write_log(db, operation_id, "success",
+                    f"OODA #{next_num} Act: {decision['technique_id']} executed successfully on {decision.get('target_id', 'unknown')}")
+            elif execution_result:
+                await self._write_log(db, operation_id, "warning",
+                    f"OODA #{next_num} Act: {decision['technique_id']} returned {execution_result.get('status', 'unknown')}")
         else:
             act_summary = f"Awaiting commander approval: {decision.get('reason', 'manual required')}"
             logger.info("OODA[%s] Act phase — needs approval: %s", ooda_id[:8], act_summary)
+            await self._write_log(db, operation_id, "warning",
+                f"OODA #{next_num} Act: awaiting commander approval — {decision.get('reason', 'manual required')}")
 
         completed_at = datetime.now(timezone.utc).isoformat()
         await db.execute(
@@ -165,6 +209,8 @@ class OODAController:
         # ── 5. C5ISR UPDATE ──
         logger.info("OODA[%s] C5ISR update", ooda_id[:8])
         await self._c5isr.update(db, operation_id)
+        await self._write_log(db, operation_id, "info",
+            f"OODA #{next_num} complete — C5ISR domains updated")
 
         # Update operation success rate
         cursor = await db.execute(
@@ -259,3 +305,58 @@ class OODAController:
             )
         except Exception:
             pass  # fire-and-forget per SPEC-007
+
+    async def _write_log(
+        self, db: aiosqlite.Connection, operation_id: str,
+        severity: str, message: str,
+    ) -> None:
+        """Write a log entry and broadcast via WebSocket."""
+        log_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+        await db.execute(
+            "INSERT INTO log_entries "
+            "(id, operation_id, timestamp, severity, source, message) "
+            "VALUES (?, ?, ?, ?, 'ooda_controller', ?)",
+            (log_id, operation_id, now, severity, message),
+        )
+        await db.commit()
+        try:
+            await self._ws.broadcast(operation_id, "log.new", {
+                "id": log_id, "timestamp": now, "severity": severity,
+                "source": "ooda_controller", "message": message,
+            })
+        except Exception:
+            pass  # fire-and-forget
+
+    async def _advance_mission_step(
+        self, db: aiosqlite.Connection, operation_id: str,
+        step_index: int, status: str,
+    ) -> None:
+        """Update a mission step by its order index (0-based)."""
+        now = datetime.now(timezone.utc).isoformat()
+        cursor = await db.execute(
+            "SELECT id FROM mission_steps "
+            "WHERE operation_id = ? ORDER BY step_number "
+            "LIMIT 1 OFFSET ?",
+            (operation_id, step_index),
+        )
+        row = await cursor.fetchone()
+        if not row:
+            return
+        step_id = row["id"] if isinstance(row, dict) or hasattr(row, "__getitem__") else row[0]
+        if status == "running":
+            await db.execute(
+                "UPDATE mission_steps SET status = ?, started_at = ? WHERE id = ?",
+                (status, now, step_id),
+            )
+        elif status == "completed":
+            await db.execute(
+                "UPDATE mission_steps SET status = ?, completed_at = ? WHERE id = ?",
+                (status, now, step_id),
+            )
+        else:
+            await db.execute(
+                "UPDATE mission_steps SET status = ? WHERE id = ?",
+                (status, step_id),
+            )
+        await db.commit()

@@ -98,6 +98,7 @@ export default function PlannerPage() {
   }
 
   useEffect(() => {
+    setIsLoading(true);
     Promise.all([
       api.get<MissionStep[]>(`/operations/${DEFAULT_OP_ID}/mission/steps`).then(setSteps),
       api.get<OODATimelineEntry[]>(`/operations/${DEFAULT_OP_ID}/ooda/timeline`).then(setTimeline),
@@ -182,8 +183,9 @@ export default function PlannerPage() {
       );
       setReconResult(result);
       refreshTargets();
-    } catch {
-      addToast("Recon scan failed", "error");
+    } catch (err) {
+      const detail = (err as { detail?: string })?.detail;
+      addToast(detail || "Recon scan failed", "error");
     } finally {
       setScanningTargetId(null);
     }

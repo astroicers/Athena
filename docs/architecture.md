@@ -4,7 +4,7 @@
 |------|------|
 | **專案** | Athena |
 | **版本** | v0.1.0-poc |
-| **最後更新** | 2026-02-27 |
+| **最後更新** | 2026-02-28 |
 
 ---
 
@@ -105,6 +105,9 @@ graph LR
 | Demo Runner | `seed/demo_runner.py` | 6 步自動 OODA 循環展示 |
 | Reports API | `routers/reports.py` | 作戰報告匯出（10 段落 JSON） |
 | Admin API | `routers/admin.py` | 管理操作（Reset 作戰資料） |
+| Recon Engine | `services/recon_engine.py` | nmap 掃描 → 結構化服務清單 + facts 寫入（Phase 12） |
+| Initial Access Engine | `services/initial_access_engine.py` | SSH credential 嘗試 + Caldera agent bootstrap（Phase 12） |
+| Recon API | `routers/recon.py` | POST `/recon/scan`、GET `/recon/status`（Phase 12） |
 
 ### Docker 部署拓樸（Phase 6 實作）
 
@@ -250,6 +253,8 @@ graph TD
 - [ ] WebSocket 無 Redis pub/sub 背壓機制（Phase 8 正式版）
 - [ ] 身份驗證與 RBAC 尚未實作（Phase 8）
 - [x] Phase 11 新模組測試已補齊（24 tests：backend 10 + frontend 14）
+- [x] Phase 12 Recon + Initial Access 引擎（nmap + asyncssh），7 個新後端測試
+- [x] Phase 13 前端 UI Recon 支援（AddTargetModal、ReconResultModal、HostNodeCard SCAN）
 
 ---
 
@@ -270,6 +275,8 @@ graph TD
 | [ADR-011](adr/ADR-011-no-auth-for-poc.md) | POC 階段不實作身份驗證 | `Accepted` |
 | [ADR-012](adr/ADR-012-c5isr-framework-mapping.md) | C5ISR 框架映射架構 | `Accepted` |
 | [ADR-013](adr/ADR-013-orient-prompt-engineering-strategy.md) | Orient Prompt 工程策略 | `Accepted` |
+| [ADR-014](adr/ADR-014-anthropic-sdk-migration.md) | Orient Engine LLM 整合遷移至 SDK | `Accepted` |
+| [ADR-015](adr/ADR-015-recon--initial-access----kill-chain-.md) | Recon 與 Initial Access 引擎架構 | `Accepted` |
 
 ---
 

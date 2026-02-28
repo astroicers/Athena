@@ -16,6 +16,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TopologyData } from "@/types/api";
+import { KillChainStage } from "@/types/enums";
 
 const NODE_COLORS: Record<string, string> = {
   compromised: "#ff4444",
@@ -23,13 +24,24 @@ const NODE_COLORS: Record<string, string> = {
   target: "#ffaa00",
 };
 
+export const KILL_CHAIN_COLORS: Record<KillChainStage, string> = {
+  [KillChainStage.RECON]:     "#4488ff",
+  [KillChainStage.WEAPONIZE]: "#8855ff",
+  [KillChainStage.DELIVER]:   "#aa44ff",
+  [KillChainStage.EXPLOIT]:   "#ff8800",
+  [KillChainStage.INSTALL]:   "#ffaa00",
+  [KillChainStage.C2]:        "#ff4444",
+  [KillChainStage.ACTION]:    "#ff0040",
+};
+
 const GRAPH_HEIGHT = 420;
 
 interface NetworkTopologyProps {
   data: TopologyData | null;
+  nodeKillChainMap?: Record<string, KillChainStage>;
 }
 
-export function NetworkTopology({ data }: NetworkTopologyProps) {
+export function NetworkTopology({ data, nodeKillChainMap }: NetworkTopologyProps) {
   // Outer wrapper ref — always mounted, used for width measurement
   const wrapperRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line
@@ -86,6 +98,7 @@ export function NetworkTopology({ data }: NetworkTopologyProps) {
         color: n.data?.isCompromised ? NODE_COLORS.compromised : NODE_COLORS.secure,
         nodeSize: (n.data?.role as string) === "Domain Controller" ? 16
           : n.data?.isCompromised ? 12 : 8,
+        killChainStage: nodeKillChainMap?.[n.id] ?? null,
       })),
       links: data.edges.map((e) => ({
         source: e.source,
@@ -93,7 +106,7 @@ export function NetworkTopology({ data }: NetworkTopologyProps) {
         label: e.label,
       })),
     };
-  }, [data]);
+  }, [data, nodeKillChainMap]);
 
   // Configure d3 forces for proper node spreading
   useEffect(() => {
@@ -142,6 +155,18 @@ export function NetworkTopology({ data }: NetworkTopologyProps) {
     ctx.arc(x - size * 0.2, y - size * 0.2, size * 0.3, 0, 2 * Math.PI);
     ctx.fillStyle = "rgba(255,255,255,0.25)";
     ctx.fill();
+
+    // Kill Chain stage ring
+    const kcStage = node.killChainStage as KillChainStage | null;
+    if (kcStage && KILL_CHAIN_COLORS[kcStage]) {
+      ctx.beginPath();
+      ctx.arc(x, y, size + 2, 0, 2 * Math.PI);
+      ctx.strokeStyle = KILL_CHAIN_COLORS[kcStage];
+      ctx.lineWidth = 2.5;
+      ctx.globalAlpha = 0.9;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
 
     // Single-line label
     const fontSize = Math.max(11 / globalScale, 2.5);

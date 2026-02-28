@@ -13,6 +13,9 @@ dependencies = [
     "anthropic>=0.49.0",
     "httpx>=0.26.0",
     "websockets>=12.0",
+    "python-nmap>=0.7.1",
+    "asyncssh>=2.14.0",
+    "cryptography>=42.0.0",
 ]
 
 [project.optional-dependencies]

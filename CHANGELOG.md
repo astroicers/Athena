@@ -7,6 +7,57 @@
 
 ## [Unreleased]
 
+### Phase 13：前端 UI 支援 Recon 測試流程（2026-02-28）
+
+#### Added
+- `frontend/src/types/recon.ts` — `ServiceInfo`, `InitialAccessResult`, `ReconScanResult` TypeScript 型別
+- `frontend/src/components/modal/AddTargetModal.tsx` — 新增 Target 表單 Modal（hostname / IP / role / OS / network_segment）
+- `frontend/src/components/modal/ReconResultModal.tsx` — Recon 掃描結果顯示 Modal（services、OS、initial access、agent status、TRIGGER OODA 按鈕）
+
+#### Changed
+- `frontend/src/components/cards/HostNodeCard.tsx` — 新增 `onScan` / `isScanning` prop；卡片底部顯示 [RECON SCAN] 按鈕
+- `frontend/src/app/planner/page.tsx` — Target Hosts 側欄加入 [+ ADD] 按鈕 + `handleReconScan` 整合 + `ReconResultModal` 結果顯示
+
+#### Metrics
+- 前端：63 Vitest passed（0 TypeScript errors）
+- 後端：69 pytest passed + 6 skipped
+
+---
+
+### Phase 13（Monitor UI）：Kill Chain 態勢感知（2026-02-28）
+
+#### Added
+- `frontend/src/hooks/useExecutionUpdate.ts` — 訂閱 `execution.update` WS 事件
+- `frontend/src/hooks/__tests__/useExecutionUpdate.test.ts` — 4 tests
+- `frontend/src/components/topology/AIDecisionPanel.tsx` — AI 決策面板（技術 ID / Kill Chain 階段 / 引擎 / 信心值）
+- `frontend/src/components/topology/__tests__/AIDecisionPanel.test.tsx` — 5 tests
+
+#### Changed
+- `frontend/src/components/topology/NetworkTopology.tsx` — 匯出 `KILL_CHAIN_COLORS`；節點依 Kill Chain 階段繪製彩色環形邊框
+- `frontend/src/app/monitor/page.tsx` — 新增 `KillChainIndicator`（7 段進度條）+ `AIDecisionPanel`（右側欄）
+
+---
+
+### Phase 12：Recon + Initial Access — Kill Chain 前半段補完（2026-02-28）
+
+#### Added
+- `backend/app/models/recon.py` — Pydantic models：`ServiceInfo`, `ReconResult`, `InitialAccessResult`, `ReconScanResult`
+- `backend/app/services/recon_engine.py` — `ReconEngine`：nmap 掃描 + facts 寫入 + WS 廣播；含 mock 模式
+- `backend/app/services/initial_access_engine.py` — `InitialAccessEngine`：asyncssh SSH credential 嘗試 + Caldera agent bootstrap
+- `backend/app/routers/recon.py` — `POST /api/operations/{op_id}/recon/scan`、`GET .../recon/status`
+- `backend/tests/test_recon_engine.py` — 3 tests
+- `backend/tests/test_initial_access_engine.py` — 4 tests
+- `docs/adr/ADR-015-recon--initial-access----kill-chain-.md` — Accepted
+- `docs/specs/SPEC-019-phase-12-recon--initial-access--kill-chain-.md`
+
+#### Changed
+- `backend/pyproject.toml` — 新增 `python-nmap>=0.7.1`, `asyncssh>=2.14.0`, `cryptography>=42.0.0`
+- `backend/app/database.py` — 新增第 13 張表 `recon_scans`
+- `backend/app/main.py` — 掛載 `recon` router
+- `backend/app/seed/demo_scenario.py` — 新增 T1592、T1595.002、T1110.003 種子資料
+
+---
+
 ### SPEC-018：Tech-Debt 清償（2026-02-27）
 
 #### Added

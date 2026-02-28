@@ -254,6 +254,16 @@ async def seed() -> None:
              "Enumerate services running on remote hosts.",
              "recon", "low", None,
              json.dumps(["linux", "windows"])),
+            # Recon techniques (Phase 12)
+            ("tech-t1592",     "T1592",     "Gather Victim Host Information",
+             "Reconnaissance",    "TA0043", None, "recon",   "low",    None,
+             '["linux","windows"]'),
+            ("tech-t1595-002", "T1595.002", "Active Scanning: Vulnerability Scan",
+             "Reconnaissance",    "TA0043", None, "recon",   "low",    None,
+             '["linux","windows"]'),
+            ("tech-t1110-003", "T1110.003", "Brute Force: Password Spraying",
+             "Credential Access", "TA0006", None, "exploit", "medium", None,
+             '["linux","windows"]'),
         ]
         await db.executemany(
             "INSERT OR IGNORE INTO techniques "

@@ -40,6 +40,7 @@ from app.routers import (
     missions,
     ooda,
     operations,
+    recon,
     recommendations,
     reports,
     targets,
@@ -96,6 +97,7 @@ app.include_router(logs.router, prefix="/api", tags=["Logs"])
 app.include_router(recommendations.router, prefix="/api", tags=["Recommendations"])
 app.include_router(admin.router, prefix="/api", tags=["Admin"])
 app.include_router(reports.router, prefix="/api", tags=["Reports"])
+app.include_router(recon.router, prefix="/api", tags=["Recon"])
 
 # ── WebSocket (no /api prefix) ───────────────────────────────────────────
 app.include_router(ws.router, tags=["WebSocket"])

@@ -15,21 +15,28 @@
 "use client";
 
 import { Badge } from "@/components/atoms/Badge";
+import { Button } from "@/components/atoms/Button";
 
 interface HostNodeCardProps {
+  id?: string;
   hostname: string;
   ipAddress: string;
   role: string;
   isCompromised: boolean;
   privilegeLevel: string | null;
+  isScanning?: boolean;
+  onScan?: (targetId: string) => void;
 }
 
 export function HostNodeCard({
+  id,
   hostname,
   ipAddress,
   role,
   isCompromised,
   privilegeLevel,
+  isScanning = false,
+  onScan,
 }: HostNodeCardProps) {
   return (
     <div
@@ -61,6 +68,18 @@ export function HostNodeCard({
           </div>
         )}
       </div>
+      {onScan && id && (
+        <div className="mt-3">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => onScan(id)}
+            disabled={isScanning}
+          >
+            {isScanning ? "SCANNING..." : "RECON SCAN"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

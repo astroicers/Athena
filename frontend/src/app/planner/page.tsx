@@ -26,10 +26,13 @@ import { HostNodeCard } from "@/components/cards/HostNodeCard";
 import { Button } from "@/components/atoms/Button";
 import { Badge } from "@/components/atoms/Badge";
 import { HexConfirmModal } from "@/components/modal/HexConfirmModal";
+import { AddTargetModal } from "@/components/modal/AddTargetModal";
+import { ReconResultModal } from "@/components/modal/ReconResultModal";
 import { MissionStepStatus, RiskLevel, OODAPhase } from "@/types/enums";
 import type { MissionStep } from "@/types/mission";
 import type { OODATimelineEntry } from "@/types/ooda";
 import type { Target } from "@/types/target";
+import type { ReconScanResult } from "@/types/recon";
 
 const DEFAULT_OP_ID = "op-0001";
 
@@ -77,10 +80,21 @@ export default function PlannerPage() {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetStatus, setResetStatus] = useState<"idle" | "resetting" | "done">("idle");
 
+  // Phase 13: Recon UI state
+  const [showAddTarget, setShowAddTarget] = useState(false);
+  const [scanningTargetId, setScanningTargetId] = useState<string | null>(null);
+  const [reconResult, setReconResult] = useState<ReconScanResult | null>(null);
+
   function refreshAllData() {
     api.get<MissionStep[]>(`/operations/${DEFAULT_OP_ID}/mission/steps`).then(setSteps).catch(() => addToast("Failed to load steps", "error"));
     api.get<OODATimelineEntry[]>(`/operations/${DEFAULT_OP_ID}/ooda/timeline`).then(setTimeline).catch(() => addToast("Failed to load timeline", "error"));
     api.get<Target[]>(`/operations/${DEFAULT_OP_ID}/targets`).then(setTargets).catch(() => addToast("Failed to load targets", "error"));
+  }
+
+  function refreshTargets() {
+    api.get<Target[]>(`/operations/${DEFAULT_OP_ID}/targets`)
+      .then(setTargets)
+      .catch(() => addToast("Failed to load targets", "error"));
   }
 
   useEffect(() => {
@@ -159,6 +173,22 @@ export default function PlannerPage() {
     }
   }
 
+  async function handleReconScan(targetId: string) {
+    setScanningTargetId(targetId);
+    try {
+      const result = await api.post<ReconScanResult>(
+        `/operations/${DEFAULT_OP_ID}/recon/scan`,
+        { target_id: targetId, enable_initial_access: true },
+      );
+      setReconResult(result);
+      refreshTargets();
+    } catch {
+      addToast("Recon scan failed", "error");
+    } finally {
+      setScanningTargetId(null);
+    }
+  }
+
   if (isLoading) return <PageLoading />;
 
   return (
@@ -215,9 +245,14 @@ export default function PlannerPage() {
           <OODATimeline entries={timeline} />
         </div>
         <div className="space-y-3">
-          <h3 className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider">
-            Target Hosts
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider">
+              Target Hosts
+            </h3>
+            <Button variant="secondary" size="sm" onClick={() => setShowAddTarget(true)}>
+              + ADD
+            </Button>
+          </div>
           {targets.length === 0 ? (
             <div className="bg-athena-surface border border-athena-border rounded-athena-md p-4 text-center">
               <span className="text-xs font-mono text-athena-text-secondary">No targets</span>
@@ -226,11 +261,14 @@ export default function PlannerPage() {
             targets.map((t) => (
               <HostNodeCard
                 key={t.id}
+                id={t.id}
                 hostname={t.hostname}
                 ipAddress={t.ipAddress}
                 role={t.role}
                 isCompromised={t.isCompromised}
                 privilegeLevel={t.privilegeLevel}
+                isScanning={scanningTargetId === t.id}
+                onScan={handleReconScan}
               />
             ))
           )}
@@ -259,6 +297,23 @@ export default function PlannerPage() {
         riskLevel={RiskLevel.HIGH}
         onConfirm={handleReset}
         onCancel={() => setShowResetConfirm(false)}
+      />
+
+      <AddTargetModal
+        isOpen={showAddTarget}
+        operationId={DEFAULT_OP_ID}
+        onSuccess={() => {
+          setShowAddTarget(false);
+          refreshTargets();
+        }}
+        onCancel={() => setShowAddTarget(false)}
+      />
+
+      <ReconResultModal
+        isOpen={reconResult !== null}
+        operationId={DEFAULT_OP_ID}
+        result={reconResult}
+        onClose={() => setReconResult(null)}
       />
     </div>
   );

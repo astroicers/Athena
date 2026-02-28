@@ -28,7 +28,7 @@ _PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent.parent  # …/Athen
 _DB_FILE: str = str((_PROJECT_ROOT / _raw_path).resolve()) if not Path(_raw_path).is_absolute() else _raw_path
 
 # ---------------------------------------------------------------------------
-# 12 CREATE TABLE statements — exact copies from data-architecture.md Section 5
+# 13 CREATE TABLE statements — exact copies from data-architecture.md Section 5
 # ---------------------------------------------------------------------------
 _CREATE_TABLES: list[str] = [
     """
@@ -204,11 +204,27 @@ _CREATE_TABLES: list[str] = [
         target_id TEXT
     );
     """,
+    """
+    CREATE TABLE IF NOT EXISTS recon_scans (
+        id TEXT PRIMARY KEY,
+        operation_id TEXT REFERENCES operations(id) ON DELETE CASCADE,
+        target_id TEXT REFERENCES targets(id) ON DELETE CASCADE,
+        status TEXT DEFAULT 'pending',
+        nmap_result TEXT,
+        open_ports TEXT,
+        os_guess TEXT,
+        initial_access_method TEXT,
+        credential_found TEXT,
+        agent_deployed INTEGER DEFAULT 0,
+        started_at TEXT,
+        completed_at TEXT
+    );
+    """,
 ]
 
 
 async def init_db() -> None:
-    """Create all 12 tables. Auto-creates the data directory if missing."""
+    """Create all 13 tables. Auto-creates the data directory if missing."""
     db_path = Path(_DB_FILE)
     db_path.parent.mkdir(parents=True, exist_ok=True)
 

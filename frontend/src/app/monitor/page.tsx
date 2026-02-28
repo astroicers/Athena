@@ -14,7 +14,7 @@
 
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { useOperation } from "@/hooks/useOperation";
 import { useWebSocket } from "@/hooks/useWebSocket";
@@ -29,11 +29,15 @@ import { RecommendationPanel } from "@/components/ooda/RecommendationPanel";
 import { AgentBeacon } from "@/components/data/AgentBeacon";
 import { LogEntryRow } from "@/components/data/LogEntryRow";
 import { useOODA } from "@/hooks/useOODA";
+import { useExecutionUpdate } from "@/hooks/useExecutionUpdate";
+import { KillChainIndicator } from "@/components/mitre/KillChainIndicator";
 import type { TopologyData } from "@/types/api";
 import type { PentestGPTRecommendation } from "@/types/recommendation";
 import type { Agent } from "@/types/agent";
 import type { LogEntry } from "@/types/log";
-import { AgentStatus } from "@/types/enums";
+import type { TechniqueWithStatus } from "@/types/technique";
+import { AgentStatus, KillChainStage } from "@/types/enums";
+import { AIDecisionPanel } from "@/components/topology/AIDecisionPanel";
 
 const DEFAULT_OP_ID = "op-0001";
 
@@ -48,12 +52,14 @@ export default function MonitorPage() {
   const { addToast } = useToast();
   const ws = useWebSocket(DEFAULT_OP_ID);
   const oodaPhase = useOODA(ws);
+  const executionUpdate = useExecutionUpdate(ws);
   const liveLogs = useLiveLog(ws);
   const [isLoading, setIsLoading] = useState(true);
   const [topology, setTopology] = useState<TopologyData | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [initialLogs, setInitialLogs] = useState<LogEntry[]>([]);
   const [recommendation, setRecommendation] = useState<PentestGPTRecommendation | null>(null);
+  const [techniques, setTechniques] = useState<TechniqueWithStatus[]>([]);
   const logEndRef = useRef<HTMLDivElement>(null);
 
   const fetchRecommendation = () => {
@@ -68,6 +74,7 @@ export default function MonitorPage() {
       api.get<Agent[]>(`/operations/${DEFAULT_OP_ID}/agents`).then(setAgents),
       api.get<{ items: LogEntry[] }>(`/operations/${DEFAULT_OP_ID}/logs?page_size=50`).then((r) => setInitialLogs(r.items || [])),
       api.get<PentestGPTRecommendation>(`/operations/${DEFAULT_OP_ID}/recommendations/latest`).then(setRecommendation),
+      api.get<TechniqueWithStatus[]>(`/operations/${DEFAULT_OP_ID}/techniques`).then(setTechniques),
     ]).catch(() => addToast("Failed to load monitor data", "error"))
       .finally(() => setIsLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -79,13 +86,75 @@ export default function MonitorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [oodaPhase]);
 
+  // Subscribe to execution.update to refresh techniques
+  useEffect(() => {
+    const unsub = ws.subscribe("execution.update", () => {
+      api.get<TechniqueWithStatus[]>(`/operations/${DEFAULT_OP_ID}/techniques`)
+        .then(setTechniques)
+        .catch(() => {});
+    });
+    return unsub;
+  }, [ws]);
+
   const allLogs = [...initialLogs, ...liveLogs];
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [allLogs.length]);
 
+  const stageCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    techniques
+      .filter((t) => t.latestStatus && t.latestStatus !== "untested")
+      .forEach((t) => {
+        counts[t.killChainStage] = (counts[t.killChainStage] ?? 0) + 1;
+      });
+    return counts;
+  }, [techniques]);
+
+  const KILL_CHAIN_ORDER: KillChainStage[] = [
+    KillChainStage.RECON,
+    KillChainStage.WEAPONIZE,
+    KillChainStage.DELIVER,
+    KillChainStage.EXPLOIT,
+    KillChainStage.INSTALL,
+    KillChainStage.C2,
+    KillChainStage.ACTION,
+  ];
+
+  const nodeKillChainMap = useMemo(() => {
+    if (!topology || techniques.length === 0) return {};
+    const executed = techniques.filter(
+      (t) => t.latestStatus && t.latestStatus !== "untested"
+    );
+    const highestStage = executed.reduce<KillChainStage | null>((acc, t) => {
+      if (!acc) return t.killChainStage;
+      return KILL_CHAIN_ORDER.indexOf(t.killChainStage) > KILL_CHAIN_ORDER.indexOf(acc)
+        ? t.killChainStage
+        : acc;
+    }, null);
+    if (!highestStage) return {};
+    const map: Record<string, KillChainStage> = {};
+    topology.nodes.forEach((n) => {
+      if (n.data?.isCompromised) map[n.id] = highestStage;
+    });
+    return map;
+  }, [topology, techniques]);
+
   if (isLoading) return <PageLoading />;
+
+  const activeTechnique = executionUpdate
+    ? techniques.find(
+        (t) => t.mitreId === executionUpdate.techniqueId || t.id === executionUpdate.techniqueId
+      ) ?? null
+    : null;
+
+  const activeConfidence =
+    executionUpdate && recommendation
+      ? (recommendation.options?.find(
+          (o) => o.techniqueId === executionUpdate.techniqueId
+        )?.confidence ?? null)
+      : null;
 
   return (
     <div className="space-y-4 h-full">
@@ -116,11 +185,14 @@ export default function MonitorPage() {
       {/* Main content: Topology + Sidebar */}
       <div className="grid grid-cols-4 gap-4">
         {/* 3D Topology — 3 cols */}
-        <div className="col-span-3">
-          <h2 className="text-xs font-mono text-athena-text-secondary uppercase tracking-wider mb-2">
-            Network Topology
-          </h2>
-          <NetworkTopology data={topology} />
+        <div className="col-span-3 space-y-3">
+          <div>
+            <h2 className="text-xs font-mono text-athena-text-secondary uppercase tracking-wider mb-2">
+              Network Topology
+            </h2>
+            <NetworkTopology data={topology} nodeKillChainMap={nodeKillChainMap} />
+          </div>
+          <KillChainIndicator stageCounts={stageCounts} />
         </div>
 
         {/* Right sidebar */}
@@ -152,6 +224,15 @@ export default function MonitorPage() {
               )}
             </div>
           </div>
+
+          <AIDecisionPanel
+            activeTechniqueId={executionUpdate?.techniqueId ?? null}
+            activeEngine={executionUpdate?.engine ?? null}
+            activeStatus={executionUpdate?.status ?? null}
+            activeTechniqueName={activeTechnique?.name ?? null}
+            activeKillChainStage={activeTechnique?.killChainStage ?? null}
+            activeConfidence={activeConfidence}
+          />
         </div>
       </div>
 

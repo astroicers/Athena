@@ -63,8 +63,9 @@ export function AddTargetModal({
       setOs("");
       setNetworkSegment("");
       onSuccess();
-    } catch {
-      setError("Failed to add target. Please check the values and try again.");
+    } catch (err) {
+      const detail = (err as { detail?: string })?.detail;
+      setError(detail || "Failed to add target. Please check the values and try again.");
     } finally {
       setSubmitting(false);
     }

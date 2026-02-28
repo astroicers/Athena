@@ -68,6 +68,18 @@ async def create_target(
     """Add a target host to an operation."""
     db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
+
+    # Prevent duplicate IP within the same operation
+    dup = await db.execute(
+        "SELECT id FROM targets WHERE ip_address = ? AND operation_id = ?",
+        (body.ip_address, operation_id),
+    )
+    if await dup.fetchone():
+        raise HTTPException(
+            status_code=409,
+            detail=f"Target with IP {body.ip_address!r} already exists in this operation",
+        )
+
     target_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
     await db.execute(

@@ -9,6 +9,9 @@ LABEL org.opencontainers.image.title="Athena Backend" \
 
 WORKDIR /app
 
+# Install system dependencies (nmap required by python-nmap wrapper)
+RUN apt-get update && apt-get install -y --no-install-recommends nmap && rm -rf /var/lib/apt/lists/*
+
 # Copy dependency specifications first for better Docker cache
 COPY pyproject.toml .
 

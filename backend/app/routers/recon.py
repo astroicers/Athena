@@ -95,9 +95,7 @@ async def run_recon_scan(
             error=None,
         )
 
-        port_22_open = any(svc.port == 22 for svc in recon_result.services)
-
-        if body.enable_initial_access and port_22_open:
+        if body.enable_initial_access:
             ia_engine = InitialAccessEngine()
             ia_result = await ia_engine.try_ssh_login(
                 db, op_id, body.target_id, ip_address, port=22

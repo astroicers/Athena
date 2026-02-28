@@ -190,7 +190,7 @@ class ReconEngine:
     def _run_nmap(ip: str) -> nmap.PortScanner:
         """Synchronous nmap call — intended to run inside an executor."""
         nm = nmap.PortScanner()
-        nm.scan(hosts=ip, arguments="-sV -O --open --script=banner")
+        nm.scan(hosts=ip, arguments="-sV -Pn --script=banner -p 21,22,23,25,80,443,3306,5432,8080,8443")
         return nm
 
     async def _mock_result(

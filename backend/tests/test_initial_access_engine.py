@@ -162,3 +162,47 @@ async def test_ssh_real_all_fail():
 
     assert result.success is False
     assert result.method == "none"
+
+
+# ---------------------------------------------------------------------------
+# Test 5: Harvested credentials are loaded and ordered first
+# ---------------------------------------------------------------------------
+
+async def test_load_harvested_creds_parses_format():
+    """_load_harvested_creds correctly parses 'user:pass@host:port' format."""
+    db = AsyncMock()
+
+    # Mock cursor with credential rows
+    cursor = AsyncMock()
+    cursor.fetchall = AsyncMock(return_value=[
+        {"value": "admin:secret@192.168.1.1:22"},
+        {"value": "root:toor@192.168.1.2:22"},
+        {"value": "vagrant:vagrant"},  # without @host:port
+    ])
+    db.execute = AsyncMock(return_value=cursor)
+    db.row_factory = None
+
+    creds = await InitialAccessEngine()._load_harvested_creds(db, "op-001")
+
+    assert ("admin", "secret") in creds
+    assert ("root", "toor") in creds
+    assert ("vagrant", "vagrant") in creds
+    assert len(creds) == 3
+
+
+async def test_load_harvested_creds_deduplicates():
+    """Duplicate credentials are returned only once."""
+    db = AsyncMock()
+    cursor = AsyncMock()
+    cursor.fetchall = AsyncMock(return_value=[
+        {"value": "admin:secret@192.168.1.1:22"},
+        {"value": "admin:secret@192.168.1.2:22"},  # same creds, different host
+    ])
+    db.execute = AsyncMock(return_value=cursor)
+    db.row_factory = None
+
+    creds = await InitialAccessEngine()._load_harvested_creds(db, "op-001")
+
+    # Should deduplicate
+    assert creds.count(("admin", "secret")) == 1
+    assert len(creds) == 1

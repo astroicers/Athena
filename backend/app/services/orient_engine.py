@@ -154,7 +154,9 @@ Respond with ONLY valid JSON (no markdown, no extra text). The JSON must match t
     }
   ]
 }
-Provide exactly 3 options, ordered by confidence (highest first)."""
+Provide exactly 3 options, ordered by confidence (highest first). \
+When credential facts are available (category=credential), prioritize techniques that leverage \
+those credentials for lateral movement before attempting new credential harvesting."""
 
 # ---------------------------------------------------------------------------
 # User prompt template — dynamic context assembled per-call (8 sections)
@@ -200,6 +202,9 @@ Next Logical Stage: {next_stage}
 ### Active Agents
 {agents}
 
+## 7.5. HARVESTED CREDENTIALS (available for credential reuse)
+{harvested_creds_str}
+
 ## 8. LATEST OBSERVE SUMMARY
 {observe_summary}
 
@@ -212,6 +217,7 @@ class OrientEngine:
     def __init__(self, ws_manager: WebSocketManager):
         self._ws = ws_manager
         self._anthropic_client: anthropic.AsyncAnthropic | None = None
+        self._oauth_manager = None  # lazy-init OAuthTokenManager
 
     async def analyze(
         self, db: aiosqlite.Connection, operation_id: str,
@@ -459,6 +465,20 @@ class OrientEngine:
         facts = await cursor.fetchall()
         categorized_facts_str = self._format_categorized_facts(facts)
 
+        # Q11: Harvested credentials for chaining context
+        cred_cursor = await db.execute(
+            "SELECT trait, value FROM facts "
+            "WHERE operation_id = ? AND category = 'credential' "
+            "ORDER BY collected_at DESC LIMIT 10",
+            (operation_id,),
+        )
+        cred_rows = await cred_cursor.fetchall()
+        harvested_creds_str = (
+            "\n".join(f"- {r['trait']}: {r['value'][:60]}" for r in cred_rows)
+            if cred_rows
+            else "None harvested yet."
+        )
+
         # --- Assemble user prompt ---
         user_prompt = _ORIENT_USER_PROMPT_TEMPLATE.format(
             codename=op["codename"] if op else "Unknown",
@@ -479,18 +499,48 @@ class OrientEngine:
             failed_techniques=failed_str,
             agents=agents_str,
             observe_summary=observe_summary,
+            harvested_creds_str=harvested_creds_str,
         )
 
         return _ORIENT_SYSTEM_PROMPT, user_prompt
 
-    async def _call_llm(self, system_prompt: str, user_prompt: str) -> str:
-        """LLM API call with dual-backend fallback."""
-        # Try Claude first
+    def _resolve_backend(self) -> str:
+        """Determine which LLM backend to use: api_key, oauth, or none."""
+        if settings.LLM_BACKEND != "auto":
+            return settings.LLM_BACKEND
         if settings.ANTHROPIC_API_KEY or settings.ANTHROPIC_AUTH_TOKEN:
+            return "api_key"
+        # Check OAuth credentials from Claude Code login
+        from app.services.oauth_token_manager import OAuthTokenManager
+        if self._oauth_manager is None:
+            self._oauth_manager = OAuthTokenManager()
+        if self._oauth_manager.is_available():
+            return "oauth"
+        return "api_key"  # will fall through to OpenAI or mock
+
+    async def _call_llm(self, system_prompt: str, user_prompt: str) -> str:
+        """LLM API call with dual-backend fallback (API Key / OAuth / OpenAI / mock)."""
+        backend = self._resolve_backend()
+
+        # Try Claude via API Key
+        if backend == "api_key" and (settings.ANTHROPIC_API_KEY or settings.ANTHROPIC_AUTH_TOKEN):
             try:
                 return await self._call_claude(system_prompt, user_prompt)
             except Exception as e:
-                logger.warning("Claude API failed: %s, trying OpenAI fallback", e)
+                logger.warning("Claude API Key failed: %s, trying fallback", e)
+
+        # Try Claude via OAuth
+        if backend in ("oauth", "auto"):
+            try:
+                return await self._call_claude_oauth(system_prompt, user_prompt)
+            except Exception as e:
+                logger.warning("Claude OAuth failed: %s, trying fallback", e)
+                # If OAuth failed and API key is available, try that
+                if backend == "oauth" and (settings.ANTHROPIC_API_KEY or settings.ANTHROPIC_AUTH_TOKEN):
+                    try:
+                        return await self._call_claude(system_prompt, user_prompt)
+                    except Exception as e2:
+                        logger.warning("Claude API Key fallback also failed: %s", e2)
 
         # Fallback to OpenAI
         if settings.OPENAI_API_KEY:
@@ -499,7 +549,7 @@ class OrientEngine:
             except Exception as e:
                 logger.warning("OpenAI API failed: %s, using mock", e)
 
-        logger.info("No LLM API keys configured, using mock recommendation")
+        logger.info("No LLM backend available, using mock recommendation")
         return json.dumps(_MOCK_RECOMMENDATION)
 
     async def _call_claude(self, system_prompt: str, user_prompt: str) -> str:
@@ -529,6 +579,39 @@ class OrientEngine:
 
         if not message.content:
             raise ValueError("Empty content in Claude response")
+        return message.content[0].text
+
+    async def _call_claude_oauth(self, system_prompt: str, user_prompt: str) -> str:
+        """Call Claude API using OAuth token from Claude Code credentials.
+
+        Requires `anthropic-beta: oauth-2025-04-20` header for OAuth token auth.
+        Uses a separate client instance to avoid header conflicts with API Key mode.
+        """
+        from app.services.oauth_token_manager import OAuthTokenManager, OAUTH_BETA_HEADER
+
+        if self._oauth_manager is None:
+            self._oauth_manager = OAuthTokenManager()
+
+        token = await self._oauth_manager.get_access_token()
+
+        # Use a dedicated client for OAuth (different headers from API Key client)
+        client = anthropic.AsyncAnthropic(
+            auth_token=token,
+            max_retries=2,
+            default_headers={"anthropic-beta": OAUTH_BETA_HEADER},
+        )
+
+        message = await client.messages.create(
+            model=settings.CLAUDE_MODEL,
+            max_tokens=4000,
+            temperature=0.7,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+            timeout=60.0,
+        )
+
+        if not message.content:
+            raise ValueError("Empty content in Claude OAuth response")
         return message.content[0].text
 
     async def _call_openai(self, system_prompt: str, user_prompt: str) -> str:

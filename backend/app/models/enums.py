@@ -83,6 +83,7 @@ class FactCategory(str, Enum):
     CREDENTIAL = "credential"
     HOST = "host"
     NETWORK = "network"
+    OSINT = "osint"
     SERVICE = "service"
     VULNERABILITY = "vulnerability"
     FILE = "file"

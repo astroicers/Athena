@@ -25,9 +25,11 @@ from pydantic import BaseModel
 
 from app.config import settings
 from app.database import get_db
+from app.models.osint import OSINTResult
 from app.models.recon import ReconScanResult, InitialAccessResult
 from app.routers._deps import ensure_operation
 from app.services.initial_access_engine import InitialAccessEngine
+from app.services.osint_engine import OSINTEngine
 from app.services.recon_engine import ReconEngine
 
 logger = logging.getLogger(__name__)
@@ -38,6 +40,11 @@ class ReconScanRequest(BaseModel):
     target_id: str
     enable_initial_access: bool = True
     caldera_host: str | None = None  # defaults to settings.CALDERA_URL
+
+
+class OSINTDiscoverRequest(BaseModel):
+    domain: str
+    max_subdomains: int = 500
 
 
 @router.post(
@@ -220,3 +227,29 @@ async def get_recon_status(
         )
 
     return dict(row)
+
+
+@router.post(
+    "/operations/{op_id}/osint/discover",
+    response_model=OSINTResult,
+)
+async def run_osint_discover(
+    op_id: str,
+    body: OSINTDiscoverRequest,
+    db: aiosqlite.Connection = Depends(get_db),
+) -> OSINTResult:
+    """Run OSINT subdomain discovery for a domain."""
+    db.row_factory = aiosqlite.Row
+    await ensure_operation(db, op_id)
+
+    try:
+        result = await OSINTEngine().discover(
+            db=db,
+            operation_id=op_id,
+            domain=body.domain,
+            max_subdomains=body.max_subdomains,
+        )
+        return result
+    except Exception as exc:
+        logger.exception("OSINT discover failed for domain %s: %s", body.domain, exc)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc

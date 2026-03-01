@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     LLM_BACKEND: str = "auto"  # "api_key" | "oauth" | "auto"
     LOG_LEVEL: str = "INFO"
     MOCK_LLM: bool = True
+    OSINT_MAX_SUBDOMAINS: int = 500
+    SUBFINDER_ENABLED: bool = True
+    OSINT_REQUEST_TIMEOUT_SEC: int = 30
 
 
 settings = Settings()

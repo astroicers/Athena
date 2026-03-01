@@ -16,6 +16,7 @@ dependencies = [
     "python-nmap>=0.7.1",
     "asyncssh>=2.14.0",
     "cryptography>=42.0.0",
+    "dnspython>=2.4.0",
 ]
 
 [project.optional-dependencies]

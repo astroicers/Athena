@@ -7,6 +7,44 @@
 
 ## [Unreleased]
 
+### Phase A：企業化外部滲透測試基礎建設（2026-03-01）
+
+#### Added
+- `backend/app/services/scope_validator.py` — `ScopeValidator`：ROE 範圍驗證，支援 IP、CIDR、域名、wildcard domain
+- `backend/app/models/engagement.py` — `Engagement` 領域模型
+- `backend/app/routers/engagements.py` — Engagement CRUD + activate/suspend 狀態機（4 個 endpoint）
+- `backend/app/services/osint_engine.py` — `OSINTEngine`：crt.sh 被動枚舉 + subfinder + dnspython 解析，自動建立 Target 記錄
+- `backend/app/models/osint.py` — `SubdomainInfo`, `OSINTResult`
+- `backend/app/services/vuln_lookup.py` — `VulnLookupService`：NVD NIST API v2 + SQLite 24h 快取，將服務 banner 關聯至已知 CVE
+- `backend/app/models/vuln.py` — `VulnFinding`
+- `backend/app/models/enums.py` — `FactCategory.OSINT = "osint"` 新類別
+- `backend/tests/test_scope_validator.py` — 7 個 ScopeValidator 單元測試
+- `backend/tests/test_osint_engine.py` — 5 個 OSINTEngine 單元測試
+- `backend/tests/test_vuln_lookup.py` — 6 個 VulnLookupService 單元測試
+- `backend/tests/test_initial_access_engine.py` — 新增 2 個憑證鏈接測試
+- `backend/app/models/report.py` — `Finding`, `AttackStep`, `PentestReport` 報告模型
+- `backend/app/services/report_generator.py` — `ReportGenerator`：從 DB 組裝客戶可交付滲透測試報告（JSON + Markdown）
+- `backend/tests/test_report_generator.py` — 6 個 ReportGenerator 單元測試
+
+#### Changed
+- `backend/app/database.py` — 新增 `engagements`、`vuln_cache` 2 個表（`CREATE TABLE IF NOT EXISTS`）
+- `backend/app/config.py` — 新增 6 個設定：`OSINT_MAX_SUBDOMAINS`、`SUBFINDER_ENABLED`、`OSINT_REQUEST_TIMEOUT_SEC`、`NVD_API_KEY`、`NVD_CACHE_TTL_HOURS`、`VULN_LOOKUP_ENABLED`
+- `backend/app/models/api_schemas.py` — 新增 `EngagementCreate` schema
+- `backend/app/routers/recon.py` — 新增 `POST /osint/discover` endpoint；整合 `OSINTEngine`
+- `backend/app/routers/reports.py` — 新增 `GET /report/structured`（PentestReport JSON）和 `GET /report/markdown`（text/markdown 下載）
+- `backend/app/services/recon_engine.py` — Step 1b scope 驗證（graceful fallback）；Step 8 CVE 關聯呼叫（graceful fallback）
+- `backend/app/services/initial_access_engine.py` — `_load_harvested_creds()`：先試已知憑證再嘗試預設清單（憑證鏈接）
+- `backend/app/services/orient_engine.py` — Q11 查詢已收集憑證；Section 7.5 HARVESTED CREDENTIALS 加入提示詞
+- `backend/app/main.py` — 載入 `engagements` router
+- `backend/pyproject.toml` — 新增 `dnspython>=2.4.0`
+- `CLAUDE.md` — Athena 核心定位段落（任意 IP/域名通用設計原則）
+- `docs/architecture.md` — 核心展示目標段落、Phase A 模組清單
+
+#### Metrics
+- 後端：95 pytest passed, 6 skipped（+26 個新測試，0 regression）
+
+---
+
 ### Phase 13：前端 UI 支援 Recon 測試流程（2026-02-28）
 
 #### Added

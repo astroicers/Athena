@@ -119,11 +119,16 @@ graph LR
 | C5ISR Mapper | `services/c5isr_mapper.py` | 聚合各來源的 C5ISR 域健康度 |
 | Mock Caldera | `clients/mock_caldera_client.py` | Caldera Mock 客戶端（POC 預設） |
 | Demo Runner | `seed/demo_runner.py` | 6 步自動 OODA 循環展示 |
-| Reports API | `routers/reports.py` | 作戰報告匯出（10 段落 JSON） |
+| Reports API | `routers/reports.py` | 作戰報告匯出（10 段落 JSON）；`/report/structured`（PentestReport JSON）、`/report/markdown` 下載（Phase A） |
+| Report Generator | `services/report_generator.py` | 從 DB 組裝客戶可交付滲透測試報告：findings（按 CVSS 排序）、attack narrative、MITRE coverage（Phase A） |
 | Admin API | `routers/admin.py` | 管理操作（Reset 作戰資料） |
-| Recon Engine | `services/recon_engine.py` | nmap 掃描 → 結構化服務清單 + facts 寫入（Phase 12） |
-| Initial Access Engine | `services/initial_access_engine.py` | SSH credential 嘗試 + Caldera agent bootstrap（Phase 12） |
-| Recon API | `routers/recon.py` | POST `/recon/scan`、GET `/recon/status`（Phase 12） |
+| Recon Engine | `services/recon_engine.py` | nmap 掃描 → 結構化服務清單 + facts 寫入（Phase 12）；Step 8 CVE 關聯（Phase A） |
+| Initial Access Engine | `services/initial_access_engine.py` | SSH credential 嘗試 + Caldera agent bootstrap（Phase 12）；憑證鏈接（Phase A） |
+| Recon API | `routers/recon.py` | POST `/recon/scan`、GET `/recon/status`（Phase 12）；POST `/osint/discover`（Phase A） |
+| OSINT Engine | `services/osint_engine.py` | domain → 子網域枚舉（crt.sh + subfinder）→ DNS 解析 → Target 建立（Phase A） |
+| Scope Validator | `services/scope_validator.py` | ROE 範圍驗證：IP/CIDR/domain/wildcard，時間視窗，向後相容（Phase A） |
+| Vuln Lookup Service | `services/vuln_lookup.py` | NVD NIST API CVE 關聯 + SQLite 快取 → vuln.cve facts（Phase A） |
+| Engagements API | `routers/engagements.py` | ROE CRUD + activate/suspend（Phase A） |
 
 ### Docker 部署拓樸（Phase 6 實作）
 
@@ -271,6 +276,14 @@ graph TD
 - [x] Phase 11 新模組測試已補齊（24 tests：backend 10 + frontend 14）
 - [x] Phase 12 Recon + Initial Access 引擎（nmap + asyncssh），7 個新後端測試
 - [x] Phase 13 前端 UI Recon 支援（AddTargetModal、ReconResultModal、HostNodeCard SCAN）
+- [x] Phase A ROE/Scope 驗證（ScopeValidator + engagements API）
+- [x] Phase A OSINT 引擎（crt.sh + subfinder + dnspython）
+- [x] Phase A CVE 關聯（NVD API + vuln_cache，89 tests）
+- [x] Phase A 憑證鏈接（_load_harvested_creds + OrientEngine 提示詞）
+- [x] Phase A 結構化報告（ReportGenerator + `/report/structured` + `/report/markdown`，95 tests）
+- [ ] Phase B Metasploit RPC 整合（ADR-016 草稿）
+- [ ] Phase B Web 應用掃描（nuclei 整合）
+- [ ] Phase C JWT 身份驗證 + RBAC（Phase 8 計畫）
 
 ---
 
@@ -293,6 +306,7 @@ graph TD
 | [ADR-013](adr/ADR-013-orient-prompt-engineering-strategy.md) | Orient Prompt 工程策略 | `Accepted` |
 | [ADR-014](adr/ADR-014-anthropic-sdk-migration.md) | Orient Engine LLM 整合遷移至 SDK | `Accepted` |
 | [ADR-015](adr/ADR-015-recon--initial-access----kill-chain-.md) | Recon 與 Initial Access 引擎架構 | `Accepted` |
+| [ADR-016](adr/ADR-016-enterprise-external-pentest-phase-a.md) | 企業化外部滲透測試 Phase A 架構 | `Accepted` |
 
 ---
 

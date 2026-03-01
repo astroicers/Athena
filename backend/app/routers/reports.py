@@ -18,6 +18,7 @@ import aiosqlite
 from fastapi import APIRouter, Depends
 
 from app.database import get_db
+from app.models.report import PentestReport
 from app.routers._deps import ensure_operation
 
 router = APIRouter()
@@ -120,3 +121,43 @@ async def get_operation_report(
         "targets": targets,
         "agents": agents,
     }
+
+
+@router.get(
+    "/operations/{operation_id}/report/structured",
+    response_model=PentestReport,
+)
+async def get_structured_report(
+    operation_id: str,
+    db: aiosqlite.Connection = Depends(get_db),
+) -> PentestReport:
+    """Generate a structured client-deliverable pentest report (JSON)."""
+    db.row_factory = aiosqlite.Row
+    await ensure_operation(db, operation_id)
+
+    from app.services.report_generator import ReportGenerator
+    return await ReportGenerator().generate(db, operation_id)
+
+
+@router.get(
+    "/operations/{operation_id}/report/markdown",
+)
+async def get_markdown_report(
+    operation_id: str,
+    db: aiosqlite.Connection = Depends(get_db),
+):
+    """Generate a structured pentest report as downloadable Markdown."""
+    from fastapi.responses import PlainTextResponse
+    db.row_factory = aiosqlite.Row
+    await ensure_operation(db, operation_id)
+
+    from app.services.report_generator import ReportGenerator
+    generator = ReportGenerator()
+    report = await generator.generate(db, operation_id)
+    md_content = generator.to_markdown(report)
+
+    return PlainTextResponse(
+        content=md_content,
+        media_type="text/markdown",
+        headers={"Content-Disposition": f'attachment; filename="report-{operation_id}.md"'},
+    )

@@ -238,6 +238,19 @@ _CREATE_TABLES: list[str] = [
         created_at TEXT DEFAULT (datetime('now'))
     );
     """,
+    """
+    CREATE TABLE IF NOT EXISTS vuln_cache (
+        id TEXT PRIMARY KEY,
+        cpe_string TEXT NOT NULL,
+        cve_id TEXT NOT NULL,
+        cvss_score REAL,
+        severity TEXT,
+        description TEXT,
+        exploit_available INTEGER DEFAULT 0,
+        cached_at TEXT DEFAULT (datetime('now')),
+        UNIQUE(cpe_string, cve_id)
+    );
+    """,
 ]
 
 

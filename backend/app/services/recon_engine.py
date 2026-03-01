@@ -183,7 +183,22 @@ class ReconEngine:
             await db.commit()
 
         # ------------------------------------------------------------------
-        # Step 8: Return result
+        # Step 8: CVE enrichment (graceful fallback — never breaks recon)
+        # ------------------------------------------------------------------
+        if settings.VULN_LOOKUP_ENABLED and services:
+            try:
+                from app.services.vuln_lookup import VulnLookupService
+                await VulnLookupService().enrich_services(
+                    db=db,
+                    services=services,
+                    operation_id=operation_id,
+                    target_id=target_id,
+                )
+            except Exception:
+                logger.warning("CVE enrichment failed, continuing without vulnerability data")
+
+        # ------------------------------------------------------------------
+        # Step 9: Return result
         # ------------------------------------------------------------------
         return ReconResult(
             target_id=target_id,

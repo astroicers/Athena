@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     OSINT_MAX_SUBDOMAINS: int = 500
     SUBFINDER_ENABLED: bool = True
     OSINT_REQUEST_TIMEOUT_SEC: int = 30
+    NVD_API_KEY: str = ""
+    NVD_CACHE_TTL_HOURS: int = 24
+    VULN_LOOKUP_ENABLED: bool = True
 
 
 settings = Settings()

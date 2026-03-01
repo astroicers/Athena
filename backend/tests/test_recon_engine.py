@@ -27,15 +27,23 @@ from app.services.recon_engine import ReconEngine
 def make_mock_db(ip_row=None):
     """Return a fully-mocked aiosqlite connection.
 
-    ``ip_row`` is the value returned by ``cursor.fetchone()``.
-    If ``None`` is passed, ``fetchone`` returns ``None`` (target not found).
+    ``ip_row`` is the value returned by the first ``cursor.fetchone()`` call
+    (target IP lookup). Subsequent fetchone calls return ``None`` to simulate
+    no engagement record existing (backward-compatible / unrestricted mode).
+
+    If ``None`` is passed, ``fetchone`` returns ``None`` on all calls
+    (target not found).
     """
     db = AsyncMock()
     # Assignment to row_factory must silently succeed
     db.row_factory = None
 
     cursor = AsyncMock()
-    cursor.fetchone = AsyncMock(return_value=ip_row)
+    if ip_row is None:
+        cursor.fetchone = AsyncMock(return_value=None)
+    else:
+        # First call → ip_row (target lookup), subsequent calls → None (no engagement)
+        cursor.fetchone = AsyncMock(side_effect=[ip_row, None])
 
     db.execute = AsyncMock(return_value=cursor)
     db.commit = AsyncMock()

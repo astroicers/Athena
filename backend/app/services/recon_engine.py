@@ -77,6 +77,20 @@ class ReconEngine:
         ip_address: str = row["ip_address"]
 
         # ------------------------------------------------------------------
+        # Step 1b: Scope validation — check engagement ROE
+        # ------------------------------------------------------------------
+        from app.services.scope_validator import ScopeValidator, ScopeViolationError
+        validator = ScopeValidator()
+        scope_result = await validator.validate_target(db, operation_id, ip_address)
+        if not scope_result.in_scope:
+            logger.warning(
+                "Scope violation blocked recon: %s — %s", ip_address, scope_result.reason
+            )
+            raise ScopeViolationError(
+                f"Target {ip_address!r} is out of scope: {scope_result.reason}"
+            )
+
+        # ------------------------------------------------------------------
         # Step 2: Mock mode — skip real nmap
         # ------------------------------------------------------------------
         if settings.MOCK_CALDERA:

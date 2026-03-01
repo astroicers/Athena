@@ -235,3 +235,17 @@ class OperationSummary(BaseModel):
     operation: Operation
     c5isr: list[C5ISRStatus]
     latest_recommendation: PentestGPTRecommendation | None = None
+
+
+# ---------------------------------------------------------------------------
+# Engagement / ROE
+# ---------------------------------------------------------------------------
+
+class EngagementCreate(BaseModel):
+    client_name: str
+    contact_email: str
+    in_scope: list[str]
+    out_of_scope: list[str] = []
+    start_time: str | None = None
+    end_time: str | None = None
+    emergency_contact: str | None = None

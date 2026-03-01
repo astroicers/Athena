@@ -220,6 +220,24 @@ _CREATE_TABLES: list[str] = [
         completed_at TEXT
     );
     """,
+    """
+    CREATE TABLE IF NOT EXISTS engagements (
+        id TEXT PRIMARY KEY,
+        operation_id TEXT REFERENCES operations(id) ON DELETE CASCADE,
+        client_name TEXT NOT NULL,
+        contact_email TEXT NOT NULL,
+        roe_document_path TEXT,
+        roe_signed_at TEXT,
+        scope_type TEXT DEFAULT 'whitelist',
+        in_scope TEXT NOT NULL DEFAULT '[]',
+        out_of_scope TEXT DEFAULT '[]',
+        start_time TEXT,
+        end_time TEXT,
+        emergency_contact TEXT,
+        status TEXT DEFAULT 'draft',
+        created_at TEXT DEFAULT (datetime('now'))
+    );
+    """,
 ]
 
 

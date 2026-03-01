@@ -34,6 +34,7 @@ from app.routers import (
     admin,
     agents,
     c5isr,
+    engagements,
     facts,
     health,
     logs,
@@ -98,6 +99,7 @@ app.include_router(recommendations.router, prefix="/api", tags=["Recommendations
 app.include_router(admin.router, prefix="/api", tags=["Admin"])
 app.include_router(reports.router, prefix="/api", tags=["Reports"])
 app.include_router(recon.router, prefix="/api", tags=["Recon"])
+app.include_router(engagements.router, prefix="/api", tags=["Engagements"])
 
 # ── WebSocket (no /api prefix) ───────────────────────────────────────────
 app.include_router(ws.router, tags=["WebSocket"])

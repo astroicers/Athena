@@ -103,7 +103,13 @@ async def run_recon_scan(
 
             # Step 5c: Bootstrap Caldera agent if SSH succeeded and not in mock mode
             if ia_result.success and not settings.MOCK_CALDERA:
-                caldera_host = body.caldera_host or settings.CALDERA_URL
+                # Use CALDERA_AGENT_CALLBACK_URL if set (external URL reachable from targets),
+                # then request override, then fall back to CALDERA_URL
+                caldera_host = (
+                    body.caldera_host
+                    or settings.CALDERA_AGENT_CALLBACK_URL
+                    or settings.CALDERA_URL
+                )
                 # credential format is "user:pass"
                 cred_parts = (ia_result.credential or ":").split(":", 1)
                 cred_tuple = (cred_parts[0], cred_parts[1] if len(cred_parts) > 1 else "")

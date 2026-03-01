@@ -22,6 +22,10 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = "sqlite:///backend/data/athena.db"
     CALDERA_URL: str = "http://localhost:8888"
+    # External URL that deployed agents (on target machines) use to reach Caldera.
+    # Must be reachable from the target network, e.g. http://192.168.0.18:58888
+    # Defaults to CALDERA_URL when not set.
+    CALDERA_AGENT_CALLBACK_URL: str = ""
     CALDERA_API_KEY: str = ""
     MOCK_CALDERA: bool = True
     SHANNON_URL: str = ""
@@ -32,6 +36,7 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = "gpt-4-turbo"
     AUTOMATION_MODE: str = "semi_auto"
     RISK_THRESHOLD: str = "medium"
+    LLM_BACKEND: str = "auto"  # "api_key" | "oauth" | "auto"
     LOG_LEVEL: str = "INFO"
     MOCK_LLM: bool = True
 

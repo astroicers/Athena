@@ -8,6 +8,22 @@
 
 ---
 
+## 核心展示目標
+
+Athena 的核心目標是展示「**輸入任意 IP 或域名 → 全自動 Kill Chain**」：
+
+```
+輸入 IP/域名 → Recon → Initial Access → Agent 部署 → OODA 自動循環
+   (任意目標)    (nmap)   (SSH/exploit)   (Caldera)    (MITRE ATT&CK)
+```
+
+**設計原則（所有未來開發必須遵守）：**
+- Credential 清單、port 掃描範圍、exploit 選擇等**必須基於業界通用標準**，不得針對特定靶機硬編碼
+- 任何 target（IP 或可解析域名）都應能進入完整 Kill Chain，無需修改程式碼
+- 前端 UI 的 target 輸入欄位應同時支援 IPv4、IPv6 和域名
+
+---
+
 ## 系統概覽
 
 Athena 是一套 AI 驅動的 C5ISR（Command, Control, Communications, Computers, Cyber, Intelligence, Surveillance, Reconnaissance）網路作戰指揮平台。核心職責為透過 OODA 循環（Observe → Orient → Decide → Act）編排 AI 情報分析（PentestGPT）與執行引擎（Caldera/Shannon），為資深紅隊指揮官提供戰略級決策支援。

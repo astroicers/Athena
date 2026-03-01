@@ -31,10 +31,27 @@ logger = logging.getLogger(__name__)
 # Default credentials targeting Metasploitable 2
 # ---------------------------------------------------------------------------
 _DEFAULT_CREDS: list[tuple[str, str]] = [
-    ("msfadmin", "msfadmin"),
-    ("root", "toor"),
+    # Linux distro & Vagrant box defaults (sorted by likelihood)
+    ("vagrant", "vagrant"),           # Vagrant boxes / Metasploitable 3
+    ("ubuntu", "ubuntu"),             # Ubuntu cloud images
+    ("pi", "raspberry"),              # Raspberry Pi OS
+    ("ec2-user", "ec2-user"),         # Amazon Linux AMI
+    ("centos", "centos"),             # CentOS cloud images
+    ("debian", "debian"),             # Debian cloud images
+    # Common weak / default passwords
+    ("root", "root"),
+    ("root", "toor"),                 # Kali / Metasploitable 2
+    ("root", "password"),
     ("admin", "admin"),
+    ("admin", "password"),
+    ("administrator", "administrator"),
+    # Lab / CTF environments
+    ("msfadmin", "msfadmin"),         # Metasploitable 2
     ("user", "user"),
+    # Network appliances
+    ("cisco", "cisco"),
+    ("ubnt", "ubnt"),
+    ("apc", "apc"),
 ]
 
 

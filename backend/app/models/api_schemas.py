@@ -21,7 +21,7 @@ exclusively by the router layer for input validation and output shaping.
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from .c5isr import C5ISRStatus
 from .enums import (
@@ -100,10 +100,44 @@ class MissionStepUpdate(BaseModel):
 
 class TargetCreate(BaseModel):
     hostname: str
+    # Accepts IPv4, IPv6, or resolvable hostname/domain — validated loosely to
+    # allow any target that nmap can scan (IP, FQDN, CIDR notation, etc.)
     ip_address: str
     os: str | None = None
     role: str | None = None
     network_segment: str | None = None
+
+    @field_validator("ip_address")
+    @classmethod
+    def validate_target_address(cls, v: str) -> str:
+        import ipaddress
+        import re
+        v = v.strip()
+        if not v:
+            raise ValueError("Target address must not be empty")
+        # Accept IPv4 / IPv6
+        try:
+            ipaddress.ip_address(v)
+            return v
+        except ValueError:
+            pass
+        # Accept CIDR ranges (e.g. 192.168.1.0/24)
+        try:
+            ipaddress.ip_network(v, strict=False)
+            return v
+        except ValueError:
+            pass
+        # Accept hostnames / FQDNs / simple domain names
+        # Allow: letters, digits, hyphens, dots — min 1 char
+        hostname_re = re.compile(
+            r"^(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)*"
+            r"[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?$"
+        )
+        if hostname_re.match(v):
+            return v
+        raise ValueError(
+            f"{v!r} is not a valid IPv4 address, IPv6 address, CIDR range, or hostname"
+        )
 
 
 # ---------------------------------------------------------------------------

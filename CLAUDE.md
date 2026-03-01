@@ -1,3 +1,21 @@
+# Athena 專案核心定位
+
+> **「輸入任意 IP 或域名 → 全自動 Kill Chain」展示平台**
+
+Athena 的核心展示目標是：將任意授權目標（IP 或域名）投入 Athena，
+系統自動完成 Recon → Initial Access → Agent 部署 → OODA 循環的完整攻擊鏈。
+
+**所有設計決策必須以「通用任意目標」為前提，不得針對特定靶機硬編碼：**
+- Credential 清單：業界標準通用清單（覆蓋主流 Linux、雲端映像、設備預設帳號）
+- Port 掃描範圍：通用滲透測試 port 清單（參考 SecLists / nmap top-ports）
+- Exploit 選擇：基於 nmap 偵測到的 service/version 動態選擇，非特定靶機邏輯
+- 前端輸入欄位：同時支援 IPv4、IPv6、域名（非限制 IP 格式）
+
+**禁止事項：** 不得在程式碼中針對 Metasploitable 2/3、DVWA、特定 CVE 等硬編碼邏輯，
+應以通用方式設計，讓任何授權目標都能進入完整流程。
+
+---
+
 # AI-SOP-Protocol (ASP) — 行為憲法
 
 > 讀取順序：本檔案 → `.ai_profile` → 對應 `.asp/profiles/`（按需）
@@ -18,6 +36,7 @@ workflow:  standard | vibe-coding            # 預設 standard
 rag:       enabled | disabled               # 預設 disabled
 guardrail: enabled | disabled               # 預設 disabled
 hitl:      minimal | standard | strict      # 預設 standard
+design:    enabled | disabled               # 預設 disabled
 name:      your-project-name
 ```
 
@@ -33,6 +52,7 @@ name:      your-project-name
 | `workflow: vibe-coding` | + `.asp/profiles/vibe_coding.md` |
 | `rag: enabled` | + `.asp/profiles/rag_context.md` |
 | `guardrail: enabled` | + `.asp/profiles/guardrail.md` |
+| `design: enabled` | + `.asp/profiles/design_dev.md` |
 
 ---
 

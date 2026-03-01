@@ -126,7 +126,8 @@ async def test_ssh_real_success():
         )
 
     assert result.success is True
-    assert result.credential == "msfadmin:msfadmin"
+    # First credential attempted is now "vagrant:vagrant" (generic list sorted by likelihood)
+    assert result.credential == "vagrant:vagrant"
 
 
 # ---------------------------------------------------------------------------

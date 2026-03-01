@@ -95,13 +95,13 @@ export function AddTargetModal({
 
           <div>
             <label className="block text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-1">
-              IP Address <span className="text-athena-error">*</span>
+              IP / Hostname / Domain <span className="text-athena-error">*</span>
             </label>
             <input
               type="text"
               value={ipAddress}
               onChange={(e) => setIpAddress(e.target.value)}
-              placeholder="192.168.x.x"
+              placeholder="192.168.1.100 or target.example.com"
               className="w-full bg-athena-bg border border-athena-border rounded-athena-sm px-3 py-2 text-sm font-mono text-athena-text placeholder-athena-text-secondary/50 focus:outline-none focus:border-athena-accent"
             />
           </div>

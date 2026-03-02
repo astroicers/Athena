@@ -15,7 +15,7 @@ VERSION  ?= latest
         session-checkpoint session-log \
         rag-index rag-search rag-stats rag-rebuild \
         guardrail-log guardrail-reset \
-        vendor-init vendor-update caldera-up caldera-down caldera-logs caldera-status caldera-backup \
+        c2-engine-init c2-engine-up c2-engine-down c2-engine-logs c2-engine-status c2-engine-backup \
         real-mode mock-mode
 
 #---------------------------------------------------------------------------
@@ -294,56 +294,42 @@ guardrail-reset:
 # Vendor / 外部專案管理
 #---------------------------------------------------------------------------
 
-VENDOR_DIR ?= $(HOME)/vendor
-CALDERA_COMPOSE := infra/caldera/docker-compose.caldera.yml
+C2_ENGINE_COMPOSE := infra/c2-engine/docker-compose.c2-engine.yml
 
-vendor-init:  ## Clone PentestGPT + Caldera 到 ~/vendor/
-	@echo "📦 Cloning external projects to $(VENDOR_DIR)/..."
-	@mkdir -p $(VENDOR_DIR)
-	@if [ ! -d "$(VENDOR_DIR)/caldera" ]; then \
-		git clone https://github.com/mitre/caldera.git --recursive $(VENDOR_DIR)/caldera && \
-		cd $(VENDOR_DIR)/caldera && git checkout v5.3.0; \
-	else echo "  caldera/ already exists — skipping"; fi
-	@if [ ! -d "$(VENDOR_DIR)/PentestGPT" ]; then \
-		git clone https://github.com/GreyDGL/PentestGPT.git $(VENDOR_DIR)/PentestGPT && \
-		cd $(VENDOR_DIR)/PentestGPT && git checkout v1.0.0; \
-	else echo "  PentestGPT/ already exists — skipping"; fi
-	@echo "✅ Vendor init complete. Run 'make caldera-up' to start Caldera."
+c2-engine-init:  ## 初始化 C2 引擎配置
+	@mkdir -p infra/c2-engine
+	@echo "C2 engine config directory ready."
 
-vendor-update:  ## 更新外部專案到已鎖定版本
-	@echo "🔄 Updating vendor projects..."
-	@cd $(VENDOR_DIR)/caldera && git fetch --tags && git checkout v5.3.0
-	@cd $(VENDOR_DIR)/PentestGPT && git fetch --tags && git checkout v1.0.0
-	@echo "✅ Vendor update complete."
 
-caldera-up:  ## 啟動 Caldera 容器（Docker Compose profile）
-	@echo "🚀 Starting Caldera..."
-	docker compose --profile caldera up -d caldera
-	@echo "✅ Caldera: http://localhost:58888"
 
-caldera-down:  ## 停止 Caldera 容器
-	@echo "⏹  Stopping Caldera..."
-	docker compose --profile caldera stop caldera
+c2-engine-up:  ## 啟動 C2 引擎容器
+	@echo "Starting C2 engine..."
+	docker compose --profile c2-engine up -d c2-engine
+	@echo "C2 engine: http://localhost:58888"
 
-caldera-logs:  ## 查看 Caldera 日誌
-	docker compose --profile caldera logs -f --tail=100 caldera
+c2-engine-down:  ## 停止 C2 引擎容器
+	@echo "Stopping C2 engine..."
+	docker compose --profile c2-engine stop c2-engine
 
-caldera-status:  ## 檢查 Caldera 健康 + 版本
-	@echo "=== Caldera Status ==="
-	@docker compose --profile caldera ps caldera 2>/dev/null || echo "  Container: not running"
+c2-engine-logs:  ## 查看 C2 引擎日誌
+	docker compose --profile c2-engine logs -f --tail=100 c2-engine
+
+c2-engine-status:  ## 檢查 C2 引擎健康 + 版本
+	@echo "=== C2 Engine Status ==="
+	@docker compose --profile c2-engine ps c2-engine 2>/dev/null || echo "  Container: not running"
 	@echo ""
 	@curl -sf http://localhost:58888/api/v2/health > /dev/null 2>&1 \
 		&& echo "  Health: OK" \
 		|| echo "  Health: unreachable"
 
-caldera-backup:  ## 備份 Caldera data volume
+c2-engine-backup:  ## 備份 C2 引擎 data volume
 	@mkdir -p backups
-	@BACKUP_FILE="backups/caldera-data-$$(date +%Y-%m-%d).tar.gz"; \
+	@BACKUP_FILE="backups/c2-engine-data-$$(date +%Y-%m-%d).tar.gz"; \
 	docker run --rm \
-		-v athena_caldera-data:/data:ro \
+		-v athena_c2-engine-data:/data:ro \
 		-v $$(pwd)/backups:/backup \
 		alpine tar czf /backup/$$(basename $$BACKUP_FILE) -C /data . && \
-	echo "✅ Backup saved: $$BACKUP_FILE"
+	echo "Backup saved: $$BACKUP_FILE"
 
 #---------------------------------------------------------------------------
 # 模式切換
@@ -351,14 +337,14 @@ caldera-backup:  ## 備份 Caldera data volume
 
 real-mode:  ## .env 切為真實模式（MOCK_*=false）
 	@if [ ! -f .env ]; then cp .env.example .env; fi
-	@grep -q '^MOCK_CALDERA=' .env && sed -i 's/^MOCK_CALDERA=.*/MOCK_CALDERA=false/' .env || echo 'MOCK_CALDERA=false' >> .env
+	@grep -q '^MOCK_C2_ENGINE=' .env && sed -i 's/^MOCK_C2_ENGINE=.*/MOCK_C2_ENGINE=false/' .env || echo 'MOCK_C2_ENGINE=false' >> .env
 	@grep -q '^MOCK_LLM=' .env && sed -i 's/^MOCK_LLM=.*/MOCK_LLM=false/' .env || echo 'MOCK_LLM=false' >> .env
 	@echo "✅ Real mode enabled. Restart Athena to apply."
-	@echo "   確認 Caldera 運行中: make caldera-status"
+	@echo "   確認 C2 引擎運行中: make c2-engine-status"
 	@echo "   確認 LLM API key 已設定: grep API_KEY .env"
 
 mock-mode:  ## .env 切為 mock 模式（MOCK_*=true）
 	@if [ ! -f .env ]; then cp .env.example .env; fi
-	@grep -q '^MOCK_CALDERA=' .env && sed -i 's/^MOCK_CALDERA=.*/MOCK_CALDERA=true/' .env || echo 'MOCK_CALDERA=true' >> .env
+	@grep -q '^MOCK_C2_ENGINE=' .env && sed -i 's/^MOCK_C2_ENGINE=.*/MOCK_C2_ENGINE=true/' .env || echo 'MOCK_C2_ENGINE=true' >> .env
 	@grep -q '^MOCK_LLM=' .env && sed -i 's/^MOCK_LLM=.*/MOCK_LLM=true/' .env || echo 'MOCK_LLM=true' >> .env
 	@echo "✅ Mock mode enabled. Restart Athena to apply."

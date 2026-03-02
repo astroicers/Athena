@@ -124,9 +124,9 @@ Only recommend techniques whose prerequisites are CONFIRMED by collected intelli
 If a prerequisite is unverified, flag it and suggest a Discovery technique to verify it first.
 
 ### 4. Engine Routing
-- Caldera: standard MITRE ATT&CK techniques with known ability mappings.
-- Shannon: adaptive execution for unknown defenses, high-stealth requirements, or novel environments.
-- Default to Caldera unless there is a specific reason for Shannon.
+- Primary Engine: standard MITRE ATT&CK techniques with known ability mappings.
+- Adaptive Engine: for unknown defenses, high-stealth requirements, or novel environments.
+- Default to Primary Engine unless there is a specific reason for Adaptive Engine.
 
 ### 5. Risk Calibration
 Assess risk based on DETECTION LIKELIHOOD, not just impact:
@@ -223,7 +223,7 @@ class OrientEngine:
         self, db: aiosqlite.Connection, operation_id: str,
         observe_summary: str,
     ) -> dict:
-        """Call LLM (or mock) to produce PentestGPTRecommendation."""
+        """Call LLM (or mock) to produce OrientRecommendation."""
         db.row_factory = aiosqlite.Row
 
         if settings.MOCK_LLM:

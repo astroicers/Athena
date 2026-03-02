@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Act phase — route execution to Caldera or Shannon engine."""
+"""Act phase — route execution to C2 engine, DirectSSH, or Adaptive engine."""
 
 import logging
 import uuid
@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 import aiosqlite
 
 from app.clients import BaseEngineClient, ExecutionResult
+from app.config import settings
 from app.services.fact_collector import FactCollector
 from app.ws_manager import WebSocketManager
 
@@ -32,13 +33,13 @@ class EngineRouter:
 
     def __init__(
         self,
-        caldera: BaseEngineClient,
-        shannon: BaseEngineClient | None,
+        c2_engine: BaseEngineClient,
+        adaptive_engine: BaseEngineClient | None,
         fact_collector: FactCollector,
         ws_manager: WebSocketManager,
     ):
-        self._caldera = caldera
-        self._shannon = shannon
+        self._c2_engine = c2_engine
+        self._adaptive_engine = adaptive_engine
         self._fact_collector = fact_collector
         self._ws = ws_manager
 
@@ -49,10 +50,15 @@ class EngineRouter:
         """
         Execute a technique via the selected engine:
         1. Create TechniqueExecution record (status=running)
-        2. Call CalderaClient / ShannonClient
+        2. Call C2EngineClient / DirectSSHEngine / AiEngineClient
         3. Update status (success/failed)
         4. Extract facts from result
         5. Push WebSocket execution.update event
+
+        Dual-track routing (controlled by settings.EXECUTION_ENGINE):
+        - "ssh"    : Use DirectSSHEngine with credential.ssh fact from DB
+        - "caldera": Use C2EngineClient (requires alive agent; original path)
+        - "mock"   : Use MockC2Client (MOCK_C2_ENGINE=true legacy path)
         """
         exec_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
@@ -66,16 +72,63 @@ class EngineRouter:
         tech_row = await cursor.fetchone()
         ability_id = (tech_row["caldera_ability_id"] if tech_row else None) or technique_id
 
-        # Get agent paw for the target — Caldera needs the agent's paw, not hostname
+        # ── Engine selection ──────────────────────────────────────────────────
+        # Determine effective mode:
+        #   EXECUTION_ENGINE="ssh"    → SSH path (no agent required)
+        #   EXECUTION_ENGINE="caldera"→ Caldera path (alive agent required)
+        #   EXECUTION_ENGINE="mock"   → mock path
+        #   MOCK_C2_ENGINE=True         → treated as "mock" for backward compat
+        #     UNLESS EXECUTION_ENGINE is explicitly "caldera" or "ssh"
+        effective_mode = settings.EXECUTION_ENGINE  # "ssh" | "caldera" | "mock"
+        if settings.MOCK_C2_ENGINE and effective_mode not in ("caldera", "ssh"):
+            # Legacy MOCK_C2_ENGINE=True overrides to mock when engine is ambiguous
+            effective_mode = "mock"
+
+        if effective_mode == "ssh":
+            return await self._execute_ssh(
+                db, exec_id, now, ability_id, technique_id, target_id,
+                engine, operation_id, ooda_iteration_id,
+            )
+        elif effective_mode == "mock":
+            return await self._execute_caldera(
+                db, exec_id, now, ability_id, technique_id, target_id,
+                engine, operation_id, ooda_iteration_id, require_agent=False,
+            )
+        else:
+            # "caldera" mode — original path with alive-agent requirement
+            return await self._execute_caldera(
+                db, exec_id, now, ability_id, technique_id, target_id,
+                engine, operation_id, ooda_iteration_id, require_agent=True,
+            )
+
+    # ── Internal helpers ──────────────────────────────────────────────────────
+
+    async def _execute_ssh(
+        self,
+        db: aiosqlite.Connection,
+        exec_id: str,
+        now: str,
+        ability_id: str,
+        technique_id: str,
+        target_id: str,
+        engine: str,
+        operation_id: str,
+        ooda_iteration_id: str | None,
+    ) -> dict:
+        """SSH execution path — look up credential.ssh fact and call DirectSSHEngine."""
+        # Look up SSH credentials from the facts table
         cursor = await db.execute(
-            "SELECT paw FROM agents WHERE host_id = ? AND operation_id = ? "
-            "AND status = 'alive' LIMIT 1",
-            (target_id, operation_id),
+            "SELECT value FROM facts "
+            "WHERE operation_id = ? AND source_target_id = ? AND trait = 'credential.ssh' "
+            "ORDER BY score DESC LIMIT 1",
+            (operation_id, target_id),
         )
-        agent_row = await cursor.fetchone()
-        if not agent_row:
-            # No alive agent on this target — cannot execute
-            logger.warning("No alive agent on target %s for operation %s", target_id, operation_id)
+        cred_row = await cursor.fetchone()
+
+        if not cred_row:
+            logger.warning(
+                "No SSH credentials for target %s in operation %s", target_id, operation_id
+            )
             return {
                 "execution_id": exec_id,
                 "technique_id": technique_id,
@@ -84,9 +137,77 @@ class EngineRouter:
                 "status": "failed",
                 "result_summary": None,
                 "facts_collected_count": 0,
-                "error": f"No alive agent on target {target_id}",
+                "error": f"No SSH credentials for target {target_id}",
             }
-        agent_paw = agent_row["paw"]
+
+        credential_string = cred_row["value"]
+
+        # Create execution record
+        await db.execute(
+            "INSERT INTO technique_executions "
+            "(id, technique_id, target_id, operation_id, ooda_iteration_id, "
+            "engine, status, started_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, 'running', ?)",
+            (exec_id, technique_id, target_id, operation_id,
+             ooda_iteration_id, engine, now),
+        )
+        await db.commit()
+
+        await self._ws.broadcast(operation_id, "execution.update", {
+            "id": exec_id, "technique_id": technique_id,
+            "status": "running", "engine": engine,
+        })
+
+        # Import here to avoid circular imports at module load time
+        from app.clients.direct_ssh_client import DirectSSHEngine  # noqa: PLC0415
+        ssh_engine = DirectSSHEngine()
+        result: ExecutionResult = await ssh_engine.execute(ability_id, credential_string)
+
+        return await self._finalize_execution(
+            db, exec_id, technique_id, target_id, engine,
+            operation_id, result,
+        )
+
+    async def _execute_caldera(
+        self,
+        db: aiosqlite.Connection,
+        exec_id: str,
+        now: str,
+        ability_id: str,
+        technique_id: str,
+        target_id: str,
+        engine: str,
+        operation_id: str,
+        ooda_iteration_id: str | None,
+        *,
+        require_agent: bool,
+    ) -> dict:
+        """C2 engine / mock execution path."""
+        agent_paw: str | None = None
+
+        if require_agent:
+            # Get agent paw for the target — C2 engine needs the agent's paw, not hostname
+            cursor = await db.execute(
+                "SELECT paw FROM agents WHERE host_id = ? AND operation_id = ? "
+                "AND status = 'alive' LIMIT 1",
+                (target_id, operation_id),
+            )
+            agent_row = await cursor.fetchone()
+            if not agent_row:
+                logger.warning(
+                    "No alive agent on target %s for operation %s", target_id, operation_id
+                )
+                return {
+                    "execution_id": exec_id,
+                    "technique_id": technique_id,
+                    "target_id": target_id,
+                    "engine": engine,
+                    "status": "failed",
+                    "result_summary": None,
+                    "facts_collected_count": 0,
+                    "error": f"No alive agent on target {target_id}",
+                }
+            agent_paw = agent_row["paw"]
 
         # Create execution record
         await db.execute(
@@ -108,7 +229,22 @@ class EngineRouter:
         client = self._select_client(engine)
         result: ExecutionResult = await client.execute(ability_id, agent_paw)
 
-        # Update execution record
+        return await self._finalize_execution(
+            db, exec_id, technique_id, target_id, engine,
+            operation_id, result,
+        )
+
+    async def _finalize_execution(
+        self,
+        db: aiosqlite.Connection,
+        exec_id: str,
+        technique_id: str,
+        target_id: str,
+        engine: str,
+        operation_id: str,
+        result: ExecutionResult,
+    ) -> dict:
+        """Update DB, collect facts, and broadcast the final execution.update event."""
         completed_at = datetime.now(timezone.utc).isoformat()
         status = "success" if result.success else "failed"
         facts_count = len(result.facts)
@@ -153,40 +289,42 @@ class EngineRouter:
             "error": result.error,
         }
 
+    # ── Engine / client selection ─────────────────────────────────────────────
+
     def select_engine(
         self, technique_id: str, context: dict,
         gpt_recommendation: str | None = None,
     ) -> str:
         """
         Engine selection logic per ADR-006 priority order:
-        1. High-confidence PentestGPT recommendation → trust its engine choice
-        2. Caldera has corresponding ability → Caldera
-        3. Unknown environment + Shannon available → Shannon
-        4. High stealth requirement + Shannon available → Shannon
+        1. High-confidence AI recommendation → trust its engine choice
+        2. C2 engine has corresponding ability → C2 engine
+        3. Unknown environment + Adaptive engine available → Adaptive engine
+        4. High stealth requirement + Adaptive engine available → Adaptive engine
         5. Default → Caldera
         """
         # Priority 1: Trust high-confidence PentestGPT recommendation
         if gpt_recommendation and gpt_recommendation in ("caldera", "shannon"):
-            if gpt_recommendation == "shannon" and self._shannon:
+            if gpt_recommendation == "shannon" and self._adaptive_engine:
                 return "shannon"
             return "caldera"
 
         # Priority 2: Caldera has ability for this technique (always true for known MITRE IDs)
-        # In POC, Caldera is assumed to have all standard MITRE abilities
-        # A production version would check caldera.list_abilities()
+        # In POC, C2 engine is assumed to have all standard MITRE abilities
+        # A production version would check c2_engine.list_abilities()
 
-        # Priority 3: Unknown environment → Shannon
-        if context.get("environment") == "unknown" and self._shannon:
+        # Priority 3: Unknown environment → Adaptive engine
+        if context.get("environment") == "unknown" and self._adaptive_engine:
             return "shannon"
 
-        # Priority 4: High stealth requirement → Shannon
-        if context.get("stealth_level") == "maximum" and self._shannon:
+        # Priority 4: High stealth requirement → Adaptive engine
+        if context.get("stealth_level") == "maximum" and self._adaptive_engine:
             return "shannon"
 
-        # Priority 5: Default → Caldera (most reliable)
+        # Priority 5: Default → C2 engine
         return "caldera"
 
     def _select_client(self, engine: str) -> BaseEngineClient:
-        if engine == "shannon" and self._shannon:
-            return self._shannon
-        return self._caldera
+        if engine == "shannon" and self._adaptive_engine:
+            return self._adaptive_engine
+        return self._c2_engine

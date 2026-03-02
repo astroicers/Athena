@@ -40,30 +40,33 @@ async def health_check(db: aiosqlite.Connection = Depends(get_db)):
     except Exception:
         db_status = "error"
 
-    # Caldera status: mock or real connectivity check
-    if settings.MOCK_CALDERA:
-        caldera_status = "mock"
+    # C2 engine status: mock or real connectivity check
+    if settings.MOCK_C2_ENGINE:
+        c2_engine_status = "mock"
     else:
         try:
-            from app.clients.caldera_client import CalderaClient
-            client = CalderaClient(settings.CALDERA_URL, settings.CALDERA_API_KEY)
-            caldera_status = "connected" if await client.is_available() else "unreachable"
+            from app.clients.c2_client import C2EngineClient
+            client = C2EngineClient(settings.C2_ENGINE_URL, settings.C2_ENGINE_API_KEY)
+            c2_engine_status = "connected" if await client.is_available() else "unreachable"
             await client.aclose()
         except Exception:
-            caldera_status = "unreachable"
+            c2_engine_status = "unreachable"
 
-    # Shannon status: disabled by default (no SHANNON_URL set for POC)
-    # If SHANNON_URL is configured, report disconnected (no live ping for POC)
-    if settings.SHANNON_URL:
-        shannon_status = "disconnected"
+    # AI engine status: disabled by default (AI_ENGINE_URL unset)
+    if settings.AI_ENGINE_URL:
+        ai_engine_status = "disconnected"
     else:
-        shannon_status = "disabled"
+        ai_engine_status = "disabled"
 
-    # LLM status: mock > claude > openai > unavailable
+    # LLM status: mock > claude (api_key) > claude (oauth) > openai > unavailable
     if settings.MOCK_LLM:
         llm_status = "mock"
     elif settings.ANTHROPIC_API_KEY or settings.ANTHROPIC_AUTH_TOKEN:
         llm_status = "claude"
+    elif settings.LLM_BACKEND in ("oauth", "auto"):
+        from app.services.oauth_token_manager import OAuthTokenManager
+        mgr = OAuthTokenManager()
+        llm_status = "claude (oauth)" if mgr.is_available() else "unavailable"
     elif settings.OPENAI_API_KEY:
         llm_status = "openai"
     else:
@@ -74,8 +77,8 @@ async def health_check(db: aiosqlite.Connection = Depends(get_db)):
         version="0.1.0",
         services={
             "database": db_status,
-            "caldera": caldera_status,
-            "shannon": shannon_status,
+            "c2_engine": c2_engine_status,
+            "ai_engine": ai_engine_status,
             "websocket": "active",
             "llm": llm_status,
         },

@@ -21,10 +21,12 @@ import { useToast } from "@/contexts/ToastContext";
 import { PageLoading } from "@/components/ui/PageLoading";
 import { MITRECell } from "@/components/mitre/MITRECell";
 import { KillChainIndicator } from "@/components/mitre/KillChainIndicator";
+import { AttackPathTimeline } from "@/components/mitre/AttackPathTimeline";
 import { TechniqueCard } from "@/components/cards/TechniqueCard";
 import { RecommendCard } from "@/components/cards/RecommendCard";
 import type { TechniqueWithStatus } from "@/types/technique";
-import type { PentestGPTRecommendation } from "@/types/recommendation";
+import type { OrientRecommendation } from "@/types/recommendation";
+import type { AttackPathResponse } from "@/types/attackPath";
 import type { TechniqueStatus } from "@/types/enums";
 
 const DEFAULT_OP_ID = "op-0001";
@@ -80,23 +82,38 @@ export default function NavigatorPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [techniques, setTechniques] = useState<TechniqueWithStatus[]>([]);
   const [selected, setSelected] = useState<TechniqueWithStatus | null>(null);
-  const [recommendation, setRecommendation] = useState<PentestGPTRecommendation | null>(null);
+  const [recommendation, setRecommendation] = useState<OrientRecommendation | null>(null);
+  const [attackPath, setAttackPath] = useState<AttackPathResponse | null>(null);
+  const [loadingPath, setLoadingPath] = useState(true);
 
   useEffect(() => {
     Promise.all([
       api.get<TechniqueWithStatus[]>(`/operations/${DEFAULT_OP_ID}/techniques`).then(setTechniques),
-      api.get<PentestGPTRecommendation>(`/operations/${DEFAULT_OP_ID}/recommendations/latest`).then(setRecommendation),
+      api.get<OrientRecommendation>(`/operations/${DEFAULT_OP_ID}/recommendations/latest`).then(setRecommendation),
+      api.getAttackPath(DEFAULT_OP_ID)
+        .then(setAttackPath)
+        .catch(() => {
+          // Attack path may not yet exist; non-fatal
+          setAttackPath(null);
+        })
+        .finally(() => setLoadingPath(false)),
     ]).catch(() => addToast("Failed to load navigator data", "error"))
       .finally(() => setIsLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // WebSocket: refresh techniques on execution updates
+  // WebSocket: refresh techniques and attack path on execution updates
   useEffect(() => {
     return ws.subscribe("execution.update", () => {
       api.get<TechniqueWithStatus[]>(`/operations/${DEFAULT_OP_ID}/techniques`)
         .then(setTechniques)
         .catch(() => addToast("Failed to refresh techniques", "error"));
+
+      api.getAttackPath(DEFAULT_OP_ID)
+        .then(setAttackPath)
+        .catch(() => {
+          // Non-fatal; keep existing data if refetch fails
+        });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ws.subscribe]);
@@ -130,6 +147,9 @@ export default function NavigatorPage() {
 
   return (
     <div className="space-y-4">
+      {/* Attack Path Timeline — above the ATT&CK matrix */}
+      <AttackPathTimeline data={attackPath} loading={loadingPath} />
+
       <div className="grid grid-cols-4 gap-4">
         {/* ATT&CK Matrix — 3 cols */}
         <div className="col-span-3">

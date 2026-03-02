@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Shannon AI engine REST API client. License: AGPL-3.0 — HTTP API only, no code imports."""
+"""AI adaptive engine REST API client. DEPRECATED: AI_ENGINE_URL is unset by default."""
 
 import asyncio
 import uuid
@@ -26,11 +26,11 @@ _POLL_TIMEOUT = 120.0
 
 
 class EngineNotAvailableError(Exception):
-    """Raised when Shannon engine is not configured or unavailable."""
+    """Raised when AI engine is not configured or unavailable."""
 
 
-class ShannonClient(BaseEngineClient):
-    """HTTP client for Shannon AI engine. AGPL-3.0 license isolation via API only."""
+class AiEngineClient(BaseEngineClient):
+    """HTTP client for AI adaptive engine. DEPRECATED: not used in production."""
 
     def __init__(self, base_url: str):
         self.base_url = base_url.rstrip("/") if base_url else ""
@@ -47,7 +47,7 @@ class ShannonClient(BaseEngineClient):
         self, ability_id: str, target: str, params: dict | None = None
     ) -> ExecutionResult:
         if not self.enabled or not self._client:
-            raise EngineNotAvailableError("Shannon engine is not configured")
+            raise EngineNotAvailableError("AI engine is not configured")
         exec_id = str(uuid.uuid4())
         try:
             payload = {
@@ -84,7 +84,7 @@ class ShannonClient(BaseEngineClient):
         timeout: float = _POLL_TIMEOUT,
         interval: float = _POLL_INTERVAL,
     ) -> str:
-        """Poll Shannon task status until terminal state or timeout."""
+        """Poll AI engine task status until terminal state or timeout."""
         elapsed = 0.0
         while elapsed < timeout:
             status = await self.get_status(task_id)
@@ -105,7 +105,7 @@ class ShannonClient(BaseEngineClient):
             return "unknown"
 
     async def list_abilities(self) -> list[dict]:
-        # Shannon does not use fixed abilities
+        # AI engine does not use fixed abilities
         return []
 
     async def is_available(self) -> bool:

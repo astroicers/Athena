@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Integration tests for real Caldera + LLM API connections.
+"""Integration tests for real C2 engine + LLM API connections.
 
 Tests in this file are SKIPPED by default when API keys or real services
 are not available. They run only when:
   - ANTHROPIC_API_KEY is set (LLM tests)
-  - MOCK_CALDERA=false and Caldera is reachable (Caldera tests)
+  - MOCK_C2_ENGINE=false and C2 engine is reachable (C2 engine tests)
 
 Run manually:
-  ANTHROPIC_API_KEY=sk-ant-... MOCK_CALDERA=false pytest tests/test_integration_real_mode.py -v
+  ANTHROPIC_API_KEY=sk-ant-... MOCK_C2_ENGINE=false pytest tests/test_integration_real_mode.py -v
 """
 
 import json
@@ -39,9 +39,9 @@ SKIP_NO_CLAUDE = pytest.mark.skipif(
     reason="No ANTHROPIC_API_KEY set",
 )
 
-SKIP_NO_CALDERA = pytest.mark.skipif(
-    os.getenv("MOCK_CALDERA", "true").lower() == "true",
-    reason="MOCK_CALDERA=true (set MOCK_CALDERA=false to enable)",
+SKIP_NO_C2_ENGINE = pytest.mark.skipif(
+    os.getenv("MOCK_C2_ENGINE", "true").lower() == "true",
+    reason="MOCK_C2_ENGINE=true (set MOCK_C2_ENGINE=false to enable)",
 )
 
 
@@ -123,17 +123,17 @@ def test_llm_missing_fields_fallback():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Caldera Integration Tests
+# C2 Engine Integration Tests
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-@SKIP_NO_CALDERA
+@SKIP_NO_C2_ENGINE
 @pytest.mark.asyncio
-async def test_caldera_health_check():
-    """Real Caldera instance responds to health check."""
-    from app.clients.caldera_client import CalderaClient
+async def test_c2_engine_health_check():
+    """Real C2 engine instance responds to health check."""
+    from app.clients.c2_client import C2EngineClient
 
-    client = CalderaClient(settings.CALDERA_URL, settings.CALDERA_API_KEY)
+    client = C2EngineClient(settings.C2_ENGINE_URL, settings.C2_ENGINE_API_KEY)
     try:
         available = await client.is_available()
         assert available is True
@@ -141,41 +141,41 @@ async def test_caldera_health_check():
         await client.aclose()
 
 
-@SKIP_NO_CALDERA
+@SKIP_NO_C2_ENGINE
 @pytest.mark.asyncio
-async def test_caldera_version_check():
-    """Real Caldera reports a supported version (4.x or 5.x)."""
-    from app.clients.caldera_client import CalderaClient
+async def test_c2_engine_version_check():
+    """Real C2 engine reports a supported version (4.x or 5.x)."""
+    from app.clients.c2_client import C2EngineClient
 
-    client = CalderaClient(settings.CALDERA_URL, settings.CALDERA_API_KEY)
+    client = C2EngineClient(settings.C2_ENGINE_URL, settings.C2_ENGINE_API_KEY)
     try:
         version = await client.check_version()
         assert version.startswith("4.") or version.startswith("5."), (
-            f"Unsupported Caldera version: {version}"
+            f"Unsupported C2 engine version: {version}"
         )
     finally:
         await client.aclose()
 
 
-@SKIP_NO_CALDERA
+@SKIP_NO_C2_ENGINE
 @pytest.mark.asyncio
-async def test_caldera_list_abilities():
-    """Real Caldera returns a non-empty abilities list."""
-    from app.clients.caldera_client import CalderaClient
+async def test_c2_engine_list_abilities():
+    """Real C2 engine returns a non-empty abilities list."""
+    from app.clients.c2_client import C2EngineClient
 
-    client = CalderaClient(settings.CALDERA_URL, settings.CALDERA_API_KEY)
+    client = C2EngineClient(settings.C2_ENGINE_URL, settings.C2_ENGINE_API_KEY)
     try:
         abilities = await client.list_abilities()
         assert isinstance(abilities, list)
-        assert len(abilities) > 0, "Caldera returned empty abilities list"
+        assert len(abilities) > 0, "C2 engine returned empty abilities list"
     finally:
         await client.aclose()
 
 
-@SKIP_NO_CALDERA
+@SKIP_NO_C2_ENGINE
 @pytest.mark.asyncio
 async def test_health_endpoint_real_mode(seeded_db):
-    """GET /api/health reports caldera as 'connected' in real mode."""
+    """GET /api/health reports c2_engine as 'connected' in real mode."""
     from httpx import AsyncClient, ASGITransport
 
     from app.main import app
@@ -185,4 +185,4 @@ async def test_health_endpoint_real_mode(seeded_db):
         resp = await client.get("/api/health")
         assert resp.status_code == 200
         data = resp.json()
-        assert data["caldera"] in ("connected", "unreachable")
+        assert data["c2_engine"] in ("connected", "unreachable")

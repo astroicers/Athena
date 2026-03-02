@@ -28,12 +28,12 @@ def make_mock_db():
 # ---------------------------------------------------------------------------
 
 async def test_mock_mode_returns_result():
-    """MOCK_CALDERA=True → returns mock OSINTResult without network I/O."""
+    """MOCK_C2_ENGINE=True → returns mock OSINTResult without network I/O."""
     db = make_mock_db()
 
     with patch("app.services.osint_engine.settings") as mock_settings, \
          patch("app.services.osint_engine.ws_manager.broadcast", new=AsyncMock()):
-        mock_settings.MOCK_CALDERA = True
+        mock_settings.MOCK_C2_ENGINE = True
         mock_settings.OSINT_MAX_SUBDOMAINS = 500
 
         result = await OSINTEngine().discover(db, "op-001", "example.com")
@@ -45,7 +45,7 @@ async def test_mock_mode_returns_result():
 
 
 async def test_mock_mode_writes_facts():
-    """MOCK_CALDERA=True → db.execute called for INSERT INTO facts."""
+    """MOCK_C2_ENGINE=True → db.execute called for INSERT INTO facts."""
     db = make_mock_db()
     captured: list = []
 
@@ -59,7 +59,7 @@ async def test_mock_mode_writes_facts():
 
     with patch("app.services.osint_engine.settings") as mock_settings, \
          patch("app.services.osint_engine.ws_manager.broadcast", new=AsyncMock()):
-        mock_settings.MOCK_CALDERA = True
+        mock_settings.MOCK_C2_ENGINE = True
         mock_settings.OSINT_MAX_SUBDOMAINS = 500
 
         await OSINTEngine().discover(db, "op-001", "example.com")

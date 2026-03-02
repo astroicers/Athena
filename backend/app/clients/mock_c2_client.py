@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Mock Caldera client for development/demo without a real Caldera instance."""
+"""Mock C2 client for development/demo without a real C2 engine instance."""
 
 import asyncio
 import random
@@ -62,8 +62,8 @@ _MOCK_RESULTS: dict[str, ExecutionResult] = {
 }
 
 
-class MockCalderaClient(BaseEngineClient):
-    """Mock mode: returns pre-recorded results without calling real Caldera."""
+class MockC2Client(BaseEngineClient):
+    """Mock mode: returns pre-recorded results without calling real C2 engine."""
 
     async def execute(
         self, ability_id: str, target: str, params: dict | None = None

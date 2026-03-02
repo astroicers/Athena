@@ -55,8 +55,8 @@ class AgentStatus(str, Enum):
 
 
 class ExecutionEngine(str, Enum):
-    CALDERA = "caldera"
-    SHANNON = "shannon"
+    C2 = "caldera"       # value unchanged — DB records remain compatible
+    ADAPTIVE = "shannon"  # value unchanged — DB records remain compatible
 
 
 class C5ISRDomain(str, Enum):

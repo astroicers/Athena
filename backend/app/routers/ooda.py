@@ -19,9 +19,9 @@ import logging
 import aiosqlite
 from fastapi import APIRouter, Depends
 
-from app.clients.caldera_client import CalderaClient
-from app.clients.mock_caldera_client import MockCalderaClient
-from app.clients.shannon_client import ShannonClient
+from app.clients.c2_client import C2EngineClient
+from app.clients.mock_c2_client import MockC2Client
+from app.clients.ai_engine_client import AiEngineClient
 from app.config import settings
 from app.database import get_db
 from app.models import OODAIteration
@@ -53,16 +53,16 @@ def _get_controller() -> OODAController:
     decision = DecisionEngine()
     c5isr = C5ISRMapper(ws_manager)
 
-    # Engine clients — MOCK_CALDERA controls mock vs real Caldera independently of MOCK_LLM
-    caldera: MockCalderaClient | CalderaClient = MockCalderaClient()
-    if not settings.MOCK_CALDERA:
+    # Engine clients — MOCK_C2_ENGINE controls mock vs real C2 engine independently of MOCK_LLM
+    c2_engine: MockC2Client | C2EngineClient = MockC2Client()
+    if not settings.MOCK_C2_ENGINE:
         try:
-            caldera = CalderaClient(settings.CALDERA_URL, settings.CALDERA_API_KEY)
+            c2_engine = C2EngineClient(settings.C2_ENGINE_URL, settings.C2_ENGINE_API_KEY)
         except Exception:
-            logger.warning("Failed to connect to Caldera, falling back to mock")
+            logger.warning("Failed to connect to C2 engine, falling back to mock")
 
-    shannon = ShannonClient(settings.SHANNON_URL)
-    router_svc = EngineRouter(caldera, shannon if shannon.enabled else None, fc, ws_manager)
+    ai_engine = AiEngineClient(settings.AI_ENGINE_URL)
+    router_svc = EngineRouter(c2_engine, ai_engine if ai_engine.enabled else None, fc, ws_manager)
 
     _controller = OODAController(fc, orient, decision, router_svc, c5isr, ws_manager)
     return _controller

@@ -37,7 +37,7 @@ from .enums import (
 )
 from .log_entry import LogEntry
 from .operation import Operation
-from .recommendation import PentestGPTRecommendation
+from .recommendation import OrientRecommendation
 
 # ---------------------------------------------------------------------------
 # Operation
@@ -234,7 +234,7 @@ class HealthStatus(BaseModel):
 class OperationSummary(BaseModel):
     operation: Operation
     c5isr: list[C5ISRStatus]
-    latest_recommendation: PentestGPTRecommendation | None = None
+    latest_recommendation: OrientRecommendation | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -249,3 +249,34 @@ class EngagementCreate(BaseModel):
     start_time: str | None = None
     end_time: str | None = None
     emergency_contact: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Attack Path
+# ---------------------------------------------------------------------------
+
+class AttackPathEntry(BaseModel):
+    execution_id: str
+    mitre_id: str
+    technique_name: str
+    tactic: str         # "Reconnaissance", "Initial Access"
+    tactic_id: str      # "TA0043", "TA0001"
+    kill_chain_stage: str
+    risk_level: str
+    status: str         # queued|running|success|partial|failed
+    engine: str
+    started_at: str | None
+    completed_at: str | None
+    duration_sec: float | None   # computed in Python
+    result_summary: str | None
+    error_message: str | None
+    facts_collected_count: int
+    target_hostname: str | None
+    target_ip: str | None
+
+
+class AttackPathResponse(BaseModel):
+    operation_id: str
+    entries: list[AttackPathEntry]
+    highest_tactic_idx: int          # 0-13, index of furthest reached tactic
+    tactic_coverage: dict[str, int]  # tactic_id → success count

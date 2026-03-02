@@ -62,14 +62,14 @@ def make_ip_row(ip: str = "192.168.1.100"):
 # ---------------------------------------------------------------------------
 
 async def test_scan_mock_returns_three_services():
-    """MOCK_CALDERA=True → result.services has exactly 3 items."""
+    """MOCK_C2_ENGINE=True → result.services has exactly 3 items."""
     row = make_ip_row("192.168.1.100")
     db = make_mock_db(ip_row=row)
 
     with patch("app.services.recon_engine.settings") as mock_settings, \
          patch("app.services.recon_engine.ws_manager.broadcast", new=AsyncMock()):
 
-        mock_settings.MOCK_CALDERA = True
+        mock_settings.MOCK_C2_ENGINE = True
 
         result = await ReconEngine().scan(db, "op-001", "tgt-001")
 
@@ -83,14 +83,14 @@ async def test_scan_mock_returns_three_services():
 # ---------------------------------------------------------------------------
 
 async def test_scan_mock_writes_facts():
-    """MOCK_CALDERA=True → result.facts_written == 5 (3 services + 1 IP + 1 OS)."""
+    """MOCK_C2_ENGINE=True → result.facts_written == 5 (3 services + 1 IP + 1 OS)."""
     row = make_ip_row("192.168.1.100")
     db = make_mock_db(ip_row=row)
 
     with patch("app.services.recon_engine.settings") as mock_settings, \
          patch("app.services.recon_engine.ws_manager.broadcast", new=AsyncMock()):
 
-        mock_settings.MOCK_CALDERA = True
+        mock_settings.MOCK_C2_ENGINE = True
 
         result = await ReconEngine().scan(db, "op-001", "tgt-001")
 
@@ -109,7 +109,7 @@ async def test_scan_target_not_found_raises():
     with patch("app.services.recon_engine.settings") as mock_settings, \
          patch("app.services.recon_engine.ws_manager.broadcast", new=AsyncMock()):
 
-        mock_settings.MOCK_CALDERA = True
+        mock_settings.MOCK_C2_ENGINE = True
 
         with pytest.raises(ValueError, match="tgt-missing"):
             await ReconEngine().scan(db, "op-001", "tgt-missing")

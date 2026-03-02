@@ -20,7 +20,7 @@ from .log_entry import LogEntry
 from .mission import MissionStep
 from .ooda import OODAIteration
 from .operation import Operation
-from .recommendation import PentestGPTRecommendation, TacticalOption
+from .recommendation import OrientRecommendation, TacticalOption
 from .target import Target
 from .technique import Technique
 from .technique_execution import TechniqueExecution

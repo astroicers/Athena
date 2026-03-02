@@ -19,7 +19,7 @@ import { api } from "@/lib/api";
 import { useToast } from "@/contexts/ToastContext";
 import { Badge } from "@/components/atoms/Badge";
 import { Button } from "@/components/atoms/Button";
-import type { PentestGPTRecommendation, TacticalOption } from "@/types/recommendation";
+import type { OrientRecommendation, TacticalOption } from "@/types/recommendation";
 import { RiskLevel } from "@/types/enums";
 
 const RISK_VARIANT: Record<string, "success" | "warning" | "error" | "info"> = {
@@ -30,7 +30,7 @@ const RISK_VARIANT: Record<string, "success" | "warning" | "error" | "info"> = {
 };
 
 interface RecommendationPanelProps {
-  recommendation: PentestGPTRecommendation | null;
+  recommendation: OrientRecommendation | null;
   operationId: string;
   onAccepted?: () => void;
 }
@@ -107,7 +107,7 @@ export function RecommendationPanel({
     return (
       <div className="bg-athena-surface border border-athena-border rounded-athena-md p-4">
         <h3 className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-3">
-          PentestGPT Recommendation
+          AI Recommendation
         </h3>
         <div className="text-center py-4">
           <span className="text-xs font-mono text-athena-text-secondary">
@@ -138,7 +138,7 @@ export function RecommendationPanel({
     <div className="bg-athena-surface border border-athena-border rounded-athena-md p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider">
-          PentestGPT Recommendation
+          AI Recommendation
         </h3>
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-mono text-athena-text-secondary">

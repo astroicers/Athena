@@ -19,20 +19,20 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from app.clients import ExecutionResult
-from app.clients.mock_caldera_client import MockCalderaClient
-from app.clients.shannon_client import EngineNotAvailableError, ShannonClient
-from app.clients.caldera_client import CalderaClient
+from app.clients.mock_c2_client import MockC2Client
+from app.clients.ai_engine_client import EngineNotAvailableError, AiEngineClient
+from app.clients.c2_client import C2EngineClient
 
 
 # ===================================================================
-# MockCalderaClient (5 tests)
+# MockC2Client (5 tests)
 # ===================================================================
 
 
-async def test_mock_caldera_execute_known_technique():
-    """MockCalderaClient.execute() with known T1003.001 → success with facts."""
-    client = MockCalderaClient()
-    with patch("app.clients.mock_caldera_client.asyncio.sleep", new_callable=AsyncMock):
+async def test_mock_c2_execute_known_technique():
+    """MockC2Client.execute() with known T1003.001 → success with facts."""
+    client = MockC2Client()
+    with patch("app.clients.mock_c2_client.asyncio.sleep", new_callable=AsyncMock):
         result = await client.execute("T1003.001", "DC-01")
     assert result.success is True
     assert result.execution_id  # non-empty UUID
@@ -40,26 +40,26 @@ async def test_mock_caldera_execute_known_technique():
     assert any("credential" in f["trait"] for f in result.facts)
 
 
-async def test_mock_caldera_execute_unknown_technique():
-    """MockCalderaClient.execute() with unknown technique → success with empty facts."""
-    client = MockCalderaClient()
-    with patch("app.clients.mock_caldera_client.asyncio.sleep", new_callable=AsyncMock):
+async def test_mock_c2_execute_unknown_technique():
+    """MockC2Client.execute() with unknown technique → success with empty facts."""
+    client = MockC2Client()
+    with patch("app.clients.mock_c2_client.asyncio.sleep", new_callable=AsyncMock):
         result = await client.execute("T9999.999", "WS-01")
     assert result.success is True
     assert result.facts == []
     assert "T9999.999" in result.output
 
 
-async def test_mock_caldera_get_status():
+async def test_mock_c2_get_status():
     """get_status() → 'finished'."""
-    client = MockCalderaClient()
+    client = MockC2Client()
     status = await client.get_status("any-id")
     assert status == "finished"
 
 
-async def test_mock_caldera_list_abilities():
+async def test_mock_c2_list_abilities():
     """list_abilities() → non-empty list with known technique IDs."""
-    client = MockCalderaClient()
+    client = MockC2Client()
     abilities = await client.list_abilities()
     assert len(abilities) >= 4
     ids = {a["ability_id"] for a in abilities}
@@ -67,46 +67,46 @@ async def test_mock_caldera_list_abilities():
     assert "T1595.001" in ids
 
 
-async def test_mock_caldera_is_available():
+async def test_mock_c2_is_available():
     """is_available() → True (always available in mock mode)."""
-    client = MockCalderaClient()
+    client = MockC2Client()
     assert await client.is_available() is True
 
 
 # ===================================================================
-# ShannonClient (3 tests)
+# AiEngineClient (3 tests)
 # ===================================================================
 
 
-async def test_shannon_client_disabled_when_no_url():
-    """SHANNON_URL='' → enabled=False, is_available=False."""
-    client = ShannonClient("")
+async def test_ai_engine_client_disabled_when_no_url():
+    """AI_ENGINE_URL='' → enabled=False, is_available=False."""
+    client = AiEngineClient("")
     assert client.enabled is False
     assert await client.is_available() is False
 
 
-async def test_shannon_client_execute_when_disabled():
+async def test_ai_engine_client_execute_when_disabled():
     """execute() when disabled → raises EngineNotAvailableError."""
-    client = ShannonClient("")
+    client = AiEngineClient("")
     with pytest.raises(EngineNotAvailableError):
         await client.execute("T1003.001", "DC-01")
 
 
-async def test_shannon_client_get_status_when_disabled():
+async def test_ai_engine_client_get_status_when_disabled():
     """get_status() when disabled → 'unavailable'."""
-    client = ShannonClient("")
+    client = AiEngineClient("")
     status = await client.get_status("any-id")
     assert status == "unavailable"
 
 
 # ===================================================================
-# CalderaClient (1 test — structural only, no real Caldera)
+# C2EngineClient (1 test — structural only, no real C2 engine)
 # ===================================================================
 
 
-async def test_caldera_client_check_version_callable():
-    """CalderaClient has check_version() method that is callable."""
-    client = CalderaClient(base_url="http://localhost:8888", api_key="test")
+async def test_c2_engine_client_check_version_callable():
+    """C2EngineClient has check_version() method that is callable."""
+    client = C2EngineClient(base_url="http://localhost:8888", api_key="test")
     assert callable(client.check_version)
     assert callable(client.sync_agents)
     # Cleanup

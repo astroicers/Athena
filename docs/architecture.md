@@ -3,8 +3,8 @@
 | 欄位 | 內容 |
 |------|------|
 | **專案** | Athena |
-| **版本** | v0.1.0-poc |
-| **最後更新** | 2026-02-28 |
+| **版本** | v0.2.0 |
+| **最後更新** | 2026-03-02 |
 
 ---
 
@@ -26,7 +26,7 @@ Athena 的核心目標是展示「**輸入任意 IP 或域名 → 全自動 Kill
 
 ## 系統概覽
 
-Athena 是一套 AI 驅動的 C5ISR（Command, Control, Communications, Computers, Cyber, Intelligence, Surveillance, Reconnaissance）網路作戰指揮平台。核心職責為透過 OODA 循環（Observe → Orient → Decide → Act）編排 AI 情報分析（PentestGPT）與執行引擎（Caldera/Shannon），為資深紅隊指揮官提供戰略級決策支援。
+Athena 是一套 AI 驅動的 C5ISR（Command, Control, Communications, Computers, Cyber, Intelligence, Surveillance, Reconnaissance）網路作戰指揮平台。核心職責為透過 OODA 循環（Observe → Orient → Decide → Act）編排 AI 情報分析（OrientEngine 自研）與執行引擎（DirectSSHEngine 預設 / CalderaClient 選用），為資深紅隊指揮官提供戰略級決策支援。
 
 系統邊界：Athena 不直接執行攻擊——它是指揮層，透過 API 指揮外部執行引擎。
 
@@ -113,9 +113,10 @@ graph LR
 |------|------|------|
 | OODA Controller | `services/ooda_controller.py` | OODA 狀態機，驅動四階段循環 |
 | Fact Collector | `services/fact_collector.py` | 標準化執行結果為情報 |
-| Orient Engine | `services/orient_engine.py` | LLM 戰術分析（Claude/GPT-4，受 PentestGPT 啟發） |
+| Orient Engine | `services/orient_engine.py` | LLM 戰術分析（自研 OrientEngine，直接呼叫 Claude API） |
 | Decision Engine | `services/decision_engine.py` | 基於 AI + 風險的技術選擇 |
-| Engine Router | `services/engine_router.py` | 路由至 Caldera 或 Shannon |
+| Engine Router | `services/engine_router.py` | 路由至 DirectSSHEngine / Caldera / Mock（三軌路由） |
+| DirectSSH Engine | `clients/direct_ssh_client.py` | SSH 直接執行 MITRE techniques（預設引擎，ADR-017） |
 | C5ISR Mapper | `services/c5isr_mapper.py` | 聚合各來源的 C5ISR 域健康度 |
 | Mock Caldera | `clients/mock_caldera_client.py` | Caldera Mock 客戶端（POC 預設） |
 | Demo Runner | `seed/demo_runner.py` | 6 步自動 OODA 循環展示 |
@@ -129,6 +130,7 @@ graph LR
 | Scope Validator | `services/scope_validator.py` | ROE 範圍驗證：IP/CIDR/domain/wildcard，時間視窗，向後相容（Phase A） |
 | Vuln Lookup Service | `services/vuln_lookup.py` | NVD NIST API CVE 關聯 + SQLite 快取 → vuln.cve facts（Phase A） |
 | Engagements API | `routers/engagements.py` | ROE CRUD + activate/suspend（Phase A） |
+| Attack Path API | `routers/techniques.py` — `GET /attack-path` | Attack Path Timeline 資料（JOIN technique_executions + techniques + targets）（Phase B） |
 
 ### Docker 部署拓樸（Phase 6 實作）
 
@@ -281,8 +283,10 @@ graph TD
 - [x] Phase A CVE 關聯（NVD API + vuln_cache，89 tests）
 - [x] Phase A 憑證鏈接（_load_harvested_creds + OrientEngine 提示詞）
 - [x] Phase A 結構化報告（ReportGenerator + `/report/structured` + `/report/markdown`，95 tests）
-- [ ] Phase B Metasploit RPC 整合（ADR-016 草稿）
-- [ ] Phase B Web 應用掃描（nuclei 整合）
+- [x] Phase B DirectSSHEngine + Attack Path Timeline（ADR-017、ADR-018、SPEC-021）
+- [ ] Phase C Windows 執行引擎（WinRM/SMB）— DirectSSHEngine 目前僅支援 Linux/SSH
+- [ ] Phase C Metasploit RPC 整合（ADR-016 草稿）
+- [ ] Phase C Web 應用掃描（nuclei 整合）
 - [ ] Phase C JWT 身份驗證 + RBAC（Phase 8 計畫）
 
 ---
@@ -307,6 +311,8 @@ graph TD
 | [ADR-014](adr/ADR-014-anthropic-sdk-migration.md) | Orient Engine LLM 整合遷移至 SDK | `Accepted` |
 | [ADR-015](adr/ADR-015-recon--initial-access----kill-chain-.md) | Recon 與 Initial Access 引擎架構 | `Accepted` |
 | [ADR-016](adr/ADR-016-enterprise-external-pentest-phase-a.md) | 企業化外部滲透測試 Phase A 架構 | `Accepted` |
+| [ADR-017](adr/ADR-017-direct-ssh-engine.md) | DirectSSHEngine — SSH 直接執行引擎 | `Accepted` |
+| [ADR-018](adr/ADR-018-technique-playbook-knowledge-base.md) | Technique Playbook 知識庫架構 | `Accepted` |
 
 ---
 

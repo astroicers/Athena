@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import { ApiError } from "@/types/api";
+import type { AttackPathResponse } from "@/types/attackPath";
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "/api";
@@ -100,4 +101,7 @@ export const api = {
   delete<T>(path: string): Promise<T> {
     return request<T>(path, { method: "DELETE" });
   },
+
+  getAttackPath: (opId: string) =>
+    api.get<AttackPathResponse>(`/operations/${opId}/attack-path`),
 };

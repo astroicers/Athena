@@ -30,7 +30,7 @@ from app.ws_manager import ws_manager
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Mock data — returned when settings.MOCK_CALDERA is True
+# Mock data — returned when settings.MOCK_C2_ENGINE is True
 # ---------------------------------------------------------------------------
 _MOCK_SERVICES = [
     ServiceInfo(port=22,  protocol="tcp", service="ssh",  version="OpenSSH 7.4",  state="open"),
@@ -93,7 +93,7 @@ class ReconEngine:
         # ------------------------------------------------------------------
         # Step 2: Mock mode — skip real nmap
         # ------------------------------------------------------------------
-        if settings.MOCK_CALDERA:
+        if settings.MOCK_C2_ENGINE:
             return await self._mock_result(
                 db=db,
                 operation_id=operation_id,

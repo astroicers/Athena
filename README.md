@@ -4,7 +4,7 @@
 >
 > AI-Powered C5ISR Cyber Operations Command Platform
 
-Athena 將滲透測試從戰術工具操作提升至戰略軍事指揮。基於 C5ISR（Command, Control, Communications, Computers, Cyber, Intelligence, Surveillance, Reconnaissance）框架，Athena 橋接 MITRE Caldera 的執行能力與 AI 輔助決策，實現真正的指揮官視角作戰管理。
+Athena 將滲透測試從戰術工具操作提升至戰略軍事指揮。基於 C5ISR（Command, Control, Communications, Computers, Cyber, Intelligence, Surveillance, Reconnaissance）框架，Athena 橋接 DirectSSHEngine 的執行能力與 AI 輔助決策，實現真正的指揮官視角作戰管理。
 
 ---
 
@@ -35,25 +35,26 @@ Athena 聚焦於**「如何指揮」**。
 │   Next.js 14 + React 18 + Tailwind v4               │
 │                                                      │
 │  ┌────────┐ ┌────────┐ ┌────────┐ ┌─────────┐     │
-│  │ C5ISR  │ │ MITRE  │ │ Mission│ │ Battle  │     │
+│  │ C5ISR  │ │ MITRE  │ │Mission │ │ Battle  │     │
 │  │ Board  │ │Navigator│ │Planner │ │Monitor  │     │
 │  └────────┘ └────────┘ └────────┘ └─────────┘     │
 └───────────────────────┬─────────────────────────────┘
                         ↓
-┌───────────────────────────────────────────────────  ┐
+┌────────────────────────────────────────────────────┐
 │         C5ISR 決策引擎（核心創新）                  │
 │                                                      │
 │    MITRE ATT&CK 映射  │  OODA 循環控制器            │
-│    ───────────────────────────────────────────      │
-│    PentestGPT 戰術情報（Orient 階段 AI 分析）        │
+│    ──────────────────────────────────────────────   │
+│    OrientEngine（自研 AI 分析 → Claude API）         │
+│    Attack Path Timeline（14-tactic 即時視覺化）      │
 └───────────────────────┬─────────────────────────────┘
                         ↓
           ┌─────────────┴──────────────┐
           ↓                            ↓
 ┌──────────────────┐         ┌──────────────────┐
-│  MITRE Caldera   │         │    Shannon       │
-│  標準執行引擎    │         │  AI 自適應執行   │
-│  Apache 2.0      │         │  AGPL-3.0（選用）│
+│ DirectSSHEngine  │         │  CalderaClient   │
+│ SSH 直接執行     │         │  （向後相容選用）│
+│ 無需外部 C2     │         │  Apache 2.0      │
 └──────────────────┘         └──────────────────┘
 ```
 
@@ -67,8 +68,14 @@ Athena 聚焦於**「如何指揮」**。
 ### C5ISR 六域健康監控
 即時監控六大作戰域狀態：**Command（指揮）**、**Control（控制）**、**Communications（通訊）**、**Computers（電腦）**、**Cyber（網路）**、**ISR（情報/監視/偵察）**。作戰全局一目了然。
 
-### PentestGPT 戰術情報
-核心差異化元件。在 OODA 的 Orient 階段，PentestGPT 分析當前態勢、考量已完成技術與失敗因素，產生附帶推理的多選項戰術建議，並推薦最佳執行路徑。指揮官做決策，AI 提供依據。
+### OrientEngine AI 指揮決策
+核心差異化元件。在 OODA 的 Orient 階段，OrientEngine（自研）透過 Claude API 分析當前態勢、考量已完成技術與失敗因素，產生附帶推理的多選項戰術建議，並推薦最佳執行路徑。指揮官做決策，AI 提供依據。
+
+### Attack Path Timeline（14-tactic 即時視覺化）
+Navigator 頁新增 14 欄水平時序視圖，對應 MITRE ATT&CK 完整 14 個 tactics（TA0043 Reconnaissance → TA0040 Impact）。已執行技術以 status pill 呈現於對應 tactic 欄，WebSocket 即時刷新，Kill Chain 推進一目了然。
+
+### DirectSSHEngine（預設執行引擎）
+SSH 憑證取得後，直接以 asyncssh 執行 MITRE technique 對應的 Shell 命令，無需部署外部 C2。內建 13 個 Linux technique playbook，任何可 SSH 的靶機均可立即推進 kill chain。
 
 ### 半自動模式（依風險等級控制）
 可切換的執行控制模式，依技術風險等級自動決定是否需要人工審核：
@@ -132,8 +139,8 @@ make up
 | 前端 | Next.js 14 + React 18 + Tailwind CSS v4 |
 | 3D 拓樸 | react-force-graph-3d + Three.js |
 | 設計 | Pencil.dev（56 元件 + 32 設計變數） |
-| 執行引擎 | MITRE Caldera（Apache 2.0）/ Shannon（選用） |
-| AI 情報 | PentestGPT + Claude Opus / GPT-4 |
+| AI 情報 | OrientEngine（自研）+ Claude Anthropic API |
+| 執行引擎 | DirectSSHEngine（預設）/ CalderaClient（選用） |
 | 容器化 | Docker + docker-compose |
 
 ---
@@ -153,6 +160,7 @@ Phase 8  ████████████████████ 完成 —
 Phase 9  ████████████████████ 完成 — Caldera + LLM 真實整合
 Phase 10 ████████████████████ 完成 — Orient Prompt 工程
 Phase 11 ████████████████████ 完成 — Demo 就緒
+Phase B  ████████████████████ 完成 — DirectSSHEngine + Attack Path Timeline
 ```
 
 ---
@@ -180,13 +188,24 @@ Phase 11 ████████████████████ 完成 —
 
 ---
 
-## 授權
+## 致謝與靈感來源
 
-- Athena 核心：Apache 2.0
-- PentestGPT 整合：MIT（安全匯入）
-- MITRE Caldera：Apache 2.0（API 整合）
-- Shannon（選用）：AGPL-3.0（僅 API，授權隔離）
+Athena 在設計過程中受到以下開源專案的啟發：
+
+- **MITRE ATT&CK 框架** — 戰術/技術/程序知識庫（CC BY 4.0）
+- **MITRE Caldera** — C2 框架架構設計理念（Apache 2.0，僅架構借鑒，無程式碼依賴）
+- **PentestGPT** (GreyDGL) — AI 輔助滲透測試推理方法論（MIT，僅概念借鑒，無程式碼依賴）
+
+Athena 核心程式碼為完全自主實作，不包含上述專案的任何程式碼。
 
 ---
 
-*版本：0.1.0-poc | 階段：POC（PentestGPT + Caldera）| 最後更新：2026-02-27*
+## 授權
+
+- Athena 核心：Apache 2.0
+- MITRE ATT&CK 知識庫：CC BY 4.0（僅引用，不分發）
+- C2EngineClient（選用整合）：Apache 2.0（僅 API 呼叫）
+
+---
+
+*版本：0.2.0 | 階段：Phase E — De-branding + DirectSSHEngine | 最後更新：2026-03-02*

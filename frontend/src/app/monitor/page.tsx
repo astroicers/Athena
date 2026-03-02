@@ -32,7 +32,7 @@ import { useOODA } from "@/hooks/useOODA";
 import { useExecutionUpdate } from "@/hooks/useExecutionUpdate";
 import { KillChainIndicator } from "@/components/mitre/KillChainIndicator";
 import type { TopologyData } from "@/types/api";
-import type { PentestGPTRecommendation } from "@/types/recommendation";
+import type { OrientRecommendation } from "@/types/recommendation";
 import type { Agent } from "@/types/agent";
 import type { LogEntry } from "@/types/log";
 import type { TechniqueWithStatus } from "@/types/technique";
@@ -58,12 +58,12 @@ export default function MonitorPage() {
   const [topology, setTopology] = useState<TopologyData | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [initialLogs, setInitialLogs] = useState<LogEntry[]>([]);
-  const [recommendation, setRecommendation] = useState<PentestGPTRecommendation | null>(null);
+  const [recommendation, setRecommendation] = useState<OrientRecommendation | null>(null);
   const [techniques, setTechniques] = useState<TechniqueWithStatus[]>([]);
   const logEndRef = useRef<HTMLDivElement>(null);
 
   const fetchRecommendation = () => {
-    api.get<PentestGPTRecommendation>(`/operations/${DEFAULT_OP_ID}/recommendations/latest`)
+    api.get<OrientRecommendation>(`/operations/${DEFAULT_OP_ID}/recommendations/latest`)
       .then(setRecommendation)
       .catch(() => addToast("Failed to load recommendation", "error"));
   };
@@ -73,7 +73,7 @@ export default function MonitorPage() {
       api.get<TopologyData>(`/operations/${DEFAULT_OP_ID}/topology`).then(setTopology),
       api.get<Agent[]>(`/operations/${DEFAULT_OP_ID}/agents`).then(setAgents),
       api.get<{ items: LogEntry[] }>(`/operations/${DEFAULT_OP_ID}/logs?page_size=50`).then((r) => setInitialLogs(r.items || [])),
-      api.get<PentestGPTRecommendation>(`/operations/${DEFAULT_OP_ID}/recommendations/latest`).then(setRecommendation),
+      api.get<OrientRecommendation>(`/operations/${DEFAULT_OP_ID}/recommendations/latest`).then(setRecommendation),
       api.get<TechniqueWithStatus[]>(`/operations/${DEFAULT_OP_ID}/techniques`).then(setTechniques),
     ]).catch(() => addToast("Failed to load monitor data", "error"))
       .finally(() => setIsLoading(false));
@@ -236,7 +236,7 @@ export default function MonitorPage() {
         </div>
       </div>
 
-      {/* PentestGPT Recommendation */}
+      {/* AI Recommendation */}
       <RecommendationPanel
         recommendation={recommendation}
         operationId={DEFAULT_OP_ID}

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""MITRE Caldera REST API v2 client. License: Apache 2.0 (safe)."""
+"""C2 engine REST API v2 client."""
 
 import asyncio
 import logging
@@ -28,11 +28,11 @@ _POLL_INTERVAL = 2.0   # seconds between status checks
 _POLL_TIMEOUT = 120.0   # max seconds to wait for completion
 _MAX_RETRIES = 3
 _RETRY_BASE_DELAY = 1.0  # seconds, exponential backoff
-SUPPORTED_CALDERA_VERSIONS = ("4.", "5.")
+SUPPORTED_C2_VERSIONS = ("4.", "5.")
 
 
-class CalderaClient(BaseEngineClient):
-    """HTTP client wrapping Caldera REST API v2."""
+class C2EngineClient(BaseEngineClient):
+    """HTTP client wrapping C2 engine REST API v2."""
 
     def __init__(self, base_url: str, api_key: str = ""):
         self.base_url = base_url.rstrip("/")
@@ -57,7 +57,7 @@ class CalderaClient(BaseEngineClient):
                 if attempt < _MAX_RETRIES - 1:
                     delay = _RETRY_BASE_DELAY * (2 ** attempt)
                     logger.warning(
-                        "Caldera request failed (attempt %d/%d): %s — retrying in %.1fs",
+                        "C2 engine request failed (attempt %d/%d): %s — retrying in %.1fs",
                         attempt + 1, _MAX_RETRIES, e, delay,
                     )
                     await asyncio.sleep(delay)
@@ -72,7 +72,7 @@ class CalderaClient(BaseEngineClient):
     async def _execute_once(
         self, ability_id: str, target: str, exec_id: str, params: dict | None = None
     ) -> ExecutionResult:
-        # Create a Caldera operation with the specified ability
+        # Create a C2 operation with the specified ability
         payload = {
             "name": f"athena-{exec_id[:8]}",
             "adversary": {"adversary_id": "", "name": ""},
@@ -127,7 +127,7 @@ class CalderaClient(BaseEngineClient):
         timeout: float = _POLL_TIMEOUT,
         interval: float = _POLL_INTERVAL,
     ) -> str:
-        """Poll Caldera operation status until terminal state or timeout."""
+        """Poll C2 operation status until terminal state or timeout."""
         elapsed = 0.0
         while elapsed < timeout:
             status = await self.get_status(op_id)
@@ -161,7 +161,7 @@ class CalderaClient(BaseEngineClient):
             return False
 
     async def sync_agents(self, operation_id: str) -> list[dict]:
-        """Fetch agents from Caldera and return normalized dicts."""
+        """Fetch agents from C2 engine and return normalized dicts."""
         try:
             resp = await self._client.get("/api/v2/agents")
             resp.raise_for_status()
@@ -181,7 +181,7 @@ class CalderaClient(BaseEngineClient):
             return []
 
     async def check_version(self) -> str:
-        """Check Caldera version compatibility."""
+        """Check C2 engine version compatibility."""
         try:
             resp = await self._client.get("/api/v2/health")
             resp.raise_for_status()
@@ -190,16 +190,16 @@ class CalderaClient(BaseEngineClient):
                 resp2 = await self._client.get("/api/v2/config/main")
                 resp2.raise_for_status()
                 version = resp2.json().get("version", "unknown")
-            if not any(version.startswith(v) for v in SUPPORTED_CALDERA_VERSIONS):
+            if not any(version.startswith(v) for v in SUPPORTED_C2_VERSIONS):
                 logger.warning(
-                    "Caldera version %s is untested — supported prefixes: %s",
-                    version, SUPPORTED_CALDERA_VERSIONS,
+                    "C2 engine version %s is untested — supported prefixes: %s",
+                    version, SUPPORTED_C2_VERSIONS,
                 )
             else:
-                logger.info("Caldera version: %s", version)
+                logger.info("C2 engine version: %s", version)
             return version
         except httpx.HTTPError as e:
-            logger.error("Failed to check Caldera version: %s", e)
+            logger.error("Failed to check C2 engine version: %s", e)
             return "unknown"
 
     async def aclose(self):

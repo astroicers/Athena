@@ -21,14 +21,16 @@ class Settings(BaseSettings):
     )
 
     DATABASE_URL: str = "sqlite:///backend/data/athena.db"
-    CALDERA_URL: str = "http://localhost:8888"
-    # External URL that deployed agents (on target machines) use to reach Caldera.
+    C2_ENGINE_URL: str = "http://localhost:8888"
+    # External URL that deployed agents (on target machines) use to reach the C2 engine.
     # Must be reachable from the target network, e.g. http://192.168.0.18:58888
-    # Defaults to CALDERA_URL when not set.
-    CALDERA_AGENT_CALLBACK_URL: str = ""
-    CALDERA_API_KEY: str = ""
-    MOCK_CALDERA: bool = True
-    SHANNON_URL: str = ""
+    # Defaults to C2_ENGINE_URL when not set.
+    C2_AGENT_CALLBACK_URL: str = ""
+    C2_ENGINE_API_KEY: str = ""
+    MOCK_C2_ENGINE: bool = True
+    EXECUTION_ENGINE: str = "ssh"   # "ssh" | "caldera" | "mock"
+    C2_MOCK_BEACON: bool = False  # True skips 30s beacon wait (only relevant when EXECUTION_ENGINE=caldera)
+    AI_ENGINE_URL: str = ""
     ANTHROPIC_API_KEY: str = ""
     ANTHROPIC_AUTH_TOKEN: str = ""
     OPENAI_API_KEY: str = ""

@@ -15,7 +15,7 @@
 "use client";
 
 import { Badge } from "@/components/atoms/Badge";
-import type { PentestGPTRecommendation } from "@/types/recommendation";
+import type { OrientRecommendation } from "@/types/recommendation";
 import { RiskLevel } from "@/types/enums";
 
 const RISK_VARIANT: Record<string, "success" | "warning" | "error" | "info"> = {
@@ -26,7 +26,7 @@ const RISK_VARIANT: Record<string, "success" | "warning" | "error" | "info"> = {
 };
 
 interface RecommendCardProps {
-  recommendation: PentestGPTRecommendation | null;
+  recommendation: OrientRecommendation | null;
 }
 
 export function RecommendCard({ recommendation }: RecommendCardProps) {
@@ -44,7 +44,7 @@ export function RecommendCard({ recommendation }: RecommendCardProps) {
     <div className="bg-athena-surface border border-athena-accent/30 rounded-athena-md p-4">
       <div className="flex items-center justify-between mb-3">
         <span className="text-[10px] font-mono text-athena-accent uppercase tracking-wider">
-          PentestGPT Recommendation
+          AI Recommendation
         </span>
         <span className="text-xs font-mono text-athena-accent font-bold">
           {Math.round(recommendation.confidence * 100)}% confidence

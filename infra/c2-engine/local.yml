@@ -1,0 +1,13 @@
+# C2 engine local development configuration
+# Used by Athena for MITRE ATT&CK technique execution
+#
+# Reference: https://github.com/mitre/caldera
+# License: Apache 2.0
+#
+# This file will be populated when C2 engine integration
+# is configured in Phase 6 (SPEC-010).
+
+c2-engine:
+  host: "127.0.0.1"
+  port: 8888
+  # api_key: set via C2_ENGINE_API_KEY in .env

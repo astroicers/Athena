@@ -29,7 +29,7 @@ class TacticalOption(BaseModel):
     prerequisites: list[str] = []
 
 
-class PentestGPTRecommendation(BaseModel):
+class OrientRecommendation(BaseModel):
     id: str
     operation_id: str
     ooda_iteration_id: str

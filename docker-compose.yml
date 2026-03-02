@@ -9,14 +9,15 @@ services:
       - "0.0.0.0:58000:8000"
     volumes:
       - backend-data:/app/data
+      - ~/.claude/.credentials.json:/root/.claude/.credentials.json:ro
     env_file:
       - .env
     environment:
       - DATABASE_URL=sqlite:///app/data/athena.db
-      - CALDERA_URL=http://caldera:8888
-      - CALDERA_API_KEY=${CALDERA_API_KEY:-ADMIN123456}
+      - C2_ENGINE_URL=http://c2-engine:8888
+      - C2_ENGINE_API_KEY=${C2_ENGINE_API_KEY:-ADMIN123456}
     depends_on:
-      caldera:
+      c2-engine:
         condition: service_started
     healthcheck:
       test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/api/health')"]
@@ -40,18 +41,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # MITRE Caldera — 攻擊執行引擎 (Apache 2.0)
-  caldera:
+  # C2 Attack Execution Engine (Apache 2.0)
+  c2-engine:
     image: ghcr.io/mitre/caldera:latest
     ports:
       - "0.0.0.0:58888:8888"
     volumes:
-      - ./caldera/local.yml:/usr/src/app/conf/local.yml
-      - caldera-data:/usr/src/app/data
+      - ./infra/c2-engine/local.yml:/usr/src/app/conf/local.yml
+      - c2-engine-data:/usr/src/app/data
     restart: unless-stopped
 
 volumes:
   backend-data:
     driver: local
-  caldera-data:
+  c2-engine-data:
     driver: local

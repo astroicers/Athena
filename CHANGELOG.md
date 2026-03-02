@@ -7,6 +7,31 @@
 
 ## [Unreleased]
 
+### Phase E：第三方識別符去識別化（De-branding）（2026-03-02）
+
+#### Added
+- `docs/adr/ADR-019-third-party-debranding.md` — 第三方識別符去識別化架構決策記錄（授權分析 + 映射表）
+
+#### Changed
+- **客戶端模組重命名**：`caldera_client.py` → `c2_client.py`（`C2EngineClient`）；`mock_caldera_client.py` → `mock_c2_client.py`（`MockC2Client`）；`shannon_client.py` → `ai_engine_client.py`（`AiEngineClient`）
+- **環境變數重命名**：`CALDERA_URL` → `C2_ENGINE_URL`；`CALDERA_API_KEY` → `C2_ENGINE_API_KEY`；`CALDERA_AGENT_CALLBACK_URL` → `C2_AGENT_CALLBACK_URL`；`MOCK_CALDERA` → `MOCK_C2_ENGINE`；`CALDERA_MOCK_BEACON` → `C2_MOCK_BEACON`；`SHANNON_URL` → `AI_ENGINE_URL`
+- **Enum 重命名**（底層值不變，DB 無遷移）：`ExecutionEngine.CALDERA = "caldera"` → `C2`；`SHANNON = "shannon"` → `ADAPTIVE`（Python + TypeScript 同步）
+- **推薦模型重命名**：`PentestGPTRecommendation` → `OrientRecommendation`（後端 + 前端 + 測試全同步）
+- **Health API 回應 key 重命名**：`"caldera"` → `"c2_engine"`；`"shannon"` → `"ai_engine"`（`health.py` + `test_spec_004_api.py`）
+- **OrientEngine 系統提示詞更新**：Engine Routing 段落去除第三方名稱（Primary Engine / Adaptive Engine）
+- **infra 目錄重命名**：`infra/caldera/` → `infra/c2-engine/`；`infra/pentestgpt/` 移除
+- **docker-compose.yml**：caldera service 重命名為 c2-engine；env var key 同步更新
+- **Makefile**：`caldera-*` targets → `c2-engine-*`；`vendor-init` PentestGPT clone 部分移除
+- **README.md**：新增「致謝與靈感來源」區塊，明確聲明 Caldera/PentestGPT 為概念借鑒、無程式碼依賴
+- **ADR-006**：Rev 2 追加，說明 ShannonClient DEPRECATED + 識別符去識別化
+
+#### Deprecated
+- `caldera_client.py`、`mock_caldera_client.py`、`shannon_client.py` — 已刪除，由新命名模組取代
+
+#### Metrics
+- pytest: 維持 95 passed（0 regression）
+- 去識別化識別符：CalderaClient、MockCalderaClient、ShannonClient、PentestGPTRecommendation、CALDERA_URL 等共 26 個識別符全部替換
+
 ### Phase A：企業化外部滲透測試基礎建設（2026-03-01）
 
 #### Added
@@ -248,6 +273,46 @@
 #### Metrics
 - 44 個 pytest 測試全數通過（0.21s）
 - 程式碼覆蓋率：60%（`app/` 套件）
+
+---
+
+## [0.2.0] — 2026-03-02
+
+### Added
+- **Attack Path Timeline**：Navigator 頁新增 14 欄水平 MITRE ATT&CK 時序視圖（SPEC-021）
+  - `GET /api/operations/{op_id}/attack-path` 新 endpoint（SQL JOIN technique_executions + techniques + targets）
+  - `AttackPathEntry`、`AttackPathResponse` Pydantic models（`api_schemas.py`）
+  - `frontend/src/types/attackPath.ts` TypeScript 型別
+  - `frontend/src/components/mitre/AttackPathTimeline.tsx` — 14 欄水平時序元件（14 tactics, status pills, hover tooltip, highest-tactic accent border）
+- **DirectSSHEngine**：SSH 直接執行引擎，取代 Caldera C2 為預設執行後端（ADR-017）
+  - `backend/app/clients/direct_ssh_client.py`（新）— 實作 `BaseEngineClient` 介面
+  - 13 個 MITRE technique → Shell 命令映射（初始 playbook）
+  - SSH 登入成功後自動建立 agent 記錄（`_register_ssh_agent()`，paw=`SSH-{ip}`）
+  - `CALDERA_MOCK_BEACON` 設定：跳過 30s beacon wait（供 CI 測試）
+- **Technique Playbook DB 表**：`technique_playbooks`（13 個種子 technique）（ADR-018）
+- **ADR-017**：DirectSSHEngine 架構決策記錄
+- **ADR-018**：Technique Playbook 知識庫架構決策記錄
+- **SPEC-021**：Attack Path Timeline 功能規格書
+
+### Changed
+- `EXECUTION_ENGINE` 新設定預設為 `"ssh"`（`caldera` 向後相容，`mock` 供測試）
+- `engine_router.py`：三軌路由（ssh/caldera/mock），ssh 路徑移除 alive agent 硬性要求
+- `initial_access_engine.py`：SSH 登入成功後自動呼叫 `_register_ssh_agent()`；`bootstrap_caldera_agent()` 僅在 `EXECUTION_ENGINE=caldera` 時呼叫
+- `README.md`：架構圖、技術棧、功能描述全面更新反映新架構（v0.2.0）
+- `ADR-001/005/006/015`：加入修訂記錄說明 PentestGPT/Caldera/Shannon 的實際狀態
+- `frontend/src/app/navigator/page.tsx`：Attack Path Timeline 整合於 ATT&CK 矩陣上方
+- `frontend/src/lib/api.ts`：新增 `getAttackPath()` API call
+
+### Deprecated
+- `shannon_client.py`：標記 `DEPRECATED`，保留程式碼但無啟用路徑（`SHANNON_URL` 預設空）
+- `bootstrap_caldera_agent()`：僅在 `EXECUTION_ENGINE=caldera` 時呼叫
+
+### Metrics
+- pytest: 95 passed, 6 skipped（0 regression）
+- Vitest: 63 passed（0 regression）
+- 新增 technique_playbooks 種子資料：13 techniques（Linux）
+- 新增 API endpoint：`GET /attack-path`
+- 新增前端元件：`AttackPathTimeline`（14-column horizontal timeline）
 
 ---
 

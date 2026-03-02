@@ -24,7 +24,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.config import settings
 from app.database import get_db
 from app.models import Technique
-from app.models.api_schemas import TechniqueCreate, TechniqueWithStatus
+from app.models.api_schemas import AttackPathEntry, AttackPathResponse, TechniqueCreate, TechniqueWithStatus
 
 logger = logging.getLogger(__name__)
 
@@ -98,21 +98,21 @@ async def sync_caldera_abilities(
     Fetches all abilities from Caldera, matches by MITRE technique ID,
     and updates the caldera_ability_id field.
     """
-    if settings.MOCK_CALDERA:
+    if settings.MOCK_C2_ENGINE:
         return {"synced": 0, "message": "Mock mode — using seed data"}
 
     try:
-        from app.clients.caldera_client import CalderaClient
+        from app.clients.c2_client import C2EngineClient
 
-        client = CalderaClient(settings.CALDERA_URL, settings.CALDERA_API_KEY)
+        client = C2EngineClient(settings.C2_ENGINE_URL, settings.C2_ENGINE_API_KEY)
         abilities = await client.list_abilities()
         await client.aclose()
     except Exception as e:
-        logger.error("Failed to fetch abilities from Caldera: %s", e)
-        return {"synced": 0, "message": f"Caldera sync failed: {e}"}
+        logger.error("Failed to fetch abilities from C2 engine: %s", e)
+        return {"synced": 0, "message": f"C2 engine sync failed: {e}"}
 
     if not abilities:
-        return {"synced": 0, "message": "No abilities found (is Caldera running?)"}
+        return {"synced": 0, "message": "No abilities found (is C2 engine running?)"}
 
     # Build mitre_id -> ability_id mapping
     mapping: dict[str, str] = {}
@@ -202,3 +202,106 @@ async def list_techniques_with_status(
             )
         )
     return results
+
+
+@router.get("/operations/{operation_id}/attack-path", response_model=AttackPathResponse)
+async def get_attack_path(
+    operation_id: str,
+    db: aiosqlite.Connection = Depends(get_db),
+) -> AttackPathResponse:
+    """Return full execution history for attack path timeline visualization."""
+    db.row_factory = aiosqlite.Row
+    from app.routers._deps import ensure_operation
+    await ensure_operation(db, operation_id)
+
+    cursor = await db.execute(
+        """
+        SELECT te.id           AS execution_id,
+               te.status,
+               te.engine,
+               te.started_at,
+               te.completed_at,
+               te.result_summary,
+               te.error_message,
+               te.facts_collected_count,
+               t.mitre_id,
+               t.name          AS technique_name,
+               t.tactic,
+               t.tactic_id,
+               t.kill_chain_stage,
+               t.risk_level,
+               tg.hostname     AS target_hostname,
+               tg.ip_address   AS target_ip
+        FROM technique_executions te
+        JOIN techniques t  ON te.technique_id = t.id
+        LEFT JOIN targets tg ON te.target_id = tg.id
+        WHERE te.operation_id = ?
+        ORDER BY te.started_at ASC NULLS LAST, te.created_at ASC
+        """,
+        (operation_id,),
+    )
+    rows = await cursor.fetchall()
+
+    # TACTIC_ORDER defines the 14 ATT&CK tactics left-to-right
+    TACTIC_ORDER_IDS = [
+        "TA0043", "TA0042", "TA0001", "TA0002", "TA0003", "TA0004", "TA0005",
+        "TA0006", "TA0007", "TA0008", "TA0009", "TA0011", "TA0010", "TA0040",
+    ]
+    tactic_idx_map = {tid: i for i, tid in enumerate(TACTIC_ORDER_IDS)}
+
+    entries = []
+    highest_idx = -1
+    tactic_coverage: dict[str, int] = {}
+
+    for row in rows:
+        r = dict(row)
+        # compute duration
+        duration_sec = None
+        if r.get("started_at") and r.get("completed_at"):
+            try:
+                from datetime import datetime
+                fmt = "%Y-%m-%dT%H:%M:%S.%f" if "." in r["started_at"] else "%Y-%m-%dT%H:%M:%S"
+                t_start = datetime.fromisoformat(r["started_at"])
+                t_end = datetime.fromisoformat(r["completed_at"])
+                duration_sec = (t_end - t_start).total_seconds()
+            except Exception:
+                pass
+
+        entry = AttackPathEntry(
+            execution_id=r["execution_id"],
+            mitre_id=r["mitre_id"] or "",
+            technique_name=r["technique_name"] or "",
+            tactic=r["tactic"] or "",
+            tactic_id=r["tactic_id"] or "",
+            kill_chain_stage=r["kill_chain_stage"] or "",
+            risk_level=r["risk_level"] or "",
+            status=r["status"] or "queued",
+            engine=r["engine"] or "",
+            started_at=r["started_at"],
+            completed_at=r["completed_at"],
+            duration_sec=duration_sec,
+            result_summary=r["result_summary"],
+            error_message=r["error_message"],
+            facts_collected_count=r["facts_collected_count"] or 0,
+            target_hostname=r["target_hostname"],
+            target_ip=r["target_ip"],
+        )
+        entries.append(entry)
+
+        # track highest tactic reached (any non-queued status)
+        tid = r.get("tactic_id") or ""
+        if r["status"] != "queued" and tid in tactic_idx_map:
+            idx = tactic_idx_map[tid]
+            if idx > highest_idx:
+                highest_idx = idx
+
+        # count successes per tactic
+        if r["status"] == "success" and tid:
+            tactic_coverage[tid] = tactic_coverage.get(tid, 0) + 1
+
+    return AttackPathResponse(
+        operation_id=operation_id,
+        entries=entries,
+        highest_tactic_idx=highest_idx,
+        tactic_coverage=tactic_coverage,
+    )

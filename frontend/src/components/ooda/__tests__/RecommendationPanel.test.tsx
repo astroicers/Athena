@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { RecommendationPanel } from "@/components/ooda/RecommendationPanel";
-import type { PentestGPTRecommendation } from "@/types/recommendation";
+import type { OrientRecommendation } from "@/types/recommendation";
 import { RiskLevel, ExecutionEngine } from "@/types/enums";
 
-const mockRec: PentestGPTRecommendation = {
+const mockRec: OrientRecommendation = {
   id: "rec-1",
   operationId: "op-1",
   oodaIterationId: "ooda-1",
@@ -18,7 +18,7 @@ const mockRec: PentestGPTRecommendation = {
       techniqueName: "LSASS Memory",
       reasoning: "Best option because...",
       riskLevel: RiskLevel.MEDIUM,
-      recommendedEngine: ExecutionEngine.CALDERA,
+      recommendedEngine: ExecutionEngine.C2,
       confidence: 0.85,
       prerequisites: ["Admin access"],
     },
@@ -27,7 +27,7 @@ const mockRec: PentestGPTRecommendation = {
       techniqueName: "Token Impersonation",
       reasoning: "Alternative option",
       riskLevel: RiskLevel.LOW,
-      recommendedEngine: ExecutionEngine.CALDERA,
+      recommendedEngine: ExecutionEngine.C2,
       confidence: 0.65,
       prerequisites: [],
     },
@@ -38,7 +38,7 @@ const mockRec: PentestGPTRecommendation = {
 };
 
 function renderPanel(
-  rec: PentestGPTRecommendation | null,
+  rec: OrientRecommendation | null,
   onAccepted?: () => void,
 ) {
   return render(

@@ -39,7 +39,7 @@ router = APIRouter()
 class ReconScanRequest(BaseModel):
     target_id: str
     enable_initial_access: bool = True
-    caldera_host: str | None = None  # defaults to settings.CALDERA_URL
+    c2_host: str | None = None  # defaults to settings.C2_ENGINE_URL
 
 
 class OSINTDiscoverRequest(BaseModel):
@@ -108,20 +108,20 @@ async def run_recon_scan(
                 db, op_id, body.target_id, ip_address, port=22
             )
 
-            # Step 5c: Bootstrap Caldera agent if SSH succeeded and not in mock mode
-            if ia_result.success and not settings.MOCK_CALDERA:
-                # Use CALDERA_AGENT_CALLBACK_URL if set (external URL reachable from targets),
-                # then request override, then fall back to CALDERA_URL
-                caldera_host = (
-                    body.caldera_host
-                    or settings.CALDERA_AGENT_CALLBACK_URL
-                    or settings.CALDERA_URL
+            # Step 5c: Bootstrap C2 agent if SSH succeeded and not in mock mode
+            if ia_result.success and not settings.MOCK_C2_ENGINE:
+                # Use C2_AGENT_CALLBACK_URL if set (external URL reachable from targets),
+                # then request override, then fall back to C2_ENGINE_URL
+                c2_host = (
+                    body.c2_host
+                    or settings.C2_AGENT_CALLBACK_URL
+                    or settings.C2_ENGINE_URL
                 )
                 # credential format is "user:pass"
                 cred_parts = (ia_result.credential or ":").split(":", 1)
                 cred_tuple = (cred_parts[0], cred_parts[1] if len(cred_parts) > 1 else "")
                 deployed = await ia_engine.bootstrap_caldera_agent(
-                    ip_address, cred_tuple, caldera_host
+                    ip_address, cred_tuple, c2_host
                 )
                 # ia_result is immutable (Pydantic), rebuild with updated field
                 ia_result = InitialAccessResult(

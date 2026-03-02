@@ -66,23 +66,23 @@ async def sync_agents(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
-    """Sync agents from Caldera into Athena's database."""
+    """Sync agents from C2 engine into Athena's database."""
     db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
-    if settings.MOCK_CALDERA:
+    if settings.MOCK_C2_ENGINE:
         return {"message": "Mock mode — using seed agents", "synced": 0}
 
     try:
-        from app.clients.caldera_client import CalderaClient
-        client = CalderaClient(settings.CALDERA_URL, settings.CALDERA_API_KEY)
-        caldera_agents = await client.sync_agents(operation_id)
+        from app.clients.c2_client import C2EngineClient
+        client = C2EngineClient(settings.C2_ENGINE_URL, settings.C2_ENGINE_API_KEY)
+        c2_agents = await client.sync_agents(operation_id)
         await client.aclose()
     except Exception as e:
-        logger.error("Failed to sync agents from Caldera: %s", e)
-        return {"message": f"Caldera sync failed: {e}", "synced": 0}
+        logger.error("Failed to sync agents from C2 engine: %s", e)
+        return {"message": f"C2 engine sync failed: {e}", "synced": 0}
 
-    # Load targets for this operation to match Caldera agents by host/IP
+    # Load targets for this operation to match C2 agents by host/IP
     cursor = await db.execute(
         "SELECT id, hostname, ip_address FROM targets WHERE operation_id = ?",
         (operation_id,),
@@ -98,14 +98,14 @@ async def sync_agents(
 
     synced = 0
     skipped = 0
-    for agent in caldera_agents:
-        caldera_host = agent.get("host", "")
+    for agent in c2_agents:
+        agent_host = agent.get("host", "")
         # Match to Athena target by hostname or IP
-        host_id = target_by_host.get(caldera_host.lower()) or target_by_host.get(caldera_host)
+        host_id = target_by_host.get(agent_host.lower()) or target_by_host.get(agent_host)
         if not host_id:
             logger.warning(
-                "Caldera agent paw=%s host=%s — no matching target in operation %s, skipping",
-                agent.get("paw"), caldera_host, operation_id,
+                "C2 agent paw=%s host=%s — no matching target in operation %s, skipping",
+                agent.get("paw"), agent_host, operation_id,
             )
             skipped += 1
             continue

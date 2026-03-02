@@ -29,7 +29,7 @@ from app.ws_manager import ws_manager
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Mock data — returned when settings.MOCK_CALDERA is True
+# Mock data — returned when settings.MOCK_C2_ENGINE is True
 # ---------------------------------------------------------------------------
 _MOCK_SUBDOMAINS = [
     SubdomainInfo(subdomain="www.example.com", resolved_ips=["93.184.216.34"], source="crtsh"),
@@ -65,7 +65,7 @@ class OSINTEngine:
         limit = max_subdomains or settings.OSINT_MAX_SUBDOMAINS
         t_start = time.monotonic()
 
-        if settings.MOCK_CALDERA:
+        if settings.MOCK_C2_ENGINE:
             return await self._mock_result(
                 db=db,
                 operation_id=operation_id,

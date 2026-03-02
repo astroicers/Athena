@@ -52,8 +52,8 @@ export enum AgentStatus {
 }
 
 export enum ExecutionEngine {
-  CALDERA = "caldera",
-  SHANNON = "shannon",
+  C2 = "caldera",
+  ADAPTIVE = "shannon",
 }
 
 export enum C5ISRDomain {

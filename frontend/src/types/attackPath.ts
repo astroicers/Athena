@@ -12,27 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { ExecutionEngine, RiskLevel } from "./enums";
+import { TechniqueStatus } from "./enums";
 
-export interface TacticalOption {
-  techniqueId: string;
+export interface AttackPathEntry {
+  executionId: string;
+  mitreId: string;
   techniqueName: string;
-  reasoning: string;
-  riskLevel: RiskLevel;
-  recommendedEngine: ExecutionEngine;
-  confidence: number;
-  prerequisites: string[];
+  tactic: string;
+  tacticId: string;
+  killChainStage: string;
+  riskLevel: string;
+  status: TechniqueStatus;
+  engine: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  durationSec: number | null;
+  resultSummary: string | null;
+  errorMessage: string | null;
+  factsCollectedCount: number;
+  targetHostname: string | null;
+  targetIp: string | null;
 }
 
-export interface OrientRecommendation {
-  id: string;
+export interface AttackPathResponse {
   operationId: string;
-  oodaIterationId: string;
-  situationAssessment: string;
-  recommendedTechniqueId: string;
-  confidence: number;
-  options: TacticalOption[];
-  reasoningText: string;
-  accepted: boolean | null;
-  createdAt: string;
+  entries: AttackPathEntry[];
+  highestTacticIdx: number;
+  tacticCoverage: Record<string, number>;
 }

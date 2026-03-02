@@ -1,0 +1,28 @@
+# C2 Engine Docker Compose — standalone from Athena main services
+# Purpose: Start the attack execution engine
+# Usage: make c2-engine-up / make c2-engine-down
+#
+# Note: This container is independent from Athena's docker-compose.yml
+# Athena backend communicates with the C2 engine via HTTP API
+
+services:
+  c2-engine:
+    image: ghcr.io/mitre/caldera:latest
+    container_name: athena-c2-engine
+    ports:
+      - "127.0.0.1:8888:8888"
+    volumes:
+      - c2-engine-data:/usr/src/app/data
+    environment:
+      - CALDERA_ADMIN_PWD=admin
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8888"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  c2-engine-data:
+    driver: local

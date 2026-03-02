@@ -39,13 +39,13 @@ def make_mock_db():
 # ---------------------------------------------------------------------------
 
 async def test_ssh_mock_returns_success():
-    """MOCK_CALDERA=True → success=True, method='ssh_credential', credential='msfadmin:msfadmin'."""
+    """MOCK_C2_ENGINE=True → success=True, method='ssh_credential', credential='msfadmin:msfadmin'."""
     db = make_mock_db()
 
     with patch("app.services.initial_access_engine.settings") as mock_settings, \
          patch("app.services.initial_access_engine.ws_manager.broadcast", new=AsyncMock()):
 
-        mock_settings.MOCK_CALDERA = True
+        mock_settings.MOCK_C2_ENGINE = True
 
         result = await InitialAccessEngine().try_ssh_login(
             db, "op-001", "tgt-001", "192.168.1.100"
@@ -62,7 +62,7 @@ async def test_ssh_mock_returns_success():
 # ---------------------------------------------------------------------------
 
 async def test_ssh_mock_writes_credential_fact():
-    """MOCK_CALDERA=True → db.execute is called with trait='credential.ssh'."""
+    """MOCK_C2_ENGINE=True → db.execute is called with trait='credential.ssh'."""
     db = make_mock_db()
     captured_calls: list = []
 
@@ -76,7 +76,7 @@ async def test_ssh_mock_writes_credential_fact():
     with patch("app.services.initial_access_engine.settings") as mock_settings, \
          patch("app.services.initial_access_engine.ws_manager.broadcast", new=AsyncMock()):
 
-        mock_settings.MOCK_CALDERA = True
+        mock_settings.MOCK_C2_ENGINE = True
 
         await InitialAccessEngine().try_ssh_login(
             db, "op-001", "tgt-001", "192.168.1.100"
@@ -102,7 +102,7 @@ async def test_ssh_mock_writes_credential_fact():
 # ---------------------------------------------------------------------------
 
 async def test_ssh_real_success():
-    """MOCK_CALDERA=False, asyncssh.connect succeeds for msfadmin:msfadmin."""
+    """MOCK_C2_ENGINE=False, asyncssh.connect succeeds for msfadmin:msfadmin."""
     db = make_mock_db()
 
     # Build a mock asyncssh connection context manager
@@ -114,7 +114,7 @@ async def test_ssh_real_success():
          patch("app.services.initial_access_engine.ws_manager.broadcast", new=AsyncMock()), \
          patch.dict("sys.modules", {"asyncssh": MagicMock()}):
 
-        mock_settings.MOCK_CALDERA = False
+        mock_settings.MOCK_C2_ENGINE = False
 
         import sys
         mock_asyncssh = sys.modules["asyncssh"]
@@ -135,14 +135,14 @@ async def test_ssh_real_success():
 # ---------------------------------------------------------------------------
 
 async def test_ssh_real_all_fail():
-    """MOCK_CALDERA=False, asyncssh.connect always raises → success=False, method='none'."""
+    """MOCK_C2_ENGINE=False, asyncssh.connect always raises → success=False, method='none'."""
     db = make_mock_db()
 
     with patch("app.services.initial_access_engine.settings") as mock_settings, \
          patch("app.services.initial_access_engine.ws_manager.broadcast", new=AsyncMock()), \
          patch.dict("sys.modules", {"asyncssh": MagicMock()}):
 
-        mock_settings.MOCK_CALDERA = False
+        mock_settings.MOCK_C2_ENGINE = False
 
         import sys
         mock_asyncssh = sys.modules["asyncssh"]

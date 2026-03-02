@@ -26,7 +26,7 @@ import { C5ISRStatusBoard } from "@/components/c5isr/C5ISRStatusBoard";
 import { OODAIndicator } from "@/components/ooda/OODAIndicator";
 import { DataTable, Column } from "@/components/data/DataTable";
 import type { C5ISRStatus } from "@/types/c5isr";
-import type { PentestGPTRecommendation } from "@/types/recommendation";
+import type { OrientRecommendation } from "@/types/recommendation";
 import type { TechniqueWithStatus } from "@/types/technique";
 import type { Operation } from "@/types/operation";
 import { Badge } from "@/components/atoms/Badge";
@@ -71,13 +71,13 @@ export default function C5ISRPage() {
   const ws = useWebSocket(DEFAULT_OP_ID);
   const [isLoading, setIsLoading] = useState(true);
   const [domains, setDomains] = useState<C5ISRStatus[]>([]);
-  const [recommendation, setRecommendation] = useState<PentestGPTRecommendation | null>(null);
+  const [recommendation, setRecommendation] = useState<OrientRecommendation | null>(null);
   const [execRows, setExecRows] = useState<TechniqueWithStatus[]>([]);
 
   useEffect(() => {
     Promise.all([
       api.get<C5ISRStatus[]>(`/operations/${DEFAULT_OP_ID}/c5isr`).then(setDomains),
-      api.get<PentestGPTRecommendation>(`/operations/${DEFAULT_OP_ID}/recommendations/latest`).then(setRecommendation),
+      api.get<OrientRecommendation>(`/operations/${DEFAULT_OP_ID}/recommendations/latest`).then(setRecommendation),
       api.get<TechniqueWithStatus[]>(`/operations/${DEFAULT_OP_ID}/techniques`).then(setExecRows),
     ]).catch(() => addToast("Failed to load C5ISR data", "error"))
       .finally(() => setIsLoading(false));

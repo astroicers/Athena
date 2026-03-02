@@ -22,7 +22,7 @@ Key design decisions:
     - ``httpx.AsyncClient`` with ``ASGITransport`` for realistic API tests.
     - ``ws_manager`` is replaced with a ``MagicMock`` so broadcast calls
       can be asserted without real WebSocket connections.
-    - Environment variables ``MOCK_LLM`` and ``MOCK_CALDERA`` are set to
+    - Environment variables ``MOCK_LLM`` and ``MOCK_C2_ENGINE`` are set to
       ``true`` so no external services are contacted during tests.
 """
 
@@ -37,7 +37,7 @@ from httpx import ASGITransport, AsyncClient
 # Environment — ensure mocks are active before any app module is imported
 # ---------------------------------------------------------------------------
 os.environ.setdefault("MOCK_LLM", "true")
-os.environ.setdefault("MOCK_CALDERA", "true")
+os.environ.setdefault("MOCK_C2_ENGINE", "true")
 
 from app.database import _CREATE_TABLES, get_db  # noqa: E402
 from app.main import app  # noqa: E402

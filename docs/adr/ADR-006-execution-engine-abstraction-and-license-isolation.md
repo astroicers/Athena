@@ -126,3 +126,60 @@ def select_engine(technique, context, gpt_recommendation):
 - 取代：（無）
 - 被取代：（無）
 - 參考：ADR-001（授權策略）、ADR-003（OODA 引擎 Act 階段）、ADR-005（Orient 引擎的 recommended_engine 欄位）、ADR-007（執行結果透過 WebSocket 推送）、ADR-010（Shannon 外部部署拓樸）
+
+---
+
+## 修訂記錄（Revision History）
+
+### Rev 1 — Phase B（2026-03-02）：DirectSSHEngine 為新預設引擎
+
+原 ADR 決策（統一 Client 介面 + API-Only 隔離 + 路由器模式）**架構仍然有效**，新增 DirectSSHEngine 實作同一 BaseEngineClient 介面。
+
+**新增引擎：**
+
+| 引擎 | 狀態 | 啟用方式 | 授權 |
+|------|------|---------|------|
+| DirectSSHEngine | ✅ 新預設 | `EXECUTION_ENGINE=ssh` | Apache 2.0（自研） |
+| CalderaClient | 🔄 向後相容 | `EXECUTION_ENGINE=caldera` | Apache 2.0 |
+| MockCalderaClient | ✅ 測試用 | `EXECUTION_ENGINE=mock` | Apache 2.0 |
+| ShannonClient | ⚠️ DEPRECATED | （無啟用路徑） | Apache 2.0（僅包裝） |
+
+**Shannon 移除原因：**
+- `SHANNON_URL` 預設為空字串，從未在任何環境中真實呼叫
+- API 隔離維護成本 > 實際使用價值
+
+**DirectSSHEngine 優點：**
+- 無需部署外部 C2，任何能 SSH 的 Linux 靶機均可測試
+- SSH 憑證取得後立即推進 kill chain，OODA 自動化閉環
+
+**參考：** ADR-017（DirectSSHEngine 詳細設計）
+
+---
+
+### Rev 2 — Phase E（2026-03-02）：識別符去識別化
+
+延續 Rev 1 的 DEPRECATED 宣告，本次對程式碼庫中所有第三方識別符完成去識別化（詳見 ADR-019）。
+
+**引擎模組重命名：**
+
+| 原始名稱 | 新名稱 | 狀態 |
+|---------|-------|------|
+| `CalderaClient` | `C2EngineClient` | 🔄 向後相容 |
+| `MockCalderaClient` | `MockC2Client` | ✅ 測試用 |
+| `ShannonClient` | `AiEngineClient` | ⚠️ DEPRECATED |
+
+**Enum 重命名（底層值不變，DB 無需遷移）：**
+
+```python
+# 改前
+ExecutionEngine.CALDERA = "caldera"
+ExecutionEngine.SHANNON = "shannon"
+
+# 改後（值不變）
+ExecutionEngine.C2 = "caldera"
+ExecutionEngine.ADAPTIVE = "shannon"
+```
+
+**授權合規性確認：** Caldera（Apache 2.0）、PentestGPT（MIT）、Shannon（AGPL-3.0）均不要求在程式碼中保留原始識別符，Athena 非 derivative work，去識別化完全合規。
+
+**參考：** ADR-019（第三方識別符去識別化策略）

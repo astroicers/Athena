@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""PentestGPT recommendation endpoints."""
+"""AI recommendation endpoints."""
 
 import json
 from datetime import datetime, timezone
@@ -21,16 +21,16 @@ import aiosqlite
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.database import get_db
-from app.models import PentestGPTRecommendation
+from app.models import OrientRecommendation
 from app.models.recommendation import TacticalOption
 from app.routers._deps import ensure_operation
 
 router = APIRouter()
 
 
-def _row_to_recommendation(row: aiosqlite.Row) -> PentestGPTRecommendation:
+def _row_to_recommendation(row: aiosqlite.Row) -> OrientRecommendation:
     options_raw = json.loads(row["options"]) if row["options"] else []
-    return PentestGPTRecommendation(
+    return OrientRecommendation(
         id=row["id"],
         operation_id=row["operation_id"],
         ooda_iteration_id=row["ooda_iteration_id"],
@@ -46,7 +46,7 @@ def _row_to_recommendation(row: aiosqlite.Row) -> PentestGPTRecommendation:
 
 @router.get(
     "/operations/{operation_id}/recommendations/latest",
-    response_model=PentestGPTRecommendation | None,
+    response_model=OrientRecommendation | None,
 )
 async def get_latest_recommendation(
     operation_id: str,
@@ -68,7 +68,7 @@ async def get_latest_recommendation(
 
 @router.post(
     "/operations/{operation_id}/recommendations/{recommendation_id}/accept",
-    response_model=PentestGPTRecommendation,
+    response_model=OrientRecommendation,
 )
 async def accept_recommendation(
     operation_id: str,

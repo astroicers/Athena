@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { RecommendCard } from "@/components/cards/RecommendCard";
 import { ExecutionEngine, RiskLevel } from "@/types/enums";
-import type { PentestGPTRecommendation } from "@/types/recommendation";
+import type { OrientRecommendation } from "@/types/recommendation";
 
-const mockRec: PentestGPTRecommendation = {
+const mockRec: OrientRecommendation = {
   id: "rec-1",
   operationId: "op-1",
   oodaIterationId: "iter-1",
@@ -17,7 +17,7 @@ const mockRec: PentestGPTRecommendation = {
       techniqueName: "LSASS Dump",
       reasoning: "Admin access available",
       riskLevel: RiskLevel.MEDIUM,
-      recommendedEngine: ExecutionEngine.CALDERA,
+      recommendedEngine: ExecutionEngine.C2,
       confidence: 0.87,
       prerequisites: [],
     },

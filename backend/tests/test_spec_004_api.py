@@ -29,7 +29,7 @@ async def test_health_endpoint(client):
 async def test_health_services_keys(client):
     resp = await client.get("/api/health")
     services = resp.json()["services"]
-    for key in ("database", "caldera", "shannon", "websocket", "llm"):
+    for key in ("database", "c2_engine", "ai_engine", "websocket", "llm"):
         assert key in services
 
 

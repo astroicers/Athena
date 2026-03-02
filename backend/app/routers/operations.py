@@ -22,7 +22,7 @@ import aiosqlite
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.database import get_db
-from app.models import C5ISRStatus, Operation, PentestGPTRecommendation
+from app.models import C5ISRStatus, Operation, OrientRecommendation
 from app.models.api_schemas import (
     OperationCreate,
     OperationSummary,
@@ -179,7 +179,7 @@ async def get_operation_summary(
     latest_rec = None
     if rec_row:
         options_raw = json.loads(rec_row["options"]) if rec_row["options"] else []
-        latest_rec = PentestGPTRecommendation(
+        latest_rec = OrientRecommendation(
             id=rec_row["id"],
             operation_id=rec_row["operation_id"],
             ooda_iteration_id=rec_row["ooda_iteration_id"],

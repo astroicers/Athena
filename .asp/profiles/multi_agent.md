@@ -9,6 +9,15 @@
 
 ---
 
+## Token 成本意識
+
+Multi-agent 模式的 token 消耗約為單 agent 的 **15 倍**。分拆前先確認：
+
+- sub-agent 存在的核心理由是 **context 隔離**，不是角色擬人化——如果單一 agent 的 context 能裝下，就不要拆
+- **電話遊戲問題**：Orchestrator 轉述 Worker 回應時會失真。Worker 完成後應直接輸出結構化結果（Done Checklist），Orchestrator 原樣轉交人類，不重新改寫
+
+---
+
 ## Orchestrator 職責
 
 開始並行任務前，必須完成：

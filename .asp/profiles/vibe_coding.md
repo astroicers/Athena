@@ -60,6 +60,33 @@ FUNCTION should_pause(operation, hitl_level):
 
 ---
 
+## Context 管理
+
+長 session 的 context 會衰退，優化原則：**tokens-per-task（完成任務的總消耗）比 tokens-per-request 更重要**。
+
+**壓縮觸發**：context 使用率 > 70% 或對話超過 50 回合時，執行 `make session-checkpoint` 並產出結構化摘要：
+
+```
+Session Intent:    本次 session 的目標
+Files Modified:    已修改的檔案清單
+Decisions Made:    已做的設計/架構決策
+Current State:     目前進度與阻塞點
+Next Steps:        下一步行動
+```
+
+**衰退信號辨識**：出現以下情況表示 context 正在衰退，應立即觸發壓縮：
+
+| 模式 | 信號 |
+|------|------|
+| 中段遺忘（lost-in-middle） | AI 忽略對話中段的指令或決策 |
+| 資訊汙染（poisoning） | AI 依據錯誤/過時的 context 行動 |
+| 干擾（distraction） | AI 被無關資訊帶偏，偏離任務目標 |
+| 矛盾（clash） | AI 在矛盾指令間擺盪，輸出不一致 |
+
+**應對**：偵測到任一信號 → `make session-checkpoint NEXT="..."` → 開新 session 或要求 AI 重讀 CLAUDE.md。
+
+---
+
 ## Context 切換程序
 
 切換功能模組時：
@@ -68,8 +95,6 @@ FUNCTION should_pause(operation, hitl_level):
 切換前：摘要目前狀態（完成了什麼、未完成什麼）
 切換後：讀取新模組的 ADR → 確認測試基線通過
 ```
-
-長對話管理：超過 50 回合的對話，重新讀取 CLAUDE.md。
 
 ---
 

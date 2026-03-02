@@ -20,89 +20,12 @@ from typing import Any
 from uuid import uuid4
 
 from app.clients import BaseEngineClient, ExecutionResult
-
-logger = logging.getLogger(__name__)
-
-# MITRE ID → SSH command mapping (static fallback if DB is unavailable)
-# Format: {target_ip} placeholder is replaced at runtime
-TECHNIQUE_EXECUTORS: dict[str, str] = {
-    "T1592": "uname -a && id && cat /etc/os-release",
-    "T1046": "netstat -tulnp 2>/dev/null || ss -tulnp 2>/dev/null",
-    "T1059.004": "bash -c 'id && whoami && hostname'",
-    "T1003.001": "cat /etc/shadow 2>/dev/null || echo 'NO_SHADOW_ACCESS'",
-    "T1087": "cat /etc/passwd | cut -d: -f1,3,7",
-    "T1083": "find / -name '*.conf' -readable 2>/dev/null | head -20",
-    "T1190": "curl -sI http://localhost/ 2>/dev/null | head -5",
-    "T1595.001": "echo 'NMAP_LOCAL_ONLY'",  # nmap runs locally, not via SSH
-    "T1595.002": "echo 'NMAP_LOCAL_ONLY'",
-    "T1021.004": "id && hostname",
-    "T1078.001": "id && cat /etc/passwd | grep -v nologin | grep -v false",
-    "T1110.001": "echo 'HANDLED_BY_INITIAL_ACCESS_ENGINE'",
-    "T1110.003": "echo 'HANDLED_BY_INITIAL_ACCESS_ENGINE'",
-}
-
-# Map MITRE ID → expected fact traits
-TECHNIQUE_FACT_TRAITS: dict[str, list[str]] = {
-    "T1592": ["host.os", "host.user"],
-    "T1046": ["service.open_port"],
-    "T1059.004": ["host.process"],
-    "T1003.001": ["credential.hash"],
-    "T1087": ["host.user"],
-    "T1083": ["host.file"],
-    "T1190": ["service.web"],
-    "T1595.001": ["network.host.ip"],
-    "T1595.002": ["vuln.cve"],
-    "T1021.004": ["host.session"],
-    "T1078.001": ["credential.ssh"],
-    "T1110.001": ["credential.ssh"],
-    "T1110.003": ["credential.ssh"],
-}
-
-
-def _parse_credential(cred_value: str) -> tuple[str, str, str, int]:
-    """Parse 'user:pass@host:port' or 'user:pass' format → (user, pass, host, port)."""
-    host = ""
-    port = 22
-    if "@" in cred_value:
-        user_pass, host_port = cred_value.rsplit("@", 1)
-        if ":" in host_port:
-            host, port_str = host_port.rsplit(":", 1)
-            try:
-                port = int(port_str)
-            except ValueError:
-                pass
-        else:
-            host = host_port
-    else:
-        user_pass = cred_value
-
-    if ":" in user_pass:
-        user, password = user_pass.split(":", 1)
-    else:
-        user, password = user_pass, ""
-
-    return user, password, host, port
-
-
-def _parse_stdout_to_facts(mitre_id: str, stdout: str) -> list[dict[str, Any]]:
-    """Extract facts from command stdout based on technique type."""
-    facts = []
-    traits = TECHNIQUE_FACT_TRAITS.get(mitre_id, [])
-
-    for trait in traits:
-        if not stdout.strip():
-            continue
-        # Generic: store first meaningful line of stdout as fact value
-        lines = [line.strip() for line in stdout.splitlines() if line.strip()]
-        if lines:
-            facts.append({
-                "trait": trait,
-                "value": lines[0][:500],  # cap at 500 chars
-                "score": 1,
-                "source": "direct_ssh",
-            })
-
-    return facts
+from app.clients._ssh_common import (
+    TECHNIQUE_EXECUTORS,
+    TECHNIQUE_FACT_TRAITS,
+    _parse_credential,
+    _parse_stdout_to_facts,
+)
 
 
 class DirectSSHEngine(BaseEngineClient):

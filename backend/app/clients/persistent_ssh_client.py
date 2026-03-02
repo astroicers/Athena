@@ -1,0 +1,174 @@
+# Copyright 2026 Athena Contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""PersistentSSHChannelEngine — SSH session pool for multi-step post-exploitation."""
+
+import logging
+from typing import Any
+from uuid import uuid4
+
+from app.clients import BaseEngineClient, ExecutionResult
+from app.clients._ssh_common import (
+    TECHNIQUE_EXECUTORS,
+    _parse_credential,
+    _parse_stdout_to_facts,
+)
+
+logger = logging.getLogger(__name__)
+
+try:
+    import asyncssh  # type: ignore[import]
+except ImportError:  # pragma: no cover
+    asyncssh = None  # type: ignore[assignment]
+
+# Module-level session pool: (operation_id, credential_string) → asyncssh connection
+# Using credential_string as key ensures different operations don't share sessions.
+_SESSION_POOL: dict[tuple[str, str], Any] = {}
+
+
+class PersistentSSHChannelEngine(BaseEngineClient):
+    """SSH engine that maintains persistent connections across technique executions.
+
+    Unlike DirectSSHEngine (new connection per technique), this engine pools
+    connections keyed by (operation_id, credential_string). Subsequent techniques
+    on the same target reuse the existing connection.
+
+    Use EXECUTION_ENGINE=persistent_ssh to enable.
+    """
+
+    def __init__(self, operation_id: str) -> None:
+        self._operation_id = operation_id
+
+    async def execute(
+        self,
+        ability_id: str,
+        target: str,
+        params: dict | None = None,
+    ) -> ExecutionResult:
+        """Execute a technique over a pooled SSH connection."""
+        execution_id = str(uuid4())
+
+        command = TECHNIQUE_EXECUTORS.get(ability_id)
+        if not command:
+            return ExecutionResult(
+                success=False,
+                execution_id=execution_id,
+                output="",
+                facts=[],
+                error=f"No SSH executor defined for technique {ability_id}",
+            )
+
+        if "@" not in target and ":" not in target:
+            return ExecutionResult(
+                success=False,
+                execution_id=execution_id,
+                output="",
+                facts=[],
+                error=f"No SSH credentials in target string: {target}",
+            )
+
+        user, password, host, port = _parse_credential(target)
+        if not host:
+            return ExecutionResult(
+                success=False,
+                execution_id=execution_id,
+                output="",
+                facts=[],
+                error="Could not parse host from credential string",
+            )
+
+        command = command.replace("{target_ip}", host)
+        pool_key = (self._operation_id, target)
+
+        try:
+            conn = _SESSION_POOL.get(pool_key)
+            if conn is None:
+                conn = await asyncssh.connect(
+                    host,
+                    port=port,
+                    username=user,
+                    password=password,
+                    known_hosts=None,
+                    connect_timeout=15,
+                    keepalive_interval=30,
+                    keepalive_count_max=5,
+                )
+                _SESSION_POOL[pool_key] = conn
+                logger.info(
+                    "PersistentSSH: new session for %s (pool size=%d)",
+                    host, len(_SESSION_POOL),
+                )
+            else:
+                logger.debug("PersistentSSH: reusing session for %s", host)
+
+            result = await conn.run(command, timeout=30)
+            stdout = result.stdout or ""
+            stderr = result.stderr or ""
+            success = result.exit_status == 0
+
+            facts = _parse_stdout_to_facts(ability_id, stdout)
+            output = stdout if stdout else stderr
+
+            logger.info(
+                "PersistentSSH executed %s on %s → exit=%s",
+                ability_id, host, result.exit_status,
+            )
+            return ExecutionResult(
+                success=success,
+                execution_id=execution_id,
+                output=output[:2000],
+                facts=facts,
+                error=stderr[:500] if not success else None,
+            )
+
+        except Exception as exc:  # noqa: BLE001
+            # Remove stale session so next call reconnects
+            _SESSION_POOL.pop(pool_key, None)
+            logger.warning("PersistentSSH execution failed for %s: %s", ability_id, exc)
+            return ExecutionResult(
+                success=False,
+                execution_id=execution_id,
+                output="",
+                facts=[],
+                error=str(exc)[:500],
+            )
+
+    @staticmethod
+    async def close_all_sessions(operation_id: str) -> None:
+        """Close and remove all pooled sessions for a given operation_id."""
+        keys_to_remove = [k for k in _SESSION_POOL if k[0] == operation_id]
+        for key in keys_to_remove:
+            conn = _SESSION_POOL.pop(key)
+            try:
+                conn.close()
+            except Exception:  # noqa: BLE001
+                pass
+        if keys_to_remove:
+            logger.info(
+                "PersistentSSH: closed %d sessions for op %s",
+                len(keys_to_remove), operation_id,
+            )
+
+    async def get_status(self, execution_id: str) -> dict[str, Any]:
+        """PersistentSSH executions are synchronous — always completed."""
+        return {"execution_id": execution_id, "status": "completed"}
+
+    async def list_abilities(self) -> list[dict[str, Any]]:
+        return [
+            {"ability_id": mid, "name": mid, "description": f"Persistent SSH: {mid}"}
+            for mid in TECHNIQUE_EXECUTORS
+        ]
+
+    async def is_available(self) -> bool:
+        return True

@@ -14,6 +14,7 @@
 
 """Tests for Phase D — PersistentSSHChannelEngine."""
 import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
 
 
 def test_ssh_common_exports_technique_executors():
@@ -59,10 +60,6 @@ def test_ssh_common_parse_stdout_custom_source():
     assert facts[0]["source"] == "persistent_ssh"
 
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-
-
 @pytest.mark.asyncio
 async def test_persistent_engine_reuses_existing_session():
     """Second execute() reuses the pooled connection — asyncssh.connect called only once."""
@@ -86,11 +83,13 @@ async def test_persistent_engine_reuses_existing_session():
     assert result1.success is True
     assert result2.success is True
     assert mock_asyncssh.connect.call_count == 1  # connection reused
+    # Verify connection was stored in pool (not cleaned up after use)
+    assert len(_SESSION_POOL) == 1
 
 
 @pytest.mark.asyncio
 async def test_persistent_engine_returns_facts():
-    """execute() parses stdout into facts with source='direct_ssh'."""
+    """execute() parses stdout into facts with source='persistent_ssh'."""
     from app.clients.persistent_ssh_client import PersistentSSHChannelEngine, _SESSION_POOL
     _SESSION_POOL.clear()
 
@@ -109,7 +108,7 @@ async def test_persistent_engine_returns_facts():
 
     assert result.success is True
     assert len(result.facts) > 0
-    assert result.facts[0]["source"] == "direct_ssh"
+    assert result.facts[0]["source"] == "persistent_ssh"
 
 
 @pytest.mark.asyncio

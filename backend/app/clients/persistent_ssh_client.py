@@ -14,6 +14,7 @@
 
 """PersistentSSHChannelEngine — SSH session pool for multi-step post-exploitation."""
 
+import asyncio
 import logging
 from typing import Any
 from uuid import uuid4
@@ -35,6 +36,9 @@ except ImportError:  # pragma: no cover
 # Module-level session pool: (operation_id, credential_string) → asyncssh connection
 # Using credential_string as key ensures different operations don't share sessions.
 _SESSION_POOL: dict[tuple[str, str], Any] = {}
+
+# Per-key locks to prevent TOCTOU races when two coroutines race to open the same connection.
+_SESSION_LOCKS: dict[tuple[str, str], asyncio.Lock] = {}
 
 
 class PersistentSSHChannelEngine(BaseEngineClient):
@@ -92,32 +96,38 @@ class PersistentSSHChannelEngine(BaseEngineClient):
         pool_key = (self._operation_id, target)
 
         try:
-            conn = _SESSION_POOL.get(pool_key)
-            if conn is None:
-                conn = await asyncssh.connect(
-                    host,
-                    port=port,
-                    username=user,
-                    password=password,
-                    known_hosts=None,
-                    connect_timeout=15,
-                    keepalive_interval=30,
-                    keepalive_count_max=5,
-                )
-                _SESSION_POOL[pool_key] = conn
-                logger.info(
-                    "PersistentSSH: new session for %s (pool size=%d)",
-                    host, len(_SESSION_POOL),
-                )
-            else:
-                logger.debug("PersistentSSH: reusing session for %s", host)
+            if pool_key not in _SESSION_LOCKS:
+                _SESSION_LOCKS[pool_key] = asyncio.Lock()
+            lock = _SESSION_LOCKS[pool_key]
 
+            async with lock:
+                conn = _SESSION_POOL.get(pool_key)
+                if conn is None:
+                    conn = await asyncssh.connect(
+                        host,
+                        port=port,
+                        username=user,
+                        password=password,
+                        known_hosts=None,
+                        connect_timeout=15,
+                        keepalive_interval=30,
+                        keepalive_count_max=5,
+                    )
+                    _SESSION_POOL[pool_key] = conn
+                    logger.info(
+                        "PersistentSSH: new session for %s (pool size=%d)",
+                        host, len(_SESSION_POOL),
+                    )
+                else:
+                    logger.debug("PersistentSSH: reusing session for %s", host)
+
+            # conn.run() is OUTSIDE the lock so other coroutines can use the pool concurrently.
             result = await conn.run(command, timeout=30)
             stdout = result.stdout or ""
             stderr = result.stderr or ""
             success = result.exit_status == 0
 
-            facts = _parse_stdout_to_facts(ability_id, stdout)
+            facts = _parse_stdout_to_facts(ability_id, stdout, source="persistent_ssh")
             output = stdout if stdout else stderr
 
             logger.info(
@@ -133,8 +143,13 @@ class PersistentSSHChannelEngine(BaseEngineClient):
             )
 
         except Exception as exc:  # noqa: BLE001
-            # Remove stale session so next call reconnects
-            _SESSION_POOL.pop(pool_key, None)
+            # Remove stale session so next call reconnects; close to free transport.
+            stale_conn = _SESSION_POOL.pop(pool_key, None)
+            if stale_conn is not None:
+                try:
+                    stale_conn.close()
+                except Exception:  # noqa: BLE001
+                    pass
             logger.warning("PersistentSSH execution failed for %s: %s", ability_id, exc)
             return ExecutionResult(
                 success=False,
@@ -150,6 +165,7 @@ class PersistentSSHChannelEngine(BaseEngineClient):
         keys_to_remove = [k for k in _SESSION_POOL if k[0] == operation_id]
         for key in keys_to_remove:
             conn = _SESSION_POOL.pop(key)
+            _SESSION_LOCKS.pop(key, None)
             try:
                 conn.close()
             except Exception:  # noqa: BLE001

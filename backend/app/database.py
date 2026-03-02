@@ -14,6 +14,7 @@
 
 from collections.abc import AsyncGenerator
 from pathlib import Path
+from uuid import uuid4
 
 import aiosqlite
 
@@ -251,11 +252,110 @@ _CREATE_TABLES: list[str] = [
         UNIQUE(cpe_string, cve_id)
     );
     """,
+    """
+    CREATE TABLE IF NOT EXISTS technique_playbooks (
+        id TEXT PRIMARY KEY,
+        mitre_id TEXT NOT NULL,
+        platform TEXT NOT NULL DEFAULT 'linux',
+        command TEXT NOT NULL,
+        output_parser TEXT,
+        facts_traits TEXT NOT NULL DEFAULT '[]',
+        source TEXT DEFAULT 'seed',
+        tags TEXT DEFAULT '[]',
+        created_at TEXT DEFAULT (datetime('now'))
+    );
+    """,
+]
+
+# ---------------------------------------------------------------------------
+# Seed data for technique_playbooks — 13 Linux techniques
+# Uses INSERT OR IGNORE so restarts are safe (no duplicate key errors).
+# ---------------------------------------------------------------------------
+TECHNIQUE_PLAYBOOK_SEEDS = [
+    {"mitre_id": "T1592", "platform": "linux",
+     "command": "uname -a && id && cat /etc/os-release",
+     "facts_traits": '["host.os", "host.user"]',
+     "tags": '["reconnaissance"]'},
+    {"mitre_id": "T1046", "platform": "linux",
+     "command": "netstat -tulnp 2>/dev/null || ss -tulnp 2>/dev/null",
+     "facts_traits": '["service.open_port"]',
+     "tags": '["discovery"]'},
+    {"mitre_id": "T1059.004", "platform": "linux",
+     "command": "bash -c 'id && whoami && hostname'",
+     "facts_traits": '["host.process"]',
+     "tags": '["execution"]'},
+    {"mitre_id": "T1003.001", "platform": "linux",
+     "command": "cat /etc/shadow 2>/dev/null || echo 'NO_SHADOW_ACCESS'",
+     "facts_traits": '["credential.hash"]',
+     "tags": '["credential_access"]'},
+    {"mitre_id": "T1087", "platform": "linux",
+     "command": "cat /etc/passwd | cut -d: -f1,3,7",
+     "facts_traits": '["host.user"]',
+     "tags": '["discovery"]'},
+    {"mitre_id": "T1083", "platform": "linux",
+     "command": "find / -name '*.conf' -readable 2>/dev/null | head -20",
+     "facts_traits": '["host.file"]',
+     "tags": '["discovery"]'},
+    {"mitre_id": "T1190", "platform": "linux",
+     "command": "curl -sI http://localhost/ 2>/dev/null | head -5",
+     "facts_traits": '["service.web"]',
+     "tags": '["initial_access"]'},
+    {"mitre_id": "T1595.001", "platform": "linux",
+     "command": "nmap -sV -Pn --top-ports 25 {target_ip} 2>/dev/null || echo 'NMAP_UNAVAILABLE'",
+     "facts_traits": '["network.host.ip"]',
+     "tags": '["reconnaissance"]'},
+    {"mitre_id": "T1595.002", "platform": "linux",
+     "command": "nmap --script vuln -Pn {target_ip} 2>/dev/null || echo 'NMAP_UNAVAILABLE'",
+     "facts_traits": '["vuln.cve"]',
+     "tags": '["reconnaissance"]'},
+    {"mitre_id": "T1021.004", "platform": "linux",
+     "command": "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 {target_ip} id 2>/dev/null || echo 'SSH_LATERAL_UNAVAILABLE'",
+     "facts_traits": '["host.session"]',
+     "tags": '["lateral_movement"]'},
+    {"mitre_id": "T1078.001", "platform": "linux",
+     "command": "id && cat /etc/passwd | grep -v nologin | grep -v false",
+     "facts_traits": '["credential.ssh"]',
+     "tags": '["initial_access"]'},
+    {"mitre_id": "T1110.001", "platform": "linux",
+     "command": "echo 'SSH_BRUTEFORCE_HANDLED_BY_INITIAL_ACCESS_ENGINE'",
+     "facts_traits": '["credential.ssh"]',
+     "tags": '["initial_access"]'},
+    {"mitre_id": "T1110.003", "platform": "linux",
+     "command": "echo 'CREDENTIAL_SPRAY_HANDLED_BY_INITIAL_ACCESS_ENGINE'",
+     "facts_traits": '["credential.ssh"]',
+     "tags": '["initial_access"]'},
 ]
 
 
+async def _seed_technique_playbooks(db: aiosqlite.Connection) -> None:
+    """Insert seed playbooks only when the table is empty (idempotent)."""
+    async with db.execute("SELECT COUNT(*) FROM technique_playbooks") as cursor:
+        row = await cursor.fetchone()
+        count = row[0] if row else 0
+
+    if count > 0:
+        return  # Already seeded — skip
+
+    for seed in TECHNIQUE_PLAYBOOK_SEEDS:
+        await db.execute(
+            """
+            INSERT OR IGNORE INTO technique_playbooks
+                (id, mitre_id, platform, command, facts_traits, source, tags)
+            VALUES (?, ?, ?, ?, ?, 'seed', ?)
+            """,
+            (
+                str(uuid4()),
+                seed["mitre_id"],
+                seed["platform"],
+                seed["command"],
+                seed["facts_traits"],
+                seed["tags"],
+            ),
+        )
+
+
 async def init_db() -> None:
-    """Create all 13 tables. Auto-creates the data directory if missing."""
+    """Create all tables and seed initial data. Auto-creates the data directory if missing."""
     db_path = Path(_DB_FILE)
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -264,6 +364,7 @@ async def init_db() -> None:
         await db.execute("PRAGMA journal_mode = WAL;")
         for ddl in _CREATE_TABLES:
             await db.execute(ddl)
+        await _seed_technique_playbooks(db)
         await db.commit()
 
 

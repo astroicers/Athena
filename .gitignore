@@ -93,3 +93,4 @@ CLAUDE.md.pre-asp
 CLAUDE.md.pre-upgrade
 .asp-tmp/
 *.out
+*.zip

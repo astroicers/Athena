@@ -127,6 +127,7 @@ If a prerequisite is unverified, flag it and suggest a Discovery technique to ve
 - Primary Engine: standard MITRE ATT&CK techniques with known ability mappings.
 - Adaptive Engine: for unknown defenses, high-stealth requirements, or novel environments.
 - Default to Primary Engine unless there is a specific reason for Adaptive Engine.
+- When recommending techniques, PREFER techniques listed in AVAILABLE TECHNIQUE PLAYBOOKS (Section 7.6). Only suggest techniques outside that list if there is a compelling tactical reason.
 
 ### 5. Risk Calibration
 Assess risk based on DETECTION LIKELIHOOD, not just impact:
@@ -204,6 +205,9 @@ Next Logical Stage: {next_stage}
 
 ## 7.5. HARVESTED CREDENTIALS (available for credential reuse)
 {harvested_creds_str}
+
+## 7.6. AVAILABLE TECHNIQUE PLAYBOOKS (executable via DirectSSHEngine)
+{playbook_summary}
 
 ## 8. LATEST OBSERVE SUMMARY
 {observe_summary}
@@ -479,6 +483,22 @@ class OrientEngine:
             else "None harvested yet."
         )
 
+        # Q12: Available technique playbooks (ADR-018 Layer C)
+        pb_cursor = await db.execute(
+            "SELECT mitre_id, tags FROM technique_playbooks "
+            "WHERE platform = 'linux' ORDER BY mitre_id"
+        )
+        playbook_rows = await pb_cursor.fetchall()
+        if playbook_rows:
+            lines = []
+            for row in playbook_rows:
+                tags = json.loads(row["tags"] or "[]")
+                tag_str = f" [{', '.join(tags)}]" if tags else ""
+                lines.append(f"- {row['mitre_id']}{tag_str} — available via DirectSSHEngine")
+            playbook_summary = "\n".join(lines)
+        else:
+            playbook_summary = "(no playbooks registered)"
+
         # --- Assemble user prompt ---
         user_prompt = _ORIENT_USER_PROMPT_TEMPLATE.format(
             codename=op["codename"] if op else "Unknown",
@@ -500,6 +520,7 @@ class OrientEngine:
             agents=agents_str,
             observe_summary=observe_summary,
             harvested_creds_str=harvested_creds_str,
+            playbook_summary=playbook_summary,
         )
 
         return _ORIENT_SYSTEM_PROMPT, user_prompt

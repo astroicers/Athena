@@ -167,7 +167,7 @@ async def test_engine_router_persistent_ssh_route():
                  "app.clients.persistent_ssh_client.PersistentSSHChannelEngine.execute",
                  new_callable=AsyncMock,
                  return_value=mock_exec_result,
-             ):
+             ) as mock_persistent_execute:
             result = await router.execute(
                 db=db,
                 technique_id="T1592",
@@ -177,3 +177,6 @@ async def test_engine_router_persistent_ssh_route():
             )
 
     assert result["status"] == "success"
+    assert mock_persistent_execute.call_count == 1
+    assert mock_persistent_execute.call_args[0][0] == "T1592"  # ability_id
+    assert mock_persistent_execute.call_args[0][1] == "root:toor@127.0.0.1:22"  # credential_string

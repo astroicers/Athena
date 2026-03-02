@@ -55,7 +55,8 @@ class EngineRouter:
         4. Extract facts from result
         5. Push WebSocket execution.update event
 
-        Dual-track routing (controlled by settings.EXECUTION_ENGINE):
+        Quad-track routing (controlled by settings.EXECUTION_ENGINE):
+        - "persistent_ssh": Use PersistentSSHChannelEngine (pooled sessions; Phase D)
         - "ssh"    : Use DirectSSHEngine with credential.ssh fact from DB
         - "caldera": Use C2EngineClient (requires alive agent; original path)
         - "mock"   : Use MockC2Client (MOCK_C2_ENGINE=true legacy path)
@@ -227,6 +228,9 @@ class EngineRouter:
         })
 
         from app.clients.persistent_ssh_client import PersistentSSHChannelEngine  # noqa: PLC0415
+        # PersistentSSHChannelEngine holds no per-instance state beyond operation_id.
+        # The connection pool (_SESSION_POOL) is module-level, so creating a new instance
+        # here reuses any existing SSH session for this operation.
         persistent_engine = PersistentSSHChannelEngine(operation_id=operation_id)
         result: ExecutionResult = await persistent_engine.execute(ability_id, credential_string)
 

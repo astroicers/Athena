@@ -111,3 +111,69 @@ async def test_c2_engine_client_check_version_callable():
     assert callable(client.sync_agents)
     # Cleanup
     await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_engine_router_persistent_ssh_route():
+    """EXECUTION_ENGINE=persistent_ssh routes to PersistentSSHChannelEngine."""
+    import aiosqlite
+    from unittest.mock import AsyncMock, MagicMock, patch
+    from app.services.engine_router import EngineRouter
+    from app.clients.mock_c2_client import MockC2Client
+    from app.services.fact_collector import FactCollector
+    from app.ws_manager import WebSocketManager
+    from app.clients import ExecutionResult
+
+    mock_ws = MagicMock()
+    mock_ws.broadcast = AsyncMock()
+    router = EngineRouter(
+        c2_engine=MockC2Client(),
+        adaptive_engine=None,
+        fact_collector=FactCollector(ws_manager=mock_ws),
+        ws_manager=mock_ws,
+    )
+
+    async with aiosqlite.connect(":memory:") as db:
+        db.row_factory = aiosqlite.Row
+        await db.executescript("""
+            CREATE TABLE techniques (id TEXT PRIMARY KEY, mitre_id TEXT, name TEXT,
+                tactic TEXT, tactic_id TEXT, kill_chain_stage TEXT, risk_level TEXT,
+                caldera_ability_id TEXT);
+            CREATE TABLE technique_executions (id TEXT PRIMARY KEY, technique_id TEXT,
+                target_id TEXT, operation_id TEXT, ooda_iteration_id TEXT,
+                engine TEXT, status TEXT, started_at TEXT, completed_at TEXT,
+                result_summary TEXT, facts_collected_count INTEGER DEFAULT 0,
+                error_message TEXT);
+            CREATE TABLE facts (id TEXT PRIMARY KEY, operation_id TEXT,
+                source_target_id TEXT, category TEXT, trait TEXT, value TEXT,
+                score INTEGER DEFAULT 1, collected_at TEXT, source TEXT);
+            CREATE TABLE operations (id TEXT PRIMARY KEY, techniques_executed INTEGER DEFAULT 0);
+            INSERT INTO techniques VALUES ('t1', 'T1592', 'Host Discovery',
+                'Reconnaissance', 'TA0043', 'recon', 'low', 'T1592');
+            INSERT INTO operations VALUES ('op-persist-test', 0);
+            INSERT INTO facts VALUES ('f1', 'op-persist-test', 'tgt-1', 'credential',
+                'credential.ssh', 'root:toor@127.0.0.1:22', 1, '2026-01-01', 'test');
+        """)
+        await db.commit()
+
+        mock_exec_result = ExecutionResult(
+            success=True, execution_id="exec-123",
+            output="Linux test", facts=[], error=None,
+        )
+
+        with patch("app.config.settings.EXECUTION_ENGINE", "persistent_ssh"), \
+             patch("app.config.settings.MOCK_C2_ENGINE", False), \
+             patch(
+                 "app.clients.persistent_ssh_client.PersistentSSHChannelEngine.execute",
+                 new_callable=AsyncMock,
+                 return_value=mock_exec_result,
+             ):
+            result = await router.execute(
+                db=db,
+                technique_id="T1592",
+                target_id="tgt-1",
+                engine="persistent_ssh",
+                operation_id="op-persist-test",
+            )
+
+    assert result["status"] == "success"

@@ -79,12 +79,17 @@ class EngineRouter:
         #   EXECUTION_ENGINE="mock"   → mock path
         #   MOCK_C2_ENGINE=True         → treated as "mock" for backward compat
         #     UNLESS EXECUTION_ENGINE is explicitly "caldera" or "ssh"
-        effective_mode = settings.EXECUTION_ENGINE  # "ssh" | "caldera" | "mock"
-        if settings.MOCK_C2_ENGINE and effective_mode not in ("caldera", "ssh"):
+        effective_mode = settings.EXECUTION_ENGINE  # "ssh" | "persistent_ssh" | "caldera" | "mock"
+        if settings.MOCK_C2_ENGINE and effective_mode not in ("caldera", "ssh", "persistent_ssh"):
             # Legacy MOCK_C2_ENGINE=True overrides to mock when engine is ambiguous
             effective_mode = "mock"
 
-        if effective_mode == "ssh":
+        if effective_mode == "persistent_ssh":
+            return await self._execute_persistent_ssh(
+                db, exec_id, now, ability_id, technique_id, target_id,
+                engine, operation_id, ooda_iteration_id,
+            )
+        elif effective_mode == "ssh":
             return await self._execute_ssh(
                 db, exec_id, now, ability_id, technique_id, target_id,
                 engine, operation_id, ooda_iteration_id,
@@ -162,6 +167,68 @@ class EngineRouter:
         from app.clients.direct_ssh_client import DirectSSHEngine  # noqa: PLC0415
         ssh_engine = DirectSSHEngine()
         result: ExecutionResult = await ssh_engine.execute(ability_id, credential_string)
+
+        return await self._finalize_execution(
+            db, exec_id, technique_id, target_id, engine,
+            operation_id, result,
+        )
+
+    async def _execute_persistent_ssh(
+        self,
+        db: aiosqlite.Connection,
+        exec_id: str,
+        now: str,
+        ability_id: str,
+        technique_id: str,
+        target_id: str,
+        engine: str,
+        operation_id: str,
+        ooda_iteration_id: str | None,
+    ) -> dict:
+        """Persistent SSH execution path — reuses session pool across techniques."""
+        cursor = await db.execute(
+            "SELECT value FROM facts "
+            "WHERE operation_id = ? AND source_target_id = ? AND trait = 'credential.ssh' "
+            "ORDER BY score DESC LIMIT 1",
+            (operation_id, target_id),
+        )
+        cred_row = await cursor.fetchone()
+
+        if not cred_row:
+            logger.warning(
+                "No SSH credentials for target %s in operation %s", target_id, operation_id
+            )
+            return {
+                "execution_id": exec_id,
+                "technique_id": technique_id,
+                "target_id": target_id,
+                "engine": engine,
+                "status": "failed",
+                "result_summary": None,
+                "facts_collected_count": 0,
+                "error": f"No SSH credentials for target {target_id}",
+            }
+
+        credential_string = cred_row["value"]
+
+        await db.execute(
+            "INSERT INTO technique_executions "
+            "(id, technique_id, target_id, operation_id, ooda_iteration_id, "
+            "engine, status, started_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, 'running', ?)",
+            (exec_id, technique_id, target_id, operation_id,
+             ooda_iteration_id, engine, now),
+        )
+        await db.commit()
+
+        await self._ws.broadcast(operation_id, "execution.update", {
+            "id": exec_id, "technique_id": technique_id,
+            "status": "running", "engine": engine,
+        })
+
+        from app.clients.persistent_ssh_client import PersistentSSHChannelEngine  # noqa: PLC0415
+        persistent_engine = PersistentSSHChannelEngine(operation_id=operation_id)
+        result: ExecutionResult = await persistent_engine.execute(ability_id, credential_string)
 
         return await self._finalize_execution(
             db, exec_id, technique_id, target_id, engine,

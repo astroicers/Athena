@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     NVD_API_KEY: str = ""
     NVD_CACHE_TTL_HOURS: int = 24
     VULN_LOOKUP_ENABLED: bool = True
+    OODA_LOOP_INTERVAL_SEC: int = 30
 
 
 settings = Settings()

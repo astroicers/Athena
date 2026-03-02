@@ -17,6 +17,7 @@ dependencies = [
     "asyncssh>=2.14.0",
     "cryptography>=42.0.0",
     "dnspython>=2.4.0",
+    "apscheduler>=3.10.0",
 ]
 
 [project.optional-dependencies]

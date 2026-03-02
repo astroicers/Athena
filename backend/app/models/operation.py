@@ -34,6 +34,7 @@ class Operation(BaseModel):
     techniques_total: int = 0
     active_agents: int = 0
     data_exfiltrated_bytes: int = 0
+    max_iterations: int = 0  # 0 = unlimited
     automation_mode: AutomationMode = AutomationMode.SEMI_AUTO
     risk_threshold: RiskLevel = RiskLevel.MEDIUM
     operator_id: str | None = None

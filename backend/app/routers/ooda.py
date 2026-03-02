@@ -23,7 +23,7 @@ from app.clients.c2_client import C2EngineClient
 from app.clients.mock_c2_client import MockC2Client
 from app.clients.ai_engine_client import AiEngineClient
 from app.config import settings
-from app.database import get_db
+from app.database import get_db, _DB_FILE
 from app.models import OODAIteration
 from app.models.api_schemas import OODATimelineEntry
 from app.routers._deps import ensure_operation
@@ -34,6 +34,7 @@ from app.services.fact_collector import FactCollector
 from app.services.ooda_controller import OODAController
 from app.services.orient_engine import OrientEngine
 from app.ws_manager import ws_manager
+from app.services.ooda_scheduler import start_auto_loop, stop_auto_loop, get_loop_status
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -174,3 +175,36 @@ async def get_ooda_timeline(
                     )
                 )
     return entries
+
+
+@router.post("/operations/{operation_id}/ooda/auto-start")
+async def start_ooda_auto_loop(
+    operation_id: str,
+    interval_sec: int = 30,
+    max_iterations: int = 0,
+    db: aiosqlite.Connection = Depends(get_db),
+):
+    """Start automated OODA loop (APScheduler). Runs every interval_sec until max_iterations or stopped."""
+    await ensure_operation(db, operation_id)  # raises 404 if not found
+    return await start_auto_loop(
+        operation_id=operation_id,
+        db_path=str(_DB_FILE),
+        interval_sec=interval_sec,
+        max_iterations=max_iterations,
+    )
+
+
+@router.delete("/operations/{operation_id}/ooda/auto-stop")
+async def stop_ooda_auto_loop(
+    operation_id: str,
+    db: aiosqlite.Connection = Depends(get_db),
+):
+    """Stop automated OODA loop for this operation."""
+    await ensure_operation(db, operation_id)  # raises 404 if not found
+    return await stop_auto_loop(operation_id)
+
+
+@router.get("/operations/{operation_id}/ooda/auto-status")
+async def get_ooda_auto_status(operation_id: str):
+    """Get auto loop status for this operation (purely in-memory, no DB check needed)."""
+    return get_loop_status(operation_id)

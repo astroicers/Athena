@@ -117,3 +117,4 @@ class RiskLevel(str, Enum):
 class AutomationMode(str, Enum):
     MANUAL = "manual"
     SEMI_AUTO = "semi_auto"
+    AUTO_FULL = "auto_full"

@@ -360,3 +360,35 @@ class OODAController:
                 (status, step_id),
             )
         await db.commit()
+
+
+def build_ooda_controller() -> "OODAController":
+    """Factory for creating OODAController without request context (used by scheduler)."""
+    from app.clients.ai_engine_client import AiEngineClient
+    from app.clients.c2_client import C2EngineClient
+    from app.clients.mock_c2_client import MockC2Client
+    from app.config import settings
+    from app.services.c5isr_mapper import C5ISRMapper
+    from app.services.decision_engine import DecisionEngine
+    from app.services.engine_router import EngineRouter
+    from app.services.fact_collector import FactCollector
+    from app.services.orient_engine import OrientEngine
+    from app.ws_manager import ws_manager
+
+    fc = FactCollector(ws_manager)
+    orient = OrientEngine(ws_manager)
+    decision = DecisionEngine()
+    c5isr = C5ISRMapper(ws_manager)
+
+    # Mirror _get_controller() logic: respect MOCK_C2_ENGINE setting
+    c2_engine: MockC2Client | C2EngineClient = MockC2Client()
+    if not settings.MOCK_C2_ENGINE:
+        try:
+            c2_engine = C2EngineClient(settings.C2_ENGINE_URL, settings.C2_ENGINE_API_KEY)
+        except Exception:
+            logger.warning("build_ooda_controller: failed to connect to C2 engine, falling back to mock")
+
+    ai_engine = AiEngineClient(settings.AI_ENGINE_URL)
+    router_svc = EngineRouter(c2_engine, ai_engine if ai_engine.enabled else None, fc, ws_manager)
+
+    return OODAController(fc, orient, decision, router_svc, c5isr, ws_manager)

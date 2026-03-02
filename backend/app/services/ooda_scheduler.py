@@ -1,0 +1,131 @@
+# Copyright 2026 Athena Contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""APScheduler-based OODA loop automation service."""
+
+import logging
+from typing import Any
+
+import aiosqlite
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+from app.config import settings
+from app.services.ooda_controller import build_ooda_controller
+
+logger = logging.getLogger(__name__)
+
+_scheduler = AsyncIOScheduler(timezone="UTC")
+_active_loops: dict[str, dict[str, Any]] = {}
+
+
+def get_scheduler() -> AsyncIOScheduler:
+    return _scheduler
+
+
+def start_scheduler() -> None:
+    if not _scheduler.running:
+        _scheduler.start()
+        logger.info("OODA APScheduler started")
+
+
+def stop_scheduler() -> None:
+    if _scheduler.running:
+        _scheduler.shutdown(wait=False)
+        logger.info("OODA APScheduler stopped")
+
+
+async def start_auto_loop(
+    operation_id: str,
+    db_path: str,
+    interval_sec: int = settings.OODA_LOOP_INTERVAL_SEC,
+    max_iterations: int = 0,
+) -> dict:
+    """Start automated OODA loop for an operation."""
+    if operation_id in _active_loops:
+        return {"status": "already_running", "operation_id": operation_id}
+
+    # Issue 4: Build controller once here, captured in closure below
+    controller = build_ooda_controller()
+
+    _active_loops[operation_id] = {
+        "interval_sec": interval_sec,
+        "max_iterations": max_iterations,
+        "iteration_count": 0,
+        "job_id": f"ooda_{operation_id}",
+    }
+
+    async def _run_cycle():
+        meta = _active_loops.get(operation_id)
+        if not meta:
+            return
+        if meta["max_iterations"] > 0 and meta["iteration_count"] >= meta["max_iterations"]:
+            logger.info(
+                "Operation %s reached max_iterations=%d, stopping",
+                operation_id,
+                meta["max_iterations"],
+            )
+            await stop_auto_loop(operation_id)
+            return
+        meta["iteration_count"] += 1
+        logger.info("OODA auto-cycle %d for operation %s", meta["iteration_count"], operation_id)
+        try:
+            # Issue 6: Enable foreign key enforcement on every scheduler-owned connection
+            async with aiosqlite.connect(db_path) as db:
+                await db.execute("PRAGMA foreign_keys = ON")
+                db.row_factory = aiosqlite.Row
+                await controller.trigger_cycle(db, operation_id)
+        except Exception:
+            logger.exception("OODA auto-cycle failed for operation %s", operation_id)
+
+    _scheduler.add_job(
+        _run_cycle,
+        trigger="interval",
+        seconds=interval_sec,
+        id=f"ooda_{operation_id}",
+        replace_existing=True,
+        max_instances=1,
+    )
+    return {
+        "status": "started",
+        "operation_id": operation_id,
+        "interval_sec": interval_sec,
+        "max_iterations": max_iterations,
+    }
+
+
+async def stop_auto_loop(operation_id: str) -> dict:
+    """Stop automated OODA loop."""
+    job_id = f"ooda_{operation_id}"
+    if _scheduler.get_job(job_id):
+        _scheduler.remove_job(job_id)
+    meta = _active_loops.pop(operation_id, None)
+    iterations_completed = meta["iteration_count"] if meta else 0
+    return {
+        "status": "stopped",
+        "operation_id": operation_id,
+        "iterations_completed": iterations_completed,
+    }
+
+
+def get_loop_status(operation_id: str) -> dict:
+    meta = _active_loops.get(operation_id)
+    if not meta:
+        return {"status": "idle", "operation_id": operation_id}
+    return {
+        "status": "running",
+        "operation_id": operation_id,
+        "interval_sec": meta["interval_sec"],
+        "max_iterations": meta["max_iterations"],
+        "iteration_count": meta["iteration_count"],
+    }

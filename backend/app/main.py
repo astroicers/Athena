@@ -30,6 +30,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import _DB_FILE, get_db, init_db
+from app.services.ooda_scheduler import start_scheduler, stop_scheduler
 from app.routers import (
     admin,
     agents,
@@ -54,6 +55,7 @@ from app.routers import (
 async def lifespan(app: FastAPI):
     """Initialise DB and optionally seed demo data on startup."""
     await init_db()
+    start_scheduler()
 
     # Seed if the operations table is empty
     async with aiosqlite.connect(_DB_FILE) as db:
@@ -64,6 +66,7 @@ async def lifespan(app: FastAPI):
             await seed()
 
     yield  # application runs here
+    stop_scheduler()
 
 
 app = FastAPI(

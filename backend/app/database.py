@@ -57,6 +57,7 @@ _CREATE_TABLES: list[str] = [
         active_agents INTEGER DEFAULT 0,
         data_exfiltrated_bytes INTEGER DEFAULT 0,
         automation_mode TEXT DEFAULT 'semi_auto',
+        max_iterations INTEGER DEFAULT 0,
         risk_threshold TEXT DEFAULT 'medium',
         operator_id TEXT REFERENCES users(id) ON DELETE SET NULL,
         created_at TEXT DEFAULT (datetime('now')),
@@ -365,6 +366,12 @@ async def init_db() -> None:
         for ddl in _CREATE_TABLES:
             await db.execute(ddl)
         await _seed_technique_playbooks(db)
+        # Migration: add max_iterations column if not present
+        try:
+            await db.execute("ALTER TABLE operations ADD COLUMN max_iterations INTEGER DEFAULT 0")
+            await db.commit()
+        except Exception:
+            pass  # column already exists
         await db.commit()
 
 

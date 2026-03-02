@@ -110,3 +110,23 @@ CALDERA_MOCK_BEACON: bool = False
 - 取代：Caldera 為必要執行引擎的設計假設
 - 被取代：（無）
 - 參考：ADR-006（BaseEngineClient 介面）、ADR-018（Technique Playbook 知識庫）、ADR-015（Recon & Initial Access）
+
+---
+
+## 技術債（Tech Debt）
+
+### TD-001：PersistentSSHChannelEngine（Phase D — 已實作）
+- **狀態**：✅ 已實作（`clients/persistent_ssh_client.py`，`EXECUTION_ENGINE=persistent_ssh`）
+- **說明**：DirectSSHEngine 每次 technique 建立新 SSH 連線，無 session context
+- **影響場景**：T1059 互動式 shell、多步驟 post-exploitation、跨步驟環境變數共享
+- **解法**：(operation_id, credential_string) session pool，keepalive_interval=30s，asyncio.Lock 防 TOCTOU
+
+### TD-002：Non-SSH 初始存取（Phase C — 待 ADR-019 Accepted）
+- **狀態**：⏳ Draft（`ADR-019-non-ssh-initial-access.md`）
+- **影響**：T1190 vsftpd 2.3.4 backdoor、UnrealIRCd exploit、Samba usermap_script（無 SSH 前提）
+- **解法**：Metasploit RPC 整合（禁止在 ADR-019 Accepted 前實作）
+
+### TD-003：Windows / WinRM 支援（Phase C — 規劃中）
+- **狀態**：⏳ 無對應 ADR，待建立
+- **現狀**：全部引擎（DirectSSH / PersistentSSH）僅支援 Linux/SSH
+- **解法**：pywinrm 或 Metasploit Meterpreter，需新 ADR

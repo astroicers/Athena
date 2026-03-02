@@ -52,3 +52,8 @@ def test_ssh_common_parse_stdout_empty_returns_no_facts():
     from app.clients._ssh_common import _parse_stdout_to_facts
     facts = _parse_stdout_to_facts("T1592", "")
     assert facts == []
+
+def test_ssh_common_parse_stdout_custom_source():
+    from app.clients._ssh_common import _parse_stdout_to_facts
+    facts = _parse_stdout_to_facts("T1592", "Linux kali 5.10\n", source="persistent_ssh")
+    assert facts[0]["source"] == "persistent_ssh"

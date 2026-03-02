@@ -75,7 +75,11 @@ def _parse_credential(cred_value: str) -> tuple[str, str, str, int]:
     return user, password, host, port
 
 
-def _parse_stdout_to_facts(mitre_id: str, stdout: str) -> list[dict[str, Any]]:
+def _parse_stdout_to_facts(
+    mitre_id: str,
+    stdout: str,
+    source: str = "direct_ssh",
+) -> list[dict[str, Any]]:
     """Extract facts from command stdout based on technique type."""
     facts = []
     traits = TECHNIQUE_FACT_TRAITS.get(mitre_id, [])
@@ -88,6 +92,6 @@ def _parse_stdout_to_facts(mitre_id: str, stdout: str) -> list[dict[str, Any]]:
                 "trait": trait,
                 "value": lines[0][:500],
                 "score": 1,
-                "source": "direct_ssh",
+                "source": source,
             })
     return facts

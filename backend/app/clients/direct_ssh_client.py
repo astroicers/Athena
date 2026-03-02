@@ -22,10 +22,12 @@ from uuid import uuid4
 from app.clients import BaseEngineClient, ExecutionResult
 from app.clients._ssh_common import (
     TECHNIQUE_EXECUTORS,
-    TECHNIQUE_FACT_TRAITS,
     _parse_credential,
     _parse_stdout_to_facts,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class DirectSSHEngine(BaseEngineClient):

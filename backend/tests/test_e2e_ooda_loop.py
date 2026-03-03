@@ -144,7 +144,8 @@ async def test_ooda_trigger_full_cycle(client: AsyncClient):
     data = resp.json()
     assert data["status"] == "queued"
     assert data["operation_id"] == "test-op-1"
-    assert "iteration_id" in data
+    # iteration_id is internal only — must NOT be exposed in the response
+    assert "iteration_id" not in data
 
 
 async def test_ooda_history_after_trigger(client: AsyncClient):
@@ -268,7 +269,8 @@ async def test_e2e_kill_chain_create_op_add_target_trigger_ooda(client: AsyncCli
     ooda_data = ooda_resp.json()
     assert ooda_data["status"] == "queued"
     assert ooda_data["operation_id"] == op_id
-    assert "iteration_id" in ooda_data
+    # iteration_id is internal only — must NOT be exposed in the response
+    assert "iteration_id" not in ooda_data
 
     # Step 5: OODA history endpoint still responds (background task was mocked)
     hist_resp = await client.get(f"/api/operations/{op_id}/ooda/history")

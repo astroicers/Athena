@@ -111,7 +111,6 @@ async def trigger_ooda(
     )
 
     return OodaTriggerQueued(
-        iteration_id=iteration_id,
         status="queued",
         operation_id=operation_id,
     )

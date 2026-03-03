@@ -36,6 +36,5 @@ class OODAIteration(BaseModel):
 
 
 class OodaTriggerQueued(BaseModel):
-    iteration_id: str
     status: Literal["queued"] = "queued"
     operation_id: str

@@ -2,11 +2,12 @@
 # Licensed under the Apache License, Version 2.0
 """Unit tests: lateral movement — SSH key-based auth + technique mapping."""
 import base64
+import uuid
 
 import pytest
 
 
-async def test_technique_executors_has_lateral_techniques():
+def test_technique_executors_has_lateral_techniques():
     """TECHNIQUE_EXECUTORS 應包含橫移技術。"""
     from app.clients._ssh_common import TECHNIQUE_EXECUTORS, TECHNIQUE_FACT_TRAITS
 
@@ -15,7 +16,7 @@ async def test_technique_executors_has_lateral_techniques():
         assert tid in TECHNIQUE_FACT_TRAITS, f"{tid} missing from TECHNIQUE_FACT_TRAITS"
 
 
-async def test_parse_key_credential_valid():
+def test_parse_key_credential_valid():
     """_parse_key_credential 應正確解析 user@host:port#<b64key> 格式。"""
     from app.clients.persistent_ssh_client import _parse_key_credential
 
@@ -28,7 +29,7 @@ async def test_parse_key_credential_valid():
     assert key_content == "FAKE_KEY_CONTENT"
 
 
-async def test_parse_key_credential_default_port():
+def test_parse_key_credential_default_port():
     """_parse_key_credential 無 port 時預設 22。"""
     from app.clients.persistent_ssh_client import _parse_key_credential
 
@@ -39,9 +40,19 @@ async def test_parse_key_credential_default_port():
     assert host == "192.168.1.1"
 
 
+def test_parse_key_credential_invalid_format_raises():
+    """格式錯誤的 target 應拋出 ValueError。"""
+    from app.clients.persistent_ssh_client import _parse_key_credential
+
+    with pytest.raises(ValueError):
+        _parse_key_credential("no_hash_separator_here")
+
+    with pytest.raises(ValueError):
+        _parse_key_credential("user@host:22#NOT_VALID_BASE64!!!")
+
+
 async def test_ssh_key_fact_prioritized_over_password(seeded_db):
     """credential.ssh_key fact 應比 credential.ssh 優先被選取。"""
-    import uuid
     import aiosqlite
     seeded_db.row_factory = aiosqlite.Row
     # 插入兩個 fact：password 和 key

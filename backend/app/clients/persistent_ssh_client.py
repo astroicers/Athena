@@ -15,6 +15,7 @@
 """PersistentSSHChannelEngine — SSH session pool for multi-step post-exploitation."""
 
 import asyncio
+import base64
 import logging
 from typing import Any
 from uuid import uuid4
@@ -40,21 +41,27 @@ _SESSION_POOL: dict[tuple[str, str], Any] = {}
 # Per-key locks to prevent TOCTOU races when two coroutines race to open the same connection.
 _SESSION_LOCKS: dict[tuple[str, str], asyncio.Lock] = {}
 
+
 def _parse_key_credential(target: str) -> tuple[str, str, int, str]:
     """Parse 'user@host:port#<base64_private_key>' format.
 
     Returns (username, host, port, key_content).
+    Raises ValueError if the format is invalid or base64 decoding fails.
     """
-    conn_part, key_b64 = target.split("#", 1)
-    import base64
-    key_content = base64.b64decode(key_b64).decode()
-    user, hostport = conn_part.split("@", 1)
-    if ":" in hostport:
-        host, port_str = hostport.rsplit(":", 1)
-        port = int(port_str)
-    else:
-        host, port = hostport, 22
-    return user, host, port, key_content
+    try:
+        conn_part, key_b64 = target.split("#", 1)
+        key_content = base64.b64decode(key_b64).decode()
+        user, hostport = conn_part.split("@", 1)
+        if ":" in hostport:
+            host, port_str = hostport.rsplit(":", 1)
+            port = int(port_str)
+        else:
+            host, port = hostport, 22
+        return user, host, port, key_content
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise ValueError(f"Invalid ssh_key credential format: {exc}") from exc
+    except Exception as exc:  # binascii.Error from b64decode
+        raise ValueError(f"Invalid ssh_key credential format: {exc}") from exc
 
 
 class PersistentSSHChannelEngine(BaseEngineClient):

@@ -516,7 +516,8 @@ class OrientEngine:
         uncompromised_cursor = await db.execute(
             "SELECT id, hostname, ip_address, role, os "
             "FROM targets "
-            "WHERE operation_id = ? AND (is_compromised = 0 OR is_compromised IS NULL)",
+            "WHERE operation_id = ? AND (is_compromised = 0 OR is_compromised IS NULL) "
+            "LIMIT 50",
             (operation_id,),
         )
         uncompromised_rows = await uncompromised_cursor.fetchall()

@@ -189,10 +189,13 @@ class EngineRouter:
         ssh_engine = DirectSSHEngine()
         result: ExecutionResult = await ssh_engine.execute(ability_id, credential_string, output_parser=output_parser)
 
-        return await self._finalize_execution(
+        final = await self._finalize_execution(
             db, exec_id, technique_id, target_id, engine,
             operation_id, result,
         )
+        if final.get("status") == "success":
+            await self._mark_target_compromised(db, target_id, result.output)
+        return final
 
     async def _execute_persistent_ssh(
         self,
@@ -258,10 +261,13 @@ class EngineRouter:
         persistent_engine = PersistentSSHChannelEngine(operation_id=operation_id)
         result: ExecutionResult = await persistent_engine.execute(ability_id, credential_string, output_parser=output_parser)
 
-        return await self._finalize_execution(
+        final = await self._finalize_execution(
             db, exec_id, technique_id, target_id, engine,
             operation_id, result,
         )
+        if final.get("status") == "success":
+            await self._mark_target_compromised(db, target_id, result.output)
+        return final
 
     async def _get_output_parser(
         self, db: aiosqlite.Connection, technique_id: str
@@ -275,6 +281,27 @@ class EngineRouter:
         )
         row = await cursor.fetchone()
         return row["output_parser"] if row else None
+
+
+    async def _mark_target_compromised(
+        self,
+        db: aiosqlite.Connection,
+        target_id: str,
+        output: "str | None",
+    ) -> None:
+        """SSH 執行成功後，更新 target 的 is_compromised 和 privilege_level。"""
+        privilege = "user"
+        if output:
+            if "uid=0" in output or "root" in output:
+                privilege = "root"
+            elif "sudo" in output.lower():
+                privilege = "sudo"
+
+        await db.execute(
+            "UPDATE targets SET is_compromised = 1, privilege_level = ? WHERE id = ?",
+            (privilege, target_id),
+        )
+        await db.commit()
 
     async def _execute_caldera(
         self,

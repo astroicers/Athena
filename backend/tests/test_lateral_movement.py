@@ -77,3 +77,123 @@ async def test_ssh_key_fact_prioritized_over_password(seeded_db):
     )
     row = await cursor.fetchone()
     assert row["trait"] == "credential.ssh_key"
+
+
+async def test_successful_ssh_marks_target_compromised(seeded_db):
+    """SSH 執行成功後，target.is_compromised 應為 1，privilege_level 為 'root'。"""
+    import uuid
+    import aiosqlite
+    from unittest.mock import AsyncMock, MagicMock, patch
+    from app.services.engine_router import EngineRouter
+    from app.clients import ExecutionResult
+
+    # Insert SSH credential fact so _execute_ssh finds it
+    seeded_db.row_factory = aiosqlite.Row
+    await seeded_db.execute(
+        "INSERT INTO facts (id, operation_id, source_target_id, trait, value, category, score) "
+        "VALUES (?, 'test-op-1', 'test-target-1', 'credential.ssh', 'root:pass@10.0.0.1:22', 'credential', 1)",
+        (str(uuid.uuid4()),),
+    )
+    await seeded_db.commit()
+
+    mock_result = ExecutionResult(
+        success=True,
+        execution_id="test-exec-1",
+        output="uid=0(root) gid=0(root) groups=0(root)",
+        facts=[],
+    )
+
+    ws = MagicMock()
+    ws.broadcast = AsyncMock()
+    fact_collector = MagicMock()
+    fact_collector.collect_from_result = AsyncMock()
+
+    with patch(
+        "app.clients.direct_ssh_client.DirectSSHEngine.execute",
+        new_callable=AsyncMock,
+        return_value=mock_result,
+    ):
+        router = EngineRouter(
+            c2_engine=MagicMock(),
+            adaptive_engine=None,
+            fact_collector=fact_collector,
+            ws_manager=ws,
+        )
+        await router._execute_ssh(
+            db=seeded_db,
+            exec_id="test-exec-99",
+            now="2026-01-01T00:00:00",
+            ability_id="T1021.004",
+            technique_id="T1021.004",
+            target_id="test-target-1",
+            engine="ssh",
+            operation_id="test-op-1",
+            ooda_iteration_id=None,
+        )
+
+    cursor = await seeded_db.execute(
+        "SELECT is_compromised, privilege_level FROM targets WHERE id = 'test-target-1'"
+    )
+    row = await cursor.fetchone()
+    assert row["is_compromised"] == 1
+    assert row["privilege_level"] == "root"
+
+
+async def test_failed_ssh_does_not_mark_compromised(seeded_db):
+    """SSH 執行失敗時，target.is_compromised 不應變更。"""
+    import uuid
+    import aiosqlite
+    from unittest.mock import AsyncMock, MagicMock, patch
+    from app.services.engine_router import EngineRouter
+    from app.clients import ExecutionResult
+
+    # Insert SSH credential fact so _execute_ssh finds it
+    seeded_db.row_factory = aiosqlite.Row
+    await seeded_db.execute(
+        "INSERT INTO facts (id, operation_id, source_target_id, trait, value, category, score) "
+        "VALUES (?, 'test-op-1', 'test-target-1', 'credential.ssh', 'root:pass@10.0.0.1:22', 'credential', 1)",
+        (str(uuid.uuid4()),),
+    )
+    await seeded_db.commit()
+
+    mock_result = ExecutionResult(
+        success=False,
+        execution_id="test-exec-100",
+        output=None,
+        error="Connection refused",
+        facts=[],
+    )
+
+    ws = MagicMock()
+    ws.broadcast = AsyncMock()
+    fact_collector = MagicMock()
+    fact_collector.collect_from_result = AsyncMock()
+
+    with patch(
+        "app.clients.direct_ssh_client.DirectSSHEngine.execute",
+        new_callable=AsyncMock,
+        return_value=mock_result,
+    ):
+        router = EngineRouter(
+            c2_engine=MagicMock(),
+            adaptive_engine=None,
+            fact_collector=fact_collector,
+            ws_manager=ws,
+        )
+        await router._execute_ssh(
+            db=seeded_db,
+            exec_id="test-exec-100",
+            now="2026-01-01T00:00:00",
+            ability_id="T1021.004",
+            technique_id="T1021.004",
+            target_id="test-target-1",
+            engine="ssh",
+            operation_id="test-op-1",
+            ooda_iteration_id=None,
+        )
+
+    cursor = await seeded_db.execute(
+        "SELECT is_compromised FROM targets WHERE id = 'test-target-1'"
+    )
+    row = await cursor.fetchone()
+    assert row["is_compromised"] == 0  # 未改變

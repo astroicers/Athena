@@ -302,13 +302,17 @@ async def test_orient_build_prompt_categorized_facts(seeded_db):
 
 
 async def test_orient_prompt_includes_playbook_summary(seeded_db):
-    """Section 7.6 appears in generated prompt when playbooks exist (ADR-018 Layer C)."""
+    """Section 7.6 appears in generated prompt when playbooks exist (ADR-018 Layer C).
+
+    test-target-1 is 'Windows Server 2022', so platform resolves to 'windows'.
+    Insert windows-platform playbooks to verify they appear in Section 7.6.
+    """
     await seeded_db.execute(
         "INSERT INTO technique_playbooks (id, mitre_id, platform, command, facts_traits, source, tags) "
-        "VALUES ('pb-1', 'T1046', 'linux', 'netstat -tulnp', '[\"service.open_port\"]', 'seed', "
-        "'[\"discovery\"]'), "
-        "       ('pb-2', 'T1592', 'linux', 'uname -a && id', '[\"host.os\"]', 'seed', "
-        "'[\"reconnaissance\"]')"
+        "VALUES ('pb-1', 'T1021.001', 'windows', 'whoami; hostname', '[\"host.os\"]', 'seed', "
+        "'[\"lateral_move\",\"winrm\",\"windows\"]'), "
+        "       ('pb-2', 'T1059.001', 'windows', 'Get-Process | Select -First 5', '[\"host.os\"]', 'seed', "
+        "'[\"execution\",\"powershell\",\"windows\"]')"
     )
     await seeded_db.commit()
 
@@ -320,8 +324,8 @@ async def test_orient_prompt_includes_playbook_summary(seeded_db):
     assert "7.6" in user_prompt
     assert "AVAILABLE TECHNIQUE PLAYBOOKS" in user_prompt
     assert "available via DirectSSHEngine" in user_prompt
-    assert "T1046" in user_prompt
-    assert "T1592" in user_prompt
+    assert "T1021.001" in user_prompt
+    assert "T1059.001" in user_prompt
 
 
 async def test_orient_prompt_no_playbooks_shows_placeholder(seeded_db):

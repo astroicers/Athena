@@ -43,3 +43,101 @@ async def test_section_77_idle_when_no_creds(seeded_db):
     engine = OrientEngine(_make_ws())
     _, user_prompt = await engine._build_prompt(seeded_db, "test-op-1", "test-target-1")
     assert "No lateral movement opportunities" in user_prompt
+
+
+async def test_section_76_shows_windows_playbooks_for_windows_target(seeded_db):
+    """Windows target → Section 7.6 shows Windows playbooks (T1021.001 or T1053.005).
+
+    seeded_db has test-target-1 as 'Windows Server 2022', so platform detection
+    should resolve to 'windows' and query windows-platform playbooks.
+    """
+    import aiosqlite
+    from app.database import _seed_technique_playbooks
+    seeded_db.row_factory = aiosqlite.Row
+
+    # Seed playbooks so Section 7.6 has data to return
+    await _seed_technique_playbooks(seeded_db)
+    await seeded_db.commit()
+
+    from app.services.orient_engine import OrientEngine
+    engine = OrientEngine(_make_ws())
+    _, user_prompt = await engine._build_prompt(seeded_db, "test-op-1", "test-target-1")
+    # Windows target should show windows platform playbooks (T1021.001 or T1053.005)
+    assert "windows" in user_prompt.lower() or "T1021.001" in user_prompt or "T1053.005" in user_prompt
+
+
+async def test_section_76_shows_linux_playbooks_for_linux_target(seeded_db):
+    """Linux target → Section 7.6 shows Linux playbooks (not Windows-only techniques).
+
+    Inserts a second Linux target and verifies linux playbooks appear.
+    """
+    import aiosqlite
+    from app.database import _seed_technique_playbooks
+    seeded_db.row_factory = aiosqlite.Row
+
+    # Insert a Linux-only operation and target
+    await seeded_db.execute(
+        "INSERT INTO operations (id, code, name, codename, strategic_intent, status, current_ooda_phase) "
+        "VALUES ('test-op-linux', 'OP-LNX-001', 'Linux Op', 'SHADOW-LNX', "
+        "'Test linux intent', 'active', 'observe')"
+    )
+    await seeded_db.execute(
+        "INSERT INTO targets (id, hostname, ip_address, os, role, operation_id) "
+        "VALUES ('test-target-linux', 'LX-01', '10.0.2.1', 'Ubuntu 22.04', "
+        "'Web Server', 'test-op-linux')"
+    )
+    await seeded_db.commit()
+
+    # Seed playbooks
+    await _seed_technique_playbooks(seeded_db)
+    await seeded_db.commit()
+
+    from app.services.orient_engine import OrientEngine
+    engine = OrientEngine(_make_ws())
+    _, user_prompt = await engine._build_prompt(seeded_db, "test-op-linux", "observe")
+    # Linux target should show linux platform playbooks (e.g. T1053.003 cron, T1105, etc.)
+    assert "linux" in user_prompt.lower() or "T1053.003" in user_prompt or "T1543.002" in user_prompt
+
+
+async def test_section_77_shows_persistence_status(seeded_db):
+    """Section 7.7 should always include 'Persistence status:' line."""
+    import aiosqlite
+    seeded_db.row_factory = aiosqlite.Row
+
+    from app.services.orient_engine import OrientEngine
+    engine = OrientEngine(_make_ws())
+    _, user_prompt = await engine._build_prompt(seeded_db, "test-op-1", "test-target-1")
+    assert "Persistence status:" in user_prompt
+
+
+async def test_section_77_shows_persistence_facts_when_present(seeded_db):
+    """When host.persistence facts exist, Section 7.7 reports confirmed persistence vectors."""
+    import aiosqlite
+    seeded_db.row_factory = aiosqlite.Row
+
+    # Insert a persistence fact for the primary target
+    await seeded_db.execute(
+        "INSERT INTO facts "
+        "(id, operation_id, source_target_id, trait, value, category, score) "
+        "VALUES (?, 'test-op-1', 'test-target-1', 'host.persistence', "
+        "'cron job /etc/cron.d/backdoor', 'host', 1)",
+        (str(uuid.uuid4()),),
+    )
+    await seeded_db.commit()
+
+    from app.services.orient_engine import OrientEngine
+    engine = OrientEngine(_make_ws())
+    _, user_prompt = await engine._build_prompt(seeded_db, "test-op-1", "test-target-1")
+    assert "Persistence vectors confirmed:" in user_prompt
+    assert "cron job" in user_prompt
+
+
+async def test_section_77_shows_no_persistence_when_none(seeded_db):
+    """When no host.persistence facts exist, Section 7.7 reports no persistence established."""
+    import aiosqlite
+    seeded_db.row_factory = aiosqlite.Row
+
+    from app.services.orient_engine import OrientEngine
+    engine = OrientEngine(_make_ws())
+    _, user_prompt = await engine._build_prompt(seeded_db, "test-op-1", "test-target-1")
+    assert "No persistence established yet." in user_prompt

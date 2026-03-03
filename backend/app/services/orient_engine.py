@@ -487,9 +487,19 @@ class OrientEngine:
         )
 
         # Q12: Available technique playbooks (ADR-018 Layer C)
+        # Determine target platform from targets table (use first target of operation)
+        tgt_cursor = await db.execute(
+            "SELECT os FROM targets WHERE operation_id = ? ORDER BY id LIMIT 1",
+            (operation_id,),
+        )
+        tgt_row = await tgt_cursor.fetchone()
+        target_os = (tgt_row["os"] or "").lower() if tgt_row else ""
+        platform = "windows" if "windows" in target_os else "linux"
+
         pb_cursor = await db.execute(
             "SELECT mitre_id, tags FROM technique_playbooks "
-            "WHERE platform = 'linux' ORDER BY mitre_id"
+            "WHERE platform = ? ORDER BY mitre_id",
+            (platform,),
         )
         playbook_rows = await pb_cursor.fetchall()
         if playbook_rows:
@@ -540,6 +550,32 @@ class OrientEngine:
             )
         else:
             lateral_str = "No lateral movement opportunities identified yet."
+
+        # Query persistence facts for the primary target of this operation
+        primary_tgt_cursor = await db.execute(
+            "SELECT id FROM targets WHERE operation_id = ? ORDER BY id LIMIT 1",
+            (operation_id,),
+        )
+        primary_tgt_row = await primary_tgt_cursor.fetchone()
+        primary_target_id = primary_tgt_row["id"] if primary_tgt_row else None
+
+        if primary_target_id:
+            persist_cursor = await db.execute(
+                "SELECT DISTINCT value FROM facts "
+                "WHERE operation_id = ? AND source_target_id = ? AND trait = 'host.persistence'",
+                (operation_id, primary_target_id),
+            )
+            persist_rows = await persist_cursor.fetchall()
+        else:
+            persist_rows = []
+
+        if persist_rows:
+            persist_info = "Persistence vectors confirmed: " + ", ".join(
+                r["value"] for r in persist_rows
+            )
+        else:
+            persist_info = "No persistence established yet."
+        lateral_str = lateral_str + f"\n\nPersistence status: {persist_info}"
 
         # --- Assemble user prompt ---
         user_prompt = _ORIENT_USER_PROMPT_TEMPLATE.format(

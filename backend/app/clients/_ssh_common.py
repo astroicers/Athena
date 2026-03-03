@@ -31,6 +31,10 @@ TECHNIQUE_EXECUTORS: dict[str, str] = {
     "T1078.001": "id && cat /etc/passwd | grep -v nologin | grep -v false",
     "T1110.001": "echo 'HANDLED_BY_INITIAL_ACCESS_ENGINE'",
     "T1110.003": "echo 'HANDLED_BY_INITIAL_ACCESS_ENGINE'",
+    "T1021.004_priv":   "sudo -l 2>/dev/null && sudo -n id 2>/dev/null",
+    "T1021.004_recon":  "id && hostname && ip addr show && cat /etc/hosts",
+    "T1560.001":        "tar czf /tmp/.bundle.tgz /etc/passwd /etc/shadow 2>/dev/null && echo BUNDLED",
+    "T1105":            "which curl wget python3 nc 2>/dev/null | head -5",
 }
 
 TECHNIQUE_FACT_TRAITS: dict[str, list[str]] = {
@@ -47,6 +51,10 @@ TECHNIQUE_FACT_TRAITS: dict[str, list[str]] = {
     "T1078.001": ["credential.ssh"],
     "T1110.001": ["credential.ssh"],
     "T1110.003": ["credential.ssh"],
+    "T1021.004_priv":   ["host.privilege"],
+    "T1021.004_recon":  ["host.os", "host.network"],
+    "T1560.001":        ["host.file"],
+    "T1105":            ["host.binary"],
 }
 
 
@@ -109,3 +117,5 @@ def _parse_stdout_to_facts(
         value = stdout.splitlines()[0].strip()[:500]
 
     return [{"trait": t, "value": value, "score": 1, "source": source} for t in traits]
+
+# Additional technique entries added below the original dict literals via direct file edit

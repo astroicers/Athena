@@ -139,13 +139,15 @@ class EngineRouter:
     ) -> dict:
         """SSH execution path — look up credential.ssh fact and call DirectSSHEngine."""
         # Look up SSH credentials from the facts table
-        cursor = await db.execute(
-            "SELECT value FROM facts "
-            "WHERE operation_id = ? AND source_target_id = ? AND trait = 'credential.ssh' "
-            "ORDER BY score DESC LIMIT 1",
+        cred_cursor = await db.execute(
+            "SELECT trait, value FROM facts "
+            "WHERE operation_id = ? AND source_target_id = ? "
+            "AND trait IN ('credential.ssh', 'credential.ssh_key') "
+            "ORDER BY CASE trait WHEN 'credential.ssh_key' THEN 0 ELSE 1 END "
+            "LIMIT 1",
             (operation_id, target_id),
         )
-        cred_row = await cursor.fetchone()
+        cred_row = await cred_cursor.fetchone()
 
         if not cred_row:
             logger.warning(
@@ -205,13 +207,15 @@ class EngineRouter:
         ooda_iteration_id: str | None,
     ) -> dict:
         """Persistent SSH execution path — reuses session pool across techniques."""
-        cursor = await db.execute(
-            "SELECT value FROM facts "
-            "WHERE operation_id = ? AND source_target_id = ? AND trait = 'credential.ssh' "
-            "ORDER BY score DESC LIMIT 1",
+        cred_cursor = await db.execute(
+            "SELECT trait, value FROM facts "
+            "WHERE operation_id = ? AND source_target_id = ? "
+            "AND trait IN ('credential.ssh', 'credential.ssh_key') "
+            "ORDER BY CASE trait WHEN 'credential.ssh_key' THEN 0 ELSE 1 END "
+            "LIMIT 1",
             (operation_id, target_id),
         )
-        cred_row = await cursor.fetchone()
+        cred_row = await cred_cursor.fetchone()
 
         if not cred_row:
             logger.warning(

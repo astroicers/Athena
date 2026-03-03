@@ -40,6 +40,22 @@ _SESSION_POOL: dict[tuple[str, str], Any] = {}
 # Per-key locks to prevent TOCTOU races when two coroutines race to open the same connection.
 _SESSION_LOCKS: dict[tuple[str, str], asyncio.Lock] = {}
 
+def _parse_key_credential(target: str) -> tuple[str, str, int, str]:
+    """Parse 'user@host:port#<base64_private_key>' format.
+
+    Returns (username, host, port, key_content).
+    """
+    conn_part, key_b64 = target.split("#", 1)
+    import base64
+    key_content = base64.b64decode(key_b64).decode()
+    user, hostport = conn_part.split("@", 1)
+    if ":" in hostport:
+        host, port_str = hostport.rsplit(":", 1)
+        port = int(port_str)
+    else:
+        host, port = hostport, 22
+    return user, host, port, key_content
+
 
 class PersistentSSHChannelEngine(BaseEngineClient):
     """SSH engine that maintains persistent connections across technique executions.
@@ -83,7 +99,13 @@ class PersistentSSHChannelEngine(BaseEngineClient):
                 error=f"No SSH credentials in target string: {target}",
             )
 
-        user, password, host, port = _parse_credential(target)
+        if "#" in target:
+            # Key-based format: user@host:port#<b64key> — extract host for early validation
+            conn_part, _ = target.split("#", 1)
+            _, hostport = conn_part.split("@", 1)
+            host = hostport.rsplit(":", 1)[0] if ":" in hostport else hostport
+        else:
+            _, _, host, _ = _parse_credential(target)
         if not host:
             return ExecutionResult(
                 success=False,
@@ -104,16 +126,21 @@ class PersistentSSHChannelEngine(BaseEngineClient):
             async with lock:
                 conn = _SESSION_POOL.get(pool_key)
                 if conn is None:
-                    conn = await asyncssh.connect(
-                        host,
-                        port=port,
-                        username=user,
-                        password=password,
-                        known_hosts=None,
-                        connect_timeout=15,
-                        keepalive_interval=30,
-                        keepalive_count_max=5,
-                    )
+                    if "#" in target:
+                        user, host, port, key_content = _parse_key_credential(target)
+                        conn = await asyncssh.connect(
+                            host, port=port, username=user,
+                            client_keys=[asyncssh.import_private_key(key_content)],
+                            known_hosts=None,
+                            connect_timeout=15,
+                        )
+                    else:
+                        username, password, host, port = _parse_credential(target)
+                        conn = await asyncssh.connect(
+                            host, port=port, username=username, password=password,
+                            known_hosts=None, connect_timeout=15,
+                            keepalive_interval=30, keepalive_count_max=5,
+                        )
                     _SESSION_POOL[pool_key] = conn
                     logger.info(
                         "PersistentSSH: new session for %s (pool size=%d)",

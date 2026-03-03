@@ -25,11 +25,18 @@
 - 17 seed playbooks (13 recon + 4 lateral movement)
 - output_parser wiring: playbook-defined output_parser passed to SSH execution engines
 
+### Completed (Phase H)
+
+- Linux persistence probe — PersistenceEngine (T1053.003 cron, T1543.002 systemd) with `PERSISTENCE_ENABLED` toggle
+- Windows WinRM post-exploitation — WinRMEngine (pywinrm + mock mode, `WINRM_ENABLED` toggle, 7 PowerShell techniques)
+- 25 seed playbooks (+ T1136.001 account, + 3 Windows WinRM, + 2 Linux persistence)
+- OrientEngine Section 7.6 platform-aware (Windows vs Linux playbook selection based on target OS)
+- OrientEngine Section 7.7 persistence status (host.persistence facts surfaced to LLM)
+
 ### Remaining
 
-- Persistence implants (cron, scheduled tasks, systemd)
-- Windows WinRM post-exploitation via MetasploitRPCEngine
 - Multi-agent coordination (agent capability matching)
+- Tech debt: `_get_output_parser` platform-aware query (currently always queries `platform='linux'`)
 
 ## v0.3.0 (Planned) — Full Reporting + Cloud Deployment
 

@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     NVD_CACHE_TTL_HOURS: int = 24
     VULN_LOOKUP_ENABLED: bool = True
     OODA_LOOP_INTERVAL_SEC: int = 30
+    MSF_RPC_HOST: str = "127.0.0.1"
+    MSF_RPC_PORT: int = 55553
+    MSF_RPC_USER: str = "msf"
+    MSF_RPC_PASSWORD: str = ""
+    MSF_RPC_SSL: bool = False
+    MOCK_METASPLOIT: bool = True
 
 
 settings = Settings()

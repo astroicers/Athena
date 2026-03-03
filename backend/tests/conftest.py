@@ -38,6 +38,7 @@ from httpx import ASGITransport, AsyncClient
 # ---------------------------------------------------------------------------
 os.environ.setdefault("MOCK_LLM", "true")
 os.environ.setdefault("MOCK_C2_ENGINE", "true")
+os.environ.setdefault("MOCK_METASPLOIT", "true")
 
 from app.database import _CREATE_TABLES, _seed_technique_playbooks, get_db  # noqa: E402
 from app.main import app  # noqa: E402

@@ -79,19 +79,33 @@ def _parse_stdout_to_facts(
     mitre_id: str,
     stdout: str,
     source: str = "direct_ssh",
+    output_parser: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Extract facts from command stdout based on technique type."""
-    facts = []
+    """Extract facts from command stdout based on technique type.
+
+    output_parser options:
+    - None / "first_line": take first non-empty line (default)
+    - "json": parse JSON output, serialize back to string
+    - any other string: treat as regex, use first capture group
+    """
+    if not stdout.strip():
+        return []
     traits = TECHNIQUE_FACT_TRAITS.get(mitre_id, [])
-    for trait in traits:
-        if not stdout.strip():
-            continue
-        lines = [line.strip() for line in stdout.splitlines() if line.strip()]
-        if lines:
-            facts.append({
-                "trait": trait,
-                "value": lines[0][:500],
-                "score": 1,
-                "source": source,
-            })
-    return facts
+    if not traits:
+        return []
+
+    if output_parser == "json":
+        try:
+            import json as _json
+            parsed = _json.loads(stdout)
+            value = _json.dumps(parsed)[:500]
+        except Exception:
+            value = stdout.splitlines()[0].strip()[:500]
+    elif output_parser and output_parser != "first_line":
+        import re
+        m = re.search(output_parser, stdout)
+        value = m.group(1)[:500] if m and m.lastindex else stdout.splitlines()[0].strip()[:500]
+    else:
+        value = stdout.splitlines()[0].strip()[:500]
+
+    return [{"trait": t, "value": value, "score": 1, "source": source} for t in traits]

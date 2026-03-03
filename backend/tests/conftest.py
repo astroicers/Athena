@@ -39,7 +39,7 @@ from httpx import ASGITransport, AsyncClient
 os.environ.setdefault("MOCK_LLM", "true")
 os.environ.setdefault("MOCK_C2_ENGINE", "true")
 
-from app.database import _CREATE_TABLES, get_db  # noqa: E402
+from app.database import _CREATE_TABLES, _seed_technique_playbooks, get_db  # noqa: E402
 from app.main import app  # noqa: E402
 
 
@@ -127,6 +127,10 @@ async def client(seeded_db: aiosqlite.Connection):
     * Dependency override is removed after the test to avoid leaking
       state into other tests.
     """
+
+    # Seed technique_playbooks for playbook API tests
+    await _seed_technique_playbooks(seeded_db)
+    await seeded_db.commit()
 
     async def _override_get_db():
         yield seeded_db

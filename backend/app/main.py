@@ -49,6 +49,7 @@ from app.routers import (
     techniques,
     ws,
 )
+from app.routers.playbooks import router as playbooks_router
 
 
 @asynccontextmanager
@@ -103,6 +104,8 @@ app.include_router(admin.router, prefix="/api", tags=["Admin"])
 app.include_router(reports.router, prefix="/api", tags=["Reports"])
 app.include_router(recon.router, prefix="/api", tags=["Recon"])
 app.include_router(engagements.router, prefix="/api", tags=["Engagements"])
+
+app.include_router(playbooks_router)
 
 # ── WebSocket (no /api prefix) ───────────────────────────────────────────
 app.include_router(ws.router, tags=["WebSocket"])

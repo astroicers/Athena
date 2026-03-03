@@ -111,17 +111,20 @@ export default function PlannerPage() {
   // WebSocket: refresh data on OODA, execution, reset, and recon events
   useEffect(() => {
     const unsubs = [
-      ws.subscribe("ooda.phase", (data: Record<string, unknown>) => {
+      ws.subscribe("ooda.phase", (raw: unknown) => {
+        const data = raw as Record<string, unknown>;
         setOodaPhase((data.phase as string) ?? null);
         refreshAllData();
       }),
-      ws.subscribe("ooda.failed", (data: Record<string, unknown>) => {
+      ws.subscribe("ooda.failed", (raw: unknown) => {
+        const data = raw as Record<string, unknown>;
         setOodaPhase(null);
         addToast((data.error as string) || "OODA cycle failed", "error");
       }),
       ws.subscribe("execution.update", () => refreshAllData()),
       ws.subscribe("operation.reset", () => refreshAllData()),
-      ws.subscribe("recon.completed", (data: Record<string, unknown>) => {
+      ws.subscribe("recon.completed", (raw: unknown) => {
+        const data = raw as Record<string, unknown>;
         refreshTargets();
         setScanningTargetId(null);
         addToast(
@@ -129,7 +132,8 @@ export default function PlannerPage() {
           "success",
         );
       }),
-      ws.subscribe("recon.failed", (data: Record<string, unknown>) => {
+      ws.subscribe("recon.failed", (raw: unknown) => {
+        const data = raw as Record<string, unknown>;
         setScanningTargetId(null);
         addToast(
           (data.error as string) || "Recon scan failed",

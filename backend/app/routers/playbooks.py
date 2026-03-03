@@ -126,19 +126,18 @@ async def update_playbook(
         raise HTTPException(status_code=404, detail="Playbook not found")
 
     updates: dict = {}
-    if body.command is not None:
-        updates["command"] = body.command
-    if body.output_parser is not None:
-        updates["output_parser"] = body.output_parser
-    if body.facts_traits is not None:
-        updates["facts_traits"] = json.dumps(body.facts_traits)
-    if body.tags is not None:
-        updates["tags"] = json.dumps(body.tags)
+    for field, value in body.model_dump(exclude_unset=True).items():
+        if field == "facts_traits":
+            updates["facts_traits"] = json.dumps(value) if value is not None else "[]"
+        elif field == "tags":
+            updates["tags"] = json.dumps(value) if value is not None else "[]"
+        else:
+            updates[field] = value  # 允許 None 通過（清空 output_parser 等欄位）
 
     if updates:
         set_clause = ", ".join(f"{k} = ?" for k in updates)
-        await db.execute(
-            f"UPDATE technique_playbooks SET {set_clause} WHERE id = ?",  # noqa: S608
+        await db.execute(  # noqa: S608
+            f"UPDATE technique_playbooks SET {set_clause} WHERE id = ?",
             (*updates.values(), playbook_id),
         )
         await db.commit()

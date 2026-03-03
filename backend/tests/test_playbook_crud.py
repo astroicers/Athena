@@ -131,6 +131,33 @@ def test_parse_stdout_regex_parser():
     assert facts[0]["value"] == "0"
 
 
+async def test_patch_can_clear_output_parser(client: AsyncClient):
+    """PATCH {"output_parser": null} 應能將 output_parser 清空為 NULL。"""
+    create_resp = await client.post("/api/playbooks", json={
+        "mitre_id": "T5555", "platform": "linux",
+        "command": "test_cmd", "facts_traits": [],
+        "output_parser": "json",
+    })
+    assert create_resp.status_code == 201
+    pb_id = create_resp.json()["id"]
+
+    # 先確認有值
+    get_resp = await client.get(f"/api/playbooks/{pb_id}")
+    assert get_resp.json()["output_parser"] == "json"
+
+    # PATCH 清空
+    patch_resp = await client.patch(
+        f"/api/playbooks/{pb_id}",
+        json={"output_parser": None},
+    )
+    assert patch_resp.status_code == 200
+    assert patch_resp.json()["output_parser"] is None
+
+    # 再次 GET 確認持久化
+    get_after = await client.get(f"/api/playbooks/{pb_id}")
+    assert get_after.json()["output_parser"] is None
+
+
 async def test_output_parser_read_from_playbook_on_ssh_execute(seeded_db):
     """engine_router._get_output_parser should read output_parser from technique_playbooks
     and engine_router._execute_ssh should forward it to DirectSSHEngine.execute."""

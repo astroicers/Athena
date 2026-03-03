@@ -55,3 +55,10 @@ class ReconScanResult(BaseModel):
     facts_written: int
     initial_access: InitialAccessResult
     scan_duration_sec: float
+
+
+class ReconScanQueued(BaseModel):
+    scan_id: str
+    status: str           # "queued"
+    target_id: str
+    operation_id: str

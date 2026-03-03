@@ -32,7 +32,8 @@ import { MissionStepStatus, RiskLevel, OODAPhase } from "@/types/enums";
 import type { MissionStep } from "@/types/mission";
 import type { OODATimelineEntry } from "@/types/ooda";
 import type { Target } from "@/types/target";
-import type { ReconScanResult } from "@/types/recon";
+import type { ReconScanResult, ReconScanQueued } from "@/types/recon";
+import type { ApiError } from "@/types/api";
 
 const DEFAULT_OP_ID = "op-0001";
 
@@ -108,12 +109,27 @@ export default function PlannerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // WebSocket: refresh data on OODA, execution, and reset events
+  // WebSocket: refresh data on OODA, execution, reset, and recon events
   useEffect(() => {
     const unsubs = [
       ws.subscribe("ooda.phase", () => refreshAllData()),
       ws.subscribe("execution.update", () => refreshAllData()),
       ws.subscribe("operation.reset", () => refreshAllData()),
+      ws.subscribe("recon.completed", (data: Record<string, unknown>) => {
+        refreshTargets();
+        setScanningTargetId(null);
+        addToast(
+          `Recon complete — ${data.facts_written ?? 0} facts written`,
+          "success",
+        );
+      }),
+      ws.subscribe("recon.failed", (data: Record<string, unknown>) => {
+        setScanningTargetId(null);
+        addToast(
+          (data.error as string) || "Recon scan failed",
+          "error",
+        );
+      }),
     ];
     return () => unsubs.forEach((fn) => fn());
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -177,17 +193,15 @@ export default function PlannerPage() {
   async function handleReconScan(targetId: string) {
     setScanningTargetId(targetId);
     try {
-      const result = await api.post<ReconScanResult>(
+      await api.post<ReconScanQueued>(
         `/operations/${DEFAULT_OP_ID}/recon/scan`,
         { target_id: targetId, enable_initial_access: true },
       );
-      setReconResult(result);
-      refreshTargets();
+      // 202 Accepted — background task started; WS events handle UI update
     } catch (err) {
-      const detail = (err as { detail?: string })?.detail;
-      addToast(detail || "Recon scan failed", "error");
-    } finally {
       setScanningTargetId(null);
+      const apiError = err as ApiError;
+      addToast(apiError.detail || "Failed to start recon scan", "error");
     }
   }
 

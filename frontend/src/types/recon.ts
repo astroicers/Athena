@@ -40,3 +40,10 @@ export interface ReconScanResult {
   initialAccess: InitialAccessResult;
   scanDurationSec: number;
 }
+
+export interface ReconScanQueued {
+  scanId: string;
+  status: string; // "queued"
+  targetId: string;
+  operationId: string;
+}

@@ -62,8 +62,10 @@ async def test_section_76_shows_windows_playbooks_for_windows_target(seeded_db):
     from app.services.orient_engine import OrientEngine
     engine = OrientEngine(_make_ws())
     _, user_prompt = await engine._build_prompt(seeded_db, "test-op-1", "test-target-1")
-    # Windows target should show windows platform playbooks (T1021.001 or T1053.005)
-    assert "windows" in user_prompt.lower() or "T1021.001" in user_prompt or "T1053.005" in user_prompt
+    # Windows-specific technique IDs should appear (from platform="windows" playbooks)
+    assert "T1021.001" in user_prompt or "T1053.005" in user_prompt or "T1059.001" in user_prompt
+    # Linux-specific technique IDs should NOT appear
+    assert "T1053.003" not in user_prompt  # linux-only cron playbook
 
 
 async def test_section_76_shows_linux_playbooks_for_linux_target(seeded_db):
@@ -95,8 +97,10 @@ async def test_section_76_shows_linux_playbooks_for_linux_target(seeded_db):
     from app.services.orient_engine import OrientEngine
     engine = OrientEngine(_make_ws())
     _, user_prompt = await engine._build_prompt(seeded_db, "test-op-linux", "observe")
-    # Linux target should show linux platform playbooks (e.g. T1053.003 cron, T1105, etc.)
-    assert "linux" in user_prompt.lower() or "T1053.003" in user_prompt or "T1543.002" in user_prompt
+    # Linux-specific technique IDs should appear (from platform="linux" playbooks)
+    assert "T1053.003" in user_prompt or "T1543.002" in user_prompt or "T1105" in user_prompt
+    # Windows-specific technique IDs should NOT appear
+    assert "T1021.001" not in user_prompt  # windows-only RDP playbook
 
 
 async def test_section_77_shows_persistence_status(seeded_db):

@@ -487,14 +487,15 @@ class OrientEngine:
         )
 
         # Q12: Available technique playbooks (ADR-018 Layer C)
-        # Determine target platform from targets table (use first target of operation)
-        tgt_cursor = await db.execute(
-            "SELECT os FROM targets WHERE operation_id = ? ORDER BY id LIMIT 1",
+        # Query primary target once (used for both platform detection and persistence status)
+        prim_tgt_cursor = await db.execute(
+            "SELECT id, os FROM targets WHERE operation_id = ? ORDER BY id LIMIT 1",
             (operation_id,),
         )
-        tgt_row = await tgt_cursor.fetchone()
-        target_os = (tgt_row["os"] or "").lower() if tgt_row else ""
+        prim_tgt_row = await prim_tgt_cursor.fetchone()
+        target_os = (prim_tgt_row["os"] or "").lower() if prim_tgt_row else ""
         platform = "windows" if "windows" in target_os else "linux"
+        primary_target_id = prim_tgt_row["id"] if prim_tgt_row else None
 
         pb_cursor = await db.execute(
             "SELECT mitre_id, tags FROM technique_playbooks "
@@ -552,13 +553,7 @@ class OrientEngine:
             lateral_str = "No lateral movement opportunities identified yet."
 
         # Query persistence facts for the primary target of this operation
-        primary_tgt_cursor = await db.execute(
-            "SELECT id FROM targets WHERE operation_id = ? ORDER BY id LIMIT 1",
-            (operation_id,),
-        )
-        primary_tgt_row = await primary_tgt_cursor.fetchone()
-        primary_target_id = primary_tgt_row["id"] if primary_tgt_row else None
-
+        # (primary_target_id already resolved above alongside platform detection)
         if primary_target_id:
             persist_cursor = await db.execute(
                 "SELECT DISTINCT value FROM facts "

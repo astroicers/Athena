@@ -113,7 +113,62 @@ async def test_c2_engine_client_check_version_callable():
     await client.aclose()
 
 
-@pytest.mark.asyncio
+async def test_engine_router_metasploit_route(seeded_db):
+    """EngineRouter routes to MetasploitRPCEngine when exploit=true CVE fact exists."""
+    import uuid
+    from unittest.mock import AsyncMock, MagicMock
+    from app.services.engine_router import EngineRouter
+    from app.clients.mock_c2_client import MockC2Client
+    from app.services.fact_collector import FactCollector
+    from app.ws_manager import WebSocketManager
+
+    # Insert vuln.cve fact with exploit=true for seeded target
+    await seeded_db.execute(
+        """INSERT INTO facts (id, operation_id, source_target_id, trait, value, category, score)
+           VALUES (?, 'test-op-1', 'test-target-1',
+                   'vuln.cve', 'CVE-2011-2523:vsftpd:vsftpd_2.3.4:cvss=10.0:exploit=true',
+                   'vulnerability', 1)""",
+        (str(uuid.uuid4()),)
+    )
+    # Insert a technique record for T1190
+    await seeded_db.execute(
+        """INSERT OR IGNORE INTO techniques (id, mitre_id, name, tactic, tactic_id, risk_level)
+           VALUES ('tech-t1190', 'T1190', 'Exploit Public-Facing Application',
+                   'Initial Access', 'TA0001', 'high')"""
+    )
+    await seeded_db.commit()
+
+    mock_ws = MagicMock()
+    mock_ws.broadcast = AsyncMock()
+    router = EngineRouter(
+        c2_engine=MockC2Client(),
+        adaptive_engine=None,
+        fact_collector=FactCollector(ws_manager=mock_ws),
+        ws_manager=mock_ws,
+    )
+
+    result = await router.execute(
+        db=seeded_db,
+        technique_id="T1190",
+        target_id="test-target-1",
+        engine="metasploit",
+        operation_id="test-op-1",
+    )
+
+    assert result["status"] == "success"
+    assert result.get("engine") in ("metasploit", "metasploit_mock")
+
+    # Verify that technique_executions was written by _execute_metasploit()
+    cursor = await seeded_db.execute(
+        "SELECT engine, status FROM technique_executions "
+        "WHERE operation_id = 'test-op-1' ORDER BY started_at DESC LIMIT 1"
+    )
+    exec_row = await cursor.fetchone()
+    assert exec_row is not None, "technique_executions row was not written"
+    assert exec_row["engine"] == "metasploit"
+    assert exec_row["status"] == "success"
+
+
 async def test_engine_router_persistent_ssh_route():
     """EXECUTION_ENGINE=persistent_ssh routes to PersistentSSHChannelEngine."""
     import aiosqlite

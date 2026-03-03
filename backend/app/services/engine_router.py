@@ -73,6 +73,22 @@ class EngineRouter:
         tech_row = await cursor.fetchone()
         ability_id = (tech_row["caldera_ability_id"] if tech_row else None) or technique_id
 
+        # ── Metasploit route: exploit=true CVE fact → highest priority ────────
+        # Check BEFORE SSH/Caldera routing (ADR-019)
+        service = await self._has_exploitable_service(db, operation_id, target_id)
+        if service:
+            target_ip = await self._get_target_ip(db, target_id)
+            if target_ip is None:
+                logger.error(
+                    "Cannot resolve IP for target %s — aborting Metasploit route",
+                    target_id,
+                )
+            else:
+                return await self._execute_metasploit(
+                    db, exec_id, now, technique_id, target_id, operation_id,
+                    ooda_iteration_id, service, target_ip, engine,
+                )
+
         # ── Engine selection ──────────────────────────────────────────────────
         # Determine effective mode:
         #   EXECUTION_ENGINE="ssh"    → SSH path (no agent required)
@@ -358,6 +374,125 @@ class EngineRouter:
             "result_summary": result.output,
             "facts_collected_count": facts_count,
             "error": result.error,
+        }
+
+    # ── Metasploit helpers ────────────────────────────────────────────────────
+
+    async def _has_exploitable_service(
+        self, db: aiosqlite.Connection, operation_id: str, target_id: str
+    ) -> "str | None":
+        """Return service name from vuln.cve fact with exploit=true, else None."""
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            """SELECT value FROM facts
+               WHERE operation_id = ? AND source_target_id = ?
+               AND trait = 'vuln.cve' AND value LIKE '%exploit=true%'
+               ORDER BY score DESC
+               LIMIT 1""",
+            (operation_id, target_id),
+        )
+        row = await cursor.fetchone()
+        if row:
+            # format: CVE-xxx:service:product:cvss=N:exploit=true
+            parts = row["value"].split(":")
+            return parts[1] if len(parts) > 1 else None
+        return None
+
+    async def _get_target_ip(
+        self, db: aiosqlite.Connection, target_id: str
+    ) -> "str | None":
+        """Resolve target IP from targets table. Returns None if target not found."""
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            "SELECT ip_address FROM targets WHERE id = ?",
+            (target_id,),
+        )
+        row = await cursor.fetchone()
+        return row["ip_address"] if row else None
+
+    async def _execute_metasploit(
+        self,
+        db: aiosqlite.Connection,
+        exec_id: str,
+        now: str,
+        technique_id: str,
+        target_id: str,
+        operation_id: str,
+        ooda_iteration_id: "str | None",
+        service_name: str,
+        target_ip: str,
+        engine: str,
+    ) -> dict:
+        """Execute technique via MetasploitRPCEngine (ADR-019)."""
+        from app.clients.metasploit_client import MetasploitRPCEngine  # noqa: PLC0415
+
+        started_at = datetime.now(timezone.utc).isoformat()
+        await db.execute(
+            """INSERT INTO technique_executions
+               (id, technique_id, target_id, operation_id, status, engine, started_at)
+               VALUES (?, ?, ?, ?, 'running', 'metasploit', ?)""",
+            (exec_id, technique_id, target_id, operation_id, started_at),
+        )
+        await db.commit()
+
+        await self._ws.broadcast(operation_id, "execution.update", {
+            "id": exec_id, "technique_id": technique_id,
+            "status": "running", "engine": "metasploit",
+        })
+
+        msf_engine = MetasploitRPCEngine()
+        method = msf_engine.get_exploit_for_service(service_name)
+        if method is None:
+            result_dict: dict = {
+                "status": "failed",
+                "reason": f"no exploit method for service: {service_name}",
+                "engine": "metasploit",
+                "output": "",
+            }
+        else:
+            result_dict = await method(target_ip)
+
+        status = result_dict.get("status", "failed")
+        output = result_dict.get("output", result_dict.get("reason", ""))
+        msf_engine_label = result_dict.get("engine", "metasploit")
+
+        completed_at = datetime.now(timezone.utc).isoformat()
+        await db.execute(
+            """UPDATE technique_executions
+               SET status = ?, result_summary = ?,
+                   facts_collected_count = 0, completed_at = ?,
+                   error_message = ?
+               WHERE id = ?""",
+            (
+                result_dict["status"],
+                result_dict.get("output", ""),
+                completed_at,
+                result_dict.get("reason") if result_dict["status"] != "success" else None,
+                exec_id,
+            ),
+        )
+        if status == "success":
+            await db.execute(
+                "UPDATE operations SET techniques_executed = techniques_executed + 1 "
+                "WHERE id = ?",
+                (operation_id,),
+            )
+        await db.commit()
+
+        await self._ws.broadcast(operation_id, "execution.update", {
+            "id": exec_id, "technique_id": technique_id,
+            "status": status, "engine": msf_engine_label,
+        })
+
+        return {
+            "execution_id": exec_id,
+            "technique_id": technique_id,
+            "target_id": target_id,
+            "engine": msf_engine_label,
+            "status": status,
+            "result_summary": output,
+            "facts_collected_count": 0,
+            "error": result_dict.get("reason"),
         }
 
     # ── Engine / client selection ─────────────────────────────────────────────

@@ -35,6 +35,9 @@ TECHNIQUE_EXECUTORS: dict[str, str] = {
     "T1021.004_recon": "id && hostname && ip addr show && cat /etc/hosts",
     "T1560.001": "tar czf /tmp/.bundle.tgz /etc/passwd /etc/shadow 2>/dev/null && echo BUNDLED",
     "T1105": "which curl wget python3 nc 2>/dev/null | head -5",
+    "T1053.003": "ls -la /etc/cron.d/ 2>/dev/null | head -5",
+    "T1543.002": "systemctl list-units --type=service --state=running 2>/dev/null | head -10",
+    "T1136.001": "id; getent passwd | cut -d: -f1,3,7 | head -10",
 }
 
 TECHNIQUE_FACT_TRAITS: dict[str, list[str]] = {
@@ -55,6 +58,9 @@ TECHNIQUE_FACT_TRAITS: dict[str, list[str]] = {
     "T1021.004_recon": ["host.os", "host.network"],
     "T1560.001": ["host.file"],
     "T1105": ["host.binary"],
+    "T1053.003": ["host.persistence"],
+    "T1543.002": ["host.service"],
+    "T1136.001": ["host.user"],
 }
 
 

@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     MSF_RPC_PASSWORD: str = ""
     MSF_RPC_SSL: bool = False
     MOCK_METASPLOIT: bool = True
+    PERSISTENCE_ENABLED: bool = False
 
 
 settings = Settings()

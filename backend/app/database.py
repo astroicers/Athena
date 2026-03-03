@@ -345,6 +345,16 @@ TECHNIQUE_PLAYBOOK_SEEDS = [
      "output_parser": "first_line",
      "facts_traits": '["host.binary"]',
      "tags": '["transfer","c2","linux"]'},
+    {"mitre_id": "T1053.003", "platform": "linux",
+     "command": "ls -la /etc/cron.d/ 2>/dev/null | head -5",
+     "output_parser": "first_line",
+     "facts_traits": '["host.persistence"]',
+     "tags": '["persistence","cron","linux"]'},
+    {"mitre_id": "T1543.002", "platform": "linux",
+     "command": "systemctl list-units --type=service --state=running 2>/dev/null | head -10",
+     "output_parser": "first_line",
+     "facts_traits": '["host.service"]',
+     "tags": '["persistence","systemd","linux"]'},
 ]
 
 

@@ -53,53 +53,64 @@ export function fromApiResponse<T>(data: unknown): T {
 
 async function request<T>(
   path: string,
-  options: RequestInit = {},
+  options: RequestInit & { timeoutMs?: number } = {},
 ): Promise<T> {
+  const { timeoutMs = 30_000, ...fetchOptions } = options;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
   const url = `${BASE_URL}${path}`;
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
+  try {
+    const res = await fetch(url, {
+      ...fetchOptions,
+      headers: {
+        "Content-Type": "application/json",
+        ...fetchOptions.headers,
+      },
+      signal: controller.signal,
+    });
 
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({ detail: res.statusText }));
-    const error: ApiError = {
-      status: res.status,
-      detail: body.detail || res.statusText,
-    };
-    throw error;
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ detail: res.statusText }));
+      const error: ApiError = {
+        status: res.status,
+        detail: body.detail || res.statusText,
+      };
+      throw error;
+    }
+
+    if (res.status === 204) return undefined as T;
+
+    const json = await res.json();
+    return fromApiResponse<T>(json);
+  } finally {
+    clearTimeout(timer);
   }
-
-  if (res.status === 204) return undefined as T;
-
-  const json = await res.json();
-  return fromApiResponse<T>(json);
 }
 
 export const api = {
-  get<T>(path: string): Promise<T> {
-    return request<T>(path, { method: "GET" });
+  get<T>(path: string, options?: { timeoutMs?: number }): Promise<T> {
+    return request<T>(path, { method: "GET", ...options });
   },
 
-  post<T>(path: string, body?: unknown): Promise<T> {
+  post<T>(path: string, body?: unknown, options?: { timeoutMs?: number }): Promise<T> {
     return request<T>(path, {
       method: "POST",
       body: body ? JSON.stringify(toApiBody(body)) : undefined,
+      ...options,
     });
   },
 
-  patch<T>(path: string, body?: unknown): Promise<T> {
+  patch<T>(path: string, body?: unknown, options?: { timeoutMs?: number }): Promise<T> {
     return request<T>(path, {
       method: "PATCH",
       body: body ? JSON.stringify(toApiBody(body)) : undefined,
+      ...options,
     });
   },
 
-  delete<T>(path: string): Promise<T> {
-    return request<T>(path, { method: "DELETE" });
+  delete<T>(path: string, options?: { timeoutMs?: number }): Promise<T> {
+    return request<T>(path, { method: "DELETE", ...options });
   },
 
   getAttackPath: (opId: string) =>

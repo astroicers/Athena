@@ -16,9 +16,6 @@ services:
       - DATABASE_URL=sqlite:///app/data/athena.db
       - C2_ENGINE_URL=http://c2-engine:8888
       - C2_ENGINE_API_KEY=${C2_ENGINE_API_KEY:-ADMIN123456}
-    depends_on:
-      c2-engine:
-        condition: service_started
     healthcheck:
       test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/api/health')"]
       interval: 30s
@@ -41,9 +38,10 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # C2 Attack Execution Engine (Apache 2.0)
+  # C2 Attack Execution Engine (Apache 2.0) — optional, enable with: docker-compose --profile c2 up
   c2-engine:
     image: ghcr.io/mitre/caldera:latest
+    profiles: [c2]
     ports:
       - "0.0.0.0:58888:8888"
     volumes:

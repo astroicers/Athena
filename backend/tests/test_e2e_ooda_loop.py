@@ -364,3 +364,33 @@ async def test_duplicate_target_ip_rejected(client: AsyncClient):
         json={"hostname": "host-b", "ip_address": "10.99.0.1", "role": "Host"},
     )
     assert r2.status_code == 409
+
+
+async def test_lateral_playbooks_in_seed(client: AsyncClient):
+    """Seed playbooks 應包含橫移相關技術（lateral_move tag）。"""
+    resp = await client.get("/api/playbooks")
+    assert resp.status_code == 200
+    tags_all = [tag for pb in resp.json() for tag in pb.get("tags", [])]
+    assert "lateral_move" in tags_all
+
+
+async def test_target_has_is_compromised_field(client: AsyncClient):
+    """新建 Target 應包含 is_compromised 欄位且預設為 False。"""
+    op_resp = await client.post("/api/operations", json={
+        "code": "OP-LATERAL-001",
+        "name": "lateral-e2e-test",
+        "codename": "PHANTOM-LATERAL",
+        "strategic_intent": "lateral movement e2e",
+    })
+    assert op_resp.status_code in (200, 201)
+    op_id = op_resp.json()["id"]
+
+    tgt_resp = await client.post(f"/api/operations/{op_id}/targets", json={
+        "ip_address": "10.10.99.1",
+        "hostname": "pivot-host",
+        "role": "workstation",
+    })
+    assert tgt_resp.status_code in (200, 201)
+    tgt = tgt_resp.json()
+    assert "is_compromised" in tgt
+    assert tgt["is_compromised"] is False

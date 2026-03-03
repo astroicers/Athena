@@ -43,7 +43,7 @@ export interface ReconScanResult {
 
 export interface ReconScanQueued {
   scanId: string;
-  status: string; // "queued"
+  status: "queued";
   targetId: string;
   operationId: string;
 }

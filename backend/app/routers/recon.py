@@ -91,9 +91,14 @@ async def run_recon_scan(
     await db.commit()
 
     # ── 4. Launch background task ─────────────────────────────────────────────
-    asyncio.create_task(
+    _task = asyncio.create_task(
         _run_scan_background(scan_id, op_id, body.target_id, ip_address, body)
     )
+    if _task is not None:
+        _task.add_done_callback(
+            lambda t: logger.warning("Recon background task cancelled for scan %s", scan_id)
+            if t.cancelled() else None
+        )
 
     # ── 5. Return immediately with 202 Accepted ───────────────────────────────
     return ReconScanQueued(

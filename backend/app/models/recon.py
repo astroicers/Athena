@@ -14,6 +14,8 @@
 
 """Pydantic models for the ReconEngine scan results."""
 
+from typing import Literal
+
 from pydantic import BaseModel
 
 
@@ -59,6 +61,6 @@ class ReconScanResult(BaseModel):
 
 class ReconScanQueued(BaseModel):
     scan_id: str
-    status: str           # "queued"
+    status: Literal["queued"] = "queued"
     target_id: str
     operation_id: str

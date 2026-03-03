@@ -181,6 +181,10 @@ async def test_run_scan_background_marks_completed(tmp_db):
     assert row is not None
     assert row["status"] == "completed"
 
+    # Verify recon.completed was broadcast
+    calls = [str(c) for c in mock_ws.broadcast.call_args_list]
+    assert any("recon.completed" in c for c in calls), "recon.completed was not broadcast"
+
 
 async def test_run_scan_background_marks_failed_on_exception(tmp_db):
     """_run_scan_background: DB row ends as 'failed' when ReconEngine raises."""

@@ -27,6 +27,27 @@ import httpx
 from app.config import settings
 from app.ws_manager import WebSocketManager
 
+
+def _to_camel_case(snake_str: str) -> str:
+    """Convert snake_case string to camelCase."""
+    components = snake_str.split('_')
+    return components[0] + ''.join(x.title() for x in components[1:])
+
+
+def _dict_to_camel_case(d: dict) -> dict:
+    """Convert dict keys from snake_case to camelCase (shallow for recommendations)."""
+    result = {}
+    for key, value in d.items():
+        camel_key = _to_camel_case(key)
+        if isinstance(value, list):
+            result[camel_key] = [
+                _dict_to_camel_case(item) if isinstance(item, dict) else item
+                for item in value
+            ]
+        else:
+            result[camel_key] = value
+    return result
+
 logger = logging.getLogger(__name__)
 
 # Mock recommendation matching SPEC-007 edge case requirements
@@ -237,7 +258,7 @@ class OrientEngine:
             rec = await self._store_recommendation(
                 db, operation_id, _MOCK_RECOMMENDATION
             )
-            await self._ws.broadcast(operation_id, "recommendation", rec)
+            await self._ws.broadcast(operation_id, "recommendation", _dict_to_camel_case(rec))
             return rec
 
         # Build prompt context (system + user)
@@ -273,7 +294,7 @@ class OrientEngine:
             parsed = _MOCK_RECOMMENDATION
 
         rec = await self._store_recommendation(db, operation_id, parsed)
-        await self._ws.broadcast(operation_id, "recommendation", rec)
+        await self._ws.broadcast(operation_id, "recommendation", _dict_to_camel_case(rec))
         return rec
 
     # ------------------------------------------------------------------

@@ -116,7 +116,7 @@ export default function NavigatorPage() {
         });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ws.subscribe]);
+  }, [ws]);
 
   // WebSocket: update recommendation card immediately when AI analysis completes
   useEffect(() => {
@@ -125,7 +125,7 @@ export default function NavigatorPage() {
     });
     return unsub;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ws.subscribe]);
+  }, [ws]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, TechniqueWithStatus[]>();

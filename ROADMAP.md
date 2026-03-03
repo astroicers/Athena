@@ -1,6 +1,6 @@
 # Athena Roadmap
 
-## v0.1.0 (Current) — Enterprise External Pentest MVP
+## v0.1.0 (Released) — Enterprise External Pentest MVP
 
 ### Completed
 
@@ -14,13 +14,22 @@
 - ROE / Scope validation (ScopeValidator)
 - C5ISR battle dashboard (WebSocket)
 
-## v0.2.0 (Planned) — Lateral Movement + Persistence
+## v0.2.0 (In Progress) — Lateral Movement + Persistence
 
-- Multi-agent coordination (agent capability matching)
-- Persistence implants (cron, scheduled tasks, systemd)
-- Lateral movement routing (agent-to-agent tunneling)
-- Windows WinRM post-exploitation via MetasploitRPCEngine
+### Completed (Phase G)
+
+- SSH key-based auth (`credential.ssh_key` fact, `user@host:port#<base64_key>` format)
+- Lateral movement technique mapping (T1021.004_priv/recon, T1560.001, T1105)
+- Auto-mark target `is_compromised` + `privilege_level` on successful SSH execution
+- OrientEngine Section 7.7 — lateral movement opportunity recommendations (credentials × uncompromised targets)
+- 17 seed playbooks (13 recon + 4 lateral movement)
 - output_parser wiring: playbook-defined output_parser passed to SSH execution engines
+
+### Remaining
+
+- Persistence implants (cron, scheduled tasks, systemd)
+- Windows WinRM post-exploitation via MetasploitRPCEngine
+- Multi-agent coordination (agent capability matching)
 
 ## v0.3.0 (Planned) — Full Reporting + Cloud Deployment
 

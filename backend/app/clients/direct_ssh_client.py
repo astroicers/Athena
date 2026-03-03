@@ -42,6 +42,7 @@ class DirectSSHEngine(BaseEngineClient):
         ability_id: str,
         target: str,
         params: dict | None = None,
+        output_parser: str | None = None,
     ) -> ExecutionResult:
         """Execute a technique identified by MITRE ID over SSH.
 
@@ -49,6 +50,7 @@ class DirectSSHEngine(BaseEngineClient):
             ability_id: MITRE technique ID (e.g. "T1592") or internal ID
             target: SSH credential string "user:pass@host:port" OR just host
             params: optional extra params (currently unused)
+            output_parser: Optional parser mode ('json', regex pattern, or None for first_line default).
         """
         execution_id = str(uuid4())
 
@@ -103,7 +105,7 @@ class DirectSSHEngine(BaseEngineClient):
                 stderr = result.stderr or ""
                 success = result.exit_status == 0
 
-            facts = _parse_stdout_to_facts(ability_id, stdout)
+            facts = _parse_stdout_to_facts(ability_id, stdout, output_parser=output_parser)
             output = stdout if stdout else stderr
 
             logger.info(

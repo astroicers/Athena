@@ -30,7 +30,11 @@ class BaseEngineClient:
     """Unified engine client interface."""
 
     async def execute(
-        self, ability_id: str, target: str, params: dict | None = None
+        self,
+        ability_id: str,
+        target: str,
+        params: dict | None = None,
+        output_parser: str | None = None,
     ) -> ExecutionResult:
         raise NotImplementedError
 

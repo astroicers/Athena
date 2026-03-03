@@ -180,10 +180,12 @@ class EngineRouter:
             "status": "running", "engine": engine,
         })
 
+        output_parser = await self._get_output_parser(db, technique_id)
+
         # Import here to avoid circular imports at module load time
         from app.clients.direct_ssh_client import DirectSSHEngine  # noqa: PLC0415
         ssh_engine = DirectSSHEngine()
-        result: ExecutionResult = await ssh_engine.execute(ability_id, credential_string)
+        result: ExecutionResult = await ssh_engine.execute(ability_id, credential_string, output_parser=output_parser)
 
         return await self._finalize_execution(
             db, exec_id, technique_id, target_id, engine,
@@ -243,17 +245,32 @@ class EngineRouter:
             "status": "running", "engine": engine,
         })
 
+        output_parser = await self._get_output_parser(db, technique_id)
+
         from app.clients.persistent_ssh_client import PersistentSSHChannelEngine  # noqa: PLC0415
         # PersistentSSHChannelEngine holds no per-instance state beyond operation_id.
         # The connection pool (_SESSION_POOL) is module-level, so creating a new instance
         # here reuses any existing SSH session for this operation.
         persistent_engine = PersistentSSHChannelEngine(operation_id=operation_id)
-        result: ExecutionResult = await persistent_engine.execute(ability_id, credential_string)
+        result: ExecutionResult = await persistent_engine.execute(ability_id, credential_string, output_parser=output_parser)
 
         return await self._finalize_execution(
             db, exec_id, technique_id, target_id, engine,
             operation_id, result,
         )
+
+    async def _get_output_parser(
+        self, db: aiosqlite.Connection, technique_id: str
+    ) -> "str | None":
+        """Read output_parser from technique_playbooks (linux platform, most recent row)."""
+        cursor = await db.execute(
+            "SELECT output_parser FROM technique_playbooks "
+            "WHERE mitre_id = ? AND platform = 'linux' "
+            "ORDER BY created_at DESC LIMIT 1",
+            (technique_id,),
+        )
+        row = await cursor.fetchone()
+        return row["output_parser"] if row else None
 
     async def _execute_caldera(
         self,

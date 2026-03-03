@@ -129,3 +129,84 @@ def test_parse_stdout_regex_parser():
     from app.clients._ssh_common import _parse_stdout_to_facts
     facts = _parse_stdout_to_facts("T1592", "uid=0(root) gid=0(root)", source="test", output_parser=r"uid=(\d+)")
     assert facts[0]["value"] == "0"
+
+
+async def test_output_parser_read_from_playbook_on_ssh_execute(seeded_db):
+    """engine_router._get_output_parser should read output_parser from technique_playbooks
+    and engine_router._execute_ssh should forward it to DirectSSHEngine.execute."""
+    import aiosqlite
+    from unittest.mock import AsyncMock, patch, MagicMock
+    from app.database import _seed_technique_playbooks
+    from app.clients import ExecutionResult
+    from app.services.engine_router import EngineRouter
+
+    # Seed playbooks so the table has data (linux platform rows)
+    await _seed_technique_playbooks(seeded_db)
+
+    # Insert a linux-platform T1033 playbook with output_parser='json' if not present
+    await seeded_db.execute(
+        "INSERT OR IGNORE INTO technique_playbooks "
+        "(id, mitre_id, platform, command, output_parser, facts_traits, tags, source) "
+        "VALUES ('pb-t1033-test', 'T1033', 'linux', 'id', 'json', '[]', '[]', 'seed')"
+    )
+    await seeded_db.commit()
+
+    # Verify _get_output_parser returns the DB value
+    seeded_db.row_factory = aiosqlite.Row
+    ws_mock = MagicMock()
+    ws_mock.broadcast = AsyncMock()
+    router = EngineRouter(
+        c2_engine=MagicMock(),
+        adaptive_engine=None,
+        fact_collector=MagicMock(),
+        ws_manager=ws_mock,
+    )
+
+    output_parser = await router._get_output_parser(seeded_db, "T1033")
+    assert output_parser == "json", (
+        f"Expected 'json' from technique_playbooks for T1033, got {output_parser!r}"
+    )
+
+    # Verify that _execute_ssh forwards the output_parser to DirectSSHEngine.execute
+    with patch(
+        "app.clients.direct_ssh_client.DirectSSHEngine.execute", new_callable=AsyncMock
+    ) as mock_exec:
+        mock_exec.return_value = ExecutionResult(
+            success=True,
+            execution_id="mock-exec-id",
+            output="root",
+            facts=[],
+            error=None,
+        )
+
+        # Insert required data: SSH credential fact for test target + technique record
+        await seeded_db.execute(
+            "INSERT OR IGNORE INTO techniques (id, mitre_id, name, tactic, tactic_id, risk_level) "
+            "VALUES ('tech-t1033', 'T1033', 'System Owner/User Discovery', 'Discovery', 'TA0007', 'low')"
+        )
+        await seeded_db.execute(
+            "INSERT INTO facts (id, operation_id, source_target_id, trait, value, score) "
+            "VALUES ('fact-ssh-1', 'test-op-1', 'test-target-1', 'credential.ssh', "
+            "'root:pass@10.0.1.5:22', 100)"
+        )
+        await seeded_db.commit()
+
+        await router._execute_ssh(
+            db=seeded_db,
+            exec_id="exec-test-1",
+            now="2026-01-01T00:00:00+00:00",
+            ability_id="T1033",
+            technique_id="T1033",
+            target_id="test-target-1",
+            engine="ssh",
+            operation_id="test-op-1",
+            ooda_iteration_id=None,
+        )
+
+    # The SSH engine must have been called with output_parser='json'
+    mock_exec.assert_awaited_once()
+    _, call_kwargs = mock_exec.call_args
+    assert call_kwargs.get("output_parser") == "json", (
+        f"DirectSSHEngine.execute was not called with output_parser='json'; "
+        f"actual kwargs: {call_kwargs}"
+    )

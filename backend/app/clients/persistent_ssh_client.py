@@ -59,6 +59,7 @@ class PersistentSSHChannelEngine(BaseEngineClient):
         ability_id: str,
         target: str,
         params: dict | None = None,
+        output_parser: str | None = None,
     ) -> ExecutionResult:
         """Execute a technique over a pooled SSH connection."""
         execution_id = str(uuid4())
@@ -127,7 +128,7 @@ class PersistentSSHChannelEngine(BaseEngineClient):
             stderr = result.stderr or ""
             success = result.exit_status == 0
 
-            facts = _parse_stdout_to_facts(ability_id, stdout, source="persistent_ssh")
+            facts = _parse_stdout_to_facts(ability_id, stdout, source="persistent_ssh", output_parser=output_parser)
             output = stdout if stdout else stderr
 
             logger.info(

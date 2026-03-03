@@ -203,6 +203,11 @@ async def test_engine_router_persistent_ssh_route():
                 source_target_id TEXT, category TEXT, trait TEXT, value TEXT,
                 score INTEGER DEFAULT 1, collected_at TEXT, source TEXT);
             CREATE TABLE operations (id TEXT PRIMARY KEY, techniques_executed INTEGER DEFAULT 0);
+            CREATE TABLE technique_playbooks (id TEXT PRIMARY KEY, mitre_id TEXT NOT NULL,
+                platform TEXT NOT NULL DEFAULT 'linux', command TEXT NOT NULL,
+                output_parser TEXT, facts_traits TEXT NOT NULL DEFAULT '[]',
+                source TEXT DEFAULT 'seed', tags TEXT DEFAULT '[]',
+                created_at TEXT DEFAULT (datetime('now')));
             INSERT INTO techniques VALUES ('t1', 'T1592', 'Host Discovery',
                 'Reconnaissance', 'TA0043', 'recon', 'low', 'T1592');
             INSERT INTO operations VALUES ('op-persist-test', 0);

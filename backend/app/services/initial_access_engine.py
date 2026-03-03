@@ -400,69 +400,6 @@ class InitialAccessEngine:
             error="All credentials failed",
         )
 
-    async def try_metasploit_exploit(
-        self,
-        db: aiosqlite.Connection,
-        operation_id: str,
-        target_id: str,
-        ip: str,
-        service_name: str,
-    ) -> InitialAccessResult:
-        """Attempt Non-SSH exploit via MetasploitRPCEngine (ADR-019).
-
-        On success, writes credential.shell fact with session ID.
-        """
-        from app.clients.metasploit_client import MetasploitRPCEngine  # noqa: PLC0415
-
-        engine = MetasploitRPCEngine()
-        method = engine.get_exploit_for_service(service_name)
-        if method is None:
-            return InitialAccessResult(
-                success=False,
-                method="metasploit",
-                credential=None,
-                agent_deployed=False,
-                error=f"No exploit for service: {service_name}",
-            )
-        result = await method(ip)
-        if result["status"] == "success":
-            shell_id = result.get("shell", "")
-            fact_value = f"metasploit:{shell_id}@{ip}"
-            # Write credential.shell fact (distinct from credential.ssh — no SSH involved)
-            fact_id = str(uuid.uuid4())
-            now = datetime.now(timezone.utc).isoformat()
-            await db.execute(
-                "INSERT INTO facts "
-                "(id, trait, value, category, source_technique_id, "
-                "source_target_id, operation_id, score, collected_at) "
-                "VALUES (?, ?, ?, ?, NULL, ?, ?, 1, ?)",
-                (fact_id, "credential.shell", fact_value, "credential",
-                 target_id, operation_id, now),
-            )
-            await db.commit()
-            await ws_manager.broadcast(operation_id, "fact.new", {
-                "id": fact_id,
-                "trait": "credential.shell",
-                "value": fact_value,
-                "category": "credential",
-                "source_target_id": target_id,
-                "operation_id": operation_id,
-            })
-            return InitialAccessResult(
-                success=True,
-                method="metasploit",
-                credential=fact_value,
-                agent_deployed=False,
-                error=None,
-            )
-        return InitialAccessResult(
-            success=False,
-            method="metasploit",
-            credential=None,
-            agent_deployed=False,
-            error=result.get("reason", "exploit failed"),
-        )
-
     async def _write_credential_fact(
         self,
         db: aiosqlite.Connection,

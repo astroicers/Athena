@@ -158,6 +158,20 @@ async def test_patch_can_clear_output_parser(client: AsyncClient):
     assert get_after.json()["output_parser"] is None
 
 
+async def test_patch_command_null_is_ignored(client: AsyncClient):
+    """PATCH {"command": null} 應被忽略，不修改現有 command。"""
+    create = await client.post("/api/playbooks", json={
+        "mitre_id": "T4444", "platform": "linux",
+        "command": "original_cmd", "facts_traits": [],
+    })
+    pb_id = create.json()["id"]
+
+    resp = await client.patch(f"/api/playbooks/{pb_id}", json={"command": None})
+    assert resp.status_code == 200
+    # command 不應被清空
+    assert resp.json()["command"] == "original_cmd"
+
+
 async def test_output_parser_read_from_playbook_on_ssh_execute(seeded_db):
     """engine_router._get_output_parser should read output_parser from technique_playbooks
     and engine_router._execute_ssh should forward it to DirectSSHEngine.execute."""

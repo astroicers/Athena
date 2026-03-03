@@ -127,6 +127,9 @@ async def update_playbook(
 
     updates: dict = {}
     for field, value in body.model_dump(exclude_unset=True).items():
+        if field == "command" and value is None:
+            # command is NOT NULL in DB — silently skip null values
+            continue
         if field == "facts_traits":
             updates["facts_traits"] = json.dumps(value) if value is not None else "[]"
         elif field == "tags":

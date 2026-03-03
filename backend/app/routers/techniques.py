@@ -14,6 +14,7 @@
 
 """Technique catalog and per-operation technique status endpoints."""
 
+import asyncio
 import json
 import logging
 import uuid
@@ -22,9 +23,10 @@ import aiosqlite
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.config import settings
-from app.database import get_db
+from app.database import get_db, _DB_FILE
 from app.models import Technique
 from app.models.api_schemas import AttackPathEntry, AttackPathResponse, TechniqueCreate, TechniqueWithStatus
+from app.ws_manager import ws_manager
 
 logger = logging.getLogger(__name__)
 
@@ -89,58 +91,66 @@ async def create_technique(
     return dict(row)
 
 
-@router.post("/techniques/sync-caldera")
+@router.post("/techniques/sync-caldera", status_code=202)
 async def sync_caldera_abilities(
-    db: aiosqlite.Connection = Depends(get_db),
+    db: aiosqlite.Connection = Depends(get_db),  # noqa: ARG001  kept for DI consistency
 ):
-    """Sync caldera_ability_id from Caldera's ability catalog.
+    """Sync caldera_ability_id from Caldera's ability catalog — returns 202 immediately."""
+    _task = asyncio.create_task(_sync_techniques_background())
+    _task.add_done_callback(
+        lambda t: logger.warning("techniques/sync-caldera task cancelled")
+        if t.cancelled() else None
+    )
+    return {"status": "sync_started"}
 
-    Fetches all abilities from Caldera, matches by MITRE technique ID,
-    and updates the caldera_ability_id field.
-    """
-    if settings.MOCK_C2_ENGINE:
-        return {"synced": 0, "message": "Mock mode — using seed data"}
 
+async def _sync_techniques_background() -> None:
+    """Background: fetch Caldera abilities, update technique caldera_ability_id."""
     try:
+        if settings.MOCK_C2_ENGINE:
+            logger.info("techniques/sync-caldera mock mode — no-op")
+            return
+
         from app.clients.c2_client import C2EngineClient
 
         client = C2EngineClient(settings.C2_ENGINE_URL, settings.C2_ENGINE_API_KEY)
         abilities = await client.list_abilities()
         await client.aclose()
-    except Exception as e:
-        logger.error("Failed to fetch abilities from C2 engine: %s", e)
-        return {"synced": 0, "message": f"C2 engine sync failed: {e}"}
 
-    if not abilities:
-        return {"synced": 0, "message": "No abilities found (is C2 engine running?)"}
+        if not abilities:
+            logger.info("techniques/sync-caldera: no abilities returned from C2 engine")
+            return
 
-    # Build mitre_id -> ability_id mapping
-    mapping: dict[str, str] = {}
-    for ab in abilities:
-        tech_id = ab.get("technique_id") or ab.get("technique", {}).get(
-            "attack_id", ""
+        # Build mitre_id -> ability_id mapping
+        mapping: dict[str, str] = {}
+        for ab in abilities:
+            tech_id = ab.get("technique_id") or ab.get("technique", {}).get(
+                "attack_id", ""
+            )
+            ab_id = ab.get("ability_id") or ab.get("id", "")
+            if tech_id and ab_id:
+                mapping.setdefault(tech_id, ab_id)
+
+        synced = 0
+        async with aiosqlite.connect(_DB_FILE) as db:
+            for mitre_id, ability_id in mapping.items():
+                result = await db.execute(
+                    "UPDATE techniques SET caldera_ability_id = ? "
+                    "WHERE mitre_id = ? AND (caldera_ability_id IS NULL OR caldera_ability_id = '')",
+                    (ability_id, mitre_id),
+                )
+                if result.rowcount > 0:
+                    synced += 1
+            await db.commit()
+
+        logger.info(
+            "techniques/sync-caldera: synced=%d total_abilities=%d mapped=%d",
+            synced, len(abilities), len(mapping),
         )
-        ab_id = ab.get("ability_id") or ab.get("id", "")
-        if tech_id and ab_id:
-            # Keep first match per technique
-            mapping.setdefault(tech_id, ab_id)
-
-    synced = 0
-    for mitre_id, ability_id in mapping.items():
-        result = await db.execute(
-            "UPDATE techniques SET caldera_ability_id = ? "
-            "WHERE mitre_id = ? AND (caldera_ability_id IS NULL OR caldera_ability_id = '')",
-            (ability_id, mitre_id),
-        )
-        if result.rowcount > 0:
-            synced += 1
-    await db.commit()
-
-    return {
-        "synced": synced,
-        "total_abilities": len(abilities),
-        "mapped_techniques": len(mapping),
-    }
+        # techniques/sync-caldera is a global endpoint (no op_id) —
+        # WS broadcast requires an operation_id, so we log only.
+    except Exception as exc:
+        logger.exception("techniques/sync-caldera background failed: %s", exc)
 
 
 @router.get(

@@ -14,6 +14,7 @@
 
 """Agent endpoints."""
 
+import asyncio
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -22,9 +23,10 @@ import aiosqlite
 from fastapi import APIRouter, Depends
 
 from app.config import settings
-from app.database import get_db
+from app.database import get_db, _DB_FILE
 from app.models import Agent
 from app.routers._deps import ensure_operation
+from app.ws_manager import ws_manager
 
 logger = logging.getLogger(__name__)
 
@@ -61,99 +63,123 @@ async def list_agents(
     return [_row_to_agent(r) for r in rows]
 
 
-@router.post("/operations/{operation_id}/agents/sync")
+@router.post("/operations/{operation_id}/agents/sync", status_code=202)
 async def sync_agents(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
-    """Sync agents from C2 engine into Athena's database."""
+    """Sync agents from C2 engine — returns 202 immediately, executes in background."""
     db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
-    if settings.MOCK_C2_ENGINE:
-        return {"message": "Mock mode — using seed agents", "synced": 0}
+    _task = asyncio.create_task(_sync_agents_background(operation_id))
+    _task.add_done_callback(
+        lambda t: logger.warning("agents/sync task cancelled for op %s", operation_id)
+        if t.cancelled() else None
+    )
+    return {"status": "sync_started", "operation_id": operation_id}
 
+
+async def _sync_agents_background(operation_id: str) -> None:
+    """Background: sync agents from C2, upsert into DB, broadcast result."""
     try:
+        if settings.MOCK_C2_ENGINE:
+            logger.info("agents/sync mock mode for op %s — no-op", operation_id)
+            await ws_manager.broadcast(
+                operation_id, "agents.synced",
+                {"operation_id": operation_id, "synced": 0, "skipped": 0},
+            )
+            return
+
         from app.clients.c2_client import C2EngineClient
         client = C2EngineClient(settings.C2_ENGINE_URL, settings.C2_ENGINE_API_KEY)
         c2_agents = await client.sync_agents(operation_id)
         await client.aclose()
-    except Exception as e:
-        logger.error("Failed to sync agents from C2 engine: %s", e)
-        return {"message": f"C2 engine sync failed: {e}", "synced": 0}
 
-    # Load targets for this operation to match C2 agents by host/IP
-    cursor = await db.execute(
-        "SELECT id, hostname, ip_address FROM targets WHERE operation_id = ?",
-        (operation_id,),
-    )
-    target_rows = await cursor.fetchall()
-    # Build lookup: hostname→target_id, ip→target_id
-    target_by_host: dict[str, str] = {}
-    for t in target_rows:
-        if t["hostname"]:
-            target_by_host[t["hostname"].lower()] = t["id"]
-        if t["ip_address"]:
-            target_by_host[t["ip_address"]] = t["id"]
+        async with aiosqlite.connect(_DB_FILE) as db:
+            db.row_factory = aiosqlite.Row
 
-    synced = 0
-    skipped = 0
-    for agent in c2_agents:
-        agent_host = agent.get("host", "")
-        # Match to Athena target by hostname or IP
-        host_id = target_by_host.get(agent_host.lower()) or target_by_host.get(agent_host)
-        if not host_id:
-            logger.warning(
-                "C2 agent paw=%s host=%s — no matching target in operation %s, skipping",
-                agent.get("paw"), agent_host, operation_id,
+            cursor = await db.execute(
+                "SELECT id, hostname, ip_address FROM targets WHERE operation_id = ?",
+                (operation_id,),
             )
-            skipped += 1
-            continue
+            target_rows = await cursor.fetchall()
+            target_by_host: dict[str, str] = {}
+            for t in target_rows:
+                if t["hostname"]:
+                    target_by_host[t["hostname"].lower()] = t["id"]
+                if t["ip_address"]:
+                    target_by_host[t["ip_address"]] = t["id"]
 
-        paw = agent.get("paw", "")
-        now = datetime.now(timezone.utc).isoformat()
+            synced = 0
+            skipped = 0
+            for agent in c2_agents:
+                agent_host = agent.get("host", "")
+                host_id = (
+                    target_by_host.get(agent_host.lower())
+                    or target_by_host.get(agent_host)
+                )
+                if not host_id:
+                    logger.warning(
+                        "C2 agent paw=%s host=%s — no matching target in op %s, skipping",
+                        agent.get("paw"), agent_host, operation_id,
+                    )
+                    skipped += 1
+                    continue
 
-        # Upsert by paw: check if agent with this paw already exists
-        cursor = await db.execute(
-            "SELECT id FROM agents WHERE paw = ? AND operation_id = ?",
-            (paw, operation_id),
+                paw = agent.get("paw", "")
+                now = datetime.now(timezone.utc).isoformat()
+
+                cursor = await db.execute(
+                    "SELECT id FROM agents WHERE paw = ? AND operation_id = ?",
+                    (paw, operation_id),
+                )
+                existing = await cursor.fetchone()
+
+                if existing:
+                    await db.execute(
+                        "UPDATE agents SET host_id = ?, status = ?, privilege = ?, "
+                        "last_beacon = ?, platform = ? WHERE id = ?",
+                        (
+                            host_id,
+                            agent.get("status", "alive"),
+                            agent.get("privilege", "User"),
+                            now,
+                            agent.get("platform", "unknown"),
+                            existing["id"],
+                        ),
+                    )
+                else:
+                    agent_id = str(uuid.uuid4())
+                    await db.execute(
+                        "INSERT INTO agents "
+                        "(id, paw, host_id, status, privilege, last_beacon, "
+                        "beacon_interval_sec, platform, operation_id) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        (
+                            agent_id, paw, host_id,
+                            agent.get("status", "alive"),
+                            agent.get("privilege", "User"),
+                            now, 60,
+                            agent.get("platform", "unknown"),
+                            operation_id,
+                        ),
+                    )
+                synced += 1
+
+            await db.commit()
+
+        logger.info(
+            "Synced %d agents from Caldera for op %s (%d skipped — no matching target)",
+            synced, operation_id, skipped,
         )
-        existing = await cursor.fetchone()
-
-        if existing:
-            await db.execute(
-                "UPDATE agents SET host_id = ?, status = ?, privilege = ?, "
-                "last_beacon = ?, platform = ? WHERE id = ?",
-                (
-                    host_id,
-                    agent.get("status", "alive"),
-                    agent.get("privilege", "User"),
-                    now,
-                    agent.get("platform", "unknown"),
-                    existing["id"],
-                ),
-            )
-        else:
-            agent_id = str(uuid.uuid4())
-            await db.execute(
-                "INSERT INTO agents "
-                "(id, paw, host_id, status, privilege, last_beacon, "
-                "beacon_interval_sec, platform, operation_id) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    agent_id, paw, host_id,
-                    agent.get("status", "alive"),
-                    agent.get("privilege", "User"),
-                    now, 60,
-                    agent.get("platform", "unknown"),
-                    operation_id,
-                ),
-            )
-        synced += 1
-
-    await db.commit()
-    logger.info(
-        "Synced %d agents from Caldera for operation %s (%d skipped — no matching target)",
-        synced, operation_id, skipped,
-    )
-    return {"synced": synced, "skipped": skipped}
+        await ws_manager.broadcast(
+            operation_id, "agents.synced",
+            {"operation_id": operation_id, "synced": synced, "skipped": skipped},
+        )
+    except Exception as exc:
+        logger.exception("agents/sync background failed for op %s: %s", operation_id, exc)
+        await ws_manager.broadcast(
+            operation_id, "agents.sync_failed",
+            {"operation_id": operation_id, "error": str(exc)},
+        )

@@ -125,7 +125,7 @@ export default function MonitorPage() {
       const data = raw as Record<string, unknown>;
       // Cast the broadcast payload directly to OrientRecommendation — the shape is identical
       setRecommendation(data as unknown as OrientRecommendation);
-      const techniqueId = (data.recommended_technique_id as string) ?? "";
+      const techniqueId = (data.recommendedTechniqueId as string) ?? "";
       const confidence = (data.confidence as number) ?? 0;
       addToast(
         `New AI recommendation: ${techniqueId || "analysis complete"} (confidence ${Math.round(confidence * 100)}%)`,

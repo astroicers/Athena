@@ -2,6 +2,7 @@
 import pytest
 
 
+@pytest.mark.asyncio
 async def test_winrm_mock_returns_success():
     """WINRM_ENABLED=false → WinRMEngine returns mock success result."""
     from app.clients.winrm_client import WinRMEngine

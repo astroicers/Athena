@@ -15,6 +15,7 @@
 使用 pywinrm 連接 WinRM（TCP 5985/5986）執行 PowerShell 命令。
 WINRM_ENABLED=false（預設）時，所有呼叫回傳 mock 成功結果。
 """
+import asyncio
 import logging
 import uuid
 from dataclasses import dataclass, field
@@ -81,9 +82,10 @@ class WinRMEngine(BaseEngineClient):
                 f"http://{host}:{port}/wsman",
                 auth=(username, password),
                 transport="ntlm",
+                read_timeout_sec=settings.WINRM_TIMEOUT_SEC,
+                operation_timeout_sec=settings.WINRM_TIMEOUT_SEC,
             )
-            import asyncio  # noqa: PLC0415
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             response = await loop.run_in_executor(
                 None,
                 lambda: session.run_ps(command),

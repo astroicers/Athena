@@ -331,7 +331,8 @@ class EngineRouter:
 
         from app.clients.winrm_client import WinRMEngine  # noqa: PLC0415
         client = WinRMEngine()
-        result: ExecutionResult = await client.execute(ability_id, credential_string)
+        output_parser = await self._get_output_parser(db, technique_id)
+        result: ExecutionResult = await client.execute(ability_id, credential_string, output_parser=output_parser)
 
         final = await self._finalize_execution(
             db, exec_id, technique_id, target_id, engine,
@@ -339,6 +340,8 @@ class EngineRouter:
         )
         if final.get("status") == "success":
             await self._mark_target_compromised(db, target_id, result.output)
+        # Note: PersistenceEngine not invoked on Windows path — cron/systemd probes are Linux-only.
+        # Windows persistence (T1053.005 scheduled tasks) is handled via WinRM playbook execution.
         return final
 
     async def _get_output_parser(

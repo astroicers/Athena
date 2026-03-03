@@ -2,14 +2,13 @@
 # Licensed under the Apache License, Version 2.0
 """Tests for PersistenceEngine."""
 import pytest
-from unittest.mock import MagicMock
 
 
 async def test_persistence_probe_disabled_by_default():
     """PERSISTENCE_ENABLED=false 時，probe 直接回傳 {cron: False, systemd: False}，不建立 SSH 連線。"""
     from app.services.persistence_engine import PersistenceEngine
     engine = PersistenceEngine()
-    result = await engine.probe(MagicMock(), "op-1", "tgt-1", "user:pass@10.0.0.1:22")
+    result = await engine.probe("/tmp/test_athena.db", "op-1", "tgt-1", "user:pass@10.0.0.1:22")
     assert result == {"cron": False, "systemd": False}
 
 
@@ -37,7 +36,7 @@ async def test_persistence_probe_enabled_ssh_failure_is_graceful(monkeypatch):
     from app.services.persistence_engine import PersistenceEngine
     engine = PersistenceEngine()
     # 傳入格式正確但無法連線的目標
-    result = await engine.probe(MagicMock(), "op-1", "tgt-1", "user:pass@127.0.0.1:19999")
+    result = await engine.probe("/tmp/test_athena.db", "op-1", "tgt-1", "user:pass@127.0.0.1:19999")
     assert isinstance(result, dict)
     assert "cron" in result
     assert "systemd" in result

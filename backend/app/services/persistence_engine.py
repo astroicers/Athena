@@ -37,7 +37,7 @@ class PersistenceEngine:
 
     async def probe(
         self,
-        db: aiosqlite.Connection,
+        db_path: str,
         operation_id: str,
         target_id: str,
         credential_string: str,
@@ -49,7 +49,7 @@ class PersistenceEngine:
         results: dict[str, bool] = {"cron": False, "systemd": False}
 
         try:
-            import asyncssh
+            import asyncssh  # noqa: PLC0415
 
             if "#" in credential_string:
                 username, host, port, key_content = _parse_key_credential(credential_string)
@@ -76,13 +76,17 @@ class PersistenceEngine:
             return results
 
         now = datetime.now(timezone.utc).isoformat()
-        for key, available in results.items():
-            if available:
-                await db.execute(
-                    "INSERT INTO facts "
-                    "(id, operation_id, source_target_id, trait, value, category, score, collected_at) "
-                    "VALUES (?, ?, ?, ?, ?, 'host', 1, ?)",
-                    (str(uuid.uuid4()), operation_id, target_id, "host.persistence", key, now),
-                )
-        await db.commit()
+        async with aiosqlite.connect(db_path) as db:
+            inserted = False
+            for key, available in results.items():
+                if available:
+                    await db.execute(
+                        "INSERT INTO facts "
+                        "(id, operation_id, source_target_id, trait, value, category, score, collected_at) "
+                        "VALUES (?, ?, ?, ?, ?, 'host', 1, ?)",
+                        (str(uuid.uuid4()), operation_id, target_id, "host.persistence", key, now),
+                    )
+                    inserted = True
+            if inserted:
+                await db.commit()
         return results

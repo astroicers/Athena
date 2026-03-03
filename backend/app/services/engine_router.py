@@ -196,10 +196,11 @@ class EngineRouter:
         if final.get("status") == "success":
             await self._mark_target_compromised(db, target_id, result.output)
         if settings.PERSISTENCE_ENABLED and final.get("status") == "success" and cred_row:
-            from app.services.persistence_engine import PersistenceEngine
-            import asyncio as _asyncio
-            _asyncio.ensure_future(
-                PersistenceEngine().probe(db, operation_id, target_id, cred_row["value"])
+            from app.services.persistence_engine import PersistenceEngine  # noqa: PLC0415
+            from app.database import _DB_FILE  # noqa: PLC0415
+            import asyncio  # noqa: PLC0415
+            asyncio.create_task(
+                PersistenceEngine().probe(_DB_FILE, operation_id, target_id, cred_row["value"])
             )
         return final
 
@@ -274,10 +275,11 @@ class EngineRouter:
         if final.get("status") == "success":
             await self._mark_target_compromised(db, target_id, result.output)
         if settings.PERSISTENCE_ENABLED and final.get("status") == "success" and cred_row:
-            from app.services.persistence_engine import PersistenceEngine
-            import asyncio as _asyncio
-            _asyncio.ensure_future(
-                PersistenceEngine().probe(db, operation_id, target_id, cred_row["value"])
+            from app.services.persistence_engine import PersistenceEngine  # noqa: PLC0415
+            from app.database import _DB_FILE  # noqa: PLC0415
+            import asyncio  # noqa: PLC0415
+            asyncio.create_task(
+                PersistenceEngine().probe(_DB_FILE, operation_id, target_id, cred_row["value"])
             )
         return final
 

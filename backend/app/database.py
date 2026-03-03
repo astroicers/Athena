@@ -355,6 +355,11 @@ TECHNIQUE_PLAYBOOK_SEEDS = [
      "output_parser": "first_line",
      "facts_traits": '["host.service"]',
      "tags": '["persistence","systemd","linux"]'},
+    {"mitre_id": "T1136.001", "platform": "linux",
+     "command": "id; getent passwd | cut -d: -f1,3,7 | head -10",
+     "output_parser": "first_line",
+     "facts_traits": '["host.user"]',
+     "tags": '["persistence","account_creation","linux"]'},
 ]
 
 

@@ -97,6 +97,7 @@ backend/app/
 - Metasploit RPC 整合（vsftpd backdoor 等 Metasploitable exploit）留至 Phase B
 - nmap 需以 root 執行才能做 OS detection（`-O`），Docker 容器中已處理
 - asyncssh known_hosts 驗證停用（`known_hosts=None`）適合滲透測試環境，不適合生產
+- ✅ 同步阻塞問題已由 ADR-023 解決：`POST /recon/scan` 改為 202 Accepted + 後台執行 + WebSocket 進度推送
 
 **後續追蹤：**
 - [ ] ADR-016：Metasploit RPC 整合架構
@@ -109,5 +110,6 @@ backend/app/
 ## 關聯（Relations）
 
 - 取代：（無）
+- 被延伸：ADR-023（同步阻塞技術債由 ADR-023 解決）
 - 依賴：ADR-003（OODA 循環）、ADR-006（執行引擎抽象層）、ADR-008（SQLite Schema）
 - 參考：`docs/analysis/recon-pocket-integration-assessment.md`

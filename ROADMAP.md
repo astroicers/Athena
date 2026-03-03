@@ -14,7 +14,7 @@
 - ROE / Scope validation (ScopeValidator)
 - C5ISR battle dashboard (WebSocket)
 
-## v0.2.0 (In Progress) — Lateral Movement + Persistence
+## v0.2.0 (Released) — Lateral Movement + Persistence
 
 ### Completed (Phase G)
 
@@ -33,15 +33,14 @@
 - OrientEngine Section 7.6 platform-aware (Windows vs Linux playbook selection based on target OS)
 - OrientEngine Section 7.7 persistence status (host.persistence facts surfaced to LLM)
 
-### Remaining
+### Completed (Phase I)
 
-- Multi-agent coordination (agent capability matching)
-- Tech debt: `_get_output_parser` platform-aware query (currently always queries `platform='linux'`)
+- Agent capability matching — `AgentCapabilityMatcher` selects best-fit C2 agent by privilege (SYSTEM > Admin > User) + platform; replaces blind `LIMIT 1` selection (ADR-021, SPEC-022)
+- Tech debt: `_get_output_parser` now platform-aware (`platform='windows'` for WinRM path); seed INSERT bug fixed (output_parser column was missing)
+- 202 tests passing
 
-## v0.3.0 (Planned) — Full Reporting + Cloud Deployment
+## v0.3.0 (Planned) — Advanced Orchestration
 
-- Auto-report generation on operation completion
-- Report template customization (Jinja2)
-- AWS / Azure deployment guide
-- SAML/OIDC auth integration
-- Operator RBAC (role-based access control)
+- Multi-stage campaign automation (ADR required)
+- Attack graph visualization (ADR required)
+- Custom playbook editor UI (ADR required)

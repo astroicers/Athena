@@ -1,4 +1,4 @@
-# [ADR-019]: Non-SSH Initial Access — Metasploit RPC 整合
+# [ADR-020]: Non-SSH Initial Access — Metasploit RPC 整合
 
 | 欄位 | 內容 |
 |------|------|
@@ -57,5 +57,5 @@
 
 ## 參考
 
-- [ADR-017](ADR-017-direct-ssh-engine.md)：DirectSSHEngine — 需 SSH 的技術債 TD-002
+- [ADR-017](ADR-017-direct-ssh-engine.md)：DirectSSHEngine — 技術債 TD-002（本 ADR 解決）
 - [ADR-018](ADR-018-technique-playbook-knowledge-base.md)：Technique Playbook 知識庫

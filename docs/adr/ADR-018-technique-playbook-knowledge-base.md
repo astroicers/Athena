@@ -75,7 +75,7 @@ T1003.001 (OS Credential Dumping) — available via DirectSSH [high-value]
 - 為未來 PayloadsAllTheThings 大量 payload 匯入奠定基礎
 
 **技術債：**
-- Layer B（OrientEngine Section 7.6）尚未實作，留待下個 session
+- ✅ Layer B（OrientEngine Section 7.6）已實作 — `orient_engine.py` L500-514，查詢 `technique_playbooks` 依平台篩選並注入 `{playbook_summary}` 至提示詞
 - `POST /api/playbooks` API endpoint 尚未建立
 
 ---

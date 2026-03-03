@@ -121,12 +121,12 @@ CALDERA_MOCK_BEACON: bool = False
 - **影響場景**：T1059 互動式 shell、多步驟 post-exploitation、跨步驟環境變數共享
 - **解法**：(operation_id, credential_string) session pool，keepalive_interval=30s，asyncio.Lock 防 TOCTOU
 
-### TD-002：Non-SSH 初始存取（Phase C — 待 ADR-019 Accepted）
-- **狀態**：⏳ Draft（`ADR-019-non-ssh-initial-access.md`）
+### TD-002：Non-SSH 初始存取（Phase C — 已完成）
+- **狀態**：✅ Accepted（`ADR-020-non-ssh-initial-access.md`）
 - **影響**：T1190 vsftpd 2.3.4 backdoor、UnrealIRCd exploit、Samba usermap_script（無 SSH 前提）
-- **解法**：Metasploit RPC 整合（禁止在 ADR-019 Accepted 前實作）
+- **解法**：Metasploit RPC 整合（`backend/app/clients/metasploit_client.py`，`MOCK_METASPLOIT=true` CI 預設）
 
-### TD-003：Windows / WinRM 支援（Phase C — 規劃中）
-- **狀態**：⏳ 無對應 ADR，待建立
-- **現狀**：全部引擎（DirectSSH / PersistentSSH）僅支援 Linux/SSH
-- **解法**：pywinrm 或 Metasploit Meterpreter，需新 ADR
+### TD-003：Windows / WinRM 支援（Phase H — 已實作）
+- **狀態**：✅ Accepted（`ADR-022-winrm-windows-post-exploitation-engine.md`）
+- **現狀**：`WinRMEngine`（`backend/app/clients/winrm_client.py`）實作 7 種 Windows PowerShell 技術
+- **解法**：pywinrm（`WINRM_ENABLED=false` CI 預設 mock 模式）

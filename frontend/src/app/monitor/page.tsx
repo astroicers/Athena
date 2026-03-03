@@ -96,6 +96,45 @@ export default function MonitorPage() {
     return unsub;
   }, [ws]);
 
+  // Subscribe to fact.new — refresh topology so new host facts are reflected
+  useEffect(() => {
+    const unsub = ws.subscribe("fact.new", (raw: unknown) => {
+      const data = raw as Record<string, unknown>;
+      const trait = (data.trait as string) ?? "";
+      const category = (data.category as string) ?? "";
+      // Refresh topology when network/host/service facts arrive
+      if (
+        category === "network" ||
+        category === "host" ||
+        category === "service" ||
+        trait.startsWith("host.") ||
+        trait.startsWith("service.") ||
+        trait.startsWith("network.")
+      ) {
+        api.get<TopologyData>(`/operations/${DEFAULT_OP_ID}/topology`)
+          .then(setTopology)
+          .catch(() => {});
+      }
+    });
+    return unsub;
+  }, [ws]);
+
+  // Subscribe to recommendation — update recommendation panel immediately on new AI analysis
+  useEffect(() => {
+    const unsub = ws.subscribe("recommendation", (raw: unknown) => {
+      const data = raw as Record<string, unknown>;
+      // Cast the broadcast payload directly to OrientRecommendation — the shape is identical
+      setRecommendation(data as unknown as OrientRecommendation);
+      const techniqueId = (data.recommended_technique_id as string) ?? "";
+      const confidence = (data.confidence as number) ?? 0;
+      addToast(
+        `New AI recommendation: ${techniqueId || "analysis complete"} (confidence ${Math.round(confidence * 100)}%)`,
+        "info",
+      );
+    });
+    return unsub;
+  }, [ws, addToast]);
+
   const allLogs = [...initialLogs, ...liveLogs];
 
   useEffect(() => {

@@ -118,6 +118,15 @@ export default function NavigatorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ws.subscribe]);
 
+  // WebSocket: update recommendation card immediately when AI analysis completes
+  useEffect(() => {
+    const unsub = ws.subscribe("recommendation", (raw: unknown) => {
+      setRecommendation(raw as unknown as OrientRecommendation);
+    });
+    return unsub;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ws.subscribe]);
+
   const grouped = useMemo(() => {
     const map = new Map<string, TechniqueWithStatus[]>();
     for (const t of techniques) {

@@ -1,7 +1,11 @@
 type: system
 mode: single
-workflow: standard
+workflow: vibe-coding
 rag: disabled
 guardrail: disabled
-hitl: standard
+hitl: minimal
 name: Athena
+autonomous: disabled
+design: disabled
+coding_style: disabled
+openapi: disabled

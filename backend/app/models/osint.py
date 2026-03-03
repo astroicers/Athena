@@ -15,6 +15,7 @@
 """OSINT domain models."""
 
 from __future__ import annotations
+from typing import Literal
 from pydantic import BaseModel
 
 
@@ -34,3 +35,9 @@ class OSINTResult(BaseModel):
     scan_duration_sec: float
     sources_used: list[str]
     subdomains: list[SubdomainInfo] = []
+
+
+class OSINTDiscoverQueued(BaseModel):
+    status: Literal["queued"] = "queued"
+    operation_id: str
+    domain: str

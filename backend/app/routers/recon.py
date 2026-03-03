@@ -26,7 +26,7 @@ from pydantic import BaseModel
 
 from app.config import settings
 from app.database import get_db, _DB_FILE
-from app.models.osint import OSINTResult
+from app.models.osint import OSINTDiscoverQueued, OSINTResult
 from app.models.recon import ReconScanResult, InitialAccessResult, ReconScanQueued
 from app.routers._deps import ensure_operation
 from app.services.initial_access_engine import InitialAccessEngine
@@ -267,25 +267,58 @@ async def get_recon_status(
 
 @router.post(
     "/operations/{op_id}/osint/discover",
-    response_model=OSINTResult,
+    response_model=OSINTDiscoverQueued,
+    status_code=202,
 )
 async def run_osint_discover(
     op_id: str,
     body: OSINTDiscoverRequest,
     db: aiosqlite.Connection = Depends(get_db),
-) -> OSINTResult:
-    """Run OSINT subdomain discovery for a domain."""
+) -> OSINTDiscoverQueued:
+    """Enqueue OSINT discovery — returns 202 immediately, executes in background."""
     db.row_factory = aiosqlite.Row
     await ensure_operation(db, op_id)
 
-    try:
-        result = await OSINTEngine().discover(
-            db=db,
-            operation_id=op_id,
-            domain=body.domain,
-            max_subdomains=body.max_subdomains,
+    _task = asyncio.create_task(
+        _run_osint_background(op_id, body.domain, body.max_subdomains)
+    )
+    if _task is not None:
+        _task.add_done_callback(
+            lambda t: logger.warning(
+                "OSINT background task cancelled for op %s domain %s", op_id, body.domain
+            )
+            if t.cancelled() else None
         )
-        return result
-    except Exception as exc:
-        logger.exception("OSINT discover failed for domain %s: %s", body.domain, exc)
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return OSINTDiscoverQueued(
+        status="queued",
+        operation_id=op_id,
+        domain=body.domain,
+    )
+
+
+async def _run_osint_background(op_id: str, domain: str, max_subdomains: int) -> None:
+    """Background task: run OSINT subdomain discovery."""
+    from app.ws_manager import ws_manager  # local import to avoid circular
+
+    async with aiosqlite.connect(_DB_FILE) as db:
+        db.row_factory = aiosqlite.Row
+        try:
+            result = await OSINTEngine().discover(
+                db=db,
+                operation_id=op_id,
+                domain=domain,
+                max_subdomains=max_subdomains,
+            )
+            await ws_manager.broadcast(op_id, "osint.completed", {
+                "domain": domain,
+                "subdomains_found": result.subdomains_found,
+            })
+        except Exception as exc:
+            logger.exception(
+                "Background OSINT discover for domain %s failed: %s", domain, exc
+            )
+            await ws_manager.broadcast(op_id, "osint.failed", {
+                "domain": domain,
+                "error": str(exc),
+            })

@@ -243,3 +243,143 @@ async def test_run_scan_background_marks_failed_on_exception(tmp_db):
     # ws_manager.broadcast should have been called with "recon.failed"
     calls = [str(c) for c in mock_ws.broadcast.call_args_list]
     assert any("recon.failed" in c for c in calls)
+
+
+# ---------------------------------------------------------------------------
+# POST /operations/{op_id}/osint/discover → 202 Accepted (async / queued)
+# ---------------------------------------------------------------------------
+
+async def test_osint_discover_returns_202_queued(client):
+    """POST osint/discover returns 202 with status='queued' immediately."""
+    with patch("app.routers.recon.asyncio.create_task") as mock_create_task:
+        mock_create_task.return_value = None
+
+        resp = await client.post(
+            "/api/operations/test-op-1/osint/discover",
+            json={"domain": "example.com", "max_subdomains": 100},
+        )
+
+    assert resp.status_code == 202
+    data = resp.json()
+    assert data["status"] == "queued"
+    assert data["operation_id"] == "test-op-1"
+    assert data["domain"] == "example.com"
+
+
+async def test_osint_discover_enqueues_background_task(client):
+    """POST osint/discover calls asyncio.create_task exactly once."""
+    with patch("app.routers.recon.asyncio.create_task") as mock_create_task:
+        mock_create_task.return_value = None
+
+        resp = await client.post(
+            "/api/operations/test-op-1/osint/discover",
+            json={"domain": "example.com"},
+        )
+
+    assert resp.status_code == 202
+    mock_create_task.assert_called_once()
+
+
+async def test_osint_discover_op_not_found_returns_404(client):
+    """POST osint/discover with unknown op_id → 404, no background task."""
+    with patch("app.routers.recon.asyncio.create_task") as mock_create_task:
+        mock_create_task.return_value = None
+
+        resp = await client.post(
+            "/api/operations/nonexistent-op/osint/discover",
+            json={"domain": "example.com"},
+        )
+
+    assert resp.status_code == 404
+    mock_create_task.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Background function: _run_osint_background
+# ---------------------------------------------------------------------------
+
+async def test_run_osint_background_broadcasts_completed(tmp_db):
+    """_run_osint_background happy path: broadcasts osint.completed."""
+    import aiosqlite
+    from app.database import _CREATE_TABLES
+    from app.models.osint import OSINTResult
+    from app.routers.recon import _run_osint_background
+
+    for ddl in _CREATE_TABLES:
+        await tmp_db.execute(ddl)
+    await tmp_db.execute(
+        "INSERT INTO operations (id, code, name, codename, strategic_intent) "
+        "VALUES ('op-osint-1', 'OP-OSINT', 'OSINT Test', 'OSINT', 'test')"
+    )
+    await tmp_db.commit()
+
+    mock_result = OSINTResult(
+        domain="example.com",
+        operation_id="op-osint-1",
+        subdomains_found=3,
+        ips_resolved=3,
+        targets_created=3,
+        facts_written=9,
+        scan_duration_sec=0.5,
+        sources_used=["mock"],
+        subdomains=[],
+    )
+
+    with patch("app.routers.recon._DB_FILE", ":memory:"), \
+         patch("aiosqlite.connect") as mock_connect, \
+         patch("app.routers.recon.OSINTEngine") as MockOSINTEngine, \
+         patch("app.ws_manager.ws_manager") as mock_ws:
+
+        mock_connect.return_value.__aenter__ = AsyncMock(return_value=tmp_db)
+        mock_connect.return_value.__aexit__ = AsyncMock(return_value=False)
+        MockOSINTEngine.return_value.discover = AsyncMock(return_value=mock_result)
+        mock_ws.broadcast = AsyncMock()
+
+        await _run_osint_background("op-osint-1", "example.com", 100)
+
+    calls = [str(c) for c in mock_ws.broadcast.call_args_list]
+    assert any("osint.completed" in c for c in calls), "osint.completed was not broadcast"
+    # Verify payload contains expected fields
+    completed_call = next(c for c in mock_ws.broadcast.call_args_list if "osint.completed" in str(c))
+    _args, _kwargs = completed_call
+    payload = _args[2] if len(_args) >= 3 else _kwargs.get("payload", {})
+    assert payload.get("domain") == "example.com"
+    assert payload.get("subdomains_found") == 3
+
+
+async def test_run_osint_background_broadcasts_failed_on_exception(tmp_db):
+    """_run_osint_background: broadcasts osint.failed when discover() raises."""
+    import aiosqlite
+    from app.database import _CREATE_TABLES
+    from app.routers.recon import _run_osint_background
+
+    for ddl in _CREATE_TABLES:
+        await tmp_db.execute(ddl)
+    await tmp_db.execute(
+        "INSERT INTO operations (id, code, name, codename, strategic_intent) "
+        "VALUES ('op-osint-2', 'OP-OSINT2', 'OSINT Test 2', 'OSINT2', 'test')"
+    )
+    await tmp_db.commit()
+
+    with patch("app.routers.recon._DB_FILE", ":memory:"), \
+         patch("aiosqlite.connect") as mock_connect, \
+         patch("app.routers.recon.OSINTEngine") as MockOSINTEngine, \
+         patch("app.ws_manager.ws_manager") as mock_ws:
+
+        mock_connect.return_value.__aenter__ = AsyncMock(return_value=tmp_db)
+        mock_connect.return_value.__aexit__ = AsyncMock(return_value=False)
+        MockOSINTEngine.return_value.discover = AsyncMock(
+            side_effect=RuntimeError("crt.sh timeout")
+        )
+        mock_ws.broadcast = AsyncMock()
+
+        await _run_osint_background("op-osint-2", "example.com", 100)
+
+    calls = [str(c) for c in mock_ws.broadcast.call_args_list]
+    assert any("osint.failed" in c for c in calls), "osint.failed was not broadcast"
+    # Verify error is included in the payload
+    failed_call = next(c for c in mock_ws.broadcast.call_args_list if "osint.failed" in str(c))
+    _args, _kwargs = failed_call
+    payload = _args[2] if len(_args) >= 3 else _kwargs.get("payload", {})
+    assert payload.get("domain") == "example.com"
+    assert "crt.sh timeout" in payload.get("error", "")

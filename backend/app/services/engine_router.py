@@ -331,7 +331,7 @@ class EngineRouter:
 
         from app.clients.winrm_client import WinRMEngine  # noqa: PLC0415
         client = WinRMEngine()
-        output_parser = await self._get_output_parser(db, technique_id)
+        output_parser = await self._get_output_parser(db, technique_id, platform="windows")
         result: ExecutionResult = await client.execute(ability_id, credential_string, output_parser=output_parser)
 
         final = await self._finalize_execution(
@@ -345,14 +345,14 @@ class EngineRouter:
         return final
 
     async def _get_output_parser(
-        self, db: aiosqlite.Connection, technique_id: str
+        self, db: aiosqlite.Connection, technique_id: str, platform: str = "linux"
     ) -> "str | None":
-        """Read output_parser from technique_playbooks (linux platform, most recent row)."""
+        """Read output_parser from technique_playbooks for the given platform."""
         cursor = await db.execute(
             "SELECT output_parser FROM technique_playbooks "
-            "WHERE mitre_id = ? AND platform = 'linux' "
+            "WHERE mitre_id = ? AND platform = ? "
             "ORDER BY created_at DESC LIMIT 1",
-            (technique_id,),
+            (technique_id, platform),
         )
         row = await cursor.fetchone()
         return row["output_parser"] if row else None

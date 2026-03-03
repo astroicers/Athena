@@ -251,3 +251,87 @@ async def test_output_parser_read_from_playbook_on_ssh_execute(seeded_db):
         f"DirectSSHEngine.execute was not called with output_parser='json'; "
         f"actual kwargs: {call_kwargs}"
     )
+
+
+async def test_get_output_parser_windows_platform(seeded_db):
+    """_get_output_parser with platform='windows' reads Windows playbook's output_parser."""
+    import aiosqlite
+    from unittest.mock import MagicMock, AsyncMock
+    from app.database import _seed_technique_playbooks
+    from app.services.engine_router import EngineRouter
+
+    await _seed_technique_playbooks(seeded_db)
+    seeded_db.row_factory = aiosqlite.Row
+    # T1059.001 is seeded with platform='windows', output_parser='first_line'
+    router = EngineRouter(
+        c2_engine=MagicMock(),
+        adaptive_engine=None,
+        fact_collector=MagicMock(),
+        ws_manager=MagicMock(broadcast=AsyncMock()),
+    )
+    result = await router._get_output_parser(seeded_db, "T1059.001", platform="windows")
+    assert result == "first_line"
+
+
+async def test_get_output_parser_windows_technique_linux_path_returns_none(seeded_db):
+    """Windows-only technique queried with platform='linux' returns None (no linux seed)."""
+    import aiosqlite
+    from unittest.mock import MagicMock, AsyncMock
+    from app.database import _seed_technique_playbooks
+    from app.services.engine_router import EngineRouter
+
+    await _seed_technique_playbooks(seeded_db)
+    seeded_db.row_factory = aiosqlite.Row
+    router = EngineRouter(
+        c2_engine=MagicMock(),
+        adaptive_engine=None,
+        fact_collector=MagicMock(),
+        ws_manager=MagicMock(broadcast=AsyncMock()),
+    )
+    # T1059.001 only exists as windows; querying linux should return None
+    result = await router._get_output_parser(seeded_db, "T1059.001", platform="linux")
+    assert result is None
+
+
+async def test_execute_winrm_uses_windows_output_parser(seeded_db):
+    """_execute_winrm should call WinRMEngine.execute with output_parser from windows platform."""
+    import aiosqlite
+    from unittest.mock import AsyncMock, patch, MagicMock
+    from app.database import _seed_technique_playbooks
+    from app.clients import ExecutionResult
+    from app.services.engine_router import EngineRouter
+
+    await _seed_technique_playbooks(seeded_db)
+    seeded_db.row_factory = aiosqlite.Row
+    ws_mock = MagicMock(broadcast=AsyncMock())
+    router = EngineRouter(
+        c2_engine=MagicMock(),
+        adaptive_engine=None,
+        fact_collector=MagicMock(),
+        ws_manager=ws_mock,
+    )
+
+    await seeded_db.execute(
+        "INSERT OR IGNORE INTO techniques (id, mitre_id, name, tactic, tactic_id, risk_level) "
+        "VALUES ('tech-t1059', 'T1059.001', 'PowerShell', 'Execution', 'TA0002', 'medium')"
+    )
+    await seeded_db.commit()
+
+    with patch("app.clients.winrm_client.WinRMEngine.execute", new_callable=AsyncMock) as mock_exec:
+        mock_exec.return_value = ExecutionResult(
+            success=True, execution_id="mock-id",
+            output="[MOCK WinRM] T1059.001 executed", facts=[], error=None,
+        )
+        await router._execute_winrm(
+            db=seeded_db, exec_id="exec-winrm-1",
+            now="2026-01-01T00:00:00+00:00",
+            ability_id="T1059.001", technique_id="T1059.001",
+            target_id="test-target-1", engine="winrm",
+            operation_id="test-op-1", ooda_iteration_id=None,
+            credential_string="admin:pass@10.0.0.1:5985",
+        )
+
+    _, call_kwargs = mock_exec.call_args
+    assert call_kwargs.get("output_parser") == "first_line", (
+        f"Expected 'first_line' (from windows seed), got {call_kwargs.get('output_parser')!r}"
+    )

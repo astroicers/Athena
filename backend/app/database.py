@@ -391,14 +391,15 @@ async def _seed_technique_playbooks(db: aiosqlite.Connection) -> None:
         await db.execute(
             """
             INSERT OR IGNORE INTO technique_playbooks
-                (id, mitre_id, platform, command, facts_traits, source, tags)
-            VALUES (?, ?, ?, ?, ?, 'seed', ?)
+                (id, mitre_id, platform, command, output_parser, facts_traits, source, tags)
+            VALUES (?, ?, ?, ?, ?, ?, 'seed', ?)
             """,
             (
                 str(uuid4()),
                 seed["mitre_id"],
                 seed["platform"],
                 seed["command"],
+                seed.get("output_parser"),
                 seed["facts_traits"],
                 seed["tags"],
             ),

@@ -57,6 +57,8 @@ class Settings(BaseSettings):
     MSF_RPC_SSL: bool = False
     MOCK_METASPLOIT: bool = True
     PERSISTENCE_ENABLED: bool = False
+    WINRM_ENABLED: bool = False
+    WINRM_TIMEOUT_SEC: int = 30
 
 
 settings = Settings()

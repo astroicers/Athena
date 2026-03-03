@@ -360,6 +360,21 @@ TECHNIQUE_PLAYBOOK_SEEDS = [
      "output_parser": "first_line",
      "facts_traits": '["host.user"]',
      "tags": '["persistence","account_creation","linux"]'},
+    {"mitre_id": "T1021.001", "platform": "windows",
+     "command": "whoami; hostname; ipconfig /all | Select-String 'IPv4'",
+     "output_parser": "first_line",
+     "facts_traits": '["host.os","host.network"]',
+     "tags": '["lateral_move","winrm","windows"]'},
+    {"mitre_id": "T1053.005", "platform": "windows",
+     "command": "schtasks /query /fo CSV /nh 2>$null | Select-Object -First 10",
+     "output_parser": "first_line",
+     "facts_traits": '["host.persistence"]',
+     "tags": '["persistence","scheduled_task","windows"]'},
+    {"mitre_id": "T1059.001", "platform": "windows",
+     "command": "whoami; $env:COMPUTERNAME; Get-Process | Select-Object -First 5 Name,Id",
+     "output_parser": "first_line",
+     "facts_traits": '["host.os"]',
+     "tags": '["execution","powershell","windows"]'},
 ]
 
 

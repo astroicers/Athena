@@ -89,6 +89,23 @@ class EngineRouter:
                     ooda_iteration_id, service, target_ip, engine,
                 )
 
+        # ── WinRM routing: target has credential.winrm fact ──────────────────
+        winrm_cursor = await db.execute(
+            "SELECT value FROM facts "
+            "WHERE operation_id = ? AND source_target_id = ? AND trait = 'credential.winrm' "
+            "LIMIT 1",
+            (operation_id, target_id),
+        )
+        winrm_cred = await winrm_cursor.fetchone()
+        if winrm_cred:
+            return await self._execute_winrm(
+                db=db, exec_id=exec_id, now=now,
+                ability_id=ability_id, technique_id=technique_id,
+                target_id=target_id, engine="winrm",
+                operation_id=operation_id, ooda_iteration_id=ooda_iteration_id,
+                credential_string=winrm_cred["value"],
+            )
+
         # ── Engine selection ──────────────────────────────────────────────────
         # Determine effective mode:
         #   EXECUTION_ENGINE="ssh"    → SSH path (no agent required)
@@ -281,6 +298,47 @@ class EngineRouter:
             asyncio.create_task(
                 PersistenceEngine().probe(_DB_FILE, operation_id, target_id, cred_row["value"])
             )
+        return final
+
+    async def _execute_winrm(
+        self,
+        db: aiosqlite.Connection,
+        exec_id: str,
+        now: str,
+        ability_id: str,
+        technique_id: str,
+        target_id: str,
+        engine: str,
+        operation_id: str,
+        ooda_iteration_id: str | None,
+        credential_string: str,
+    ) -> dict:
+        """WinRM execution path — call WinRMEngine with credential.winrm fact."""
+        await db.execute(
+            "INSERT INTO technique_executions "
+            "(id, technique_id, target_id, operation_id, ooda_iteration_id, "
+            "engine, status, started_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, 'running', ?)",
+            (exec_id, technique_id, target_id, operation_id,
+             ooda_iteration_id, engine, now),
+        )
+        await db.commit()
+
+        await self._ws.broadcast(operation_id, "execution.update", {
+            "id": exec_id, "technique_id": technique_id,
+            "status": "running", "engine": engine,
+        })
+
+        from app.clients.winrm_client import WinRMEngine  # noqa: PLC0415
+        client = WinRMEngine()
+        result: ExecutionResult = await client.execute(ability_id, credential_string)
+
+        final = await self._finalize_execution(
+            db, exec_id, technique_id, target_id, engine,
+            operation_id, result,
+        )
+        if final.get("status") == "success":
+            await self._mark_target_compromised(db, target_id, result.output)
         return final
 
     async def _get_output_parser(

@@ -209,6 +209,9 @@ Next Logical Stage: {next_stage}
 ## 7.6. AVAILABLE TECHNIQUE PLAYBOOKS (executable via DirectSSHEngine)
 {playbook_summary}
 
+## 7.7. LATERAL MOVEMENT OPPORTUNITIES
+{lateral_opportunities}
+
 ## 8. LATEST OBSERVE SUMMARY
 {observe_summary}
 
@@ -499,6 +502,44 @@ class OrientEngine:
         else:
             playbook_summary = "(no playbooks registered)"
 
+        # Section 7.7 — Lateral movement opportunities
+        cred_cursor = await db.execute(
+            "SELECT DISTINCT f.value, f.source_target_id, t.hostname, t.ip_address "
+            "FROM facts f "
+            "LEFT JOIN targets t ON t.id = f.source_target_id "
+            "WHERE f.operation_id = ? AND f.trait = 'credential.ssh' "
+            "LIMIT 10",
+            (operation_id,),
+        )
+        cred_rows = await cred_cursor.fetchall()
+
+        uncompromised_cursor = await db.execute(
+            "SELECT id, hostname, ip_address, role, os "
+            "FROM targets "
+            "WHERE operation_id = ? AND (is_compromised = 0 OR is_compromised IS NULL)",
+            (operation_id,),
+        )
+        uncompromised_rows = await uncompromised_cursor.fetchall()
+
+        if cred_rows and uncompromised_rows:
+            cred_lines = [
+                f"  - credential from {r['hostname'] or r['source_target_id'] or 'unknown'}: "
+                f"{r['value'][:50]}..."
+                for r in cred_rows
+            ]
+            target_lines = [
+                f"  - {r['hostname']} ({r['ip_address']}) role={r['role']}"
+                for r in uncompromised_rows
+            ]
+            lateral_str = (
+                "Available SSH credentials:\n" + "\n".join(cred_lines) +
+                "\n\nUncompromised targets:\n" + "\n".join(target_lines) +
+                "\n\nConsider using T1021.004 (SSH) to move laterally "
+                "from a compromised host to these targets."
+            )
+        else:
+            lateral_str = "No lateral movement opportunities identified yet."
+
         # --- Assemble user prompt ---
         user_prompt = _ORIENT_USER_PROMPT_TEMPLATE.format(
             codename=op["codename"] if op else "Unknown",
@@ -521,6 +562,7 @@ class OrientEngine:
             observe_summary=observe_summary,
             harvested_creds_str=harvested_creds_str,
             playbook_summary=playbook_summary,
+            lateral_opportunities=lateral_str,
         )
 
         return _ORIENT_SYSTEM_PROMPT, user_prompt

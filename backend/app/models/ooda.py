@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -32,3 +33,9 @@ class OODAIteration(BaseModel):
     technique_execution_id: str | None = None
     started_at: datetime
     completed_at: datetime | None = None
+
+
+class OodaTriggerQueued(BaseModel):
+    iteration_id: str
+    status: Literal["queued"] = "queued"
+    operation_id: str

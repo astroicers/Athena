@@ -14,7 +14,9 @@
 
 """OODA loop endpoints."""
 
+import asyncio
 import logging
+import uuid
 
 import aiosqlite
 from fastapi import APIRouter, Depends
@@ -25,6 +27,7 @@ from app.clients.ai_engine_client import AiEngineClient
 from app.config import settings
 from app.database import get_db, _DB_FILE
 from app.models import OODAIteration
+from app.models.ooda import OodaTriggerQueued
 from app.models.api_schemas import OODATimelineEntry
 from app.routers._deps import ensure_operation
 from app.services.c5isr_mapper import C5ISRMapper
@@ -86,18 +89,49 @@ def _row_to_ooda(row: aiosqlite.Row) -> OODAIteration:
     )
 
 
-@router.post("/operations/{operation_id}/ooda/trigger")
+@router.post("/operations/{operation_id}/ooda/trigger", status_code=202)
 async def trigger_ooda(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
-):
-    """Trigger a full OODA cycle: Observe -> Orient -> Decide -> Act."""
+) -> OodaTriggerQueued:
+    """Enqueue an OODA cycle — returns 202 immediately, executes in background."""
     db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
-    controller = _get_controller()
-    result = await controller.trigger_cycle(db, operation_id)
-    return result
+    iteration_id = str(uuid.uuid4())
+
+    _task = asyncio.create_task(
+        _run_ooda_background(iteration_id, operation_id)
+    )
+    _task.add_done_callback(
+        lambda t: logger.warning(
+            "OODA background task cancelled for iteration %s", iteration_id
+        )
+        if t.cancelled() else None
+    )
+
+    return OodaTriggerQueued(
+        iteration_id=iteration_id,
+        status="queued",
+        operation_id=operation_id,
+    )
+
+
+async def _run_ooda_background(iteration_id: str, op_id: str) -> None:
+    """Background task: run full OODA cycle with its own DB connection."""
+    async with aiosqlite.connect(_DB_FILE) as db:
+        db.row_factory = aiosqlite.Row
+        try:
+            controller = _get_controller()
+            await controller.trigger_cycle(db, op_id)
+        except Exception as exc:
+            logger.exception(
+                "Background OODA cycle %s failed: %s", iteration_id, exc
+            )
+            await ws_manager.broadcast(op_id, "ooda.failed", {
+                "iteration_id": iteration_id,
+                "error": str(exc),
+            })
 
 
 @router.get("/operations/{operation_id}/ooda/current", response_model=OODAIteration | None)

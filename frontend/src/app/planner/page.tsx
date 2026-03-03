@@ -14,7 +14,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useOperation } from "@/hooks/useOperation";
 import { useWebSocket } from "@/hooks/useWebSocket";
@@ -75,7 +75,6 @@ export default function PlannerPage() {
   const [timeline, setTimeline] = useState<OODATimelineEntry[]>([]);
   const [targets, setTargets] = useState<Target[]>([]);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [oodaStatus, setOodaStatus] = useState<"idle" | "running" | "done" | "error">("idle");
   const [oodaPhase, setOodaPhase] = useState<string | null>(null);
   const [showOodaConfirm, setShowOodaConfirm] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -112,7 +111,14 @@ export default function PlannerPage() {
   // WebSocket: refresh data on OODA, execution, reset, and recon events
   useEffect(() => {
     const unsubs = [
-      ws.subscribe("ooda.phase", () => refreshAllData()),
+      ws.subscribe("ooda.phase", (data: Record<string, unknown>) => {
+        setOodaPhase((data.phase as string) ?? null);
+        refreshAllData();
+      }),
+      ws.subscribe("ooda.failed", (data: Record<string, unknown>) => {
+        setOodaPhase(null);
+        addToast((data.error as string) || "OODA cycle failed", "error");
+      }),
       ws.subscribe("execution.update", () => refreshAllData()),
       ws.subscribe("operation.reset", () => refreshAllData()),
       ws.subscribe("recon.completed", (data: Record<string, unknown>) => {
@@ -147,8 +153,8 @@ export default function PlannerPage() {
     try {
       await api.post(`/operations/${DEFAULT_OP_ID}/reset`);
       setResetStatus("done");
+      setOodaPhase(null);
       refreshAllData();
-      setOodaStatus("idle");
       setTimeout(() => setResetStatus("idle"), 2000);
     } catch {
       setResetStatus("idle");
@@ -156,23 +162,17 @@ export default function PlannerPage() {
     }
   }
 
-  async function handleOodaTrigger() {
+  const handleOodaTrigger = useCallback(async () => {
     setShowOodaConfirm(false);
-    setOodaStatus("running");
-    setOodaPhase(OODAPhase.OBSERVE);
     try {
       await api.post(`/operations/${DEFAULT_OP_ID}/ooda/trigger`);
-      setOodaStatus("done");
-      setOodaPhase(null);
-      api.get<OODATimelineEntry[]>(`/operations/${DEFAULT_OP_ID}/ooda/timeline`)
-        .then(setTimeline)
-        .catch(() => addToast("Failed to refresh timeline", "error"));
-    } catch {
-      setOodaStatus("error");
-      setOodaPhase(null);
-      addToast("OODA cycle failed", "error");
+      addToast("OODA cycle started", "info");
+      // ooda.phase WebSocket events will trigger refreshAllData() automatically
+    } catch (err) {
+      const apiError = err as ApiError;
+      addToast(apiError.detail || "Failed to trigger OODA cycle", "error");
     }
-  }
+  }, [addToast]);
 
   async function handleExport() {
     try {
@@ -222,17 +222,11 @@ export default function PlannerPage() {
             variant="secondary"
             size="sm"
             onClick={() => setShowResetConfirm(true)}
-            disabled={resetStatus === "resetting" || oodaStatus === "running"}
+            disabled={resetStatus === "resetting"}
           >
             {resetStatus === "resetting" ? "RESETTING..." : "RESET"}
           </Button>
-          {oodaStatus === "done" && (
-            <span className="text-[10px] font-mono text-athena-success">OODA COMPLETE</span>
-          )}
-          {oodaStatus === "error" && (
-            <span className="text-[10px] font-mono text-athena-error">OODA FAILED</span>
-          )}
-          {oodaStatus === "running" && oodaPhase && (
+          {oodaPhase && (
             <span className="text-[10px] font-mono text-athena-accent animate-pulse">
               {oodaPhase.toUpperCase()}...
             </span>
@@ -241,9 +235,8 @@ export default function PlannerPage() {
             variant="secondary"
             size="sm"
             onClick={() => setShowOodaConfirm(true)}
-            disabled={oodaStatus === "running"}
           >
-            {oodaStatus === "running" ? "OODA RUNNING..." : "OODA CYCLE"}
+            OODA CYCLE
           </Button>
           <Button variant="secondary" size="sm" onClick={handleExport}>
             EXPORT

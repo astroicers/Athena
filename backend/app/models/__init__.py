@@ -18,7 +18,7 @@ from .enums import *
 from .fact import Fact
 from .log_entry import LogEntry
 from .mission import MissionStep
-from .ooda import OODAIteration
+from .ooda import OODAIteration, OodaTriggerQueued
 from .operation import Operation
 from .recommendation import OrientRecommendation, TacticalOption
 from .target import Target

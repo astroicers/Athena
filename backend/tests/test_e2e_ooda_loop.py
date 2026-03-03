@@ -130,29 +130,40 @@ async def test_list_targets_after_add(client: AsyncClient):
 
 
 async def test_ooda_trigger_full_cycle(client: AsyncClient):
-    """POST /api/operations/{id}/ooda/trigger 應完成完整 OODA 周期並回傳 iteration 資料。"""
-    # Use the pre-seeded operation from conftest (test-op-1)
-    resp = await client.post("/api/operations/test-op-1/ooda/trigger")
-    assert resp.status_code == 200
+    """POST /api/operations/{id}/ooda/trigger 應立即回傳 202 queued (async 模式)。"""
+    from unittest.mock import MagicMock, patch
+
+    with patch("app.routers.ooda.asyncio.create_task") as mock_ct:
+        mock_task = MagicMock()
+        mock_task.add_done_callback = MagicMock()
+        mock_ct.return_value = mock_task
+
+        resp = await client.post("/api/operations/test-op-1/ooda/trigger")
+
+    assert resp.status_code == 202
     data = resp.json()
-    # Should return iteration data with id and operation_id
-    assert data.get("operation_id") == "test-op-1"
-    assert data.get("id")  # non-empty UUID
-    # If iteration_number is present, it must be >= 1
-    if "iteration_number" in data:
-        assert data["iteration_number"] >= 1
+    assert data["status"] == "queued"
+    assert data["operation_id"] == "test-op-1"
+    assert "iteration_id" in data
 
 
 async def test_ooda_history_after_trigger(client: AsyncClient):
-    """觸發 OODA 後，GET history 應回傳至少一筆 iteration。"""
-    # Trigger one cycle on the seeded operation
-    await client.post("/api/operations/test-op-1/ooda/trigger")
+    """觸發 OODA 後 trigger 立即回傳 202；history endpoint 保持可用。"""
+    from unittest.mock import MagicMock, patch
 
+    with patch("app.routers.ooda.asyncio.create_task") as mock_ct:
+        mock_task = MagicMock()
+        mock_task.add_done_callback = MagicMock()
+        mock_ct.return_value = mock_task
+
+        trigger_resp = await client.post("/api/operations/test-op-1/ooda/trigger")
+
+    assert trigger_resp.status_code == 202
+
+    # History endpoint must remain functional (empty list before background task runs)
     hist_resp = await client.get("/api/operations/test-op-1/ooda/history")
     assert hist_resp.status_code == 200
-    history = hist_resp.json()
-    assert len(history) >= 1
-    assert history[0]["operation_id"] == "test-op-1"
+    assert isinstance(hist_resp.json(), list)
 
 
 async def test_ooda_auto_loop_lifecycle(client: AsyncClient):
@@ -243,27 +254,32 @@ async def test_e2e_kill_chain_create_op_add_target_trigger_ooda(client: AsyncCli
     assert tgt_list_resp.status_code == 200
     assert len(tgt_list_resp.json()) == 1
 
-    # Step 4: Trigger OODA cycle
-    ooda_resp = await client.post(f"/api/operations/{op_id}/ooda/trigger")
-    assert ooda_resp.status_code == 200
-    ooda_data = ooda_resp.json()
-    # Iteration result should reference our operation
-    assert ooda_data.get("operation_id") == op_id
-    assert ooda_data.get("id")  # non-empty UUID
+    # Step 4: Trigger OODA cycle — async 202 pattern
+    from unittest.mock import MagicMock, patch as _patch
 
-    # Step 5: Verify OODA history has at least one entry
+    with _patch("app.routers.ooda.asyncio.create_task") as mock_ct:
+        mock_task = MagicMock()
+        mock_task.add_done_callback = MagicMock()
+        mock_ct.return_value = mock_task
+
+        ooda_resp = await client.post(f"/api/operations/{op_id}/ooda/trigger")
+
+    assert ooda_resp.status_code == 202
+    ooda_data = ooda_resp.json()
+    assert ooda_data["status"] == "queued"
+    assert ooda_data["operation_id"] == op_id
+    assert "iteration_id" in ooda_data
+
+    # Step 5: OODA history endpoint still responds (background task was mocked)
     hist_resp = await client.get(f"/api/operations/{op_id}/ooda/history")
     assert hist_resp.status_code == 200
-    history = hist_resp.json()
-    assert len(history) >= 1
-    assert history[0]["operation_id"] == op_id
+    assert isinstance(hist_resp.json(), list)
 
-    # Step 6: Verify operation is now active
+    # Step 6: Verify operation exists and is accessible
     op_detail_resp = await client.get(f"/api/operations/{op_id}")
     assert op_detail_resp.status_code == 200
     op_detail = op_detail_resp.json()
     assert op_detail["status"] in ("active", "planning")
-    assert op_detail["ooda_iteration_count"] >= 1
 
 
 async def test_metasploit_mock_route(seeded_db: aiosqlite.Connection):
@@ -329,10 +345,18 @@ async def test_metasploit_mock_route(seeded_db: aiosqlite.Connection):
 
 
 async def test_facts_collected_after_ooda_trigger(client: AsyncClient):
-    """觸發 OODA 後 GET /api/operations/{id}/facts 應回傳 list。"""
-    # 先觸發 OODA（mock 模式）
-    await client.post("/api/operations/test-op-1/ooda/trigger")
-    # 驗證 facts endpoint 回傳 list
+    """觸發 OODA 後 GET /api/operations/{id}/facts 應回傳 list（async 202 模式）。"""
+    from unittest.mock import MagicMock, patch
+
+    with patch("app.routers.ooda.asyncio.create_task") as mock_ct:
+        mock_task = MagicMock()
+        mock_task.add_done_callback = MagicMock()
+        mock_ct.return_value = mock_task
+
+        trigger_resp = await client.post("/api/operations/test-op-1/ooda/trigger")
+
+    assert trigger_resp.status_code == 202
+    # Facts endpoint must remain functional (background task was mocked)
     resp = await client.get("/api/operations/test-op-1/facts")
     assert resp.status_code == 200
     assert isinstance(resp.json(), list)

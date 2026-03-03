@@ -1,0 +1,12 @@
+# 此為 .ai_profile 範例，供參考。實際設定請編輯專案根目錄的 .ai_profile。
+type: content
+mode: single
+workflow: standard
+rag: disabled
+guardrail: disabled
+hitl: minimal
+autonomous: disabled
+design: disabled
+coding_style: disabled
+openapi: disabled
+name: your-content-project

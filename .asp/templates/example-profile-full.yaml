@@ -1,10 +1,15 @@
+# 此為 .ai_profile 範例，供參考。實際設定請編輯專案根目錄的 .ai_profile。
 type: system
 mode: multi-agent
 workflow: vibe-coding
 rag: enabled
 guardrail: enabled
 hitl: strict
-name: merak-platform
+autonomous: enabled
+design: enabled
+coding_style: enabled
+openapi: enabled
+name: full-stack-platform
 
 # committee 角色（mode: committee 時生效）
 committee:

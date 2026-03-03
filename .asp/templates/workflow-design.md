@@ -1,13 +1,18 @@
 # 設計工作流範本
 
-> 此 workflow 嵌入現有 SDD → TDD 流程，在 SDD 之後、TDD 之前新增設計階段。
+> 此 workflow 嵌入現有 ADR → SDD → TDD 流程，在 ADR/SPEC 之後、SDD 之前新增設計階段。
+> 由 `system_dev.md` Pre-Implementation Gate 步驟 4 觸發。
 
 ## 完整流程
 
 ```
-SDD（規格定義）
+ADR（為什麼）
+  ↓ 架構影響時必須
+SPEC 確認
   ↓
-Design（設計階段）← 本文件
+Design（設計階段）← 本文件（design: enabled 時）
+  ↓ 設計確認後
+SDD（如何設計）
   ↓
 TDD（測試先行）
   ↓
@@ -97,9 +102,31 @@ IF exists("design-system/pages/{page-name}.md"):
 
 ---
 
-## 步驟 4：交接到 TDD
+## 步驟 4：Design-to-Code Handoff
 
-設計完成後，將設計決策轉化為可測試的驗收條件：
+設計確認後，提取實作所需資訊：
+
+1. **提取 Design Token** → 對應到 CSS 變數或 Tailwind config
+2. **提取元件結構** → 對應到前端元件清單
+3. **提取佈局資訊** → 對應到 CSS layout（flex/grid）
+
+### 與 OpenAPI 連動（design + openapi 同時啟用時）
+
+設計稿中的資料需求推導 API 契約：
+
+```
+畫面元素       → 資料需求          → OpenAPI Schema
+用戶列表       → GET /users        → User[]
+表單提交       → POST /users       → CreateUserRequest
+```
+
+流程：設計確認 → 提取資料需求 → openapi_gate() → SDD → TDD → 實作
+
+---
+
+## 步驟 5：交接到 TDD
+
+設計決策轉化為可測試的驗收條件：
 
 ```
 設計決策                        → 測試條件

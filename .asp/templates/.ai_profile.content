@@ -1,7 +1,0 @@
-type: content
-mode: single
-workflow: standard
-rag: disabled
-guardrail: disabled
-hitl: minimal
-name: your-content-project

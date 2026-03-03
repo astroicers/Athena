@@ -22,6 +22,7 @@ import aiosqlite
 
 from app.clients import BaseEngineClient, ExecutionResult
 from app.config import settings
+from app.services.agent_capability_matcher import AgentCapabilityMatcher
 from app.services.fact_collector import FactCollector
 from app.ws_manager import WebSocketManager
 
@@ -42,6 +43,7 @@ class EngineRouter:
         self._adaptive_engine = adaptive_engine
         self._fact_collector = fact_collector
         self._ws = ws_manager
+        self._capability_matcher = AgentCapabilityMatcher()
 
     async def execute(
         self, db: aiosqlite.Connection, technique_id: str, target_id: str,
@@ -396,16 +398,14 @@ class EngineRouter:
         agent_paw: str | None = None
 
         if require_agent:
-            # Get agent paw for the target — C2 engine needs the agent's paw, not hostname
-            cursor = await db.execute(
-                "SELECT paw FROM agents WHERE host_id = ? AND operation_id = ? "
-                "AND status = 'alive' LIMIT 1",
-                (target_id, operation_id),
+            # Select best-fit agent by platform + privilege (SPEC-022 / ADR-021)
+            agent_paw = await self._capability_matcher.select_agent_for_technique(
+                db, operation_id, target_id, technique_id
             )
-            agent_row = await cursor.fetchone()
-            if not agent_row:
+            if agent_paw is None:
                 logger.warning(
-                    "No alive agent on target %s for operation %s", target_id, operation_id
+                    "No capable agent on target %s for technique %s (operation %s)",
+                    target_id, technique_id, operation_id,
                 )
                 return {
                     "execution_id": exec_id,
@@ -415,9 +415,10 @@ class EngineRouter:
                     "status": "failed",
                     "result_summary": None,
                     "facts_collected_count": 0,
-                    "error": f"No alive agent on target {target_id}",
+                    "error": (
+                        f"No agent on target {target_id} with capability for {technique_id}"
+                    ),
                 }
-            agent_paw = agent_row["paw"]
 
         # Create execution record
         await db.execute(

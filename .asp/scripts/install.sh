@@ -50,12 +50,28 @@ fi
 
 # 自動偵測專案類型
 detect_type() {
-    if [ -f "go.mod" ] || [ -f "Dockerfile" ] || [ -f "docker-compose.yml" ]; then
+    # architecture：多服務 / IaC / K8s 基礎設施
+    if [ -f "docker-compose.yml" ] && [ -d "docs/adr" ]; then
+        echo "architecture"
+    elif ls */Dockerfile &>/dev/null 2>&1 || ls */docker-compose.yml &>/dev/null 2>&1; then
+        echo "architecture"  # 多個子目錄有 Dockerfile = 多服務
+    elif [ -d "terraform" ] || [ -d "pulumi" ] || [ -f "helmfile.yaml" ] || \
+         ls *.tf &>/dev/null 2>&1 || [ -f "skaffold.yaml" ]; then
+        echo "architecture"
+    # system：有程式碼或建置檔的單一專案
+    elif [ -f "go.mod" ] || [ -f "Cargo.toml" ] || [ -f "pom.xml" ] || \
+         [ -f "build.gradle" ] || [ -f "build.gradle.kts" ] || \
+         [ -f "*.csproj" ] || [ -f "*.sln" ] || [ -f "CMakeLists.txt" ]; then
         echo "system"
-    elif [ -f "requirements.txt" ] || [ -f "pyproject.toml" ]; then
+    elif [ -f "Dockerfile" ] || [ -f "Makefile" ]; then
         echo "system"
-    elif [ -f "package.json" ] && grep -qE '"react"|"vue"|"next"' package.json 2>/dev/null; then
+    elif [ -f "requirements.txt" ] || [ -f "pyproject.toml" ] || [ -f "setup.py" ]; then
         echo "system"
+    elif [ -f "package.json" ]; then
+        echo "system"
+    elif [ -f "Gemfile" ] || [ -f "mix.exs" ] || [ -f "composer.json" ]; then
+        echo "system"
+    # content：以上都沒有
     else
         echo "content"
     fi
@@ -64,37 +80,51 @@ detect_type() {
 DETECTED=$(detect_type)
 DEFAULT_NAME="$(basename "$(pwd)")"
 
+# 預設開發風格
+apply_preset() {
+    case "$1" in
+        1) # 標準模式
+            ENABLE_RAG=n; ENABLE_GUARDRAIL=n; HITL_LEVEL=standard
+            ENABLE_DESIGN=n; ENABLE_CODING_STYLE=n; ENABLE_OPENAPI=n
+            ENABLE_AUTONOMOUS=n; WORKFLOW=standard ;;
+        2) # 高速自主模式
+            ENABLE_RAG=n; ENABLE_GUARDRAIL=n; HITL_LEVEL=minimal
+            ENABLE_DESIGN=n; ENABLE_CODING_STYLE=n; ENABLE_OPENAPI=n
+            ENABLE_AUTONOMOUS=y; WORKFLOW=vibe-coding ;;
+        3) # 完整治理模式
+            ENABLE_RAG=y; ENABLE_GUARDRAIL=y; HITL_LEVEL=strict
+            ENABLE_DESIGN=y; ENABLE_CODING_STYLE=y; ENABLE_OPENAPI=y
+            ENABLE_AUTONOMOUS=n; WORKFLOW=standard ;;
+        *) return 1 ;;
+    esac
+}
+
 # 偵測是否為互動式（curl | bash 時 stdin 不是 terminal）
 if [ -t 0 ]; then
     echo ""
     if [ "$IS_UPGRADE" = true ]; then
         echo "🔄 偵測到已安裝 ASP v${INSTALLED_VERSION}，執行升級"
     fi
-    echo "🔍 自動偵測專案類型：$DETECTED"
-    read -rp "確認類型（Enter 使用偵測值，或輸入 system/content/architecture）: " PROJECT_TYPE
-    PROJECT_TYPE="${PROJECT_TYPE:-$DETECTED}"
+    echo "專案類型：  [1] system  [2] content  [3] architecture  （偵測：$DETECTED）"
+    read -rp "選擇 (1-3，Enter 使用偵測值): " TYPE_CHOICE
+    case "${TYPE_CHOICE:-}" in
+        1) PROJECT_TYPE=system ;;
+        2) PROJECT_TYPE=content ;;
+        3) PROJECT_TYPE=architecture ;;
+        *) PROJECT_TYPE="$DETECTED" ;;
+    esac
+    PROJECT_NAME="$DEFAULT_NAME"
 
-    read -rp "專案名稱（Enter 使用目錄名 $DEFAULT_NAME）: " PROJECT_NAME
-    PROJECT_NAME="${PROJECT_NAME:-$DEFAULT_NAME}"
-
-    echo ""
-    read -rp "啟用 RAG 知識庫？（y/N）: " ENABLE_RAG
-    ENABLE_RAG="${ENABLE_RAG:-n}"
-
-    read -rp "啟用 Guardrail 護欄？（y/N）: " ENABLE_GUARDRAIL
-    ENABLE_GUARDRAIL="${ENABLE_GUARDRAIL:-n}"
-
-    read -rp "HITL 等級（minimal/standard/strict，Enter 使用 standard）: " HITL_LEVEL
-    HITL_LEVEL="${HITL_LEVEL:-standard}"
+    echo "開發風格：  [1] 標準  [2] 高速自主  [3] 完整治理"
+    read -rp "選擇 (1-3，Enter 使用 1): " PRESET_CHOICE
+    apply_preset "${PRESET_CHOICE:-1}"
 else
     echo ""
-    echo "📋 非互動模式，使用自動偵測值（可透過環境變數覆寫）："
+    echo "📋 非互動模式（可透過環境變數覆寫）"
     PROJECT_TYPE="${ASP_TYPE:-$DETECTED}"
-    PROJECT_NAME="${ASP_NAME:-$DEFAULT_NAME}"
-    ENABLE_RAG="${ASP_RAG:-n}"
-    ENABLE_GUARDRAIL="${ASP_GUARDRAIL:-n}"
-    HITL_LEVEL="${ASP_HITL:-standard}"
-    echo "  type: $PROJECT_TYPE | name: $PROJECT_NAME | hitl: $HITL_LEVEL | rag: $ENABLE_RAG | guardrail: $ENABLE_GUARDRAIL"
+    PROJECT_NAME="$DEFAULT_NAME"
+    apply_preset "${ASP_PRESET:-1}"
+    echo "  type: $PROJECT_TYPE | preset: ${ASP_PRESET:-1} | hitl: $HITL_LEVEL"
 fi
 
 echo ""
@@ -252,19 +282,35 @@ RAG_VAL="disabled"
 GUARDRAIL_VAL="disabled"
 [ "${ENABLE_GUARDRAIL,,}" = "y" ] && GUARDRAIL_VAL="enabled"
 
+DESIGN_VAL="disabled"
+[ "${ENABLE_DESIGN,,}" = "y" ] && DESIGN_VAL="enabled"
+
+CODING_STYLE_VAL="disabled"
+[ "${ENABLE_CODING_STYLE,,}" = "y" ] && CODING_STYLE_VAL="enabled"
+
+OPENAPI_VAL="disabled"
+[ "${ENABLE_OPENAPI,,}" = "y" ] && OPENAPI_VAL="enabled"
+
+AUTONOMOUS_VAL="disabled"
+[ "${ENABLE_AUTONOMOUS,,}" = "y" ] && AUTONOMOUS_VAL="enabled"
+
 NEW_PROFILE="type: ${PROJECT_TYPE}
 mode: single
-workflow: standard
+workflow: ${WORKFLOW:-standard}
 rag: ${RAG_VAL}
 guardrail: ${GUARDRAIL_VAL}
 hitl: ${HITL_LEVEL}
+autonomous: ${AUTONOMOUS_VAL}
+design: ${DESIGN_VAL}
+coding_style: ${CODING_STYLE_VAL}
+openapi: ${OPENAPI_VAL}
 name: ${PROJECT_NAME}"
 
 if [ -f ".ai_profile" ]; then
     echo "ℹ️  .ai_profile 已存在，保留現有設定"
     # 僅補充缺失欄位
     ADDED_FIELDS=0
-    for FIELD in type mode workflow rag guardrail hitl name; do
+    for FIELD in type mode workflow rag guardrail hitl autonomous design coding_style openapi name; do
         if ! grep -q "^${FIELD}:" .ai_profile; then
             DEFAULT_VAL=$(echo "$NEW_PROFILE" | grep "^${FIELD}:" | head -1)
             if [ -n "$DEFAULT_VAL" ]; then
@@ -381,21 +427,25 @@ HOOKJSON
     fi
 fi
 
-# --- 清理 settings.local.json 中的危險 allow 規則（安裝時執行一次）---
-if [ "$JQ_AVAILABLE" = true ] && [ -f ".claude/settings.local.json" ]; then
+# --- 清理 settings 中的危險 allow 規則（安裝時執行一次）---
+if [ "$JQ_AVAILABLE" = true ]; then
     DANGEROUS_PATTERNS='git\s+rebase|git\s+push|docker\s+(push|deploy)|rm\s+-[a-z]*r|find\s+.*-delete'
-    BEFORE_COUNT=$(jq -r '[.permissions.allow // [] | .[] | select(startswith("Bash("))] | length' .claude/settings.local.json 2>/dev/null || echo 0)
-    jq --arg pattern "$DANGEROUS_PATTERNS" '
-      .permissions.allow = [
-        (.permissions.allow // [])[] |
-        select((startswith("Bash(") and test($pattern)) | not)
-      ]
-    ' .claude/settings.local.json > .claude/settings.local.json.tmp \
-        && mv .claude/settings.local.json.tmp .claude/settings.local.json
-    AFTER_COUNT=$(jq -r '[.permissions.allow // [] | .[] | select(startswith("Bash("))] | length' .claude/settings.local.json 2>/dev/null || echo 0)
-    REMOVED_COUNT=$((BEFORE_COUNT - AFTER_COUNT))
-    if [ "$REMOVED_COUNT" -gt 0 ]; then
-        echo "🔒 已從 allow list 移除 ${REMOVED_COUNT} 條危險規則（git rebase/push, docker push, rm -r 等）"
+    TOTAL_REMOVED=0
+    for SETTINGS_FILE in .claude/settings.local.json .claude/settings.json; do
+        [ -f "$SETTINGS_FILE" ] || continue
+        BEFORE_COUNT=$(jq -r '[.permissions.allow // [] | .[] | select(startswith("Bash("))] | length' "$SETTINGS_FILE" 2>/dev/null || echo 0)
+        jq --arg pattern "$DANGEROUS_PATTERNS" '
+          .permissions.allow = [
+            (.permissions.allow // [])[] |
+            select((startswith("Bash(") and test($pattern)) | not)
+          ]
+        ' "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" \
+            && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
+        AFTER_COUNT=$(jq -r '[.permissions.allow // [] | .[] | select(startswith("Bash("))] | length' "$SETTINGS_FILE" 2>/dev/null || echo 0)
+        TOTAL_REMOVED=$((TOTAL_REMOVED + BEFORE_COUNT - AFTER_COUNT))
+    done
+    if [ "$TOTAL_REMOVED" -gt 0 ]; then
+        echo "🔒 已從 allow list 移除 ${TOTAL_REMOVED} 條危險規則（git rebase/push, docker push, rm -r 等）"
     fi
 fi
 

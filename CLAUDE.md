@@ -1,21 +1,3 @@
-# Athena 專案核心定位
-
-> **「輸入任意 IP 或域名 → 全自動 Kill Chain」展示平台**
-
-Athena 的核心展示目標是：將任意授權目標（IP 或域名）投入 Athena，
-系統自動完成 Recon → Initial Access → Agent 部署 → OODA 循環的完整攻擊鏈。
-
-**所有設計決策必須以「通用任意目標」為前提，不得針對特定靶機硬編碼：**
-- Credential 清單：業界標準通用清單（覆蓋主流 Linux、雲端映像、設備預設帳號）
-- Port 掃描範圍：通用滲透測試 port 清單（參考 SecLists / nmap top-ports）
-- Exploit 選擇：基於 nmap 偵測到的 service/version 動態選擇，非特定靶機邏輯
-- 前端輸入欄位：同時支援 IPv4、IPv6、域名（非限制 IP 格式）
-
-**禁止事項：** 不得在程式碼中針對 Metasploitable 2/3、DVWA、特定 CVE 等硬編碼邏輯，
-應以通用方式設計，讓任何授權目標都能進入完整流程。
-
----
-
 # AI-SOP-Protocol (ASP) — 行為憲法
 
 > 讀取順序：本檔案 → `.ai_profile` → 對應 `.asp/profiles/`（按需）
@@ -25,19 +7,24 @@ Athena 的核心展示目標是：將任意授權目標（IP 或域名）投入 
 ## 啟動程序
 
 1. 讀取 `.ai_profile`，依欄位載入對應 profile
-2. **RAG 已啟用時**：回答任何專案架構/規格問題前，先執行 `make rag-search Q="..."`
-3. 無 `.ai_profile` 時：只套用本檔案鐵則，詢問使用者專案類型
+2. **Profile 依賴與衝突驗證**：每個 profile 頂部有 `<!-- requires: ... -->` 和 `<!-- conflicts: ... -->` 註解。載入時確認依賴已載入、衝突 Profile 未同時啟用。缺少依賴 → WARN 並建議補充。衝突 → WARN 並說明哪兩個 Profile 互斥
+3. **若 `autonomous: enabled`，或 `workflow: vibe-coding` + `hitl: minimal`**：額外載入 `autonomous_dev.md`（同時確保 `vibe_coding.md` 已載入，未設定時自動補載）
+4. **RAG 已啟用時**：回答任何專案架構/規格問題前，先執行 `make rag-search Q="..."`
+5. 無 `.ai_profile` 時：只套用本檔案鐵則，詢問使用者專案類型
 
 ```yaml
 # .ai_profile 完整欄位參考
-type:      system | content | architecture   # 必填
-mode:      single | multi-agent | committee  # 預設 single
-workflow:  standard | vibe-coding            # 預設 standard
-rag:       enabled | disabled               # 預設 disabled
-guardrail: enabled | disabled               # 預設 disabled
-hitl:      minimal | standard | strict      # 預設 standard
-design:    enabled | disabled               # 預設 disabled
-name:      your-project-name
+type:         system | content | architecture   # 必填
+mode:         single | multi-agent | committee  # 預設 single
+workflow:     standard | vibe-coding            # 預設 standard
+rag:          enabled | disabled               # 預設 disabled
+guardrail:    enabled | disabled               # 預設 disabled
+hitl:         minimal | standard | strict      # 預設 standard
+autonomous:   enabled | disabled               # 預設 disabled（AI 全自動開發模式）
+design:       enabled | disabled               # 預設 disabled
+coding_style: enabled | disabled               # 預設 disabled
+openapi:      enabled | disabled               # 預設 disabled
+name:         your-project-name
 ```
 
 **Profile 對應表：**
@@ -53,6 +40,10 @@ name:      your-project-name
 | `rag: enabled` | + `.asp/profiles/rag_context.md` |
 | `guardrail: enabled` | + `.asp/profiles/guardrail.md` |
 | `design: enabled` | + `.asp/profiles/design_dev.md` |
+| `coding_style: enabled` | + `.asp/profiles/coding_style.md` |
+| `openapi: enabled` | + `.asp/profiles/openapi.md` |
+| `autonomous: enabled` | + `.asp/profiles/autonomous_dev.md` |
+| `workflow: vibe-coding` + `hitl: minimal` | + `.asp/profiles/autonomous_dev.md` |
 
 ---
 
@@ -101,6 +92,7 @@ name:      your-project-name
 | 局部測試 | `make test-filter FILTER=xxx` |
 | 新增 ADR | `make adr-new TITLE="..."` |
 | 新增規格書 | `make spec-new TITLE="..."` |
+| 新增事後分析 | `make postmortem-new TITLE="..."` |
 | 查詢知識庫 | `make rag-search Q="..."` |
 | Agent 完成回報 | `make agent-done TASK=xxx STATUS=success` |
 | 儲存 Session | `make session-checkpoint NEXT="..."` |

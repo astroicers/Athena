@@ -1,5 +1,8 @@
 # Committee Mode Profile
 
+<!-- requires: global_core, system_dev -->
+<!-- optional: (none) -->
+
 適用：高風險技術決策、架構選型、重大重構評估。
 載入條件：`mode: committee`
 

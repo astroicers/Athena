@@ -1,5 +1,8 @@
 # Guardrail Profile — 範疇限制與敏感資訊保護
 
+<!-- requires: global_core -->
+<!-- optional: rag_context -->
+
 適用：需要嚴格範疇控制的專案。
 載入條件：`guardrail: enabled`
 

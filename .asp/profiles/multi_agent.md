@@ -1,5 +1,9 @@
 # Multi-Agent Orchestration Profile
 
+<!-- requires: global_core, system_dev -->
+<!-- optional: guardrail -->
+<!-- conflicts: autonomous_dev -->
+
 適用：並行任務分治、大型功能拆解、自動化 CI/CD 整合。
 載入條件：`mode: multi-agent`
 
@@ -66,6 +70,29 @@ locked_files:
 make agent-unlock FILE=src/store/user.go   # 正常完成後解鎖
 make agent-lock-gc                          # 清理逾時鎖定（> 2 小時視為異常）
 ```
+
+### Lock GC 自動化
+
+在 `Makefile` 中加入自動觸發：
+
+```bash
+# Makefile 新增
+agent-lock-gc:
+	@echo "清理逾時 agent locks..."
+	@python3 -c " \
+	import yaml, datetime; \
+	data = yaml.safe_load(open('.agent-lock.yaml')) or {}; \
+	now = datetime.datetime.now(datetime.timezone.utc); \
+	expired = [f for f, v in (data.get('locked_files') or {}).items() \
+	           if datetime.datetime.fromisoformat(v['expires']) < now]; \
+	[data['locked_files'].pop(f) for f in expired]; \
+	yaml.dump(data, open('.agent-lock.yaml', 'w')); \
+	print(f'  已清理 {len(expired)} 個逾時鎖定') if expired else print('  無逾時鎖定')"
+```
+
+**自動觸發時機**：
+- Orchestrator 每次輪詢 `completed.jsonl` 時，同時執行 `make agent-lock-gc`
+- SessionStart hook 可選擇性加入 lock GC
 
 ---
 

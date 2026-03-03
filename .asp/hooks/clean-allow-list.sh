@@ -15,31 +15,42 @@
 
 set -euo pipefail
 
-SETTINGS_LOCAL="${CLAUDE_PROJECT_DIR:-.}/.claude/settings.local.json"
-
-[ -f "$SETTINGS_LOCAL" ] || exit 0
 command -v jq &>/dev/null || exit 0
 
 # 危險模式：匹配這些 pattern 的 Bash(...) allow 規則會被移除
 DANGEROUS_PATTERNS='git\s+rebase|git\s+push|docker\s+(push|deploy)|rm\s+-[a-z]*r|find\s+.*-delete'
 
-BEFORE=$(jq -r '[.permissions.allow // [] | .[] | select(startswith("Bash("))] | length' "$SETTINGS_LOCAL" 2>/dev/null || echo 0)
+# 同時處理 settings.local.json 和 settings.json
+SETTINGS_FILES=(
+  "${CLAUDE_PROJECT_DIR:-.}/.claude/settings.local.json"
+  "${CLAUDE_PROJECT_DIR:-.}/.claude/settings.json"
+)
 
-jq --arg pattern "$DANGEROUS_PATTERNS" '
-  .permissions.allow = [
-    (.permissions.allow // [])[] |
-    select(
-      (startswith("Bash(") and test($pattern)) | not
-    )
-  ]
-' "$SETTINGS_LOCAL" > "${SETTINGS_LOCAL}.tmp" \
-    && mv "${SETTINGS_LOCAL}.tmp" "$SETTINGS_LOCAL"
+TOTAL_REMOVED=0
 
-AFTER=$(jq -r '[.permissions.allow // [] | .[] | select(startswith("Bash("))] | length' "$SETTINGS_LOCAL" 2>/dev/null || echo 0)
+for SETTINGS_FILE in "${SETTINGS_FILES[@]}"; do
+  [ -f "$SETTINGS_FILE" ] || continue
 
-REMOVED=$((BEFORE - AFTER))
-if [ "$REMOVED" -gt 0 ]; then
-    echo "🔒 ASP: 已從 allow list 移除 ${REMOVED} 條危險規則（git rebase/push, docker push, rm -r 等）" >&2
+  BEFORE=$(jq -r '[.permissions.allow // [] | .[] | select(startswith("Bash("))] | length' "$SETTINGS_FILE" 2>/dev/null || echo 0)
+
+  jq --arg pattern "$DANGEROUS_PATTERNS" '
+    .permissions.allow = [
+      (.permissions.allow // [])[] |
+      select(
+        (startswith("Bash(") and test($pattern)) | not
+      )
+    ]
+  ' "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" \
+      && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
+
+  AFTER=$(jq -r '[.permissions.allow // [] | .[] | select(startswith("Bash("))] | length' "$SETTINGS_FILE" 2>/dev/null || echo 0)
+
+  REMOVED=$((BEFORE - AFTER))
+  TOTAL_REMOVED=$((TOTAL_REMOVED + REMOVED))
+done
+
+if [ "$TOTAL_REMOVED" -gt 0 ]; then
+    echo "🔒 ASP: 已從 allow list 移除 ${TOTAL_REMOVED} 條危險規則（git rebase/push, docker push, rm -r 等）" >&2
 fi
 
 exit 0

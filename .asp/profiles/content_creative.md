@@ -1,5 +1,8 @@
 # Content & Knowledge Profile
 
+<!-- requires: global_core -->
+<!-- optional: (none) -->
+
 > 載入條件：`type: content`
 
 適用：技術文件、Cheat Sheet、資安週報、部落格文章、簡報稿。

@@ -1,5 +1,8 @@
 # Local RAG Context Profile
 
+<!-- requires: global_core -->
+<!-- optional: guardrail -->
+
 適用：已建立本地向量知識庫的專案。
 載入條件：`rag: enabled`
 
@@ -52,9 +55,23 @@ FUNCTION answer_project_question(question, project_scope, knowledge_base):
 |----------|------|-----------|
 | 規格書 | `docs/specs/SPEC-*.md` | `make spec-new` 後 |
 | ADR | `docs/adr/ADR-*.md` | `make adr-new` 後 |
+| Postmortem | `docs/postmortems/PM-*.md` | `make postmortem-new` 後 |
 | Profiles | `.asp/profiles/*.md` | `make rag-rebuild` |
 | 架構文件 | `docs/architecture.md` | git commit 後（hook）|
 | Changelog | `CHANGELOG.md` | git commit 後（hook）|
+
+---
+
+## 索引策略
+
+| 指令 | 行為 |
+|------|------|
+| `make rag-index` | 增量更新（預設）：只重建有變更的檔案 |
+| `make rag-rebuild` | 全量重建：刪除索引後完整重建 |
+
+**增量更新原理**：透過檔案 SHA-256 hash manifest（`.rag/index/index_manifest.json`）追蹤每個檔案的最後索引版本。只有 hash 變更或新增/刪除的檔案會被重新向量化。
+
+**ADR 狀態感知**：索引 metadata 包含 ADR 狀態（`adr_status`）。查詢結果包含 Deprecated 狀態的 ADR 時，應提醒使用者該決策已被取代。
 
 ---
 
@@ -73,14 +90,12 @@ FUNCTION answer_project_question(question, project_scope, knowledge_base):
 
 ## Git Hook 自動更新
 
-`.git/hooks/post-commit`：
+使用 `.asp/hooks/rag-auto-index.sh`（取代直接內嵌在 .git/hooks/ 中）：
 
 ```bash
-#!/usr/bin/env bash
-if git diff --name-only HEAD~1 HEAD 2>/dev/null | grep -q "^docs/"; then
-    echo "📚 docs/ 有異動，更新 RAG 索引..."
-    make rag-index --silent
-fi
+# 安裝方式
+cp .asp/hooks/rag-auto-index.sh .git/hooks/post-commit
+chmod +x .git/hooks/post-commit
 ```
 
 ```bash

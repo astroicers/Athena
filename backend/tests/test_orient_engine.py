@@ -10,9 +10,11 @@
 
 """Tests for OrientEngine prompt building."""
 import uuid
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+from app.services.orient_engine import OrientEngine
 
 
 def _make_ws():
@@ -153,3 +155,55 @@ async def test_section_77_shows_no_persistence_when_none(seeded_db):
     engine = OrientEngine(_make_ws())
     _, user_prompt = await engine._build_prompt(seeded_db, "test-op-1", "test-target-1")
     assert "No persistence established yet." in user_prompt
+
+
+async def test_orient_prompt_includes_mcp_section_when_enabled(seeded_db):
+    """Section 7.8 MCP tools appears when MCP_ENABLED=True."""
+    import aiosqlite
+
+    seeded_db.row_factory = aiosqlite.Row
+
+    mock_mgr = MagicMock()
+    mock_tool = MagicMock(
+        server_name="nmap-scanner", tool_name="nmap_scan", description="Port scan"
+    )
+    mock_mgr.list_all_tools.return_value = [mock_tool]
+
+    with (
+        patch("app.services.orient_engine.settings") as s,
+        patch(
+            "app.services.mcp_client_manager.get_mcp_manager", return_value=mock_mgr
+        ),
+    ):
+        s.MOCK_LLM = True
+        s.MCP_ENABLED = True
+        s.LLM_BACKEND = "auto"
+        s.ANTHROPIC_API_KEY = ""
+        s.ANTHROPIC_AUTH_TOKEN = ""
+        engine = OrientEngine(_make_ws())
+        _, user_prompt = await engine._build_prompt(
+            seeded_db, "test-op-1", "summary"
+        )
+
+    assert "7.8" in user_prompt
+    assert "nmap_scan" in user_prompt
+
+
+async def test_orient_prompt_no_mcp_section_when_disabled(seeded_db):
+    """Section 7.8 shows (MCP disabled) when MCP_ENABLED=False."""
+    import aiosqlite
+
+    seeded_db.row_factory = aiosqlite.Row
+
+    with patch("app.services.orient_engine.settings") as s:
+        s.MOCK_LLM = True
+        s.MCP_ENABLED = False
+        s.LLM_BACKEND = "auto"
+        s.ANTHROPIC_API_KEY = ""
+        s.ANTHROPIC_AUTH_TOKEN = ""
+        engine = OrientEngine(_make_ws())
+        _, user_prompt = await engine._build_prompt(
+            seeded_db, "test-op-1", "summary"
+        )
+
+    assert "(MCP disabled)" in user_prompt

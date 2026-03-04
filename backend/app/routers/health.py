@@ -62,13 +62,21 @@ async def health_check(db: aiosqlite.Connection = Depends(get_db)):
     else:
         llm_status = "unavailable"
 
+    services = {
+        "database": db_status,
+        "c2_engine": c2_engine_status,
+        "websocket": "active",
+        "llm": llm_status,
+    }
+
+    if settings.MCP_ENABLED:
+        from app.services.mcp_client_manager import get_mcp_manager
+
+        mcp_mgr = get_mcp_manager()
+        services["mcp_servers"] = mcp_mgr.list_servers() if mcp_mgr else []
+
     return HealthStatus(
         status="ok",
         version="0.1.0",
-        services={
-            "database": db_status,
-            "c2_engine": c2_engine_status,
-            "websocket": "active",
-            "llm": llm_status,
-        },
+        services=services,
     )

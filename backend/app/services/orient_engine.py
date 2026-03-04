@@ -144,7 +144,8 @@ If a prerequisite is unverified, flag it and suggest a Discovery technique to ve
 ### 4. Engine Routing
 - SSH Engine ("ssh"): standard execution via DirectSSH — default for most techniques.
 - C2 Engine ("c2"): agent-based execution requiring a live C2 agent on target.
-- Default to SSH Engine unless there is a specific reason for C2 Engine.
+- MCP Engine ("mcp"): stateless recon/OSINT/vuln-lookup tools via MCP protocol. Prefer for reconnaissance, OSINT, and vulnerability scanning when MCP tools are listed in Section 7.8.
+- Default to SSH Engine unless there is a specific reason for C2 or MCP Engine.
 - When recommending techniques, PREFER techniques listed in AVAILABLE TECHNIQUE PLAYBOOKS (Section 7.6). Only suggest techniques outside that list if there is a compelling tactical reason.
 
 ### 5. Risk Calibration
@@ -167,7 +168,7 @@ Respond with ONLY valid JSON (no markdown, no extra text). The JSON must match t
       "technique_name": "Full MITRE Name",
       "reasoning": "why this technique NOW, citing prerequisites and intelligence",
       "risk_level": "low|medium|high|critical",
-      "recommended_engine": "ssh|c2",
+      "recommended_engine": "ssh|c2|mcp",
       "confidence": 0.0-1.0,
       "prerequisites": ["list of prerequisites with verification status"]
     }
@@ -229,6 +230,9 @@ Next Logical Stage: {next_stage}
 
 ## 7.7. LATERAL MOVEMENT OPPORTUNITIES
 {lateral_opportunities}
+
+## 7.8. AVAILABLE MCP TOOLS (stateless query tools)
+{mcp_tools_summary}
 
 ## 8. LATEST OBSERVE SUMMARY
 {observe_summary}
@@ -611,6 +615,27 @@ class OrientEngine:
             persist_info = "No persistence established yet."
         lateral_str = lateral_str + f"\n\nPersistence status: {persist_info}"
 
+        # Q13: MCP tool inventory
+        mcp_tools_summary = "(MCP disabled)"
+        if settings.MCP_ENABLED:
+            try:
+                from app.services.mcp_client_manager import get_mcp_manager
+
+                mcp_mgr = get_mcp_manager()
+                if mcp_mgr:
+                    mcp_tools = mcp_mgr.list_all_tools()
+                    if mcp_tools:
+                        mcp_tools_summary = "\n".join(
+                            f"- {t.server_name}:{t.tool_name} — {t.description}"
+                            for t in mcp_tools
+                        )
+                    else:
+                        mcp_tools_summary = "(no MCP tools connected)"
+                else:
+                    mcp_tools_summary = "(MCP manager not initialized)"
+            except Exception:
+                mcp_tools_summary = "(MCP unavailable)"
+
         # --- Assemble user prompt ---
         user_prompt = _ORIENT_USER_PROMPT_TEMPLATE.format(
             codename=op["codename"] if op else "Unknown",
@@ -634,6 +659,7 @@ class OrientEngine:
             harvested_creds_str=harvested_creds_str,
             playbook_summary=playbook_summary,
             lateral_opportunities=lateral_str,
+            mcp_tools_summary=mcp_tools_summary,
         )
 
         return _ORIENT_SYSTEM_PROMPT, user_prompt

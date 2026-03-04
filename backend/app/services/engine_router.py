@@ -672,7 +672,10 @@ class EngineRouter:
         3. High stealth requirement → C2 engine
         4. Default → SSH
         """
-        if gpt_recommendation and gpt_recommendation in ("c2", "ssh"):
+        valid = {"c2", "ssh", "mcp"}
+        if gpt_recommendation and gpt_recommendation in valid:
+            if gpt_recommendation == "mcp" and self._mcp_engine is None:
+                return "ssh"
             return gpt_recommendation
         if context.get("environment") == "unknown":
             return "c2"

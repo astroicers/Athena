@@ -73,7 +73,9 @@ async def lifespan(app: FastAPI):
             set_mcp_manager,
         )
 
-        mcp_manager = MCPClientManager()
+        from app.ws_manager import ws_manager as _ws_mgr
+
+        mcp_manager = MCPClientManager(ws_manager=_ws_mgr)
         await mcp_manager.startup()
         app.state.mcp_manager = mcp_manager
         set_mcp_manager(mcp_manager)

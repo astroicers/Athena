@@ -10,8 +10,10 @@
 
 """MCP Client Manager — manages connections to external MCP tool servers."""
 
+import asyncio
 import json
 import logging
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -68,12 +70,13 @@ class MCPClientManager:
         shutdown() -> disconnect all sessions
     """
 
-    def __init__(self) -> None:
+    def __init__(self, ws_manager=None) -> None:
         self._configs: dict[str, MCPServerConfig] = {}
         self._sessions: dict[str, Any] = {}  # name -> ClientSession
         self._transports: dict[str, Any] = {}  # name -> transport context manager
         self._tools: dict[str, list[MCPToolInfo]] = {}  # name -> discovered tools
         self._tool_index: dict[str, MCPToolInfo] = {}  # "server:tool" -> info
+        self._ws = ws_manager
 
     async def startup(self) -> None:
         """Load mcp_servers.json and connect to all enabled servers."""
@@ -164,6 +167,14 @@ class MCPClientManager:
                 "Connected to MCP server '%s' — discovered %d tools",
                 config.name, len(discovered),
             )
+            if self._ws:
+                try:
+                    await self._ws.broadcast_global("mcp.server.status", {
+                        "server": config.name, "connected": True,
+                        "tool_count": len(discovered),
+                    })
+                except Exception:
+                    pass
 
         except Exception:
             logger.exception("Failed to connect to MCP server '%s'", config.name)
@@ -185,6 +196,14 @@ class MCPClientManager:
         except Exception:
             logger.warning("Error disconnecting MCP server '%s'", name, exc_info=True)
 
+        if self._ws:
+            try:
+                await self._ws.broadcast_global("mcp.server.status", {
+                    "server": name, "connected": False, "tool_count": 0,
+                })
+            except Exception:
+                pass
+
     async def call_tool(
         self,
         server_name: str,
@@ -194,9 +213,35 @@ class MCPClientManager:
         """Invoke a tool on a specific MCP server. Returns normalized result."""
         session = self._sessions.get(server_name)
         if session is None:
-            raise ConnectionError(f"MCP server '{server_name}' is not connected")
+            # Try reconnect if config exists
+            config = self._configs.get(server_name)
+            if config and config.enabled:
+                logger.info("MCP '%s' disconnected; reconnecting", server_name)
+                await self._connect(config)
+                session = self._sessions.get(server_name)
+            if session is None:
+                raise ConnectionError(f"MCP server '{server_name}' is not connected")
 
-        result = await session.call_tool(tool_name, arguments)
+        t0 = time.monotonic()
+        try:
+            result = await asyncio.wait_for(
+                session.call_tool(tool_name, arguments),
+                timeout=float(settings.MCP_TOOL_TIMEOUT_SEC),
+            )
+        except asyncio.TimeoutError:
+            logger.warning(
+                "MCP_AUDIT server=%s tool=%s TIMEOUT after %ds",
+                server_name, tool_name, settings.MCP_TOOL_TIMEOUT_SEC,
+            )
+            raise
+
+        duration_ms = int((time.monotonic() - t0) * 1000)
+        is_error = getattr(result, "isError", False)
+        logger.info(
+            "MCP_AUDIT server=%s tool=%s duration_ms=%d is_error=%s",
+            server_name, tool_name, duration_ms, is_error,
+        )
+
         return {
             "content": [
                 {
@@ -205,7 +250,7 @@ class MCPClientManager:
                 }
                 for block in (result.content or [])
             ],
-            "is_error": getattr(result, "isError", False),
+            "is_error": is_error,
         }
 
     async def health_check(self, server_name: str) -> bool:

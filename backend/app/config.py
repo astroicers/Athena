@@ -64,6 +64,8 @@ class Settings(BaseSettings):
     MCP_ENABLED: bool = False
     MCP_SERVERS_FILE: str = "mcp_servers.json"
     MCP_TOOL_TIMEOUT_SEC: int = 120
+    MCP_RECONNECT_INTERVAL_SEC: int = 5
+    MCP_MAX_RETRIES: int = 3
 
 
 settings = Settings()

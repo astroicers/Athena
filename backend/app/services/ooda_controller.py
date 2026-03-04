@@ -16,11 +16,13 @@ from datetime import datetime, timezone
 
 import aiosqlite
 
+from app.config import settings
 from app.models.enums import OODAPhase
 from app.services.c5isr_mapper import C5ISRMapper
 from app.services.decision_engine import DecisionEngine
 from app.services.engine_router import EngineRouter
 from app.services.fact_collector import FactCollector
+from app.services.mcp_client_manager import get_mcp_manager
 from app.services.orient_engine import OrientEngine
 from app.ws_manager import WebSocketManager
 
@@ -362,12 +364,6 @@ def build_ooda_controller() -> "OODAController":
     """Factory for creating OODAController without request context (used by scheduler)."""
     from app.clients.c2_client import C2EngineClient
     from app.clients.mock_c2_client import MockC2Client
-    from app.config import settings
-    from app.services.c5isr_mapper import C5ISRMapper
-    from app.services.decision_engine import DecisionEngine
-    from app.services.engine_router import EngineRouter
-    from app.services.fact_collector import FactCollector
-    from app.services.orient_engine import OrientEngine
     from app.ws_manager import ws_manager
 
     fc = FactCollector(ws_manager)
@@ -383,6 +379,14 @@ def build_ooda_controller() -> "OODAController":
         except Exception:
             logger.warning("build_ooda_controller: failed to connect to C2 engine, falling back to mock")
 
-    router_svc = EngineRouter(c2_engine, fc, ws_manager)
+    mcp_engine_client = None
+    if settings.MCP_ENABLED:
+        from app.clients.mcp_engine_client import MCPEngineClient
+
+        mcp_mgr = get_mcp_manager()
+        if mcp_mgr is not None:
+            mcp_engine_client = MCPEngineClient(mcp_mgr)
+
+    router_svc = EngineRouter(c2_engine, fc, ws_manager, mcp_engine=mcp_engine_client)
 
     return OODAController(fc, orient, decision, router_svc, c5isr, ws_manager)

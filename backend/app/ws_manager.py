@@ -61,6 +61,20 @@ class WebSocketManager:
             except Exception:
                 self.disconnect(operation_id, ws)
 
+    async def broadcast_global(self, event: str, data: dict):
+        """Broadcast an event to ALL active connections across all operations."""
+        message = json.dumps({
+            "event": event,
+            "data": data,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+        for op_id, connections in list(self._connections.items()):
+            for ws in connections.copy():
+                try:
+                    await ws.send_text(message)
+                except Exception:
+                    self.disconnect(op_id, ws)
+
 
 # Singleton manager instance (importable by other modules for broadcasting)
 ws_manager = WebSocketManager()

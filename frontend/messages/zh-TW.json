@@ -35,7 +35,18 @@
     "activeOperations": "進行中作業",
     "noTechniques": "尚無技術執行紀錄",
     "domainStatus": "C5ISR 網域狀態",
-    "noDomainData": "無 C5ISR 網域資料"
+    "noDomainData": "無 C5ISR 網域資料",
+    "colMitreId": "MITRE ID",
+    "colTechnique": "技術",
+    "colTactic": "戰術",
+    "colRisk": "風險",
+    "colStatus": "狀態",
+    "domainCommand": "指揮",
+    "domainControl": "管制",
+    "domainComms": "通訊",
+    "domainComputers": "資訊",
+    "domainCyber": "網路",
+    "domainIsr": "情監偵"
   },
   "Navigator": {
     "attackPath": "攻擊路徑時間軸",
@@ -49,7 +60,7 @@
     "noSteps": "尚未定義任務步驟",
     "targetHosts": "目標主機",
     "noTargets": "無目標",
-    "addTarget": "+ 新增",
+    "addTarget": "新增",
     "executeMission": "執行任務",
     "oodaCycle": "OODA 循環",
     "resetOk": "重設完成",
@@ -61,7 +72,15 @@
     "targetActivated": "已設定攻擊目標",
     "targetDeactivated": "已取消攻擊目標",
     "targetDeleted": "{hostname} 已刪除",
-    "deleteTarget": "刪除目標：{hostname}"
+    "deleteTarget": "刪除目標：{hostname}",
+    "colStep": "#",
+    "colTechnique": "技術",
+    "colTarget": "目標",
+    "colEngine": "引擎",
+    "colStatus": "狀態",
+    "confirmExecute": "執行任務計畫",
+    "confirmOoda": "觸發 OODA 循環",
+    "confirmReset": "重設作業"
   },
   "Monitor": {
     "dataExfiltrated": "已外洩資料",
@@ -76,7 +95,8 @@
     "liveLogStream": "即時日誌流",
     "waitingForLogs": "等待日誌事件...",
     "recHistory": "建議歷史 ({count})",
-    "newRecommendation": "新 AI 建議：{techniqueId}（信心度 {confidence}%）"
+    "newRecommendation": "新 AI 建議：{techniqueId}（信心度 {confidence}%）",
+    "situation": "態勢圖"
   },
   "OODA": {
     "cycle": "OODA 循環",
@@ -117,7 +137,83 @@
     "progress": "殺傷鏈進度",
     "tested": "已測試",
     "failed": "失敗",
-    "untested": "未測試"
+    "untested": "未測試",
+    "recon": "偵察",
+    "weaponize": "武器化",
+    "deliver": "投遞",
+    "exploit": "利用",
+    "install": "植入",
+    "c2": "C2",
+    "action": "行動"
+  },
+  "Status": {
+    "success": "成功",
+    "failed": "失敗",
+    "running": "執行中",
+    "queued": "排隊中",
+    "skipped": "跳過",
+    "partial": "部分",
+    "untested": "未測試",
+    "completed": "完成",
+    "operational": "正常",
+    "degraded": "降級",
+    "offline": "離線",
+    "scanning": "掃描中",
+    "critical": "嚴重",
+    "alive": "存活",
+    "dead": "離線",
+    "pending": "等待中",
+    "untrusted": "未信任"
+  },
+  "Risk": {
+    "low": "低",
+    "medium": "中",
+    "high": "高",
+    "critical": "嚴重"
+  },
+  "ToolCategory": {
+    "recon": "偵察",
+    "exploit": "利用",
+    "post-exploit": "後滲透",
+    "lateral-movement": "橫向移動",
+    "persistence": "持久化",
+    "exfiltration": "資料外洩",
+    "c2": "C2",
+    "credential-access": "憑證存取",
+    "defense-evasion": "防禦規避",
+    "other": "其他"
+  },
+  "ToolKind": {
+    "tool": "工具",
+    "engine": "引擎"
+  },
+  "TargetRole": {
+    "target": "目標",
+    "pivot": "跳板",
+    "c2": "C2"
+  },
+  "Tactic": {
+    "TA0043": "偵察",
+    "TA0042": "資源開發",
+    "TA0001": "初始存取",
+    "TA0002": "執行",
+    "TA0003": "持久化",
+    "TA0004": "提權",
+    "TA0005": "防禦規避",
+    "TA0006": "憑證存取",
+    "TA0007": "探索",
+    "TA0008": "橫向移動",
+    "TA0009": "收集",
+    "TA0011": "命令與控制",
+    "TA0010": "外洩",
+    "TA0040": "衝擊"
+  },
+  "LogSeverity": {
+    "info": "資訊",
+    "success": "成功",
+    "warning": "警告",
+    "error": "錯誤",
+    "critical": "嚴重"
   },
   "HostCard": {
     "ip": "IP",
@@ -132,7 +228,13 @@
     "deactivate": "取消目標",
     "setActive": "設為目標",
     "cannotDeleteActive": "請先取消選定目標",
-    "delete": "刪除"
+    "delete": "刪除",
+    "phase_host_discovery": "探索主機中...",
+    "phase_port_scan": "掃描埠號中...",
+    "phase_service_detection": "偵測服務中...",
+    "phase_os_fingerprint": "辨識作業系統中...",
+    "phase_credential_test": "測試憑證中...",
+    "phase_finalizing": "彙整結果中..."
   },
   "TechniqueCard": {
     "tactic": "戰術："
@@ -226,6 +328,71 @@
     "monitorNoRec": "尚無 AI 建議。前往任務規劃器啟動 OODA 循環以產生建議。",
     "monitorGoToPlanner": "前往任務規劃器",
     "navigatorNoSelection": "← 從矩陣中選擇技術以查看詳情"
+  },
+  "Tools": {
+    "title": "工具庫",
+    "addTool": "+ 新增工具",
+    "reconTools": "偵察工具",
+    "executionEngines": "執行引擎",
+    "noTools": "尚無已註冊工具",
+    "colName": "名稱",
+    "colCategory": "類別",
+    "colStatus": "狀態",
+    "colRisk": "風險",
+    "colMitre": "MITRE",
+    "colActions": "操作",
+    "on": "開啟",
+    "off": "關閉",
+    "check": "檢查",
+    "del": "刪除",
+    "ok": "正常",
+    "fail": "失敗",
+    "newTool": "新工具",
+    "registerTool": "註冊工具",
+    "toolId": "工具 ID",
+    "name": "名稱",
+    "kind": "類型",
+    "category": "類別",
+    "riskLevel": "風險等級",
+    "descriptionOptional": "描述（選填）",
+    "registerBtn": "註冊工具",
+    "registering": "註冊中...",
+    "toolIdRequired": "請填寫工具 ID。",
+    "nameRequired": "請填寫名稱。",
+    "failedCreate": "建立工具失敗，請檢查輸入值後再試。"
+  },
+  "Topology": {
+    "noData": "無拓撲資料",
+    "loading": "載入拓撲中...",
+    "resetView": "重設視圖",
+    "reset": "重設",
+    "selectNode": "選擇節點",
+    "toViewDetails": "以檢視詳情",
+    "compromised": "已入侵",
+    "secure": "安全",
+    "ip": "IP",
+    "os": "OS",
+    "role": "角色",
+    "privilege": "權限",
+    "killChain": "殺傷鏈",
+    "noAttackStage": "尚無攻擊階段紀錄",
+    "collectedFacts": "已收集事實",
+    "noFacts": "尚無事實資料"
+  },
+  "Situation": {
+    "title": "攻擊態勢圖",
+    "progress": "進度：{value}%",
+    "running": "{count} 執行中"
+  },
+  "UI": {
+    "initializing": "系統初始化中",
+    "dismiss": "關閉",
+    "enterCommand": "輸入指令...",
+    "info": "資訊",
+    "ok": "成功",
+    "warn": "警告",
+    "err": "錯誤",
+    "confidence": "{value}% 信心度"
   },
   "Errors": {
     "failedLoadC5isr": "載入 C5ISR 資料失敗",

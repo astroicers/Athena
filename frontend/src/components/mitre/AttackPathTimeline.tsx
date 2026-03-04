@@ -1,16 +1,12 @@
 // Copyright 2026 Athena Contributors
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// Change Date: Four years from release date of each version
+// Change License: Apache License, Version 2.0
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// For commercial licensing, contact: [TODO: contact email]
 
 "use client";
 
@@ -26,15 +22,6 @@ const TACTIC_ORDER_IDS = [
   "TA0006","TA0007","TA0008","TA0009","TA0011","TA0010","TA0040",
 ];
 
-const TACTIC_LABELS: Record<string, string> = {
-  TA0043: "Recon",      TA0042: "Rsrc Dev",
-  TA0001: "Init Acc",   TA0002: "Execution",
-  TA0003: "Persist",    TA0004: "Priv Esc",
-  TA0005: "Def Evasion",TA0006: "Cred Acc",
-  TA0007: "Discovery",  TA0008: "Lat Move",
-  TA0009: "Collection", TA0011: "C&C",
-  TA0010: "Exfil",      TA0040: "Impact",
-};
 
 const TACTIC_TO_COLOR: Record<string, string> = {
   TA0043: "#4488ff", TA0042: "#8855ff",
@@ -157,6 +144,7 @@ interface AttackPathTimelineProps {
 export function AttackPathTimeline({ data, loading }: AttackPathTimelineProps) {
   const tNav = useTranslations("Navigator");
   const tHints = useTranslations("Hints");
+  const tTactic = useTranslations("Tactic");
   // Build tactic → entries map
   const tacticMap = new Map<string, AttackPathEntry[]>();
   if (data) {
@@ -212,7 +200,7 @@ export function AttackPathTimeline({ data, loading }: AttackPathTimelineProps) {
                         className="text-[10px] font-mono font-bold uppercase truncate"
                         style={{ color: accentColor }}
                       >
-                        {TACTIC_LABELS[tid] ?? tid}
+                        {tTactic(tid as any)}
                       </div>
                       <div className="text-[10px] font-mono text-athena-text-secondary opacity-60">
                         {tid}

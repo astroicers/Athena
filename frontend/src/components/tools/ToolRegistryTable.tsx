@@ -1,20 +1,17 @@
 // Copyright 2026 Athena Contributors
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// Change Date: Four years from release date of each version
+// Change License: Apache License, Version 2.0
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// For commercial licensing, contact: [TODO: contact email]
 
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Toggle } from "@/components/atoms/Toggle";
 import { Badge } from "@/components/atoms/Badge";
 import { Button } from "@/components/atoms/Button";
@@ -40,6 +37,9 @@ export function ToolRegistryTable({
   onCheckHealth,
   onDelete,
 }: ToolRegistryTableProps) {
+  const t = useTranslations("Tools");
+  const tRisk = useTranslations("Risk");
+  const tCategory = useTranslations("ToolCategory");
   const [healthResults, setHealthResults] = useState<
     Record<string, ToolHealthCheck>
   >({});
@@ -74,7 +74,7 @@ export function ToolRegistryTable({
     return (
       <div className="bg-athena-surface border border-athena-border rounded-athena-md p-6 text-center">
         <span className="text-xs font-mono text-athena-text-secondary">
-          No tools registered
+          {t("noTools")}
         </span>
       </div>
     );
@@ -86,22 +86,22 @@ export function ToolRegistryTable({
         <thead>
           <tr className="border-b border-athena-border">
             <th className="px-3 py-2 text-left text-athena-text-secondary font-medium uppercase tracking-wider">
-              Name
+              {t("colName")}
             </th>
             <th className="px-3 py-2 text-left text-athena-text-secondary font-medium uppercase tracking-wider">
-              Category
+              {t("colCategory")}
             </th>
             <th className="px-3 py-2 text-left text-athena-text-secondary font-medium uppercase tracking-wider">
-              Status
+              {t("colStatus")}
             </th>
             <th className="px-3 py-2 text-left text-athena-text-secondary font-medium uppercase tracking-wider">
-              Risk
+              {t("colRisk")}
             </th>
             <th className="px-3 py-2 text-left text-athena-text-secondary font-medium uppercase tracking-wider">
-              MITRE
+              {t("colMitre")}
             </th>
             <th className="px-3 py-2 text-left text-athena-text-secondary font-medium uppercase tracking-wider">
-              Actions
+              {t("colActions")}
             </th>
           </tr>
         </thead>
@@ -129,7 +129,7 @@ export function ToolRegistryTable({
 
                 {/* Category */}
                 <td className="px-3 py-2">
-                  <Badge variant="info">{tool.category.toUpperCase()}</Badge>
+                  <Badge variant="info">{tCategory(tool.category as any)}</Badge>
                 </td>
 
                 {/* Status toggle */}
@@ -139,7 +139,7 @@ export function ToolRegistryTable({
                     onChange={(checked) =>
                       onToggleEnabled(tool.toolId, checked)
                     }
-                    label={tool.enabled ? "ON" : "OFF"}
+                    label={tool.enabled ? t("on") : t("off")}
                   />
                 </td>
 
@@ -148,7 +148,7 @@ export function ToolRegistryTable({
                   <Badge
                     variant={RISK_VARIANT[tool.riskLevel] || "info"}
                   >
-                    {tool.riskLevel.toUpperCase()}
+                    {tRisk(tool.riskLevel as any)}
                   </Badge>
                 </td>
 
@@ -166,7 +166,7 @@ export function ToolRegistryTable({
                       onClick={() => handleHealthCheck(tool.toolId)}
                       disabled={checkingId === tool.toolId}
                     >
-                      {checkingId === tool.toolId ? "..." : "CHECK"}
+                      {checkingId === tool.toolId ? "..." : t("check")}
                     </Button>
 
                     {tool.source === "user" && (
@@ -176,7 +176,7 @@ export function ToolRegistryTable({
                         onClick={() => handleDelete(tool.toolId)}
                         disabled={deletingId === tool.toolId}
                       >
-                        {deletingId === tool.toolId ? "..." : "DEL"}
+                        {deletingId === tool.toolId ? "..." : t("del")}
                       </Button>
                     )}
 
@@ -188,7 +188,7 @@ export function ToolRegistryTable({
                             : "text-athena-error"
                         }`}
                       >
-                        {health.available ? "OK" : "FAIL"}
+                        {health.available ? t("ok") : t("fail")}
                       </span>
                     )}
                   </div>

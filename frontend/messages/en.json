@@ -35,7 +35,18 @@
     "activeOperations": "Active Operations",
     "noTechniques": "No technique executions",
     "domainStatus": "C5ISR Domain Status",
-    "noDomainData": "No C5ISR domain data available"
+    "noDomainData": "No C5ISR domain data available",
+    "colMitreId": "MITRE ID",
+    "colTechnique": "Technique",
+    "colTactic": "Tactic",
+    "colRisk": "Risk",
+    "colStatus": "Status",
+    "domainCommand": "COMMAND",
+    "domainControl": "CONTROL",
+    "domainComms": "COMMS",
+    "domainComputers": "COMPUTERS",
+    "domainCyber": "CYBER",
+    "domainIsr": "ISR"
   },
   "Navigator": {
     "attackPath": "Attack Path Timeline",
@@ -49,7 +60,7 @@
     "noSteps": "No mission steps defined",
     "targetHosts": "Target Hosts",
     "noTargets": "No targets",
-    "addTarget": "+ ADD",
+    "addTarget": "ADD",
     "executeMission": "EXECUTE MISSION",
     "oodaCycle": "OODA CYCLE",
     "resetOk": "RESET OK",
@@ -61,7 +72,15 @@
     "targetActivated": "Target set as active",
     "targetDeactivated": "Target deactivated",
     "targetDeleted": "{hostname} deleted",
-    "deleteTarget": "Delete Target: {hostname}"
+    "deleteTarget": "Delete Target: {hostname}",
+    "colStep": "#",
+    "colTechnique": "Technique",
+    "colTarget": "Target",
+    "colEngine": "Engine",
+    "colStatus": "Status",
+    "confirmExecute": "Execute Mission Plan",
+    "confirmOoda": "Trigger OODA Cycle",
+    "confirmReset": "Reset Operation"
   },
   "Monitor": {
     "dataExfiltrated": "Data Exfiltrated",
@@ -76,7 +95,8 @@
     "liveLogStream": "Live Log Stream",
     "waitingForLogs": "Waiting for log events...",
     "recHistory": "Recommendation History ({count})",
-    "newRecommendation": "New AI recommendation: {techniqueId} ({confidence}%)"
+    "newRecommendation": "New AI recommendation: {techniqueId} ({confidence}%)",
+    "situation": "SITUATION"
   },
   "OODA": {
     "cycle": "OODA Cycle",
@@ -117,7 +137,83 @@
     "progress": "Kill Chain Progress",
     "tested": "Tested",
     "failed": "Failed",
-    "untested": "Untested"
+    "untested": "Untested",
+    "recon": "RECON",
+    "weaponize": "WEAPON",
+    "deliver": "DELIVER",
+    "exploit": "EXPLOIT",
+    "install": "INSTALL",
+    "c2": "C2",
+    "action": "ACTION"
+  },
+  "Status": {
+    "success": "SUCCESS",
+    "failed": "FAILED",
+    "running": "RUNNING",
+    "queued": "QUEUED",
+    "skipped": "SKIPPED",
+    "partial": "PARTIAL",
+    "untested": "UNTESTED",
+    "completed": "COMPLETED",
+    "operational": "OPERATIONAL",
+    "degraded": "DEGRADED",
+    "offline": "OFFLINE",
+    "scanning": "SCANNING",
+    "critical": "CRITICAL",
+    "alive": "ALIVE",
+    "dead": "DEAD",
+    "pending": "PENDING",
+    "untrusted": "UNTRUSTED"
+  },
+  "Risk": {
+    "low": "LOW",
+    "medium": "MEDIUM",
+    "high": "HIGH",
+    "critical": "CRITICAL"
+  },
+  "ToolCategory": {
+    "recon": "RECON",
+    "exploit": "EXPLOIT",
+    "post-exploit": "POST-EXPLOIT",
+    "lateral-movement": "LATERAL MOVEMENT",
+    "persistence": "PERSISTENCE",
+    "exfiltration": "EXFILTRATION",
+    "c2": "C2",
+    "credential-access": "CREDENTIAL ACCESS",
+    "defense-evasion": "DEFENSE EVASION",
+    "other": "OTHER"
+  },
+  "ToolKind": {
+    "tool": "Tool",
+    "engine": "Engine"
+  },
+  "TargetRole": {
+    "target": "Target",
+    "pivot": "Pivot",
+    "c2": "C2"
+  },
+  "Tactic": {
+    "TA0043": "Recon",
+    "TA0042": "Rsrc Dev",
+    "TA0001": "Init Acc",
+    "TA0002": "Execution",
+    "TA0003": "Persist",
+    "TA0004": "Priv Esc",
+    "TA0005": "Def Evasion",
+    "TA0006": "Cred Acc",
+    "TA0007": "Discovery",
+    "TA0008": "Lat Move",
+    "TA0009": "Collection",
+    "TA0011": "C&C",
+    "TA0010": "Exfil",
+    "TA0040": "Impact"
+  },
+  "LogSeverity": {
+    "info": "INFO",
+    "success": "SUCCESS",
+    "warning": "WARNING",
+    "error": "ERROR",
+    "critical": "CRITICAL"
   },
   "HostCard": {
     "ip": "IP",
@@ -132,7 +228,13 @@
     "deactivate": "DEACTIVATE",
     "setActive": "SET ACTIVE",
     "cannotDeleteActive": "Deselect active target first",
-    "delete": "DELETE"
+    "delete": "DELETE",
+    "phase_host_discovery": "Discovering host...",
+    "phase_port_scan": "Scanning ports...",
+    "phase_service_detection": "Detecting services...",
+    "phase_os_fingerprint": "Fingerprinting OS...",
+    "phase_credential_test": "Testing credentials...",
+    "phase_finalizing": "Finalizing results..."
   },
   "TechniqueCard": {
     "tactic": "Tactic:"
@@ -226,6 +328,71 @@
     "monitorNoRec": "No AI recommendation yet. Go to Mission Planner to trigger an OODA cycle.",
     "monitorGoToPlanner": "Go to Mission Planner",
     "navigatorNoSelection": "← Select a technique from the matrix to view details"
+  },
+  "Tools": {
+    "title": "Tool Registry",
+    "addTool": "+ ADD TOOL",
+    "reconTools": "Recon Tools",
+    "executionEngines": "Execution Engines",
+    "noTools": "No tools registered",
+    "colName": "Name",
+    "colCategory": "Category",
+    "colStatus": "Status",
+    "colRisk": "Risk",
+    "colMitre": "MITRE",
+    "colActions": "Actions",
+    "on": "ON",
+    "off": "OFF",
+    "check": "CHECK",
+    "del": "DEL",
+    "ok": "OK",
+    "fail": "FAIL",
+    "newTool": "NEW TOOL",
+    "registerTool": "Register Tool",
+    "toolId": "Tool ID",
+    "name": "Name",
+    "kind": "Kind",
+    "category": "Category",
+    "riskLevel": "Risk Level",
+    "descriptionOptional": "Description (optional)",
+    "registerBtn": "REGISTER TOOL",
+    "registering": "REGISTERING...",
+    "toolIdRequired": "Tool ID is required.",
+    "nameRequired": "Name is required.",
+    "failedCreate": "Failed to create tool. Please check the values and try again."
+  },
+  "Topology": {
+    "noData": "No topology data available",
+    "loading": "Loading topology...",
+    "resetView": "Reset view",
+    "reset": "Reset",
+    "selectNode": "Select a node",
+    "toViewDetails": "to view details",
+    "compromised": "COMPROMISED",
+    "secure": "SECURE",
+    "ip": "IP",
+    "os": "OS",
+    "role": "ROLE",
+    "privilege": "PRIV",
+    "killChain": "KILL CHAIN",
+    "noAttackStage": "No attack stage recorded",
+    "collectedFacts": "COLLECTED FACTS",
+    "noFacts": "No facts collected"
+  },
+  "Situation": {
+    "title": "Attack Situation Diagram",
+    "progress": "Progress: {value}%",
+    "running": "{count} running"
+  },
+  "UI": {
+    "initializing": "INITIALIZING SYSTEMS",
+    "dismiss": "DISMISS",
+    "enterCommand": "Enter command...",
+    "info": "INFO",
+    "ok": "OK",
+    "warn": "WARN",
+    "err": "ERR",
+    "confidence": "{value}% confidence"
   },
   "Errors": {
     "failedLoadC5isr": "Failed to load C5ISR data",

@@ -170,7 +170,7 @@ async def _sync_agents_background(operation_id: str) -> None:
             await db.commit()
 
         logger.info(
-            "Synced %d agents from Caldera for op %s (%d skipped — no matching target)",
+            "Synced %d agents from C2 engine for op %s (%d skipped — no matching target)",
             synced, operation_id, skipped,
         )
         await ws_manager.broadcast(

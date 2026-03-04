@@ -23,7 +23,7 @@ export interface Technique {
   description: string | null;
   killChainStage: KillChainStage;
   riskLevel: RiskLevel;
-  calderaAbilityId: string | null;
+  c2AbilityId: string | null;
   platforms: string[];
 }
 

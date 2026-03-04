@@ -3,8 +3,8 @@
 | 欄位 | 內容 |
 |------|------|
 | **專案** | Athena |
-| **版本** | v0.2.0 |
-| **最後更新** | 2026-03-02 |
+| **版本** | v0.3.0 |
+| **最後更新** | 2026-03-04 |
 
 ---
 
@@ -103,7 +103,7 @@ graph LR
 | 服務名稱 | 職責 | 技術棧 | Port | 容器 |
 |----------|------|--------|------|------|
 | backend | REST API + WebSocket + OODA 引擎 + AI 整合 | Python 3.11 / FastAPI / Pydantic | 8000 | athena-backend |
-| frontend | 指揮官儀表板 UI（4 個畫面 + 3D 拓樸） | Next.js 14 / React 18 / Tailwind v4 | 3000 | athena-frontend |
+| frontend | 指揮官儀表板 UI（5 個畫面 + 3D 拓樸 + 情勢圖） | Next.js 14 / React 18 / Tailwind v4 | 3000 | athena-frontend |
 | DirectSSHEngine | SSH 直接執行 MITRE techniques（預設引擎） | asyncssh / Python | 內建 | 無需獨立容器 |
 | C2EngineClient | 向後相容 C2 執行（選用，EXECUTION_ENGINE=c2） | Python / REST API | 8888 | 外部（獨立部署，選用） |
 
@@ -131,6 +131,7 @@ graph LR
 | Vuln Lookup Service | `services/vuln_lookup.py` | NVD NIST API CVE 關聯 + SQLite 快取 → vuln.cve facts（Phase A） |
 | Engagements API | `routers/engagements.py` | ROE CRUD + activate/suspend（Phase A） |
 | Attack Path API | `routers/techniques.py` — `GET /attack-path` | Attack Path Timeline 資料（JOIN technique_executions + techniques + targets）（Phase B） |
+| Tool Registry API | `routers/tools.py` | 工具/引擎 CRUD（list/get/create/patch/delete/check）— 6 endpoints（Phase G） |
 
 ### Docker 部署拓樸（Phase 6 實作）
 
@@ -202,6 +203,7 @@ graph LR
         E6["fact.new"]
         E7["recommendation"]
         E8["operation.reset"]
+        E9["orient.thinking"]
     end
 ```
 
@@ -282,10 +284,14 @@ graph TD
 - [x] Phase A 憑證鏈接（_load_harvested_creds + OrientEngine 提示詞）
 - [x] Phase A 結構化報告（ReportGenerator + `/report/structured` + `/report/markdown`，95 tests）
 - [x] Phase B DirectSSHEngine + Attack Path Timeline（ADR-017、ADR-018、SPEC-021）
+- [x] Phase F UX 精修 + LLM 監控 + Web Terminal + Topology Tab（SPEC-024）
+- [x] Phase G Tool Registry 管理系統 — CRUD API + 前端 /tools 頁面（SPEC-025）
+- [x] Phase G 動態攻擊情勢圖 — SVG Kill Chain + OODA Ring + C5ISR Health Bar（SPEC-026）
 - [ ] Phase C Windows 執行引擎（WinRM/SMB）— DirectSSHEngine 目前僅支援 Linux/SSH
 - [ ] Phase C Metasploit RPC 整合（ADR-016 草稿）
 - [ ] Phase C Web 應用掃描（nuclei 整合）
 - [ ] Phase C JWT 身份驗證 + RBAC（Phase 8 計畫）
+- [ ] Tool Registry 與 engine_router 動態整合（目前僅管理用途，SPEC-016 Planned）
 
 ---
 

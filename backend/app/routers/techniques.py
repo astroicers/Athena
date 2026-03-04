@@ -45,7 +45,7 @@ def _row_to_technique(row: aiosqlite.Row) -> Technique:
         description=row["description"],
         kill_chain_stage=row["kill_chain_stage"],
         risk_level=row["risk_level"],
-        caldera_ability_id=row["caldera_ability_id"],
+        c2_ability_id=row["c2_ability_id"],
         platforms=platforms,
     )
 
@@ -69,7 +69,7 @@ async def create_technique(
     await db.execute(
         "INSERT INTO techniques "
         "(id, mitre_id, name, tactic, tactic_id, description, "
-        "kill_chain_stage, risk_level, caldera_ability_id, platforms) "
+        "kill_chain_stage, risk_level, c2_ability_id, platforms) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             tech_id,
@@ -80,7 +80,7 @@ async def create_technique(
             body.description,
             body.kill_chain_stage,
             body.risk_level,
-            body.caldera_ability_id,
+            body.c2_ability_id,
             json.dumps(body.platforms),
         ),
     )
@@ -91,24 +91,24 @@ async def create_technique(
     return dict(row)
 
 
-@router.post("/techniques/sync-caldera", status_code=202)
-async def sync_caldera_abilities(
+@router.post("/techniques/sync-c2", status_code=202)
+async def sync_c2_abilities(
     db: aiosqlite.Connection = Depends(get_db),  # noqa: ARG001  kept for DI consistency
 ):
-    """Sync caldera_ability_id from Caldera's ability catalog — returns 202 immediately."""
+    """Sync c2_ability_id from C2 engine's ability catalog -- returns 202 immediately."""
     _task = asyncio.create_task(_sync_techniques_background())
     _task.add_done_callback(
-        lambda t: logger.warning("techniques/sync-caldera task cancelled")
+        lambda t: logger.warning("techniques/sync-c2 task cancelled")
         if t.cancelled() else None
     )
     return {"status": "sync_started"}
 
 
 async def _sync_techniques_background() -> None:
-    """Background: fetch Caldera abilities, update technique caldera_ability_id."""
+    """Background: fetch C2 abilities, update technique c2_ability_id."""
     try:
         if settings.MOCK_C2_ENGINE:
-            logger.info("techniques/sync-caldera mock mode — no-op")
+            logger.info("techniques/sync-c2 mock mode — no-op")
             return
 
         from app.clients.c2_client import C2EngineClient
@@ -118,7 +118,7 @@ async def _sync_techniques_background() -> None:
         await client.aclose()
 
         if not abilities:
-            logger.info("techniques/sync-caldera: no abilities returned from C2 engine")
+            logger.info("techniques/sync-c2: no abilities returned from C2 engine")
             return
 
         # Build mitre_id -> ability_id mapping
@@ -135,8 +135,8 @@ async def _sync_techniques_background() -> None:
         async with aiosqlite.connect(_DB_FILE) as db:
             for mitre_id, ability_id in mapping.items():
                 result = await db.execute(
-                    "UPDATE techniques SET caldera_ability_id = ? "
-                    "WHERE mitre_id = ? AND (caldera_ability_id IS NULL OR caldera_ability_id = '')",
+                    "UPDATE techniques SET c2_ability_id = ? "
+                    "WHERE mitre_id = ? AND (c2_ability_id IS NULL OR c2_ability_id = '')",
                     (ability_id, mitre_id),
                 )
                 if result.rowcount > 0:
@@ -144,13 +144,13 @@ async def _sync_techniques_background() -> None:
             await db.commit()
 
         logger.info(
-            "techniques/sync-caldera: synced=%d total_abilities=%d mapped=%d",
+            "techniques/sync-c2: synced=%d total_abilities=%d mapped=%d",
             synced, len(abilities), len(mapping),
         )
-        # techniques/sync-caldera is a global endpoint (no op_id) —
+        # techniques/sync-c2 is a global endpoint (no op_id) —
         # WS broadcast requires an operation_id, so we log only.
     except Exception as exc:
-        logger.exception("techniques/sync-caldera background failed: %s", exc)
+        logger.exception("techniques/sync-c2 background failed: %s", exc)
 
 
 @router.get(
@@ -205,7 +205,7 @@ async def list_techniques_with_status(
                 description=r["description"],
                 kill_chain_stage=r["kill_chain_stage"],
                 risk_level=r["risk_level"],
-                caldera_ability_id=r["caldera_ability_id"],
+                c2_ability_id=r["c2_ability_id"],
                 platforms=platforms,
                 latest_status=r["latest_status"],
                 latest_execution_id=r["latest_execution_id"],

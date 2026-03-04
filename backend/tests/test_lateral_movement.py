@@ -115,7 +115,7 @@ async def test_successful_ssh_marks_target_compromised(seeded_db):
     ):
         router = EngineRouter(
             c2_engine=MagicMock(),
-            adaptive_engine=None,
+
             fact_collector=fact_collector,
             ws_manager=ws,
         )
@@ -176,7 +176,7 @@ async def test_failed_ssh_does_not_mark_compromised(seeded_db):
     ):
         router = EngineRouter(
             c2_engine=MagicMock(),
-            adaptive_engine=None,
+
             fact_collector=fact_collector,
             ws_manager=ws,
         )

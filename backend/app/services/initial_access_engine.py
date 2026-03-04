@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""InitialAccessEngine — SSH credential testing and Caldera agent bootstrapping."""
+"""InitialAccessEngine — SSH credential testing and C2 agent bootstrapping."""
 
 import asyncio
 import logging
@@ -91,16 +91,16 @@ class InitialAccessEngine:
         )
 
     # ------------------------------------------------------------------
-    # Public helper — Caldera agent bootstrapping (real mode only)
+    # Public helper — C2 agent bootstrapping (real mode only)
     # ------------------------------------------------------------------
 
-    async def bootstrap_caldera_agent(
+    async def bootstrap_c2_agent(
         self,
         ip: str,
         credential: tuple[str, str],
         c2_host: str,
     ) -> bool:
-        """Deploy and start a Caldera sandcat agent on the remote host via SSH.
+        """Deploy and start a C2 sandcat agent on the remote host via SSH.
 
         Parameters
         ----------
@@ -109,7 +109,7 @@ class InitialAccessEngine:
         credential:
             ``(username, password)`` tuple.
         c2_host:
-            Full ``scheme://host:port`` of the Caldera server, e.g.
+            Full ``scheme://host:port`` of the C2 server, e.g.
             ``http://172.17.0.1:58888``.
 
         Returns ``True`` when the remote commands execute without error and the
@@ -200,7 +200,7 @@ class InitialAccessEngine:
                     check=True,
                 )
                 logger.info(
-                    "Caldera sandcat launched on %s (arch=%s, kernel=%s, file=%s, callback=%s)",
+                    "C2 sandcat launched on %s (arch=%s, kernel=%s, file=%s, callback=%s)",
                     ip, arch, kernel_str, sandcat_file, c2_host,
                 )
 
@@ -211,7 +211,7 @@ class InitialAccessEngine:
 
         except Exception:
             logger.exception(
-                "bootstrap_caldera_agent failed for %s", ip
+                "bootstrap_c2_agent failed for %s", ip
             )
             return False
 
@@ -367,12 +367,12 @@ class InitialAccessEngine:
                         f"{username}:{password}",
                     )
 
-                    # Bootstrap Caldera agent only when EXECUTION_ENGINE=caldera
-                    if settings.EXECUTION_ENGINE == "caldera":
+                    # Bootstrap C2 agent only when EXECUTION_ENGINE=c2
+                    if settings.EXECUTION_ENGINE == "c2":
                         c2_host = (
                             settings.C2_AGENT_CALLBACK_URL or settings.C2_ENGINE_URL
                         )
-                        await self.bootstrap_caldera_agent(
+                        await self.bootstrap_c2_agent(
                             ip=ip,
                             credential=(username, password),
                             c2_host=c2_host,

@@ -28,11 +28,10 @@ class Settings(BaseSettings):
     C2_AGENT_CALLBACK_URL: str = ""
     C2_ENGINE_API_KEY: str = ""
     MOCK_C2_ENGINE: bool = True
-    # "ssh" | "persistent_ssh" | "caldera" | "mock"
+    # "ssh" | "persistent_ssh" | "c2" | "mock"
     EXECUTION_ENGINE: str = "ssh"
     PERSISTENT_SSH_SESSION_TIMEOUT_SEC: int = 300
-    C2_MOCK_BEACON: bool = False  # True skips 30s beacon wait (only relevant when EXECUTION_ENGINE=caldera)
-    AI_ENGINE_URL: str = ""
+    C2_MOCK_BEACON: bool = False  # True skips 30s beacon wait (only relevant when EXECUTION_ENGINE=c2)
     ANTHROPIC_API_KEY: str = ""
     ANTHROPIC_AUTH_TOKEN: str = ""
     OPENAI_API_KEY: str = ""

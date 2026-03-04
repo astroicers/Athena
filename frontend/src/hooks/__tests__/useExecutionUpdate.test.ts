@@ -48,10 +48,10 @@ describe("useExecutionUpdate", () => {
     const { result } = renderHook(() => useExecutionUpdate(ws));
 
     act(() => {
-      ws._trigger("execution.update", { techniqueId: "T1595.001", engine: "caldera", status: "running" });
+      ws._trigger("execution.update", { techniqueId: "T1595.001", engine: "ssh", status: "running" });
     });
 
-    expect(result.current).toEqual({ techniqueId: "T1595.001", engine: "caldera", status: "running" });
+    expect(result.current).toEqual({ techniqueId: "T1595.001", engine: "ssh", status: "running" });
   });
 
   it("does not update state when techniqueId is missing", () => {
@@ -59,7 +59,7 @@ describe("useExecutionUpdate", () => {
     const { result } = renderHook(() => useExecutionUpdate(ws));
 
     act(() => {
-      ws._trigger("execution.update", { engine: "caldera", status: "running" });
+      ws._trigger("execution.update", { engine: "ssh", status: "running" });
     });
 
     expect(result.current).toBeNull();

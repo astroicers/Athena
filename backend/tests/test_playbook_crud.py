@@ -198,7 +198,7 @@ async def test_output_parser_read_from_playbook_on_ssh_execute(seeded_db):
     ws_mock.broadcast = AsyncMock()
     router = EngineRouter(
         c2_engine=MagicMock(),
-        adaptive_engine=None,
+
         fact_collector=MagicMock(),
         ws_manager=ws_mock,
     )
@@ -265,7 +265,7 @@ async def test_get_output_parser_windows_platform(seeded_db):
     # T1059.001 is seeded with platform='windows', output_parser='first_line'
     router = EngineRouter(
         c2_engine=MagicMock(),
-        adaptive_engine=None,
+
         fact_collector=MagicMock(),
         ws_manager=MagicMock(broadcast=AsyncMock()),
     )
@@ -284,7 +284,7 @@ async def test_get_output_parser_windows_technique_linux_path_returns_none(seede
     seeded_db.row_factory = aiosqlite.Row
     router = EngineRouter(
         c2_engine=MagicMock(),
-        adaptive_engine=None,
+
         fact_collector=MagicMock(),
         ws_manager=MagicMock(broadcast=AsyncMock()),
     )
@@ -306,7 +306,7 @@ async def test_execute_winrm_uses_windows_output_parser(seeded_db):
     ws_mock = MagicMock(broadcast=AsyncMock())
     router = EngineRouter(
         c2_engine=MagicMock(),
-        adaptive_engine=None,
+
         fact_collector=MagicMock(),
         ws_manager=ws_mock,
     )

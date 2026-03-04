@@ -55,8 +55,12 @@ class AgentStatus(str, Enum):
 
 
 class ExecutionEngine(str, Enum):
-    C2 = "caldera"       # value unchanged — DB records remain compatible
-    ADAPTIVE = "shannon"  # value unchanged — DB records remain compatible
+    SSH = "ssh"
+    PERSISTENT_SSH = "persistent_ssh"
+    C2 = "c2"
+    MOCK = "mock"
+    METASPLOIT = "metasploit"
+    WINRM = "winrm"
 
 
 class C5ISRDomain(str, Enum):
@@ -118,3 +122,17 @@ class AutomationMode(str, Enum):
     MANUAL = "manual"
     SEMI_AUTO = "semi_auto"
     AUTO_FULL = "auto_full"
+
+
+class ToolKind(str, Enum):
+    TOOL = "tool"
+    ENGINE = "engine"
+
+
+class ToolCategory(str, Enum):
+    RECONNAISSANCE = "reconnaissance"
+    ENUMERATION = "enumeration"
+    VULNERABILITY_SCANNING = "vulnerability_scanning"
+    CREDENTIAL_ACCESS = "credential_access"
+    EXPLOITATION = "exploitation"
+    EXECUTION = "execution"

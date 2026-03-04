@@ -52,8 +52,12 @@ export enum AgentStatus {
 }
 
 export enum ExecutionEngine {
-  C2 = "caldera",
-  ADAPTIVE = "shannon",
+  SSH = "ssh",
+  PERSISTENT_SSH = "persistent_ssh",
+  C2 = "c2",
+  MOCK = "mock",
+  METASPLOIT = "metasploit",
+  WINRM = "winrm",
 }
 
 export enum C5ISRDomain {

@@ -160,7 +160,7 @@ async def _run_scan_background(
                     )
                     cred_parts = (ia_result.credential or ":").split(":", 1)
                     cred_tuple = (cred_parts[0], cred_parts[1] if len(cred_parts) > 1 else "")
-                    deployed = await ia_engine.bootstrap_caldera_agent(
+                    deployed = await ia_engine.bootstrap_c2_agent(
                         ip_address, cred_tuple, c2_host
                     )
                     ia_result = InitialAccessResult(

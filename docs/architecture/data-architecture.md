@@ -62,6 +62,8 @@ ACT      → Battle Monitor    (auto: Caldera/Shannon executes)
 | `KillChainStage` | recon, weaponize, deliver, exploit, install, c2, action | Cyber Kill Chain 7 stages |
 | `RiskLevel` | low, medium, high, critical | Risk assessment |
 | `AutomationMode` | manual, semi_auto | Automation mode |
+| `ToolKind` | tool, engine | Tool registry kind |
+| `ToolCategory` | reconnaissance, enumeration, vulnerability_scanning, credential_access, exploitation, execution | Tool category |
 
 ---
 
@@ -114,13 +116,18 @@ ACT      → Battle Monitor    (auto: Caldera/Shannon executes)
     │ kill_chain  │  │ result_summary │  └────────────┘
     └─────────────┘  └────────────────┘
 
-    ┌────────────┐
-    │  LogEntry  │
-    │────────────│
-    │ severity   │
-    │ source     │
-    │ message    │
-    └────────────┘
+    ┌────────────┐   ┌──────────────────┐
+    │  LogEntry  │   │  ToolRegistry    │
+    │────────────│   │──────────────────│
+    │ severity   │   │ tool_id (UNIQUE) │
+    │ source     │   │ name             │
+    │ message    │   │ kind             │
+    └────────────┘   │ category         │
+                     │ enabled          │
+                     │ source (seed/user)│
+                     │ config_json      │
+                     │ risk_level       │
+                     └──────────────────┘
 ```
 
 ---
@@ -314,6 +321,27 @@ class LogEntry(BaseModel):
     technique_id: str | None
 ```
 
+### ToolRegistry
+
+```python
+class ToolRegistryEntry(BaseModel):
+    id: str
+    tool_id: str                        # slug: "nmap", "ssh"
+    name: str                           # "Nmap", "Direct SSH"
+    description: str | None
+    kind: str                           # "tool" | "engine"
+    category: str                       # reconnaissance, execution, etc.
+    version: str | None
+    enabled: bool
+    source: str                         # "seed" | "user"
+    config_json: dict                   # arbitrary config
+    mitre_techniques: list[str]         # MITRE IDs
+    risk_level: str                     # low/medium/high/critical
+    output_traits: list[str]            # output trait types
+    created_at: str
+    updated_at: str
+```
+
 ---
 
 ## 5. SQLite Schema
@@ -479,6 +507,24 @@ CREATE TABLE log_entries (
     technique_id TEXT,
     target_id TEXT
 );
+
+CREATE TABLE tool_registry (
+    id TEXT PRIMARY KEY,
+    tool_id TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    description TEXT,
+    kind TEXT NOT NULL DEFAULT 'tool',
+    category TEXT NOT NULL DEFAULT 'reconnaissance',
+    version TEXT,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    source TEXT NOT NULL DEFAULT 'seed',
+    config_json TEXT DEFAULT '{}',
+    mitre_techniques TEXT DEFAULT '[]',
+    risk_level TEXT DEFAULT 'low',
+    output_traits TEXT DEFAULT '[]',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
 ```
 
 ---
@@ -533,13 +579,22 @@ GET    /operations/{id}/logs                 Log entries (paginated)
 GET    /operations/{id}/recommendations/latest   Latest PentestGPT recommendation
 POST   /operations/{id}/recommendations/{rid}/accept  Accept recommendation
 
+-- Tool Registry --
+GET    /tools                                List tools (filter: kind, category, enabled)
+GET    /tools/{tool_id}                      Get tool by slug
+POST   /tools                                Create user tool
+PATCH  /tools/{tool_id}                      Update tool
+DELETE /tools/{tool_id}                      Delete user tool (seed → 403)
+POST   /tools/{tool_id}/check                Health check stub
+
 -- Health --
 GET    /health                               Service health check
 
 -- WebSocket (Real-time) --
 WS     /ws/{operation_id}                    Live event stream
   Events: log.new, agent.beacon, execution.update,
-          ooda.phase, c5isr.update, fact.new, recommendation
+          ooda.phase, c5isr.update, fact.new, recommendation,
+          orient.thinking, operation.reset
 ```
 
 ---
@@ -570,6 +625,12 @@ WS     /ws/{operation_id}                    Live event stream
 | Live log stream | Battle Monitor | `LogEntry[]` via WebSocket |
 | SUCCESS victory log | Battle Monitor | `LogEntry { severity: "success" }` |
 | Automation mode toggle | Sidebar / Header | `Operation.automation_mode` |
+| Tool Registry table | Tool Registry | `ToolRegistryEntry[]` via `/api/tools` |
+| Tool enable/disable toggle | Tool Registry | `PATCH /api/tools/{tool_id}` |
+| Attack Situation Diagram | Battle Monitor (SITUATION tab) | `TechniqueExecution[]` + `OODAPhase` + `C5ISRStatus[]` via WS |
+| Kill Chain nodes (7) | Battle Monitor (SITUATION tab) | `TechniqueExecution[]` grouped by `kill_chain_stage` |
+| OODA Ring overlay | Battle Monitor (SITUATION tab) | `Operation.current_ooda_phase` via WS `ooda.phase` |
+| C5ISR Health MiniBar | Battle Monitor (SITUATION tab) | `C5ISRStatus[]` via WS `c5isr.update` |
 
 ---
 

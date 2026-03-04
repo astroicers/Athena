@@ -64,6 +64,15 @@ TECH_T1110_001 = "tech-t1110-001"
 TECH_T1190 = "tech-t1190"
 TECH_T1046 = "tech-t1046"
 
+# Technique Executions (demo results)
+EXEC_01 = "exec-0001"
+EXEC_02 = "exec-0002"
+EXEC_03 = "exec-0003"
+EXEC_04 = "exec-0004"
+EXEC_05 = "exec-0005"
+EXEC_06 = "exec-0006"
+EXEC_07 = "exec-0007"
+
 # Mission Steps
 MS_01 = "ms-0001"
 MS_02 = "ms-0002"
@@ -268,7 +277,7 @@ async def seed() -> None:
         await db.executemany(
             "INSERT OR IGNORE INTO techniques "
             "(id, mitre_id, name, tactic, tactic_id, description, "
-            "kill_chain_stage, risk_level, caldera_ability_id, platforms) "
+            "kill_chain_stage, risk_level, c2_ability_id, platforms) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             techniques,
         )
@@ -279,19 +288,19 @@ async def seed() -> None:
         mission_steps = [
             (MS_01, OP_PHANTOM, 1, TECH_T1595,
              "Active Scanning: IP Blocks", TGT_DC01,
-             "10.0.1.0/24", "caldera", "queued",
+             "10.0.1.0/24", "ssh", "queued",
              TS_BASE, None, None),
             (MS_02, OP_PHANTOM, 2, TECH_T1003,
              "OS Credential Dumping: LSASS Memory", TGT_DC01,
-             "DC-01", "caldera", "queued",
+             "DC-01", "ssh", "queued",
              TS_BASE, None, None),
             (MS_03, OP_PHANTOM, 3, TECH_T1021,
              "Remote Services: SMB/Windows Admin Shares", TGT_WSPC01,
-             "WS-PC01", "caldera", "queued",
+             "WS-PC01", "ssh", "queued",
              TS_BASE, None, None),
             (MS_04, OP_PHANTOM, 4, TECH_T1059,
              "Command and Scripting Interpreter: PowerShell", TGT_WSPC02,
-             "WS-PC02", "caldera", "queued",
+             "WS-PC02", "ssh", "queued",
              TS_BASE, None, None),
         ]
         await db.executemany(
@@ -304,7 +313,50 @@ async def seed() -> None:
         )
 
         # ==================================================================
-        # 11. c5isr_statuses (6 records)
+        # 11. technique_executions (7 records — demo execution results)
+        # ==================================================================
+        executions = [
+            # RECON: T1595.001 Active Scanning on DC-01 — success
+            (EXEC_01, TECH_T1595, TGT_DC01, OP_PHANTOM, None,
+             "ssh", "success", "Discovered 5 open ports on DC-01",
+             3, TS_SCAN_START, TS_SCAN_END, None, TS_SCAN_START),
+            # RECON: T1046 Network Service Discovery on WS-PC01 — success
+            (EXEC_02, TECH_T1046, TGT_WSPC01, OP_PHANTOM, None,
+             "ssh", "success", "Enumerated SMB, RDP, WinRM services",
+             2, TS_SCAN_START, TS_SCAN_END, None, TS_SCAN_START),
+            # RECON: T1592 Gather Victim Host Info on DC-01 — partial
+            (EXEC_03, "tech-t1592", TGT_DC01, OP_PHANTOM, None,
+             "ssh", "partial", "OS fingerprint obtained, user enum incomplete",
+             1, TS_EXEC_START, "2024-11-15T08:35:00", None, TS_EXEC_START),
+            # EXPLOIT: T1003.001 Credential Dumping on DC-01 — success
+            (EXEC_04, TECH_T1003, TGT_DC01, OP_PHANTOM, None,
+             "ssh", "success", "Extracted 4 NTLM hashes from LSASS",
+             4, TS_EXEC_START, "2024-11-15T08:45:00", None, TS_EXEC_START),
+            # EXPLOIT: T1059.001 PowerShell Execution on WS-PC02 — success
+            (EXEC_05, TECH_T1059, TGT_WSPC02, OP_PHANTOM, None,
+             "ssh", "success", "PowerShell beacon established",
+             1, TS_EXEC_START, "2024-11-15T08:55:00", None, TS_EXEC_START),
+            # EXPLOIT: T1110.001 Brute Force on DB-01 — failed
+            (EXEC_06, TECH_T1110_001, TGT_DB01, OP_PHANTOM, None,
+             "ssh", "failed", None,
+             0, TS_BEACON, "2024-11-15T09:05:00",
+             "Account lockout triggered after 5 attempts", TS_BEACON),
+            # C2: T1021.002 SMB Lateral Movement on WS-PC01 — success
+            (EXEC_07, TECH_T1021, TGT_WSPC01, OP_PHANTOM, None,
+             "ssh", "success", "Lateral movement via admin$ share successful",
+             2, TS_BEACON, "2024-11-15T09:10:00", None, TS_BEACON),
+        ]
+        await db.executemany(
+            "INSERT OR IGNORE INTO technique_executions "
+            "(id, technique_id, target_id, operation_id, ooda_iteration_id, "
+            "engine, status, result_summary, facts_collected_count, "
+            "started_at, completed_at, error_message, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            executions,
+        )
+
+        # ==================================================================
+        # 12. c5isr_statuses (6 records)
         # ==================================================================
         c5isr = [
             (C5_CMD, OP_PHANTOM, "command", "offline", 0.0,

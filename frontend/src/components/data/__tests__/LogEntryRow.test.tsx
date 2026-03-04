@@ -10,7 +10,7 @@ describe("LogEntryRow", () => {
       id: "log-1",
       timestamp: "2026-02-26T14:30:00Z",
       severity: LogSeverity.ERROR,
-      source: "caldera",
+      source: "c2",
       message: "Connection failed",
       operationId: "op-1",
       techniqueId: null,

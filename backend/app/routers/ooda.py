@@ -23,7 +23,6 @@ from fastapi import APIRouter, Depends
 
 from app.clients.c2_client import C2EngineClient
 from app.clients.mock_c2_client import MockC2Client
-from app.clients.ai_engine_client import AiEngineClient
 from app.config import settings
 from app.database import get_db, _DB_FILE
 from app.models import OODAIteration
@@ -65,8 +64,7 @@ def _get_controller() -> OODAController:
         except Exception:
             logger.warning("Failed to connect to C2 engine, falling back to mock")
 
-    ai_engine = AiEngineClient(settings.AI_ENGINE_URL)
-    router_svc = EngineRouter(c2_engine, ai_engine if ai_engine.enabled else None, fc, ws_manager)
+    router_svc = EngineRouter(c2_engine, fc, ws_manager)
 
     _controller = OODAController(fc, orient, decision, router_svc, c5isr, ws_manager)
     return _controller

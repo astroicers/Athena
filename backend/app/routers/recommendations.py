@@ -18,7 +18,7 @@ import json
 from datetime import datetime, timezone
 
 import aiosqlite
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.database import get_db
 from app.models import OrientRecommendation
@@ -64,6 +64,28 @@ async def get_latest_recommendation(
     if not row:
         return None
     return _row_to_recommendation(row)
+
+
+@router.get(
+    "/operations/{operation_id}/recommendations",
+    response_model=list[OrientRecommendation],
+)
+async def list_recommendations(
+    operation_id: str,
+    limit: int = Query(20, ge=1, le=100),
+    db: aiosqlite.Connection = Depends(get_db),
+):
+    """List all past recommendations for an operation, newest first."""
+    db.row_factory = aiosqlite.Row
+    await ensure_operation(db, operation_id)
+
+    cursor = await db.execute(
+        "SELECT * FROM recommendations WHERE operation_id = ? "
+        "ORDER BY created_at DESC LIMIT ?",
+        (operation_id, limit),
+    )
+    rows = await cursor.fetchall()
+    return [_row_to_recommendation(r) for r in rows]
 
 
 @router.post(

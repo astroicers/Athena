@@ -52,12 +52,6 @@ async def health_check(db: aiosqlite.Connection = Depends(get_db)):
         except Exception:
             c2_engine_status = "unreachable"
 
-    # AI engine status: disabled by default (AI_ENGINE_URL unset)
-    if settings.AI_ENGINE_URL:
-        ai_engine_status = "disconnected"
-    else:
-        ai_engine_status = "disabled"
-
     # LLM status: mock > claude (api_key) > claude (oauth) > openai > unavailable
     if settings.MOCK_LLM:
         llm_status = "mock"
@@ -78,7 +72,6 @@ async def health_check(db: aiosqlite.Connection = Depends(get_db)):
         services={
             "database": db_status,
             "c2_engine": c2_engine_status,
-            "ai_engine": ai_engine_status,
             "websocket": "active",
             "llm": llm_status,
         },

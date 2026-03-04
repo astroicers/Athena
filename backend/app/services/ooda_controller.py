@@ -147,12 +147,12 @@ class OODAController:
                 db,
                 technique_id=decision["technique_id"],
                 target_id=decision["target_id"],
-                engine=decision.get("engine", "caldera"),
+                engine=decision.get("engine", "ssh"),
                 operation_id=operation_id,
                 ooda_iteration_id=ooda_id,
             )
             act_summary = (
-                f"Executed {decision['technique_id']} via {decision.get('engine', 'caldera')}: "
+                f"Executed {decision['technique_id']} via {decision.get('engine', 'ssh')}: "
                 f"{execution_result.get('status', 'unknown')}"
             )
             # Link execution to iteration
@@ -364,7 +364,6 @@ class OODAController:
 
 def build_ooda_controller() -> "OODAController":
     """Factory for creating OODAController without request context (used by scheduler)."""
-    from app.clients.ai_engine_client import AiEngineClient
     from app.clients.c2_client import C2EngineClient
     from app.clients.mock_c2_client import MockC2Client
     from app.config import settings
@@ -388,7 +387,6 @@ def build_ooda_controller() -> "OODAController":
         except Exception:
             logger.warning("build_ooda_controller: failed to connect to C2 engine, falling back to mock")
 
-    ai_engine = AiEngineClient(settings.AI_ENGINE_URL)
-    router_svc = EngineRouter(c2_engine, ai_engine if ai_engine.enabled else None, fc, ws_manager)
+    router_svc = EngineRouter(c2_engine, fc, ws_manager)
 
     return OODAController(fc, orient, decision, router_svc, c5isr, ws_manager)

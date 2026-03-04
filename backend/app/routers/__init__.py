@@ -18,6 +18,7 @@ from . import (
     admin,
     agents,
     c5isr,
+    engagements,
     facts,
     health,
     logs,
@@ -29,6 +30,8 @@ from . import (
     reports,
     targets,
     techniques,
+    terminal,
+    tools,
     ws,
 )
 
@@ -36,6 +39,7 @@ __all__ = [
     "admin",
     "agents",
     "c5isr",
+    "engagements",
     "facts",
     "health",
     "logs",
@@ -47,5 +51,7 @@ __all__ = [
     "reports",
     "targets",
     "techniques",
+    "terminal",
+    "tools",
     "ws",
 ]

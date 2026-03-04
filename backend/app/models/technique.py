@@ -26,5 +26,5 @@ class Technique(BaseModel):
     description: str | None = None      # Technique description for UI display
     kill_chain_stage: KillChainStage
     risk_level: RiskLevel
-    caldera_ability_id: str | None = None
+    c2_ability_id: str | None = None
     platforms: list[str] = []

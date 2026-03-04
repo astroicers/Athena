@@ -16,11 +16,8 @@
 
 from unittest.mock import AsyncMock, patch
 
-import pytest
-
 from app.clients import ExecutionResult
 from app.clients.mock_c2_client import MockC2Client
-from app.clients.ai_engine_client import EngineNotAvailableError, AiEngineClient
 from app.clients.c2_client import C2EngineClient
 
 
@@ -74,32 +71,6 @@ async def test_mock_c2_is_available():
 
 
 # ===================================================================
-# AiEngineClient (3 tests)
-# ===================================================================
-
-
-async def test_ai_engine_client_disabled_when_no_url():
-    """AI_ENGINE_URL='' → enabled=False, is_available=False."""
-    client = AiEngineClient("")
-    assert client.enabled is False
-    assert await client.is_available() is False
-
-
-async def test_ai_engine_client_execute_when_disabled():
-    """execute() when disabled → raises EngineNotAvailableError."""
-    client = AiEngineClient("")
-    with pytest.raises(EngineNotAvailableError):
-        await client.execute("T1003.001", "DC-01")
-
-
-async def test_ai_engine_client_get_status_when_disabled():
-    """get_status() when disabled → 'unavailable'."""
-    client = AiEngineClient("")
-    status = await client.get_status("any-id")
-    assert status == "unavailable"
-
-
-# ===================================================================
 # C2EngineClient (1 test — structural only, no real C2 engine)
 # ===================================================================
 
@@ -142,7 +113,6 @@ async def test_engine_router_metasploit_route(seeded_db):
     mock_ws.broadcast = AsyncMock()
     router = EngineRouter(
         c2_engine=MockC2Client(),
-        adaptive_engine=None,
         fact_collector=FactCollector(ws_manager=mock_ws),
         ws_manager=mock_ws,
     )
@@ -183,7 +153,6 @@ async def test_engine_router_persistent_ssh_route():
     mock_ws.broadcast = AsyncMock()
     router = EngineRouter(
         c2_engine=MockC2Client(),
-        adaptive_engine=None,
         fact_collector=FactCollector(ws_manager=mock_ws),
         ws_manager=mock_ws,
     )
@@ -193,7 +162,7 @@ async def test_engine_router_persistent_ssh_route():
         await db.executescript("""
             CREATE TABLE techniques (id TEXT PRIMARY KEY, mitre_id TEXT, name TEXT,
                 tactic TEXT, tactic_id TEXT, kill_chain_stage TEXT, risk_level TEXT,
-                caldera_ability_id TEXT);
+                c2_ability_id TEXT);
             CREATE TABLE technique_executions (id TEXT PRIMARY KEY, technique_id TEXT,
                 target_id TEXT, operation_id TEXT, ooda_iteration_id TEXT,
                 engine TEXT, status TEXT, started_at TEXT, completed_at TEXT,

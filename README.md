@@ -1,5 +1,8 @@
 # Athena
 
+[![Star on GitHub](https://img.shields.io/github/stars/astroicers/Athena?style=social)](https://github.com/astroicers/Athena)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+
 > **C5ISR + OODA — AI 驅動的網路作戰指揮平台**
 >
 > Military-Grade Cyber Command Framework — C5ISR Situational Awareness × OODA Decision Loop
@@ -90,6 +93,7 @@ Athena 的自動化管線對應 Lockheed Martin Cyber Kill Chain 七階段：
 │  MITRE ATT&CK 映射 │ OODA 循環控制器                  │
 │  OrientEngine (AI)  │ Playbook 知識庫                 │
 │  APScheduler 自動循環 │ Attack Path Timeline           │
+│  Tool Registry      │ Engagement 管理                 │
 └────────────────────────┬────────────────────────────┘
                          ↓
     ┌────────────┬───────┴────────┬──────────────┐
@@ -100,11 +104,15 @@ Athena 的自動化管線對應 Lockheed Martin Cyber Kill Chain 七階段：
 └────────┘ └──────────┘ └──────────┘ └────────┘
                          ↓
 ┌─────────────────────────────────────────────────────┐
-│       指揮官介面（Next.js 14 + Tailwind v4）          │
+│       指揮官介面（Next.js 14 + Tailwind v4 + i18n）   │
 │  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐       │
 │  │ C5ISR  │ │ MITRE  │ │Mission │ │Battle  │       │
 │  │ Board  │ │Navigat.│ │Planner │ │Monitor │       │
 │  └────────┘ └────────┘ └────────┘ └────────┘       │
+│  ┌────────┐ ┌─────────────┐ ┌──────────────────┐   │
+│  │ Tool   │ │Web Terminal │ │ Attack Situation │   │
+│  │Registry│ │(SSH console)│ │     Diagram      │   │
+│  └────────┘ └─────────────┘ └──────────────────┘   │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -114,8 +122,9 @@ Athena 的自動化管線對應 Lockheed Martin Cyber Kill Chain 七階段：
 
 **決策引擎**
 - **OODA 循環** — Observe → Orient → Decide → Act，APScheduler 自動迭代，WebSocket 即時廣播
-- **OrientEngine** — Claude API 驅動，分析態勢產生多選項戰術建議，指揮官做決策 AI 提供依據
+- **OrientEngine** — Claude API 驅動，分析態勢產生多選項戰術建議，LLM 即時監控（latency、backend 狀態）
 - **C5ISR 六域監控** — Command / Control / Comms / Computers / Cyber / ISR 即時健康儀表板
+- **Attack Situation Diagram** — 純 SVG 即時攻擊情勢圖，整合 Kill Chain 進度 + OODA 環形指示器 + C5ISR 健康條
 
 **偵察與存取**
 - **ReconEngine** — nmap port scan + OS/service 偵測
@@ -128,12 +137,21 @@ Athena 的自動化管線對應 Lockheed Martin Cyber Kill Chain 七階段：
 - **DirectSSHEngine** — asyncssh 單次連線，輕量預設
 - **C2EngineClient** — 選用外部 C2 整合，API 隔離
 - **EngineRouter** — 統一路由到四種引擎
+- **Tool Registry** — 集中式工具/引擎註冊中心，CRUD REST API + 前端管理頁面（10 個預設種子工具）
 
 **合規與報告**
 - **ScopeValidator** — RoE 白/黑名單範圍驗證，防止誤掃
 - **DecisionEngine** — 依風險等級控制自動化（LOW 自動 → CRITICAL 永遠手動）
 - **ReportGenerator** — PentestReport JSON + Markdown，含執行摘要與攻擊時序
 - **Playbook 知識庫** — 13 個 Linux technique + CRUD API + 動態 output_parser
+
+**指揮官介面**
+- **可收合側邊欄** — 展開 224px / 收合 64px，icon-only 模式
+- **Web Terminal** — 對已入侵目標建立 SSH 連線，互動式命令執行，安全黑名單防護
+- **Topology Tab** — 獨立拓撲頁籤，節點詳情面板（IP / OS / 角色 / Kill Chain 進度 / Facts）
+- **Recommendation History** — 右側抽屜完整 AI 建議歷史，含態勢評估展開
+- **國際化 (i18n)** — 繁體中文 / English 雙語切換（next-intl）
+- **批次目標匯入** — 支援 CIDR / IP / 域名批次匯入（最多 512 筆）
 
 ---
 
@@ -166,8 +184,11 @@ make up                 # docker-compose up --build -d
 ### Mission Planner — 任務規劃與 OODA 循環
 <!-- TODO: docs/screenshots/mission-planner.png -->
 
-### Battle Monitor — 3D 拓樸即時監控
+### Battle Monitor — 拓撲即時監控 + 攻擊情勢圖
 <!-- TODO: docs/screenshots/battle-monitor.png -->
+
+### Tool Registry — 工具/引擎管理
+<!-- TODO: docs/screenshots/tool-registry.png -->
 
 ---
 
@@ -175,8 +196,8 @@ make up                 # docker-compose up --build -d
 
 | 層級 | 技術 |
 |------|------|
-| 後端 | Python 3.11 + FastAPI + Pydantic v2 + SQLite |
-| 前端 | Next.js 14 + React 18 + Tailwind CSS v4 |
+| 後端 | Python 3.11 + FastAPI + Pydantic v2 + SQLite (aiosqlite) |
+| 前端 | Next.js 14 + React 18 + Tailwind CSS v4 + next-intl |
 | 3D 拓樸 | react-force-graph-3d + Three.js |
 | AI 決策 | OrientEngine + Claude API (api_key / oauth / auto) |
 | SSH 執行 | PersistentSSHEngine (連線池) / DirectSSHEngine (單次) |
@@ -184,7 +205,7 @@ make up                 # docker-compose up --build -d
 | 漏洞情報 | NVD NIST API v2 + SQLite 24h 快取 |
 | 排程 | APScheduler |
 | 容器化 | Docker + docker-compose |
-| 測試 | pytest + Vitest |
+| 測試 | pytest (237+) + Vitest (63+) |
 
 ---
 
@@ -198,6 +219,7 @@ make up                 # docker-compose up --build -d
 | [開發路線圖](docs/ROADMAP.md) | 完整開發計畫與 Phase 進度 |
 | [資料架構](docs/architecture/data-architecture.md) | DB Schema、API Schema、種子資料 |
 | [專案結構](docs/architecture/project-structure.md) | 目錄佈局、各層職責 |
+| [變更紀錄](CHANGELOG.md) | 完整版本歷史 |
 
 ---
 

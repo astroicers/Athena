@@ -64,7 +64,7 @@ async def test_call_claude_returns_json():
         '{"situation_assessment":"test","recommended_technique_id":"T1003.001",'
         '"confidence":0.85,"reasoning_text":"test","options":[{"technique_id":'
         '"T1003.001","technique_name":"LSASS","reasoning":"test","risk_level":'
-        '"medium","recommended_engine":"caldera","confidence":0.85,'
+        '"medium","recommended_engine":"ssh","confidence":0.85,'
         '"prerequisites":["admin"]}]}'
     )
     parsed = json.loads(response)
@@ -96,7 +96,7 @@ def test_llm_markdown_stripping():
     """Markdown-wrapped JSON is correctly stripped before parsing."""
     import re
 
-    raw = '```json\n{"situation_assessment":"test","recommended_technique_id":"T1003.001","confidence":0.8,"reasoning_text":"r","options":[{"technique_id":"T1003.001","technique_name":"LSASS","reasoning":"r","risk_level":"medium","recommended_engine":"caldera","confidence":0.8,"prerequisites":[]}]}\n```'
+    raw = '```json\n{"situation_assessment":"test","recommended_technique_id":"T1003.001","confidence":0.8,"reasoning_text":"r","options":[{"technique_id":"T1003.001","technique_name":"LSASS","reasoning":"r","risk_level":"medium","recommended_engine":"ssh","confidence":0.8,"prerequisites":[]}]}\n```'
     cleaned = raw.strip()
     md_match = re.match(r"```(?:json)?\s*\n?(.*?)\n?```", cleaned, re.DOTALL)
     assert md_match is not None

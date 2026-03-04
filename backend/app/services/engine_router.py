@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Act phase — route execution to C2 engine, DirectSSH, or Adaptive engine."""
+"""Act phase — route execution to C2 engine or DirectSSH."""
 
 import logging
 import uuid
@@ -35,12 +35,10 @@ class EngineRouter:
     def __init__(
         self,
         c2_engine: BaseEngineClient,
-        adaptive_engine: BaseEngineClient | None,
         fact_collector: FactCollector,
         ws_manager: WebSocketManager,
     ):
         self._c2_engine = c2_engine
-        self._adaptive_engine = adaptive_engine
         self._fact_collector = fact_collector
         self._ws = ws_manager
         self._capability_matcher = AgentCapabilityMatcher()
@@ -52,7 +50,7 @@ class EngineRouter:
         """
         Execute a technique via the selected engine:
         1. Create TechniqueExecution record (status=running)
-        2. Call C2EngineClient / DirectSSHEngine / AiEngineClient
+        2. Call C2EngineClient / DirectSSHEngine
         3. Update status (success/failed)
         4. Extract facts from result
         5. Push WebSocket execution.update event
@@ -60,20 +58,20 @@ class EngineRouter:
         Quad-track routing (controlled by settings.EXECUTION_ENGINE):
         - "persistent_ssh": Use PersistentSSHChannelEngine (pooled sessions; Phase D)
         - "ssh"    : Use DirectSSHEngine with credential.ssh fact from DB
-        - "caldera": Use C2EngineClient (requires alive agent; original path)
+        - "c2"     : Use C2EngineClient (requires alive agent; original path)
         - "mock"   : Use MockC2Client (MOCK_C2_ENGINE=true legacy path)
         """
         exec_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
 
-        # Get the technique's caldera_ability_id
+        # Get the technique's c2_ability_id
         db.row_factory = aiosqlite.Row
         cursor = await db.execute(
-            "SELECT mitre_id, caldera_ability_id FROM techniques WHERE mitre_id = ?",
+            "SELECT mitre_id, c2_ability_id FROM techniques WHERE mitre_id = ?",
             (technique_id,),
         )
         tech_row = await cursor.fetchone()
-        ability_id = (tech_row["caldera_ability_id"] if tech_row else None) or technique_id
+        ability_id = (tech_row["c2_ability_id"] if tech_row else None) or technique_id
 
         # ── Metasploit route: exploit=true CVE fact → highest priority ────────
         # Check BEFORE SSH/Caldera routing (ADR-019)
@@ -111,12 +109,12 @@ class EngineRouter:
         # ── Engine selection ──────────────────────────────────────────────────
         # Determine effective mode:
         #   EXECUTION_ENGINE="ssh"    → SSH path (no agent required)
-        #   EXECUTION_ENGINE="caldera"→ Caldera path (alive agent required)
+        #   EXECUTION_ENGINE="c2"    → C2 path (alive agent required)
         #   EXECUTION_ENGINE="mock"   → mock path
         #   MOCK_C2_ENGINE=True         → treated as "mock" for backward compat
-        #     UNLESS EXECUTION_ENGINE is explicitly "caldera" or "ssh"
-        effective_mode = settings.EXECUTION_ENGINE  # "ssh" | "persistent_ssh" | "caldera" | "mock"
-        if settings.MOCK_C2_ENGINE and effective_mode not in ("caldera", "ssh", "persistent_ssh"):
+        #     UNLESS EXECUTION_ENGINE is explicitly "c2" or "ssh"
+        effective_mode = settings.EXECUTION_ENGINE  # "ssh" | "persistent_ssh" | "c2" | "mock"
+        if settings.MOCK_C2_ENGINE and effective_mode not in ("c2", "ssh", "persistent_ssh"):
             # Legacy MOCK_C2_ENGINE=True overrides to mock when engine is ambiguous
             effective_mode = "mock"
 
@@ -131,13 +129,13 @@ class EngineRouter:
                 engine, operation_id, ooda_iteration_id,
             )
         elif effective_mode == "mock":
-            return await self._execute_caldera(
+            return await self._execute_c2(
                 db, exec_id, now, ability_id, technique_id, target_id,
                 engine, operation_id, ooda_iteration_id, require_agent=False,
             )
         else:
-            # "caldera" mode — original path with alive-agent requirement
-            return await self._execute_caldera(
+            # "c2" mode — original path with alive-agent requirement
+            return await self._execute_c2(
                 db, exec_id, now, ability_id, technique_id, target_id,
                 engine, operation_id, ooda_iteration_id, require_agent=True,
             )
@@ -380,7 +378,7 @@ class EngineRouter:
         )
         await db.commit()
 
-    async def _execute_caldera(
+    async def _execute_c2(
         self,
         db: aiosqlite.Connection,
         exec_id: str,
@@ -621,40 +619,21 @@ class EngineRouter:
 
     # ── Engine / client selection ─────────────────────────────────────────────
 
-    def select_engine(
-        self, technique_id: str, context: dict,
-        gpt_recommendation: str | None = None,
-    ) -> str:
+    def select_engine(self, technique_id: str, context: dict, gpt_recommendation: str | None = None) -> str:
         """
         Engine selection logic per ADR-006 priority order:
         1. High-confidence AI recommendation → trust its engine choice
-        2. C2 engine has corresponding ability → C2 engine
-        3. Unknown environment + Adaptive engine available → Adaptive engine
-        4. High stealth requirement + Adaptive engine available → Adaptive engine
-        5. Default → Caldera
+        2. Unknown environment → C2 engine
+        3. High stealth requirement → C2 engine
+        4. Default → SSH
         """
-        # Priority 1: Trust high-confidence PentestGPT recommendation
-        if gpt_recommendation and gpt_recommendation in ("caldera", "shannon"):
-            if gpt_recommendation == "shannon" and self._adaptive_engine:
-                return "shannon"
-            return "caldera"
-
-        # Priority 2: Caldera has ability for this technique (always true for known MITRE IDs)
-        # In POC, C2 engine is assumed to have all standard MITRE abilities
-        # A production version would check c2_engine.list_abilities()
-
-        # Priority 3: Unknown environment → Adaptive engine
-        if context.get("environment") == "unknown" and self._adaptive_engine:
-            return "shannon"
-
-        # Priority 4: High stealth requirement → Adaptive engine
-        if context.get("stealth_level") == "maximum" and self._adaptive_engine:
-            return "shannon"
-
-        # Priority 5: Default → C2 engine
-        return "caldera"
+        if gpt_recommendation and gpt_recommendation in ("c2", "ssh"):
+            return gpt_recommendation
+        if context.get("environment") == "unknown":
+            return "c2"
+        if context.get("stealth_level") == "maximum":
+            return "c2"
+        return "ssh"
 
     def _select_client(self, engine: str) -> BaseEngineClient:
-        if engine == "shannon" and self._adaptive_engine:
-            return self._adaptive_engine
         return self._c2_engine

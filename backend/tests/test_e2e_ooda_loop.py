@@ -317,7 +317,6 @@ async def test_metasploit_mock_route(seeded_db: aiosqlite.Connection):
 
     router = EngineRouter(
         c2_engine=MockC2Client(),
-        adaptive_engine=None,
         fact_collector=fc,
         ws_manager=mock_ws,
     )
@@ -326,7 +325,7 @@ async def test_metasploit_mock_route(seeded_db: aiosqlite.Connection):
         db=seeded_db,
         technique_id="T1190",
         target_id="test-target-1",
-        engine="caldera",
+        engine="ssh",
         operation_id="test-op-1",
     )
 

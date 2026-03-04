@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for async 202 pattern on POST /agents/sync and POST /techniques/sync-caldera.
+"""Tests for async 202 pattern on POST /agents/sync and POST /techniques/sync-c2.
 
 Covers Task 5 of the async refactor plan:
   - Endpoint returns 202 immediately with {"status": "sync_started"}
@@ -135,32 +135,32 @@ async def test_sync_agents_background_broadcasts_sync_failed_on_exception():
 
 
 # ---------------------------------------------------------------------------
-# POST /techniques/sync-caldera → 202 Accepted
+# POST /techniques/sync-c2 → 202 Accepted
 # ---------------------------------------------------------------------------
 
 
-async def test_techniques_sync_caldera_returns_202(client):
-    """POST techniques/sync-caldera returns 202 with status='sync_started'."""
+async def test_techniques_sync_c2_returns_202(client):
+    """POST techniques/sync-c2 returns 202 with status='sync_started'."""
     with patch("app.routers.techniques.asyncio.create_task") as mock_create_task:
         mock_task = MagicMock()
         mock_task.add_done_callback = MagicMock()
         mock_create_task.return_value = mock_task
 
-        resp = await client.post("/api/techniques/sync-caldera")
+        resp = await client.post("/api/techniques/sync-c2")
 
     assert resp.status_code == 202
     data = resp.json()
     assert data["status"] == "sync_started"
 
 
-async def test_techniques_sync_caldera_enqueues_background_task(client):
-    """POST techniques/sync-caldera calls asyncio.create_task exactly once."""
+async def test_techniques_sync_c2_enqueues_background_task(client):
+    """POST techniques/sync-c2 calls asyncio.create_task exactly once."""
     with patch("app.routers.techniques.asyncio.create_task") as mock_create_task:
         mock_task = MagicMock()
         mock_task.add_done_callback = MagicMock()
         mock_create_task.return_value = mock_task
 
-        await client.post("/api/techniques/sync-caldera")
+        await client.post("/api/techniques/sync-c2")
 
     mock_create_task.assert_called_once()
 
@@ -201,7 +201,7 @@ async def test_sync_techniques_background_logs_on_exception(caplog):
          patch.dict("sys.modules", {"app.clients.c2_client": MagicMock(
              C2EngineClient=MagicMock(
                  return_value=MagicMock(
-                     list_abilities=AsyncMock(side_effect=RuntimeError("Caldera down")),
+                     list_abilities=AsyncMock(side_effect=RuntimeError("C2 engine down")),
                      aclose=AsyncMock(),
                  )
              )
@@ -218,5 +218,5 @@ async def test_sync_techniques_background_logs_on_exception(caplog):
     # Must not have called ws_manager.broadcast (no op_id available)
     mock_ws.broadcast.assert_not_awaited()
     # Must have logged the failure
-    assert any("Caldera down" in r.message or "background failed" in r.message
+    assert any("C2 engine down" in r.message or "background failed" in r.message
                for r in caplog.records)

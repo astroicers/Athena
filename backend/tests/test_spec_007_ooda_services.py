@@ -53,7 +53,7 @@ def _mock_recommendation(
                 "technique_name": "Test Technique",
                 "reasoning": "Test reasoning",
                 "risk_level": risk_level,
-                "recommended_engine": "caldera",
+                "recommended_engine": "ssh",
                 "confidence": confidence,
                 "prerequisites": [],
             },
@@ -62,7 +62,7 @@ def _mock_recommendation(
                 "technique_name": "Access Token Manipulation",
                 "reasoning": "Lower risk",
                 "risk_level": "low",
-                "recommended_engine": "caldera",
+                "recommended_engine": "ssh",
                 "confidence": 0.72,
                 "prerequisites": [],
             },
@@ -71,7 +71,7 @@ def _mock_recommendation(
                 "technique_name": "Bypass UAC",
                 "reasoning": "Alternative",
                 "risk_level": "low",
-                "recommended_engine": "shannon",
+                "recommended_engine": "c2",
                 "confidence": 0.65,
                 "prerequisites": [],
             },
@@ -250,7 +250,7 @@ async def test_orient_build_prompt_includes_mission_steps(seeded_db):
         "(id, operation_id, step_number, technique_id, technique_name, "
         "target_id, target_label, engine, status) "
         "VALUES ('ms-1', 'test-op-1', 1, 'T1003.001', 'LSASS Memory', "
-        "'test-target-1', 'DC-01', 'caldera', 'completed')"
+        "'test-target-1', 'DC-01', 'ssh', 'completed')"
     )
     await seeded_db.commit()
 
@@ -388,7 +388,7 @@ async def test_fact_collect_from_execution(seeded_db):
         "(id, technique_id, target_id, operation_id, engine, status, "
         "result_summary, started_at, completed_at) "
         "VALUES ('exec-1', 'T1003.001', 'test-target-1', 'test-op-1', "
-        "'caldera', 'success', 'Extracted 5 NTLM hashes from LSASS', "
+        "'ssh', 'success', 'Extracted 5 NTLM hashes from LSASS', "
         "datetime('now'), datetime('now'))"
     )
     await seeded_db.commit()
@@ -454,9 +454,9 @@ async def test_ooda_trigger_cycle_mock_mode(seeded_db):
     orient_engine = OrientEngine(ws)
     decision_engine = DecisionEngine()
 
-    # Mock caldera client
-    mock_caldera = MagicMock()
-    mock_caldera.execute = AsyncMock(return_value=ExecutionResult(
+    # Mock C2 engine client
+    mock_c2_engine = MagicMock()
+    mock_c2_engine.execute = AsyncMock(return_value=ExecutionResult(
         success=True,
         execution_id="mock-exec-1",
         output="Mock execution complete",
@@ -464,7 +464,7 @@ async def test_ooda_trigger_cycle_mock_mode(seeded_db):
         error=None,
     ))
 
-    engine_router = EngineRouter(mock_caldera, None, fact_collector, ws)
+    engine_router = EngineRouter(mock_c2_engine, fact_collector, ws)
     c5isr_mapper = C5ISRMapper(ws)
     controller = OODAController(
         fact_collector, orient_engine, decision_engine,
@@ -483,13 +483,13 @@ async def test_ooda_trigger_creates_iteration_record(seeded_db):
     orient_engine = OrientEngine(ws)
     decision_engine = DecisionEngine()
 
-    mock_caldera = MagicMock()
-    mock_caldera.execute = AsyncMock(return_value=ExecutionResult(
+    mock_c2_engine = MagicMock()
+    mock_c2_engine.execute = AsyncMock(return_value=ExecutionResult(
         success=True, execution_id="mock-exec-2",
         output="Complete", facts=[], error=None,
     ))
 
-    engine_router = EngineRouter(mock_caldera, None, fact_collector, ws)
+    engine_router = EngineRouter(mock_c2_engine, fact_collector, ws)
     c5isr_mapper = C5ISRMapper(ws)
     controller = OODAController(
         fact_collector, orient_engine, decision_engine,
@@ -514,13 +514,13 @@ async def test_ooda_trigger_updates_operation_phase(seeded_db):
     orient_engine = OrientEngine(ws)
     decision_engine = DecisionEngine()
 
-    mock_caldera = MagicMock()
-    mock_caldera.execute = AsyncMock(return_value=ExecutionResult(
+    mock_c2_engine = MagicMock()
+    mock_c2_engine.execute = AsyncMock(return_value=ExecutionResult(
         success=True, execution_id="mock-exec-3",
         output="Complete", facts=[], error=None,
     ))
 
-    engine_router = EngineRouter(mock_caldera, None, fact_collector, ws)
+    engine_router = EngineRouter(mock_c2_engine, fact_collector, ws)
     c5isr_mapper = C5ISRMapper(ws)
     controller = OODAController(
         fact_collector, orient_engine, decision_engine,

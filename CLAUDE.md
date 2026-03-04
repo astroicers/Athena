@@ -8,7 +8,7 @@
 
 1. 讀取 `.ai_profile`，依欄位載入對應 profile
 2. **Profile 依賴與衝突驗證**：每個 profile 頂部有 `<!-- requires: ... -->` 和 `<!-- conflicts: ... -->` 註解。載入時確認依賴已載入、衝突 Profile 未同時啟用。缺少依賴 → WARN 並建議補充。衝突 → WARN 並說明哪兩個 Profile 互斥
-3. **若 `autonomous: enabled`，或 `workflow: vibe-coding` + `hitl: minimal`**：額外載入 `autonomous_dev.md`（同時確保 `vibe_coding.md` 已載入，未設定時自動補載）
+3. **若 `autonomous: enabled`，或 `workflow: vibe-coding` + `hitl: minimal`**：額外載入 `autonomous_dev.md`（同時確保 `vibe_coding.md` 已載入，未設定時自動補載）。若同時 `mode: multi-agent`，autonomous 規則分層套用（見 `autonomous_dev.md`「Multi-Agent 整合」）
 4. **RAG 已啟用時**：回答任何專案架構/規格問題前，先執行 `make rag-search Q="..."`
 5. 無 `.ai_profile` 時：只套用本檔案鐵則，詢問使用者專案類型
 

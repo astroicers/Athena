@@ -82,6 +82,7 @@ DEFAULT_NAME="$(basename "$(pwd)")"
 
 # 預設開發風格
 apply_preset() {
+    MODE=single  # 預設 mode，preset 4 會覆蓋
     case "$1" in
         1) # 標準模式
             ENABLE_RAG=n; ENABLE_GUARDRAIL=n; HITL_LEVEL=standard
@@ -95,6 +96,10 @@ apply_preset() {
             ENABLE_RAG=y; ENABLE_GUARDRAIL=y; HITL_LEVEL=strict
             ENABLE_DESIGN=y; ENABLE_CODING_STYLE=y; ENABLE_OPENAPI=y
             ENABLE_AUTONOMOUS=n; WORKFLOW=standard ;;
+        4) # 高速自主+多Agent模式
+            ENABLE_RAG=n; ENABLE_GUARDRAIL=n; HITL_LEVEL=minimal
+            ENABLE_DESIGN=n; ENABLE_CODING_STYLE=n; ENABLE_OPENAPI=n
+            ENABLE_AUTONOMOUS=y; WORKFLOW=vibe-coding; MODE=multi-agent ;;
         *) return 1 ;;
     esac
 }
@@ -115,8 +120,8 @@ if [ -t 0 ]; then
     esac
     PROJECT_NAME="$DEFAULT_NAME"
 
-    echo "開發風格：  [1] 標準  [2] 高速自主  [3] 完整治理"
-    read -rp "選擇 (1-3，Enter 使用 1): " PRESET_CHOICE
+    echo "開發風格：  [1] 標準  [2] 高速自主  [3] 完整治理  [4] 高速自主+多Agent"
+    read -rp "選擇 (1-4，Enter 使用 1): " PRESET_CHOICE
     apply_preset "${PRESET_CHOICE:-1}"
 else
     echo ""
@@ -295,7 +300,7 @@ AUTONOMOUS_VAL="disabled"
 [ "${ENABLE_AUTONOMOUS,,}" = "y" ] && AUTONOMOUS_VAL="enabled"
 
 NEW_PROFILE="type: ${PROJECT_TYPE}
-mode: single
+mode: ${MODE:-single}
 workflow: ${WORKFLOW:-standard}
 rag: ${RAG_VAL}
 guardrail: ${GUARDRAIL_VAL}

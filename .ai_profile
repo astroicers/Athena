@@ -1,11 +1,11 @@
 type: system
-mode: single
+mode: multi-agent
 workflow: vibe-coding
 rag: disabled
 guardrail: disabled
 hitl: minimal
 name: Athena
-autonomous: disabled
+autonomous: enabled
 design: disabled
 coding_style: disabled
 openapi: disabled

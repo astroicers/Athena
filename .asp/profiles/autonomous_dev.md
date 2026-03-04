@@ -1,8 +1,8 @@
 # Autonomous Development Profile
 
 <!-- requires: global_core, system_dev, vibe_coding -->
-<!-- optional: guardrail -->
-<!-- conflicts: multi_agent -->
+<!-- optional: guardrail, multi_agent -->
+<!-- conflicts: (none) -->
 
 適用：AI 全自動開發，人類僅在關鍵節點審核。
 載入條件：`.ai_profile` 中 `autonomous: enabled`
@@ -194,6 +194,60 @@ autonomous 模式的 session 通常很長，必須主動管理 context：
 
 ---
 
+## Multi-Agent 整合（mode: multi-agent 時生效）
+
+autonomous_dev 與 multi_agent 同時啟用時，autonomous 規則按層級套用：
+
+### Orchestrator 層
+
+Orchestrator 繼承 autonomous 的「自主決策邊界」，但 scope 為全專案：
+
+| 可自主 | 必須暫停（等人類） |
+|--------|-------------------|
+| 建立 Task Manifest、分配任務 | git push / merge 到主分支 |
+| 建立/修改 SPEC（ADR 已 Accepted） | 新增外部依賴（影響所有 Worker） |
+| 獨立驗證 Worker 產出 | DB Schema 變更 |
+| 解鎖文件、執行 lock GC | Worker 重派 2 次仍失敗 |
+| 批次 ADR 預審流程 | 範圍超出所有已 Accepted ADR |
+
+### Worker 層
+
+Worker 繼承 autonomous 的「自主決策邊界」，但 scope 限縮為 Task Manifest：
+
+| 可自主 | 必須上報 Orchestrator |
+|--------|----------------------|
+| scope 內檔案建立/修改 | auto_fix_loop 耗盡（3 次仍失敗） |
+| TDD：scope 內測試撰寫/執行 | 發現需求超出 Task Manifest scope |
+| auto_fix_loop（含三道防護） | 需要修改 scope 外的檔案 |
+| 命名決策、pattern 選擇 | 需要新增外部依賴 |
+| scope 內文件更新 | 偵測到振盪/級聯/偷渡 |
+
+### 升級的 auto_fix_loop
+
+Worker 的 auto_fix_loop 失敗 → 不直接暫停人類，而是上報 Orchestrator：
+
+```
+FUNCTION on_worker_auto_fix_exhausted(worker, task, failures):
+
+  IF orchestrator.retry_count(task) < MAX_RETRIES(2):
+    orchestrator.reassign(task, context = failures)  // Orchestrator 可自主重派
+  ELSE:
+    PAUSE_AND_REPORT_TO_HUMAN(
+      reason  = "Worker auto_fix + Orchestrator 重派皆耗盡",
+      detail  = "Worker 自修 3 次 + Orchestrator 重派 2 次仍失敗",
+      failures = failures
+    )
+```
+
+### Context 管理
+
+每個 Worker 獨立執行 context 衰退偵測：
+- 完成一個 sub-stage → 輸出摘要
+- context > 70% → `make session-checkpoint`
+- 偵測到衰退信號 → 上報 Orchestrator，由 Orchestrator 決定是否開新 Worker
+
+---
+
 ## 與其他 Profile 的關係
 
 ```
@@ -201,7 +255,10 @@ autonomous_dev.md
   ├── 依賴 vibe_coding.md（hitl: minimal 定義）
   ├── 依賴 system_dev.md（ADR/SPEC/TDD 流程）
   ├── 依賴 global_core.md（鐵則 + 連帶修復）
-  └── 可選 guardrail.md（敏感資訊保護）
+  ├── 可選 guardrail.md（敏感資訊保護）
+  └── 可選 multi_agent.md（多 Agent 並行，autonomous 規則分層套用）
 ```
 
-不與 `multi_agent.md` 同時啟用（同為實作期模式）。`committee.md` 可搭配使用（決策期不衝突）。
+單獨啟用 → AI 單 agent 全自動開發（現有行為不變）。
+搭配 multi_agent → 每個 Worker 以 autonomous 規則運作，Orchestrator 負責協調。
+`committee.md` 可搭配使用（決策期不衝突）。

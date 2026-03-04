@@ -1,8 +1,8 @@
 # Multi-Agent Orchestration Profile
 
 <!-- requires: global_core, system_dev -->
-<!-- optional: guardrail -->
-<!-- conflicts: autonomous_dev -->
+<!-- optional: guardrail, autonomous_dev -->
+<!-- conflicts: (none) -->
 
 適用：並行任務分治、大型功能拆解、自動化 CI/CD 整合。
 載入條件：`mode: multi-agent`
@@ -119,9 +119,15 @@ FUNCTION on_worker_done(event, lock_registry):
 
   IF test_result.passed:
     lock_registry.unlock(task.locked_files)
-    NOTIFY orchestrator("✅ {task} 驗證通過，待人工確認合併")
-    AWAIT human_confirm("merge")
+    IF autonomous_enabled:
+      LOG("✅ {task} 驗證通過，自動合併至工作分支")
+      // autonomous 模式：Orchestrator 可自主合併到工作分支（非主分支）
+    ELSE:
+      NOTIFY orchestrator("✅ {task} 驗證通過，待人工確認合併")
+      AWAIT human_confirm("merge")
   ELSE:
+    // autonomous 模式下 Worker 應已自行 auto_fix_loop
+    // 到此表示 Worker 已耗盡重試
     IF task.retry_count < MAX_RETRIES:
       task.retry_count += 1
       reassign(task, reason = test_result.failures)
@@ -149,6 +155,29 @@ Worker Agent 可自行執行：
 - 外部 API 的寫入操作
 - 環境變數修改
 - Docker image 推送
+
+---
+
+## Autonomous 模式整合（autonomous: enabled 時生效）
+
+搭配 autonomous_dev 使用時，Worker 具備自主修復能力：
+
+### Worker 自主能力
+
+每個 Worker 在 Task Manifest scope 內運用 autonomous_dev 的規則：
+- auto_fix_loop：測試失敗自動修復，含振盪/級聯/偷渡偵測
+- 自主命名與 pattern 決策
+- scope 內文件更新
+
+### 不搭配 autonomous 時（原有行為）
+
+Worker 完成任務 → 觸發 agent-done → Orchestrator 驗證 → 人類確認合併。
+Worker 遇到問題 → 直接上報 Orchestrator。
+
+### 搭配 autonomous 時
+
+Worker 遇到測試失敗 → 先 auto_fix_loop（最多 3 次） → 仍失敗才上報 Orchestrator。
+Orchestrator 驗證通過 → 可自動合併到工作分支（git push 到主分支仍需人類確認）。
 
 ---
 

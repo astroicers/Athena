@@ -74,6 +74,23 @@ async def test_auto_reconnect_on_disconnected_session():
 
 
 @pytest.mark.asyncio
+async def test_http_transport_config_loaded():
+    """mcp_servers.json has at least 3 HTTP transport entries (disabled by default)."""
+    import json
+    from pathlib import Path
+
+    config_path = Path(__file__).resolve().parent.parent.parent / "mcp_servers.json"
+    raw = json.loads(config_path.read_text())
+    http_servers = {
+        k: v for k, v in raw["servers"].items() if v["transport"] == "http"
+    }
+    assert len(http_servers) >= 3
+    for name, cfg in http_servers.items():
+        assert "url" in cfg
+        assert cfg["enabled"] is False  # disabled by default
+
+
+@pytest.mark.asyncio
 async def test_broadcast_global_sends_to_all_operations():
     from app.ws_manager import WebSocketManager
 

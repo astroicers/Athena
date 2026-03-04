@@ -14,6 +14,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Toggle } from "@/components/atoms/Toggle";
 
 interface PageHeaderProps {
@@ -29,6 +30,8 @@ export function PageHeader({
   automationMode,
   onModeToggle,
 }: PageHeaderProps) {
+  const t = useTranslations("PageHeader");
+
   const isSemiAuto = automationMode === "semi_auto";
 
   return (
@@ -47,7 +50,7 @@ export function PageHeader({
       {onModeToggle && (
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono text-athena-text-secondary">
-            {isSemiAuto ? "SEMI-AUTO" : "MANUAL"}
+            {isSemiAuto ? t("semiAuto") : t("manual")}
           </span>
           <Toggle
             checked={isSemiAuto}

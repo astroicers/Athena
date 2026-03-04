@@ -14,11 +14,15 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
+
 interface ThreatLevelGaugeProps {
   level: number;
 }
 
 export function ThreatLevelGauge({ level }: ThreatLevelGaugeProps) {
+  const t = useTranslations("C5ISR");
+
   const clamped = Math.max(0, Math.min(10, level));
   // Needle angle: 0 → left (180° in math), 10 → right (0° in math)
   // In SVG coords (Y-down): angle in radians from center (100,100)
@@ -32,7 +36,7 @@ export function ThreatLevelGauge({ level }: ThreatLevelGaugeProps) {
   return (
     <div className="bg-athena-surface border border-athena-border rounded-athena-md p-4 flex flex-col items-center">
       <h3 className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-3 self-start">
-        Threat Level
+        {t("threatLevel")}
       </h3>
       <svg viewBox="0 0 200 120" className="w-full max-w-[200px]">
         {/* Background arc */}

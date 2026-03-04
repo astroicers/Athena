@@ -14,6 +14,8 @@
 
 import type { Metadata } from "next";
 import "@/styles/globals.css";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
 import { ClientShell } from "./client-shell";
 
 export const metadata: Metadata = {
@@ -21,15 +23,19 @@ export const metadata: Metadata = {
   description: "AI-driven C5ISR cyber operations command platform",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale = await getLocale();
+  const messages = await getMessages();
   return (
-    <html lang="en">
+    <html lang={locale}>
       <body className="antialiased">
-        <ClientShell>{children}</ClientShell>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <ClientShell>{children}</ClientShell>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

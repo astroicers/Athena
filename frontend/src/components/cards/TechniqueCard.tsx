@@ -14,6 +14,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/atoms/Badge";
 import type { TechniqueWithStatus } from "@/types/technique";
 import { RiskLevel, TechniqueStatus } from "@/types/enums";
@@ -39,6 +40,8 @@ interface TechniqueCardProps {
 }
 
 export function TechniqueCard({ technique }: TechniqueCardProps) {
+  const t = useTranslations("TechniqueCard");
+
   return (
     <div className="bg-athena-surface border border-athena-border rounded-athena-md p-4">
       <div className="flex items-center justify-between mb-2">
@@ -60,7 +63,7 @@ export function TechniqueCard({ technique }: TechniqueCardProps) {
         </p>
       )}
       <div className="flex items-center gap-3 text-[10px] font-mono text-athena-text-secondary">
-        <span>Tactic: {technique.tactic}</span>
+        <span>{t("tactic")} {technique.tactic}</span>
         <Badge variant={RISK_VARIANT[technique.riskLevel] || "info"}>
           {technique.riskLevel.toUpperCase()}
         </Badge>

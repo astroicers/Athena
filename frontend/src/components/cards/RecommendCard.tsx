@@ -14,6 +14,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/atoms/Badge";
 import type { OrientRecommendation } from "@/types/recommendation";
 import { RiskLevel } from "@/types/enums";
@@ -30,11 +31,13 @@ interface RecommendCardProps {
 }
 
 export function RecommendCard({ recommendation }: RecommendCardProps) {
+  const t = useTranslations("Recommendation");
+
   if (!recommendation) {
     return (
       <div className="bg-athena-surface border border-athena-border rounded-athena-md p-4">
         <span className="text-xs font-mono text-athena-text-secondary">
-          No recommendation available
+          {t("noRecommendation")}
         </span>
       </div>
     );
@@ -44,7 +47,7 @@ export function RecommendCard({ recommendation }: RecommendCardProps) {
     <div className="bg-athena-surface border border-athena-accent/30 rounded-athena-md p-4">
       <div className="flex items-center justify-between mb-3">
         <span className="text-[10px] font-mono text-athena-accent uppercase tracking-wider">
-          AI Recommendation
+          {t("title")}
         </span>
         <span className="text-xs font-mono text-athena-accent font-bold">
           {Math.round(recommendation.confidence * 100)}% confidence

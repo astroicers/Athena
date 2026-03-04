@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { IntlWrapper } from "@/test/intl-wrapper";
 import { RecommendCard } from "@/components/cards/RecommendCard";
 import { ExecutionEngine, RiskLevel } from "@/types/enums";
 import type { OrientRecommendation } from "@/types/recommendation";
@@ -29,7 +30,7 @@ const mockRec: OrientRecommendation = {
 
 describe("RecommendCard", () => {
   it("displays confidence percentage", () => {
-    render(<RecommendCard recommendation={mockRec} />);
+    render(<RecommendCard recommendation={mockRec} />, { wrapper: IntlWrapper });
     expect(screen.getByText("87% confidence")).toBeInTheDocument();
   });
 });

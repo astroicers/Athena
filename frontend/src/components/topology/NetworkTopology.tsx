@@ -39,9 +39,21 @@ const GRAPH_HEIGHT = 420;
 interface NetworkTopologyProps {
   data: TopologyData | null;
   nodeKillChainMap?: Record<string, KillChainStage>;
+  /** Multiplier applied to all node sizes (default 1). Use >1 for larger full-page views. */
+  nodeSizeMultiplier?: number;
+  /** Called with node id when user clicks a node */
+  onNodeClick?: (nodeId: string) => void;
+  /** Override graph height in pixels */
+  height?: number;
 }
 
-export function NetworkTopology({ data, nodeKillChainMap }: NetworkTopologyProps) {
+export function NetworkTopology({
+  data,
+  nodeKillChainMap,
+  nodeSizeMultiplier = 1,
+  onNodeClick,
+  height = GRAPH_HEIGHT,
+}: NetworkTopologyProps) {
   // Outer wrapper ref — always mounted, used for width measurement
   const wrapperRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line
@@ -88,6 +100,7 @@ export function NetworkTopology({ data, nodeKillChainMap }: NetworkTopologyProps
 
   const graphData = useMemo(() => {
     if (!data) return { nodes: [], links: [] };
+    const m = nodeSizeMultiplier;
     return {
       nodes: data.nodes.map((n) => ({
         id: n.id,
@@ -96,8 +109,8 @@ export function NetworkTopology({ data, nodeKillChainMap }: NetworkTopologyProps
         role: (n.data?.role as string) || "host",
         isCompromised: !!n.data?.isCompromised,
         color: n.data?.isCompromised ? NODE_COLORS.compromised : NODE_COLORS.secure,
-        nodeSize: (n.data?.role as string) === "Domain Controller" ? 16
-          : n.data?.isCompromised ? 12 : 8,
+        nodeSize: ((n.data?.role as string) === "Domain Controller" ? 3
+          : n.data?.isCompromised ? 2 : 1.5) * m,
         killChainStage: nodeKillChainMap?.[n.id] ?? null,
       })),
       links: data.edges.map((e) => ({
@@ -106,7 +119,7 @@ export function NetworkTopology({ data, nodeKillChainMap }: NetworkTopologyProps
         label: e.label,
       })),
     };
-  }, [data, nodeKillChainMap]);
+  }, [data, nodeKillChainMap, nodeSizeMultiplier]);
 
   // Configure d3 forces for proper node spreading
   useEffect(() => {
@@ -130,12 +143,12 @@ export function NetworkTopology({ data, nodeKillChainMap }: NetworkTopologyProps
     const size = (node.nodeSize as number) || 8;
     const label = String(node.label || node.id);
 
-    // Outer glow (3 layers for smooth falloff)
-    for (let i = 3; i >= 1; i--) {
+    // Outer glow (2 layers for smooth falloff)
+    for (let i = 2; i >= 1; i--) {
       ctx.beginPath();
-      ctx.arc(x, y, size + i * 6, 0, 2 * Math.PI);
+      ctx.arc(x, y, size + i * 3, 0, 2 * Math.PI);
       ctx.fillStyle = color;
-      ctx.globalAlpha = 0.04 * i;
+      ctx.globalAlpha = 0.05 * i;
       ctx.fill();
     }
     ctx.globalAlpha = 1;
@@ -188,9 +201,13 @@ export function NetworkTopology({ data, nodeKillChainMap }: NetworkTopologyProps
     try { fgRef.current?.zoomToFit(400, 30); } catch { /* ignore */ }
   }, []);
 
+  const handleNodeClickInternal = useCallback((node: Record<string, unknown>) => {
+    onNodeClick?.(node.id as string);
+  }, [onNodeClick]);
+
   if (!data || data.nodes.length === 0) {
     return (
-      <div ref={wrapperRef} className="bg-athena-surface border border-athena-border rounded-athena-md p-6 flex items-center justify-center" style={{ height: GRAPH_HEIGHT }}>
+      <div ref={wrapperRef} className="bg-athena-surface border border-athena-border rounded-athena-md p-6 flex items-center justify-center" style={{ height }}>
         <span className="text-xs font-mono text-athena-text-secondary">
           No topology data available
         </span>
@@ -200,7 +217,7 @@ export function NetworkTopology({ data, nodeKillChainMap }: NetworkTopologyProps
 
   if (!mounted || !ForceGraph2DComp || containerWidth === 0) {
     return (
-      <div ref={wrapperRef} className="bg-athena-bg rounded-athena-md border border-athena-border flex items-center justify-center" style={{ height: GRAPH_HEIGHT }}>
+      <div ref={wrapperRef} className="bg-athena-bg rounded-athena-md border border-athena-border flex items-center justify-center" style={{ height }}>
         <span className="text-xs font-mono text-athena-text-secondary animate-pulse">
           Loading topology...
         </span>
@@ -212,7 +229,7 @@ export function NetworkTopology({ data, nodeKillChainMap }: NetworkTopologyProps
     <div
       ref={wrapperRef}
       className="bg-athena-bg rounded-athena-md overflow-hidden border border-athena-border relative"
-      style={{ height: GRAPH_HEIGHT }}
+      style={{ height }}
     >
       {/* Reset view button */}
       <button
@@ -233,6 +250,7 @@ export function NetworkTopology({ data, nodeKillChainMap }: NetworkTopologyProps
           ctx.fillStyle = color;
           ctx.fill();
         }}
+        onNodeClick={handleNodeClickInternal}
         linkColor={() => "rgba(0, 255, 136, 0.5)"}
         linkWidth={1.5}
         linkDirectionalParticles={3}
@@ -242,7 +260,7 @@ export function NetworkTopology({ data, nodeKillChainMap }: NetworkTopologyProps
         linkCurvature={0.2}
         backgroundColor="#0a0a1a"
         width={containerWidth}
-        height={GRAPH_HEIGHT}
+        height={height}
         d3AlphaDecay={0.03}
         d3VelocityDecay={0.3}
         warmupTicks={100}

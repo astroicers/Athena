@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { IntlWrapper } from "@/test/intl-wrapper";
 import { TechniqueCard } from "@/components/cards/TechniqueCard";
 import { KillChainStage, RiskLevel, TechniqueStatus } from "@/types/enums";
 import type { TechniqueWithStatus } from "@/types/technique";
@@ -13,7 +14,7 @@ const mockTechnique: TechniqueWithStatus = {
   description: "Dump LSASS process memory to extract credentials",
   killChainStage: KillChainStage.EXPLOIT,
   riskLevel: RiskLevel.MEDIUM,
-  calderaAbilityId: null,
+  c2AbilityId: null,
   platforms: ["windows"],
   latestStatus: TechniqueStatus.SUCCESS,
   latestExecutionId: "exec-1",
@@ -21,7 +22,7 @@ const mockTechnique: TechniqueWithStatus = {
 
 describe("TechniqueCard", () => {
   it("shows MITRE ID and name", () => {
-    render(<TechniqueCard technique={mockTechnique} />);
+    render(<TechniqueCard technique={mockTechnique} />, { wrapper: IntlWrapper });
     expect(screen.getByText("T1003.001")).toBeInTheDocument();
     expect(screen.getByText("LSASS Memory Dump")).toBeInTheDocument();
   });

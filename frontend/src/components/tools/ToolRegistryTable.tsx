@@ -15,7 +15,7 @@ import { useTranslations } from "next-intl";
 import { Toggle } from "@/components/atoms/Toggle";
 import { Badge } from "@/components/atoms/Badge";
 import { Button } from "@/components/atoms/Button";
-import type { ToolRegistryEntry, ToolHealthCheck } from "@/types/tool";
+import type { ToolRegistryEntry } from "@/types/tool";
 
 const RISK_VARIANT: Record<string, "success" | "warning" | "error" | "info"> = {
   low: "success",
@@ -27,39 +27,20 @@ const RISK_VARIANT: Record<string, "success" | "warning" | "error" | "info"> = {
 interface ToolRegistryTableProps {
   tools: ToolRegistryEntry[];
   onToggleEnabled: (toolId: string, enabled: boolean) => Promise<void>;
-  onCheckHealth: (toolId: string) => Promise<ToolHealthCheck>;
   onDelete: (toolId: string) => Promise<void>;
+  mcpStatuses: Record<string, boolean>;
 }
 
 export function ToolRegistryTable({
   tools,
   onToggleEnabled,
-  onCheckHealth,
   onDelete,
+  mcpStatuses,
 }: ToolRegistryTableProps) {
   const t = useTranslations("Tools");
   const tRisk = useTranslations("Risk");
   const tCategory = useTranslations("ToolCategory");
-  const [healthResults, setHealthResults] = useState<
-    Record<string, ToolHealthCheck>
-  >({});
-  const [checkingId, setCheckingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  async function handleHealthCheck(toolId: string) {
-    setCheckingId(toolId);
-    try {
-      const result = await onCheckHealth(toolId);
-      setHealthResults((prev) => ({ ...prev, [toolId]: result }));
-    } catch {
-      setHealthResults((prev) => ({
-        ...prev,
-        [toolId]: { toolId, available: false, detail: "Check failed" },
-      }));
-    } finally {
-      setCheckingId(null);
-    }
-  }
 
   async function handleDelete(toolId: string) {
     setDeletingId(toolId);
@@ -68,6 +49,14 @@ export function ToolRegistryTable({
     } finally {
       setDeletingId(null);
     }
+  }
+
+  function getMcpStatus(
+    tool: ToolRegistryEntry,
+  ): "online" | "offline" | "n/a" {
+    const mcpServer = tool.configJson?.mcp_server as string | undefined;
+    if (!mcpServer) return "n/a";
+    return mcpStatuses[mcpServer] ? "online" : "offline";
   }
 
   if (tools.length === 0) {
@@ -101,28 +90,40 @@ export function ToolRegistryTable({
               {t("colMitre")}
             </th>
             <th className="px-3 py-2 text-left text-athena-text-secondary font-medium uppercase tracking-wider">
-              {t("colActions")}
+              {t("colMcpStatus")}
             </th>
           </tr>
         </thead>
         <tbody>
           {tools.map((tool) => {
-            const health = healthResults[tool.toolId];
+            const status = getMcpStatus(tool);
             return (
               <tr
                 key={tool.id}
                 className="border-b border-athena-border/50 hover:bg-athena-elevated/30"
               >
-                {/* Name */}
+                {/* Name + delete for user tools */}
                 <td className="px-3 py-2 text-athena-text">
-                  <div>
-                    <span className="text-athena-accent font-bold">
-                      {tool.name}
-                    </span>
-                    {tool.description && (
-                      <p className="text-[10px] text-athena-text-secondary mt-0.5 truncate max-w-[200px]">
-                        {tool.description}
-                      </p>
+                  <div className="flex items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <span className="text-athena-accent font-bold">
+                        {tool.name}
+                      </span>
+                      {tool.description && (
+                        <p className="text-[10px] text-athena-text-secondary mt-0.5 truncate max-w-[200px]">
+                          {tool.description}
+                        </p>
+                      )}
+                    </div>
+                    {tool.source === "user" && (
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => handleDelete(tool.toolId)}
+                        disabled={deletingId === tool.toolId}
+                      >
+                        {deletingId === tool.toolId ? "..." : t("del")}
+                      </Button>
                     )}
                   </div>
                 </td>
@@ -152,45 +153,51 @@ export function ToolRegistryTable({
                   </Badge>
                 </td>
 
-                {/* MITRE technique count */}
-                <td className="px-3 py-2 text-athena-text">
-                  {tool.mitreTechniques.length}
+                {/* MITRE technique IDs */}
+                <td className="px-3 py-2">
+                  {tool.mitreTechniques.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {tool.mitreTechniques.map((tid) => (
+                        <span
+                          key={tid}
+                          className="text-[10px] font-mono text-athena-accent bg-athena-accent/10 px-1.5 py-0.5 rounded"
+                        >
+                          {tid}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-athena-text-secondary">&mdash;</span>
+                  )}
                 </td>
 
-                {/* Actions */}
+                {/* MCP Status */}
                 <td className="px-3 py-2">
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handleHealthCheck(tool.toolId)}
-                      disabled={checkingId === tool.toolId}
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={`inline-block h-2 w-2 rounded-full ${
+                        status === "online"
+                          ? "bg-emerald-400"
+                          : status === "offline"
+                            ? "bg-amber-400"
+                            : "bg-neutral-500"
+                      }`}
+                    />
+                    <span
+                      className={`text-[10px] ${
+                        status === "online"
+                          ? "text-emerald-400"
+                          : status === "offline"
+                            ? "text-amber-400"
+                            : "text-athena-text-secondary"
+                      }`}
                     >
-                      {checkingId === tool.toolId ? "..." : t("check")}
-                    </Button>
-
-                    {tool.source === "user" && (
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={() => handleDelete(tool.toolId)}
-                        disabled={deletingId === tool.toolId}
-                      >
-                        {deletingId === tool.toolId ? "..." : t("del")}
-                      </Button>
-                    )}
-
-                    {health && (
-                      <span
-                        className={`text-[10px] ${
-                          health.available
-                            ? "text-athena-success"
-                            : "text-athena-error"
-                        }`}
-                      >
-                        {health.available ? t("ok") : t("fail")}
-                      </span>
-                    )}
+                      {status === "online"
+                        ? t("mcpOnline")
+                        : status === "offline"
+                          ? t("mcpOffline")
+                          : t("mcpNA")}
+                    </span>
                   </div>
                 </td>
               </tr>

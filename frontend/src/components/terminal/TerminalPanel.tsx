@@ -117,13 +117,13 @@ export function TerminalPanel({
             <div key={i}>
               {entry.type === "input" ? (
                 <div className="text-athena-accent">
-                  <span className="text-athena-text-secondary/60">{prompt}</span>
+                  <span className="text-athena-text-secondary">{prompt}</span>
                   {entry.text}
                 </div>
               ) : entry.type === "error" ? (
                 <div className="text-athena-error">{entry.text}</div>
               ) : entry.type === "system" ? (
-                <div className="text-athena-text-secondary/60 italic">{entry.text}</div>
+                <div className="text-athena-text-secondary italic">{entry.text}</div>
               ) : (
                 <pre className="text-athena-text whitespace-pre-wrap break-all">{entry.text}</pre>
               )}
@@ -137,7 +137,7 @@ export function TerminalPanel({
           onSubmit={handleSubmit}
           className="flex items-center gap-2 px-3 py-2 border-t border-athena-border shrink-0"
         >
-          <span className="text-athena-text-secondary/60 font-mono text-xs shrink-0">
+          <span className="text-athena-text-secondary font-mono text-xs shrink-0">
             {prompt}
           </span>
           <input
@@ -148,7 +148,7 @@ export function TerminalPanel({
             onKeyDown={handleKeyDown}
             disabled={!isConnected}
             placeholder={isConnected ? "" : t("connecting")}
-            className="flex-1 bg-transparent font-mono text-xs text-athena-accent outline-none placeholder-athena-text-secondary/40"
+            className="flex-1 bg-transparent font-mono text-xs text-athena-accent outline-none placeholder-athena-text-secondary/70"
             autoComplete="off"
             autoCorrect="off"
             spellCheck={false}

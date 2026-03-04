@@ -14,6 +14,7 @@ import { useTranslations } from "next-intl";
 import { Badge } from "@/components/atoms/Badge";
 import { Button } from "@/components/atoms/Button";
 import { ProgressBar } from "@/components/atoms/ProgressBar";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 interface HostNodeCardProps {
   id?: string;
@@ -82,10 +83,10 @@ export function HostNodeCard({
   return (
     <div
       className={`bg-athena-surface border rounded-athena-md p-3 ${
-        isActive
-          ? "border-athena-accent"
-          : isCompromised
-            ? "border-athena-error/60"
+        isCompromised
+          ? "border-athena-error/60"
+          : isActive
+            ? "border-athena-accent"
             : "border-athena-border"
       }`}
     >
@@ -156,13 +157,15 @@ export function HostNodeCard({
                 </Button>
               )}
               {onSetActive && (
-                <Button
-                  variant={isActive ? "secondary" : "primary"}
-                  size="sm"
-                  onClick={() => onSetActive(id, !isActive)}
-                >
-                  {isActive ? t("deactivate") : t("setActive")}
-                </Button>
+                <Tooltip text={t(isActive ? "deactivateHint" : "setActiveHint")}>
+                  <Button
+                    variant={isActive ? "secondary" : "primary"}
+                    size="sm"
+                    onClick={() => onSetActive(id, !isActive)}
+                  >
+                    {isActive ? t("deactivate") : t("setActive")}
+                  </Button>
+                </Tooltip>
               )}
               {onDelete && (
                 <Button

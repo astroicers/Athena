@@ -10,40 +10,39 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useTools } from "@/hooks/useTools";
-import { TabBar } from "@/components/nav/TabBar";
+import { useMCPServers } from "@/hooks/useMCPServers";
 import { Button } from "@/components/atoms/Button";
 import { ToolRegistryTable } from "@/components/tools/ToolRegistryTable";
 import { AddToolModal } from "@/components/tools/AddToolModal";
 import { SectionHeader } from "@/components/atoms/SectionHeader";
-import { MCPServerStatusPanel } from "@/components/tools/MCPServerStatusPanel";
 import { PageLoading } from "@/components/ui/PageLoading";
 import type { ToolRegistryCreate } from "@/types/tool";
 
 export default function ToolsPage() {
   const t = useTranslations("Tools");
-  const [activeTab, setActiveTab] = useState<string>("tool");
   const [showAddModal, setShowAddModal] = useState(false);
-
-  const tabs = useMemo(
-    () => [
-      { id: "tool", label: t("reconTools") },
-      { id: "engine", label: t("executionEngines") },
-    ],
-    [t],
-  );
 
   const {
     tools,
     loading,
     fetchTools,
     toggleEnabled,
-    checkHealth,
     deleteTool,
     createTool,
-  } = useTools(activeTab as "tool" | "engine");
+  } = useTools();
+
+  // MCP server statuses for real-time tool availability
+  const { servers } = useMCPServers();
+  const mcpStatuses = useMemo(() => {
+    const map: Record<string, boolean> = {};
+    for (const srv of servers) {
+      map[srv.name] = srv.connected;
+    }
+    return map;
+  }, [servers]);
 
   async function handleCreateTool(data: ToolRegistryCreate) {
     await createTool(data);
@@ -70,18 +69,12 @@ export default function ToolsPage() {
         {t("title")}
       </SectionHeader>
 
-      {/* MCP Server Status */}
-      <MCPServerStatusPanel />
-
-      {/* Tab Bar */}
-      <TabBar tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
-
-      {/* Tool Table */}
+      {/* All tools in a single table */}
       <ToolRegistryTable
         tools={tools}
         onToggleEnabled={toggleEnabled}
-        onCheckHealth={checkHealth}
         onDelete={deleteTool}
+        mcpStatuses={mcpStatuses}
       />
 
       {/* Add Tool Modal */}

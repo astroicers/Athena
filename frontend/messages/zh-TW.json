@@ -22,10 +22,7 @@
     "monitor": "戰場監控",
     "tools": "工具庫"
   },
-  "PageHeader": {
-    "semiAuto": "半自動",
-    "manual": "手動"
-  },
+  "PageHeader": {},
   "C5ISR": {
     "activeAgents": "活躍代理",
     "successRate": "成功率",
@@ -61,7 +58,6 @@
     "targetHosts": "目標主機",
     "noTargets": "無目標",
     "addTarget": "新增",
-    "executeMission": "執行任務",
     "oodaCycle": "OODA 循環",
     "resetOk": "重設完成",
     "resetting": "重設中...",
@@ -78,7 +74,6 @@
     "colTarget": "目標",
     "colEngine": "引擎",
     "colStatus": "狀態",
-    "confirmExecute": "執行任務計畫",
     "confirmOoda": "觸發 OODA 循環",
     "confirmReset": "重設作業"
   },
@@ -112,7 +107,9 @@
     "observe": "觀察",
     "orient": "分析",
     "decide": "決策",
-    "act": "行動"
+    "act": "行動",
+    "recon": "偵察",
+    "reconActivity": "偵察活動"
   },
   "Recommendation": {
     "title": "AI 建議",
@@ -160,6 +157,9 @@
     "offline": "離線",
     "scanning": "掃描中",
     "critical": "嚴重",
+    "active": "活躍",
+    "nominal": "正常",
+    "engaged": "接戰",
     "alive": "存活",
     "dead": "離線",
     "pending": "等待中",
@@ -172,16 +172,12 @@
     "critical": "嚴重"
   },
   "ToolCategory": {
-    "recon": "偵察",
-    "exploit": "利用",
-    "post-exploit": "後滲透",
-    "lateral-movement": "橫向移動",
-    "persistence": "持久化",
-    "exfiltration": "資料外洩",
-    "c2": "C2",
-    "credential-access": "憑證存取",
-    "defense-evasion": "防禦規避",
-    "other": "其他"
+    "reconnaissance": "偵察",
+    "enumeration": "列舉",
+    "vulnerability_scanning": "弱點掃描",
+    "credential_access": "憑證存取",
+    "exploitation": "利用",
+    "execution": "執行"
   },
   "ToolKind": {
     "tool": "工具",
@@ -234,10 +230,13 @@
     "phase_service_detection": "偵測服務中...",
     "phase_os_fingerprint": "辨識作業系統中...",
     "phase_credential_test": "測試憑證中...",
-    "phase_finalizing": "彙整結果中..."
+    "phase_finalizing": "彙整結果中...",
+    "setActiveHint": "將 OODA 引擎的分析焦點設為此目標",
+    "deactivateHint": "從 OODA 焦點移除此目標"
   },
   "TechniqueCard": {
-    "tactic": "戰術："
+    "tactic": "戰術：",
+    "relatedTools": "可用工具"
   },
   "HexConfirm": {
     "lowRisk": "低風險",
@@ -281,6 +280,7 @@
     "servicesFound": "找到 {count} 個",
     "factsWritten": "已寫入事實",
     "duration": "耗時",
+    "openPorts": "開放端口",
     "initialAccess": "初始存取",
     "status": "狀態",
     "success": "成功",
@@ -316,7 +316,6 @@
   },
   "Tooltips": {
     "oodaCycle": "啟動決策循環：觀察→分析→決策→行動",
-    "executeMission": "依序執行所有排定的攻擊步驟",
     "reset": "重設所有步驟狀態為 QUEUED",
     "export": "匯出作戰報告 (JSON)",
     "addTarget": "新增目標主機",
@@ -340,13 +339,13 @@
     "colStatus": "狀態",
     "colRisk": "風險",
     "colMitre": "MITRE",
-    "colActions": "操作",
+    "colMcpStatus": "MCP",
+    "mcpOnline": "上線",
+    "mcpOffline": "離線",
+    "mcpNA": "—",
     "on": "開啟",
     "off": "關閉",
-    "check": "檢查",
     "del": "刪除",
-    "ok": "正常",
-    "fail": "失敗",
     "newTool": "新工具",
     "registerTool": "註冊工具",
     "toolId": "工具 ID",
@@ -362,7 +361,18 @@
     "failedCreate": "建立工具失敗，請檢查輸入值後再試。",
     "mcpServers": "MCP 伺服器",
     "mcpTools": "個工具",
-    "mcpDisconnected": "已斷線"
+    "mcpDisconnected": "已斷線",
+    "mcpStatusOnline": "線上",
+    "mcpStatusDisabled": "已停用",
+    "mcpStatusCircuitOpen": "斷路器開啟",
+    "mcpStatusHalfOpen": "半開",
+    "mcpFailures": "次失敗",
+    "byTactic": "依戰術",
+    "byKind": "偵察工具",
+    "byEngine": "執行引擎",
+    "generalTools": "一般 / 引擎",
+    "toolCount": "個工具",
+    "noToolsInTactic": "此戰術尚無對應工具"
   },
   "Topology": {
     "noData": "無拓撲資料",
@@ -404,7 +414,6 @@
     "failedLoadTargets": "載入目標失敗",
     "failedLoadMonitor": "載入監控資料失敗",
     "failedLoadRecommendation": "載入建議失敗",
-    "failedExecuteMission": "執行任務失敗",
     "failedResetOperation": "重設作業失敗",
     "failedTriggerOoda": "觸發 OODA 循環失敗",
     "failedExportReport": "匯出報告失敗",

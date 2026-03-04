@@ -32,6 +32,7 @@ export interface ReconScanResult {
   ipAddress: string;
   osGuess: string | null;
   servicesFound: number;
+  services: ServiceInfo[];
   factsWritten: number;
   initialAccess: InitialAccessResult;
   scanDurationSec: number;

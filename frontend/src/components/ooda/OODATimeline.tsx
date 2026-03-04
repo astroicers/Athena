@@ -21,6 +21,7 @@ const PHASE_VARIANT: Record<string, "success" | "warning" | "error" | "info"> = 
   orient: "warning",
   decide: "success",
   act: "error",
+  recon: "info",
 };
 
 const PHASE_LABELS = ["observe", "orient", "decide", "act"];
@@ -39,16 +40,26 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
   const [showAll, setShowAll] = useState(false);
   const [expandedEntries, setExpandedEntries] = useState<Set<string>>(new Set());
 
-  // Group entries by iteration number
+  // Split entries: OODA iterations (≥1) vs recon scans (0 sentinel)
+  const oodaEntries = useMemo(
+    () => entries.filter((e) => e.iterationNumber > 0),
+    [entries],
+  );
+  const reconEntries = useMemo(
+    () => entries.filter((e) => e.iterationNumber === 0),
+    [entries],
+  );
+
+  // Group OODA entries by iteration number
   const iterationMap = useMemo(() => {
     const map = new Map<number, OODATimelineEntry[]>();
-    for (const e of entries) {
+    for (const e of oodaEntries) {
       const list = map.get(e.iterationNumber) ?? [];
       list.push(e);
       map.set(e.iterationNumber, list);
     }
     return map;
-  }, [entries]);
+  }, [oodaEntries]);
 
   const allIterationNumbers = useMemo(
     () => Array.from(iterationMap.keys()).sort((a, b) => b - a), // newest first
@@ -90,7 +101,7 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
     );
   }
 
-  if (entries.length === 0) {
+  if (oodaEntries.length === 0 && reconEntries.length === 0) {
     return (
       <div className="bg-athena-surface border border-athena-border rounded-athena-md p-6 text-center">
         <span className="text-xs font-mono text-athena-text-secondary">{t("noIterations")}</span>
@@ -231,6 +242,41 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
           );
         })}
       </div>
+
+      {/* Recon Activity Log */}
+      {reconEntries.length > 0 && (
+        <div className={oodaEntries.length > 0 ? "mt-3 pt-3 border-t border-athena-border/50" : ""}>
+          <span className="text-[10px] font-mono text-athena-text-secondary/70 uppercase tracking-wider">
+            {t("reconActivity")}
+          </span>
+          <div className="mt-2 space-y-2">
+            {reconEntries.map((entry, i) => {
+              const time = entry.timestamp.split("T")[1]?.slice(0, 8) || entry.timestamp;
+              return (
+                <div key={`recon-${i}`} className="flex items-start gap-3">
+                  <div className="flex flex-col items-center shrink-0">
+                    <div className="w-1.5 h-1.5 rounded-full bg-athena-accent mt-1.5" />
+                    {i < reconEntries.length - 1 && (
+                      <div className="w-px flex-1 bg-athena-border/50 mt-1 min-h-[12px]" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0 pb-1">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-[10px] font-mono text-athena-text-secondary/70">
+                        {time}
+                      </span>
+                      <Badge variant="info">{t("recon")}</Badge>
+                    </div>
+                    <p className="text-xs font-mono text-athena-text leading-relaxed">
+                      {entry.summary}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Show more / less */}
       {allIterationNumbers.length > DEFAULT_SHOW_ITERATIONS && (

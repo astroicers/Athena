@@ -33,6 +33,7 @@ export interface TopologyEdge {
   source: string;
   target: string;
   label?: string;
+  data?: Record<string, unknown>;
 }
 
 export interface TopologyData {

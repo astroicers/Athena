@@ -109,7 +109,7 @@ export function Sidebar() {
                 <span className="text-yellow-400 group-hover:scale-125 transition-transform">★</span>
                 astroicers/Athena
               </a>
-              <p className="text-athena-text-secondary/60 mt-1">Apache-2.0</p>
+              <p className="text-athena-text-secondary/60 mt-1">⚖️ BSL-1.1</p>
             </div>
             <LocaleSwitcher />
           </div>

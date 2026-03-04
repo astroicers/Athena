@@ -17,6 +17,7 @@ import { api } from "@/lib/api";
 import { useOperation } from "@/hooks/useOperation";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useOODA } from "@/hooks/useOODA";
+import { useReconScan } from "@/hooks/useReconScan";
 import { useToast } from "@/contexts/ToastContext";
 import { PlannerPageSkeleton } from "@/components/ui/Skeleton";
 import { DataTable, Column } from "@/components/data/DataTable";
@@ -85,19 +86,30 @@ export default function PlannerPage() {
   const [steps, setSteps] = useState<MissionStep[]>([]);
   const [timeline, setTimeline] = useState<OODATimelineEntry[]>([]);
   const [targets, setTargets] = useState<Target[]>([]);
-  const [showConfirm, setShowConfirm] = useState(false);
   const [showOodaConfirm, setShowOodaConfirm] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetStatus, setResetStatus] = useState<"idle" | "resetting" | "done">("idle");
 
   // Phase 13: Recon UI state
   const [showAddTarget, setShowAddTarget] = useState(false);
-  const [scanState, setScanState] = useState<{
-    targetId: string;
-    phase: string | null;
-    step: number;
-    totalSteps: number;
-  } | null>(null);
+  const { scanState, setScanState } = useReconScan(DEFAULT_OP_ID, ws, {
+    onCompleted: async (data) => {
+      refreshAllData();
+      addToast(t("reconComplete", { factsWritten: data.factsWritten }), "success");
+      // Fetch full scan result to populate ReconResultModal
+      try {
+        const fullResult = await api.get<ReconScanResult>(
+          `/operations/${DEFAULT_OP_ID}/recon/scans/${data.scanId}`,
+        );
+        setReconResult(fullResult);
+      } catch {
+        // Modal won't open but toast already informed the user
+      }
+    },
+    onFailed: (error) => {
+      addToast(error || tErrors("failedReconScan"), "error");
+    },
+  });
   const [reconResult, setReconResult] = useState<ReconScanResult | null>(null);
   const [terminalTarget, setTerminalTarget] = useState<Target | null>(null);
   const [deletingTarget, setDeletingTarget] = useState<Target | null>(null);
@@ -137,46 +149,10 @@ export default function PlannerPage() {
       }),
       ws.subscribe("execution.update", () => refreshAllData()),
       ws.subscribe("operation.reset", () => refreshAllData()),
-      ws.subscribe("recon.progress", (raw: unknown) => {
-        const data = raw as Record<string, unknown>;
-        setScanState((prev) =>
-          prev
-            ? {
-                ...prev,
-                phase: (data.phase as string) ?? prev.phase,
-                step: (data.step as number) ?? prev.step,
-                totalSteps: (data.total_steps as number) ?? prev.totalSteps,
-              }
-            : prev,
-        );
-      }),
-      ws.subscribe("recon.completed", (raw: unknown) => {
-        const data = raw as Record<string, unknown>;
-        refreshTargets();
-        setScanState(null);
-        addToast(
-          t("reconComplete", { factsWritten: (data.facts_written as number) ?? 0 }),
-          "success",
-        );
-      }),
-      ws.subscribe("recon.failed", (raw: unknown) => {
-        const data = raw as Record<string, unknown>;
-        setScanState(null);
-        addToast(
-          (data.error as string) || tErrors("failedReconScan"),
-          "error",
-        );
-      }),
     ];
     return () => unsubs.forEach((fn) => fn());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ws.subscribe]);
-
-  function handleExecute() {
-    setShowConfirm(false);
-    api.post(`/operations/${DEFAULT_OP_ID}/mission/execute`)
-      .catch(() => addToast(tErrors("failedExecuteMission"), "error"));
-  }
 
   async function handleReset() {
     setShowResetConfirm(false);
@@ -332,21 +308,6 @@ export default function PlannerPage() {
               {tCommon("export")}
             </Button>
           </Tooltip>
-          <Tooltip text={tTips("executeMission")}>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setShowConfirm(true)}
-              disabled={targets.length === 0}
-              icon={
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="5 3 19 12 5 21 5 3" />
-                </svg>
-              }
-            >
-              {t("executeMission")}
-            </Button>
-          </Tooltip>
         </div>
       </div>
       <p className="text-[10px] font-mono text-athena-text-secondary/60 -mt-3 ml-1">{tHints("missionSteps")}</p>
@@ -417,14 +378,6 @@ export default function PlannerPage() {
           )}
         </div>
       </div>
-
-      <HexConfirmModal
-        isOpen={showConfirm}
-        title={t("confirmExecute")}
-        riskLevel={RiskLevel.HIGH}
-        onConfirm={handleExecute}
-        onCancel={() => setShowConfirm(false)}
-      />
 
       <HexConfirmModal
         isOpen={showOodaConfirm}

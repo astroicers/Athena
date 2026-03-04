@@ -13,6 +13,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import {
+  TACTIC_ID_TO_SLUG,
+  TACTIC_ORDER,
+  normalizeTactic,
+  tacticLabel,
+  getToolsForTechnique,
+} from "@/lib/mitre-mapping";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useToast } from "@/contexts/ToastContext";
 import { NavigatorPageSkeleton } from "@/components/ui/Skeleton";
@@ -22,57 +29,13 @@ import { AttackPathTimeline } from "@/components/mitre/AttackPathTimeline";
 import { TechniqueCard } from "@/components/cards/TechniqueCard";
 import { RecommendCard } from "@/components/cards/RecommendCard";
 import type { TechniqueWithStatus } from "@/types/technique";
+import type { ToolRegistryEntry } from "@/types/tool";
 import type { OrientRecommendation } from "@/types/recommendation";
 import type { AttackPathResponse } from "@/types/attackPath";
 import type { TechniqueStatus } from "@/types/enums";
 import { SectionHeader } from "@/components/atoms/SectionHeader";
 
 const DEFAULT_OP_ID = "op-0001";
-
-function normalizeTactic(tactic: string): string {
-  return tactic.toLowerCase().replace(/\s+/g, "-");
-}
-
-const TACTIC_ID_TO_SLUG: Record<string, string> = {
-  "TA0043": "reconnaissance",
-  "TA0042": "resource-development",
-  "TA0001": "initial-access",
-  "TA0002": "execution",
-  "TA0003": "persistence",
-  "TA0004": "privilege-escalation",
-  "TA0005": "defense-evasion",
-  "TA0006": "credential-access",
-  "TA0007": "discovery",
-  "TA0008": "lateral-movement",
-  "TA0009": "collection",
-  "TA0011": "command-and-control",
-  "TA0010": "exfiltration",
-  "TA0040": "impact",
-};
-
-const TACTIC_ORDER = [
-  "reconnaissance",
-  "resource-development",
-  "initial-access",
-  "execution",
-  "persistence",
-  "privilege-escalation",
-  "defense-evasion",
-  "credential-access",
-  "discovery",
-  "lateral-movement",
-  "collection",
-  "command-and-control",
-  "exfiltration",
-  "impact",
-];
-
-function tacticLabel(tactic: string): string {
-  return tactic
-    .split("-")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
-}
 
 export default function NavigatorPage() {
   const t = useTranslations("Navigator");
@@ -87,6 +50,7 @@ export default function NavigatorPage() {
   const [selected, setSelected] = useState<TechniqueWithStatus | null>(null);
   const [recommendation, setRecommendation] = useState<OrientRecommendation | null>(null);
   const [attackPath, setAttackPath] = useState<AttackPathResponse | null>(null);
+  const [allTools, setAllTools] = useState<ToolRegistryEntry[]>([]);
   const [loadingPath, setLoadingPath] = useState(true);
   const [compact, setCompact] = useState(false);
 
@@ -94,6 +58,7 @@ export default function NavigatorPage() {
     Promise.all([
       api.get<TechniqueWithStatus[]>(`/operations/${DEFAULT_OP_ID}/techniques`).then(setTechniques),
       api.get<OrientRecommendation>(`/operations/${DEFAULT_OP_ID}/recommendations/latest`).then(setRecommendation),
+      api.get<ToolRegistryEntry[]>("/tools").then(setAllTools).catch(() => setAllTools([])),
       api.getAttackPath(DEFAULT_OP_ID)
         .then(setAttackPath)
         .catch(() => {
@@ -218,7 +183,10 @@ export default function NavigatorPage() {
         <div className="space-y-4">
           <KillChainIndicator stageCounts={stageCounts} />
           {selected ? (
-            <TechniqueCard technique={selected} />
+            <TechniqueCard
+              technique={selected}
+              relatedTools={getToolsForTechnique(allTools, selected.mitreId)}
+            />
           ) : (
             <div className="border-2 border-dashed border-athena-border/50 rounded-athena-md p-4">
               <span className="text-xs font-mono text-athena-text-secondary">

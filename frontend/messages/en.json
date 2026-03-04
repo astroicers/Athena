@@ -22,10 +22,7 @@
     "monitor": "Battle Monitor",
     "tools": "Tool Registry"
   },
-  "PageHeader": {
-    "semiAuto": "SEMI-AUTO",
-    "manual": "MANUAL"
-  },
+  "PageHeader": {},
   "C5ISR": {
     "activeAgents": "Active Agents",
     "successRate": "Success Rate",
@@ -61,7 +58,6 @@
     "targetHosts": "Target Hosts",
     "noTargets": "No targets",
     "addTarget": "ADD",
-    "executeMission": "EXECUTE MISSION",
     "oodaCycle": "OODA CYCLE",
     "resetOk": "RESET OK",
     "resetting": "RESETTING...",
@@ -78,7 +74,6 @@
     "colTarget": "Target",
     "colEngine": "Engine",
     "colStatus": "Status",
-    "confirmExecute": "Execute Mission Plan",
     "confirmOoda": "Trigger OODA Cycle",
     "confirmReset": "Reset Operation"
   },
@@ -112,7 +107,9 @@
     "observe": "Observe",
     "orient": "Orient",
     "decide": "Decide",
-    "act": "Act"
+    "act": "Act",
+    "recon": "Recon",
+    "reconActivity": "Recon Activity"
   },
   "Recommendation": {
     "title": "AI Recommendation",
@@ -160,6 +157,9 @@
     "offline": "OFFLINE",
     "scanning": "SCANNING",
     "critical": "CRITICAL",
+    "active": "ACTIVE",
+    "nominal": "NOMINAL",
+    "engaged": "ENGAGED",
     "alive": "ALIVE",
     "dead": "DEAD",
     "pending": "PENDING",
@@ -172,16 +172,12 @@
     "critical": "CRITICAL"
   },
   "ToolCategory": {
-    "recon": "RECON",
-    "exploit": "EXPLOIT",
-    "post-exploit": "POST-EXPLOIT",
-    "lateral-movement": "LATERAL MOVEMENT",
-    "persistence": "PERSISTENCE",
-    "exfiltration": "EXFILTRATION",
-    "c2": "C2",
-    "credential-access": "CREDENTIAL ACCESS",
-    "defense-evasion": "DEFENSE EVASION",
-    "other": "OTHER"
+    "reconnaissance": "RECON",
+    "enumeration": "ENUMERATION",
+    "vulnerability_scanning": "VULN SCAN",
+    "credential_access": "CREDENTIAL ACCESS",
+    "exploitation": "EXPLOIT",
+    "execution": "EXECUTION"
   },
   "ToolKind": {
     "tool": "Tool",
@@ -234,10 +230,13 @@
     "phase_service_detection": "Detecting services...",
     "phase_os_fingerprint": "Fingerprinting OS...",
     "phase_credential_test": "Testing credentials...",
-    "phase_finalizing": "Finalizing results..."
+    "phase_finalizing": "Finalizing results...",
+    "setActiveHint": "Focus OODA engine analysis on this target",
+    "deactivateHint": "Remove this target from OODA focus"
   },
   "TechniqueCard": {
-    "tactic": "Tactic:"
+    "tactic": "Tactic:",
+    "relatedTools": "Available Tools"
   },
   "HexConfirm": {
     "lowRisk": "LOW RISK",
@@ -281,6 +280,7 @@
     "servicesFound": "{count} found",
     "factsWritten": "Facts Written",
     "duration": "Duration",
+    "openPorts": "OPEN PORTS",
     "initialAccess": "Initial Access",
     "status": "Status",
     "success": "SUCCESS",
@@ -316,7 +316,6 @@
   },
   "Tooltips": {
     "oodaCycle": "Start OODA loop: Observe → Orient → Decide → Act",
-    "executeMission": "Execute all planned attack steps in sequence",
     "reset": "Reset all step statuses to QUEUED",
     "export": "Export operation report as JSON",
     "addTarget": "Add a new target host",
@@ -340,13 +339,13 @@
     "colStatus": "Status",
     "colRisk": "Risk",
     "colMitre": "MITRE",
-    "colActions": "Actions",
+    "colMcpStatus": "MCP",
+    "mcpOnline": "ONLINE",
+    "mcpOffline": "OFFLINE",
+    "mcpNA": "—",
     "on": "ON",
     "off": "OFF",
-    "check": "CHECK",
     "del": "DEL",
-    "ok": "OK",
-    "fail": "FAIL",
     "newTool": "NEW TOOL",
     "registerTool": "Register Tool",
     "toolId": "Tool ID",
@@ -362,7 +361,18 @@
     "failedCreate": "Failed to create tool. Please check the values and try again.",
     "mcpServers": "MCP Servers",
     "mcpTools": "tools",
-    "mcpDisconnected": "disconnected"
+    "mcpDisconnected": "DISCONNECTED",
+    "mcpStatusOnline": "ONLINE",
+    "mcpStatusDisabled": "DISABLED",
+    "mcpStatusCircuitOpen": "CIRCUIT OPEN",
+    "mcpStatusHalfOpen": "HALF OPEN",
+    "mcpFailures": "failures",
+    "byTactic": "By Tactic",
+    "byKind": "Recon Tools",
+    "byEngine": "Execution Engines",
+    "generalTools": "General / Engines",
+    "toolCount": "tools",
+    "noToolsInTactic": "No tools for this tactic"
   },
   "Topology": {
     "noData": "No topology data available",
@@ -404,7 +414,6 @@
     "failedLoadTargets": "Failed to load targets",
     "failedLoadMonitor": "Failed to load monitor data",
     "failedLoadRecommendation": "Failed to load recommendation",
-    "failedExecuteMission": "Failed to execute mission",
     "failedResetOperation": "Failed to reset operation",
     "failedTriggerOoda": "Failed to trigger OODA cycle",
     "failedExportReport": "Failed to export report",

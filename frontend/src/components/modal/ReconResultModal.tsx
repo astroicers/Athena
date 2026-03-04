@@ -81,6 +81,24 @@ export function ReconResultModal({
           </div>
         </div>
 
+        {/* Open Ports */}
+        {result.services && result.services.length > 0 && (
+          <div className="border-t border-athena-border pt-3 mb-4">
+            <p className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-2">
+              {t("openPorts")}
+            </p>
+            <div className="space-y-0.5 text-xs font-mono max-h-48 overflow-y-auto">
+              {result.services.map((svc) => (
+                <div key={`${svc.port}-${svc.protocol}`} className="flex justify-between gap-2">
+                  <span className="text-athena-accent shrink-0">{svc.port}/{svc.protocol}</span>
+                  <span className="text-athena-text shrink-0">{svc.service}</span>
+                  <span className="text-athena-text-secondary truncate text-right">{svc.version || "\u2014"}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Initial Access */}
         <div className="border-t border-athena-border pt-3 mb-4">
           <p className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-2">

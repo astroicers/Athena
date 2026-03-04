@@ -15,7 +15,6 @@ import { api } from "@/lib/api";
 import type {
   ToolRegistryEntry,
   ToolRegistryCreate,
-  ToolHealthCheck,
 } from "@/types/tool";
 
 interface UseToolsReturn {
@@ -23,7 +22,6 @@ interface UseToolsReturn {
   loading: boolean;
   fetchTools: () => Promise<void>;
   toggleEnabled: (toolId: string, enabled: boolean) => Promise<void>;
-  checkHealth: (toolId: string) => Promise<ToolHealthCheck>;
   deleteTool: (toolId: string) => Promise<void>;
   createTool: (data: ToolRegistryCreate) => Promise<ToolRegistryEntry>;
 }
@@ -55,10 +53,6 @@ export function useTools(kind?: "tool" | "engine"): UseToolsReturn {
     [],
   );
 
-  const checkHealth = useCallback(async (toolId: string) => {
-    return api.post<ToolHealthCheck>(`/tools/${toolId}/check`);
-  }, []);
-
   const deleteTool = useCallback(async (toolId: string) => {
     await api.delete(`/tools/${toolId}`);
     setTools((prev) => prev.filter((t) => t.toolId !== toolId));
@@ -79,7 +73,6 @@ export function useTools(kind?: "tool" | "engine"): UseToolsReturn {
     loading,
     fetchTools,
     toggleEnabled,
-    checkHealth,
     deleteTool,
     createTool,
   };

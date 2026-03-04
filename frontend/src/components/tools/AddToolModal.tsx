@@ -22,16 +22,12 @@ interface AddToolModalProps {
 }
 
 const CATEGORY_OPTIONS = [
-  "recon",
-  "exploit",
-  "post-exploit",
-  "lateral-movement",
-  "persistence",
-  "exfiltration",
-  "c2",
-  "credential-access",
-  "defense-evasion",
-  "other",
+  "reconnaissance",
+  "enumeration",
+  "vulnerability_scanning",
+  "credential_access",
+  "exploitation",
+  "execution",
 ];
 
 const RISK_OPTIONS = ["low", "medium", "high", "critical"];
@@ -45,7 +41,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
   const [toolId, setToolId] = useState("");
   const [name, setName] = useState("");
   const [kind, setKind] = useState<"tool" | "engine">("tool");
-  const [category, setCategory] = useState("recon");
+  const [category, setCategory] = useState("reconnaissance");
   const [riskLevel, setRiskLevel] = useState("low");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +53,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
     setToolId("");
     setName("");
     setKind("tool");
-    setCategory("recon");
+    setCategory("reconnaissance");
     setRiskLevel("low");
     setDescription("");
     setError(null);

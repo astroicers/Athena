@@ -10,9 +10,11 @@
 
 "use client";
 
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/atoms/Badge";
 import type { TechniqueWithStatus } from "@/types/technique";
+import type { ToolRegistryEntry } from "@/types/tool";
 import { RiskLevel, TechniqueStatus } from "@/types/enums";
 
 const STATUS_VARIANT: Record<string, "success" | "warning" | "error" | "info"> = {
@@ -31,11 +33,19 @@ const RISK_VARIANT: Record<string, "success" | "warning" | "error" | "info"> = {
   [RiskLevel.CRITICAL]: "error",
 };
 
+const TOOL_RISK_VARIANT: Record<string, "success" | "warning" | "error" | "info"> = {
+  low: "success",
+  medium: "warning",
+  high: "error",
+  critical: "error",
+};
+
 interface TechniqueCardProps {
   technique: TechniqueWithStatus;
+  relatedTools?: ToolRegistryEntry[];
 }
 
-export function TechniqueCard({ technique }: TechniqueCardProps) {
+export function TechniqueCard({ technique, relatedTools }: TechniqueCardProps) {
   const t = useTranslations("TechniqueCard");
   const tStatus = useTranslations("Status");
   const tRisk = useTranslations("Risk");
@@ -66,6 +76,35 @@ export function TechniqueCard({ technique }: TechniqueCardProps) {
           {tRisk(technique.riskLevel as any)}
         </Badge>
       </div>
+
+      {relatedTools && relatedTools.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-athena-border">
+          <span className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider">
+            {t("relatedTools")}
+          </span>
+          <div className="mt-1.5 space-y-1">
+            {relatedTools.map((tool) => (
+              <Link
+                key={tool.toolId}
+                href={`/tools#${tool.toolId}`}
+                className="flex items-center justify-between gap-2 px-2 py-1 rounded-athena-sm hover:bg-athena-accent/10 transition-colors group"
+              >
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${tool.enabled ? "bg-athena-success" : "bg-athena-text-secondary/40"}`}
+                  />
+                  <span className="text-xs font-mono text-athena-text truncate group-hover:text-athena-accent transition-colors">
+                    {tool.name}
+                  </span>
+                </div>
+                <Badge variant={TOOL_RISK_VARIANT[tool.riskLevel] || "info"}>
+                  {tool.riskLevel}
+                </Badge>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

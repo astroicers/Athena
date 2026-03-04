@@ -9,6 +9,8 @@ interface MCPServerInfo {
   connected: boolean;
   tool_count: number;
   description: string;
+  circuit_state: string;   // "closed" | "open" | "half_open"
+  failure_count: number;
 }
 
 export function useMCPServers(pollIntervalMs = 30000) {

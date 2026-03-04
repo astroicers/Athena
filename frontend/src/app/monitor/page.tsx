@@ -14,7 +14,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -23,6 +23,8 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import { useLiveLog } from "@/hooks/useLiveLog";
 import { useToast } from "@/contexts/ToastContext";
 import { MonitorPageSkeleton } from "@/components/ui/Skeleton";
+import { SlidePanel } from "@/components/ui/SlidePanel";
+import { VirtualList } from "@/components/ui/VirtualList";
 import { MetricCard } from "@/components/cards/MetricCard";
 import { NetworkTopology } from "@/components/topology/NetworkTopology";
 import { ThreatLevelGauge } from "@/components/topology/ThreatLevelGauge";
@@ -67,7 +69,6 @@ export default function MonitorPage() {
   const t = useTranslations("Monitor");
   const tCommon = useTranslations("Common");
   const tHints = useTranslations("Hints");
-  const tTips = useTranslations("Tooltips");
   const tEmpty = useTranslations("EmptyStates");
   const tErrors = useTranslations("Errors");
 
@@ -87,11 +88,10 @@ export default function MonitorPage() {
   const [llmBackend, setLlmBackend] = useState<string | null>(null);
   const [llmLatencyMs, setLlmLatencyMs] = useState<number | null>(null);
   const [recHistory, setRecHistory] = useState<OrientRecommendation[]>([]);
-  const [recHistoryExpanded, setRecHistoryExpanded] = useState(false);
+  const [recHistoryOpen, setRecHistoryOpen] = useState(false);
   const [recHistoryOpenIds, setRecHistoryOpenIds] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<string>("overview");
   const [c5isrDomains, setC5isrDomains] = useState<Array<{domain: string; healthPct: number}>>([]);
-  const logEndRef = useRef<HTMLDivElement>(null);
 
   const fetchRecommendation = () => {
     api.get<OrientRecommendation>(`/operations/${DEFAULT_OP_ID}/recommendations/latest`)
@@ -207,10 +207,6 @@ export default function MonitorPage() {
 
   const allLogs = [...initialLogs, ...liveLogs];
 
-  useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [allLogs.length]);
-
   const stageCounts = useMemo(() => {
     const counts: Record<string, { total: number; tested: number; success: number; failed: number }> = {};
     techniques.forEach((tech) => {
@@ -270,22 +266,22 @@ export default function MonitorPage() {
   ];
 
   return (
-    <div className="space-y-4 h-full">
+    <div className="flex flex-col h-full gap-3 overflow-hidden">
       {/* KPI Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
         <MetricCard
           title={t("dataExfiltrated")}
-          value={operation ? formatBytes(operation.dataExfiltratedBytes) : "—"}
+          value={operation ? formatBytes(operation.dataExfiltratedBytes) : "\u2014"}
           accentColor="var(--color-warning)"
         />
         <MetricCard
           title={t("activeConnections")}
-          value={operation?.activeAgents ?? "—"}
+          value={operation?.activeAgents ?? "\u2014"}
           accentColor="var(--color-accent)"
         />
         <MetricCard
           title={t("successRate")}
-          value={operation ? `${operation.successRate}%` : "—"}
+          value={operation ? `${operation.successRate}%` : "\u2014"}
           accentColor={operation && operation.successRate < 50 ? "var(--color-warning)" : "var(--color-success)"}
         />
         <MetricCard
@@ -296,27 +292,33 @@ export default function MonitorPage() {
       </div>
 
       {/* Tab bar */}
-      <TabBar tabs={MONITOR_TABS} activeTab={activeTab} onChange={setActiveTab} />
+      <div className="shrink-0">
+        <TabBar tabs={MONITOR_TABS} activeTab={activeTab} onChange={setActiveTab} />
+      </div>
 
       {/* OVERVIEW tab */}
       {activeTab === "overview" && (
-        <>
-          {/* Main content: Topology + Sidebar */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-            {/* 3D Topology — 3 cols */}
-            <div className="lg:col-span-3 space-y-3">
-              <div>
-                <SectionHeader className="mb-2">
+        <div className="flex-1 grid grid-rows-[1fr_auto] gap-3 overflow-hidden min-h-0">
+          {/* Top row: Topology + Right sidebar */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 overflow-hidden min-h-0">
+            {/* Left column — 3 cols: Topology + KillChain */}
+            <div className="lg:col-span-3 flex flex-col gap-3 overflow-hidden min-h-0">
+              <div className="flex-1 flex flex-col min-h-0">
+                <SectionHeader className="mb-2 shrink-0">
                   {t("networkTopology")}
                 </SectionHeader>
-                <p className="text-[10px] font-mono text-athena-text-secondary/60 -mt-1 mb-2 ml-1">{tHints("topology")}</p>
-                <NetworkTopology data={topology} nodeKillChainMap={nodeKillChainMap} />
+                <p className="text-[10px] font-mono text-athena-text-secondary/60 -mt-1 mb-2 ml-1 shrink-0">{tHints("topology")}</p>
+                <div className="flex-1 min-h-0">
+                  <NetworkTopology data={topology} nodeKillChainMap={nodeKillChainMap} />
+                </div>
               </div>
-              <KillChainIndicator stageCounts={stageCounts} />
+              <div className="shrink-0">
+                <KillChainIndicator stageCounts={stageCounts} />
+              </div>
             </div>
 
-            {/* Right sidebar */}
-            <div className="space-y-4">
+            {/* Right sidebar — 1 col, scrollable within */}
+            <div className="overflow-y-auto space-y-4 min-h-0">
               <OODAIndicator currentPhase={oodaPhase} />
               <ThreatLevelGauge level={operation?.threatLevel ?? 0} />
 
@@ -360,110 +362,58 @@ export default function MonitorPage() {
             </div>
           </div>
 
-          {/* AI Recommendation */}
-          <RecommendationPanel
-            recommendation={recommendation}
-          />
-          {!recommendation && (
-            <div className="bg-athena-surface border border-athena-border rounded-athena-md p-4 text-center">
-              <p className="text-xs font-mono text-athena-text-secondary mb-2">{tEmpty("monitorNoRec")}</p>
-              <Link href="/planner" className="text-xs font-mono text-athena-accent hover:underline">
-                {tEmpty("monitorGoToPlanner")}
-              </Link>
-            </div>
-          )}
-          <p className="text-[10px] font-mono text-athena-text-secondary/60 -mt-3 ml-1">{tHints("recommendation")}</p>
-
-          {/* Recommendation History */}
-          {recHistory.length > 0 && (
-        <div className="bg-athena-surface border border-athena-border rounded-athena-md overflow-hidden">
-          <button
-            onClick={() => setRecHistoryExpanded((v) => !v)}
-            className="w-full flex items-center justify-between px-4 py-2 hover:bg-athena-border/20 transition-colors"
-          >
-            <span className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider">
-              {t("recHistory", { count: recHistory.length })}
-            </span>
-            <span className="text-[10px] font-mono text-athena-text-secondary">
-              {recHistoryExpanded ? "▲" : "▼"}
-            </span>
-          </button>
-          {recHistoryExpanded && (
-            <div className="divide-y divide-athena-border/50">
-              {recHistory.map((rec) => {
-                const isOpen = recHistoryOpenIds.has(rec.id);
-                const time = rec.createdAt?.split("T")[1]?.slice(0, 8) ?? "";
-                const topOption = rec.options?.[0];
-                return (
-                  <div key={rec.id} className="px-4 py-2">
-                    <button
-                      onClick={() =>
-                        setRecHistoryOpenIds((prev) => {
-                          const next = new Set(prev);
-                          if (next.has(rec.id)) next.delete(rec.id);
-                          else next.add(rec.id);
-                          return next;
-                        })
-                      }
-                      className="w-full flex items-center gap-3 text-left"
-                    >
-                      <span className="text-[10px] font-mono text-athena-text-secondary/60 shrink-0 w-16">
-                        {time}
-                      </span>
-                      <span className="text-xs font-mono text-athena-accent font-bold shrink-0">
-                        {rec.recommendedTechniqueId}
-                      </span>
-                      <span className="text-[10px] font-mono text-athena-success shrink-0">
-                        {Math.round(rec.confidence * 100)}%
-                      </span>
-                      {topOption && (
-                        <span className="text-[10px] font-mono text-athena-text-secondary/60 shrink-0 uppercase">
-                          {topOption.riskLevel}
-                        </span>
-                      )}
-                      <span className="text-[10px] font-mono text-athena-text-secondary truncate flex-1">
-                        {rec.situationAssessment?.slice(0, 80)}
-                        {(rec.situationAssessment?.length ?? 0) > 80 ? "..." : ""}
-                      </span>
-                      <span className="text-[10px] font-mono text-athena-text-secondary/40 shrink-0">
-                        {isOpen ? "▲" : "▼"}
-                      </span>
-                    </button>
-                    {isOpen && (
-                      <div className="mt-2 pl-2 border-l-2 border-athena-border/50">
-                        <p className="text-xs font-mono text-athena-text leading-relaxed">
-                          {rec.situationAssessment}
-                        </p>
-                      </div>
-                    )}
+          {/* Bottom row: Recommendation + Live Logs */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 shrink-0 max-h-64">
+            {/* Left: AI Recommendation (compact) */}
+            <div className="overflow-hidden flex flex-col min-h-0">
+              {recHistory.length > 0 && (
+                <div className="flex justify-end mb-1 shrink-0">
+                  <button
+                    onClick={() => setRecHistoryOpen(true)}
+                    className="text-[10px] font-mono text-athena-accent hover:text-athena-text transition-colors uppercase tracking-wider"
+                  >
+                    {t("recHistory", { count: recHistory.length })}
+                  </button>
+                </div>
+              )}
+              <div className="flex-1 overflow-y-auto min-h-0">
+                <RecommendationPanel
+                  recommendation={recommendation}
+                />
+                {!recommendation && (
+                  <div className="bg-athena-surface border border-athena-border rounded-athena-md p-4 text-center">
+                    <p className="text-xs font-mono text-athena-text-secondary mb-2">{tEmpty("monitorNoRec")}</p>
+                    <Link href="/planner" className="text-xs font-mono text-athena-accent hover:underline">
+                      {tEmpty("monitorGoToPlanner")}
+                    </Link>
                   </div>
-                );
-              })}
+                )}
+              </div>
+              <p className="text-[10px] font-mono text-athena-text-secondary/60 mt-1 ml-1 shrink-0">{tHints("recommendation")}</p>
             </div>
-          )}
-          </div>
-          )}
 
-          {/* Live Log Stream */}
-          <div>
-            <SectionHeader className="mb-2">
-              {t("liveLogStream")}
-            </SectionHeader>
-            <p className="text-[10px] font-mono text-athena-text-secondary/60 -mt-1 mb-2 ml-1">{tHints("logStream")}</p>
-            <div className="bg-athena-surface border border-athena-border rounded-athena-md max-h-48 overflow-y-auto">
+            {/* Right: Live Log Stream (virtualized) */}
+            <div className="overflow-hidden flex flex-col min-h-0">
+              <SectionHeader className="mb-2 shrink-0">
+                {t("liveLogStream")}
+              </SectionHeader>
+              <p className="text-[10px] font-mono text-athena-text-secondary/60 -mt-1 mb-2 ml-1 shrink-0">{tHints("logStream")}</p>
               {allLogs.length === 0 ? (
-                <div className="p-4 text-center">
+                <div className="bg-athena-surface border border-athena-border rounded-athena-md p-4 text-center">
                   <span className="text-xs font-mono text-athena-text-secondary">{t("waitingForLogs")}</span>
                 </div>
               ) : (
-                allLogs.map((entry) => (
-                  <LogEntryRow key={entry.id} entry={entry} />
-                ))
+                <VirtualList
+                  items={allLogs}
+                  rowHeight={28}
+                  height={200}
+                  className="bg-athena-surface border border-athena-border rounded-athena-md"
+                  renderRow={(entry) => <LogEntryRow key={entry.id} entry={entry} />}
+                />
               )}
-              <div ref={logEndRef} />
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {/* TOPOLOGY tab */}
@@ -485,6 +435,66 @@ export default function MonitorPage() {
           c5isrDomains={c5isrDomains}
         />
       )}
+
+      {/* Recommendation History SlidePanel */}
+      <SlidePanel
+        open={recHistoryOpen}
+        onClose={() => setRecHistoryOpen(false)}
+        title={t("recHistory", { count: recHistory.length })}
+        width="md"
+      >
+        <div className="divide-y divide-athena-border/50">
+          {recHistory.map((rec) => {
+            const isOpen = recHistoryOpenIds.has(rec.id);
+            const time = rec.createdAt?.split("T")[1]?.slice(0, 8) ?? "";
+            const topOption = rec.options?.[0];
+            return (
+              <div key={rec.id} className="px-4 py-2">
+                <button
+                  onClick={() =>
+                    setRecHistoryOpenIds((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(rec.id)) next.delete(rec.id);
+                      else next.add(rec.id);
+                      return next;
+                    })
+                  }
+                  className="w-full flex items-center gap-3 text-left"
+                >
+                  <span className="text-[10px] font-mono text-athena-text-secondary/60 shrink-0 w-16">
+                    {time}
+                  </span>
+                  <span className="text-xs font-mono text-athena-accent font-bold shrink-0">
+                    {rec.recommendedTechniqueId}
+                  </span>
+                  <span className="text-[10px] font-mono text-athena-success shrink-0">
+                    {Math.round(rec.confidence * 100)}%
+                  </span>
+                  {topOption && (
+                    <span className="text-[10px] font-mono text-athena-text-secondary/60 shrink-0 uppercase">
+                      {topOption.riskLevel}
+                    </span>
+                  )}
+                  <span className="text-[10px] font-mono text-athena-text-secondary truncate flex-1">
+                    {rec.situationAssessment?.slice(0, 80)}
+                    {(rec.situationAssessment?.length ?? 0) > 80 ? "..." : ""}
+                  </span>
+                  <span className="text-[10px] font-mono text-athena-text-secondary/40 shrink-0">
+                    {isOpen ? "\u25B2" : "\u25BC"}
+                  </span>
+                </button>
+                {isOpen && (
+                  <div className="mt-2 pl-2 border-l-2 border-athena-border/50">
+                    <p className="text-xs font-mono text-athena-text leading-relaxed">
+                      {rec.situationAssessment}
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </SlidePanel>
     </div>
   );
 }

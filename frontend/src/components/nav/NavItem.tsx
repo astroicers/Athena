@@ -22,13 +22,15 @@ interface NavItemProps {
   icon: React.ComponentType;
   label: string;
   isActive: boolean;
+  collapsed?: boolean;
 }
 
-export function NavItem({ href, icon: Icon, label, isActive }: NavItemProps) {
+export function NavItem({ href, icon: Icon, label, isActive, collapsed = false }: NavItemProps) {
   return (
     <Link
       href={href}
-      className={`flex items-center gap-3 px-3 py-2 rounded-athena-md text-sm font-mono transition-colors
+      title={collapsed ? label : undefined}
+      className={`flex items-center ${collapsed ? "justify-center px-2" : "gap-3 px-3"} py-2 rounded-athena-md text-sm font-mono transition-colors
         ${
           isActive
             ? "bg-athena-accent/10 text-athena-accent border-l-2 border-athena-accent"
@@ -36,7 +38,7 @@ export function NavItem({ href, icon: Icon, label, isActive }: NavItemProps) {
         }`}
     >
       <Icon />
-      <span>{label}</span>
+      {!collapsed && <span>{label}</span>}
     </Link>
   );
 }

@@ -20,6 +20,7 @@ export interface Target {
   role: string;
   networkSegment: string;
   isCompromised: boolean;
+  isActive: boolean;
   privilegeLevel: string | null;
   operationId: string;
 }

@@ -73,6 +73,7 @@ _CREATE_TABLES: list[str] = [
         role TEXT NOT NULL,
         network_segment TEXT DEFAULT '10.0.1.0/24',
         is_compromised INTEGER DEFAULT 0,
+        is_active INTEGER DEFAULT 0,
         privilege_level TEXT,
         operation_id TEXT REFERENCES operations(id) ON DELETE CASCADE,
         created_at TEXT DEFAULT (datetime('now'))
@@ -102,7 +103,7 @@ _CREATE_TABLES: list[str] = [
         description TEXT,
         kill_chain_stage TEXT DEFAULT 'exploit',
         risk_level TEXT DEFAULT 'medium',
-        caldera_ability_id TEXT,
+        c2_ability_id TEXT,
         platforms TEXT DEFAULT '["windows"]'
     );
     """,
@@ -113,7 +114,7 @@ _CREATE_TABLES: list[str] = [
         target_id TEXT REFERENCES targets(id) ON DELETE CASCADE,
         operation_id TEXT REFERENCES operations(id) ON DELETE CASCADE,
         ooda_iteration_id TEXT,
-        engine TEXT DEFAULT 'caldera',
+        engine TEXT DEFAULT 'ssh',
         status TEXT DEFAULT 'queued',
         result_summary TEXT,
         facts_collected_count INTEGER DEFAULT 0,
@@ -175,7 +176,7 @@ _CREATE_TABLES: list[str] = [
         technique_name TEXT NOT NULL,
         target_id TEXT REFERENCES targets(id) ON DELETE CASCADE,
         target_label TEXT NOT NULL,
-        engine TEXT DEFAULT 'caldera',
+        engine TEXT DEFAULT 'ssh',
         status TEXT DEFAULT 'queued',
         created_at TEXT DEFAULT (datetime('now')),
         started_at TEXT,
@@ -264,6 +265,25 @@ _CREATE_TABLES: list[str] = [
         source TEXT DEFAULT 'seed',
         tags TEXT DEFAULT '[]',
         created_at TEXT DEFAULT (datetime('now'))
+    );
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS tool_registry (
+        id TEXT PRIMARY KEY,
+        tool_id TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        description TEXT,
+        kind TEXT NOT NULL DEFAULT 'tool',
+        category TEXT NOT NULL DEFAULT 'reconnaissance',
+        version TEXT,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        source TEXT NOT NULL DEFAULT 'seed',
+        config_json TEXT DEFAULT '{}',
+        mitre_techniques TEXT DEFAULT '[]',
+        risk_level TEXT DEFAULT 'low',
+        output_traits TEXT DEFAULT '[]',
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
     );
     """,
 ]
@@ -378,6 +398,145 @@ TECHNIQUE_PLAYBOOK_SEEDS = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# Seed data for tool_registry — 10 tools/engines
+# Uses INSERT OR IGNORE so restarts are safe (no duplicate key errors).
+# ---------------------------------------------------------------------------
+TOOL_REGISTRY_SEEDS = [
+    {
+        "tool_id": "nmap",
+        "name": "Nmap",
+        "kind": "tool",
+        "category": "reconnaissance",
+        "description": "Network exploration and security auditing",
+        "mitre_techniques": '["T1046","T1595.001","T1595.002"]',
+        "risk_level": "medium",
+        "output_traits": '["network.host.ip","service.port","service.banner","host.os"]',
+    },
+    {
+        "tool_id": "subfinder",
+        "name": "Subfinder",
+        "kind": "tool",
+        "category": "reconnaissance",
+        "description": "Fast passive subdomain enumeration tool",
+        "mitre_techniques": '["T1595.001","T1596"]',
+        "risk_level": "low",
+        "output_traits": '["network.host.hostname"]',
+    },
+    {
+        "tool_id": "crtsh",
+        "name": "crt.sh",
+        "kind": "tool",
+        "category": "reconnaissance",
+        "description": "Certificate transparency log search",
+        "mitre_techniques": '["T1596"]',
+        "risk_level": "low",
+        "output_traits": '["osint.subdomain","osint.certificate_san"]',
+    },
+    {
+        "tool_id": "nvd_lookup",
+        "name": "NVD Lookup",
+        "kind": "tool",
+        "category": "vulnerability_scanning",
+        "description": "NIST NVD API for CVE lookup and enrichment",
+        "mitre_techniques": '["T1595.002"]',
+        "risk_level": "low",
+        "output_traits": '["vuln.cve","vulnerability.cve"]',
+    },
+    {
+        "tool_id": "ssh",
+        "name": "Direct SSH",
+        "kind": "engine",
+        "category": "execution",
+        "description": "Execute techniques via direct SSH",
+        "mitre_techniques": "[]",
+        "risk_level": "medium",
+        "output_traits": "[]",
+    },
+    {
+        "tool_id": "persistent_ssh",
+        "name": "Persistent SSH",
+        "kind": "engine",
+        "category": "execution",
+        "description": "Pooled SSH sessions for faster execution",
+        "mitre_techniques": "[]",
+        "risk_level": "medium",
+        "output_traits": "[]",
+    },
+    {
+        "tool_id": "c2",
+        "name": "C2 (Caldera)",
+        "kind": "engine",
+        "category": "execution",
+        "description": "MITRE Caldera C2 framework integration",
+        "mitre_techniques": "[]",
+        "risk_level": "high",
+        "output_traits": "[]",
+    },
+    {
+        "tool_id": "metasploit",
+        "name": "Metasploit",
+        "kind": "engine",
+        "category": "execution",
+        "description": "Metasploit Framework RPC for exploit execution",
+        "mitre_techniques": "[]",
+        "risk_level": "critical",
+        "output_traits": "[]",
+    },
+    {
+        "tool_id": "winrm",
+        "name": "WinRM",
+        "kind": "engine",
+        "category": "execution",
+        "description": "Windows Remote Management",
+        "mitre_techniques": "[]",
+        "risk_level": "medium",
+        "output_traits": "[]",
+    },
+    {
+        "tool_id": "mock",
+        "name": "Mock Engine",
+        "kind": "engine",
+        "category": "execution",
+        "description": "Mock execution engine for development",
+        "mitre_techniques": "[]",
+        "risk_level": "low",
+        "output_traits": "[]",
+    },
+]
+
+
+async def _seed_tool_registry(db: aiosqlite.Connection) -> None:
+    """Insert seed tool registry entries only when the table is empty (idempotent)."""
+    async with db.execute("SELECT COUNT(*) FROM tool_registry") as cursor:
+        row = await cursor.fetchone()
+        count = row[0] if row else 0
+
+    if count > 0:
+        return  # Already seeded — skip
+
+    for seed in TOOL_REGISTRY_SEEDS:
+        await db.execute(
+            """
+            INSERT OR IGNORE INTO tool_registry
+                (id, tool_id, name, kind, category, description,
+                 mitre_techniques, risk_level, output_traits, source)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'seed')
+            """,
+            (
+                str(uuid4()),
+                seed["tool_id"],
+                seed["name"],
+                seed["kind"],
+                seed["category"],
+                seed["description"],
+                seed["mitre_techniques"],
+                seed["risk_level"],
+                seed["output_traits"],
+            ),
+        )
+
+
 async def _seed_technique_playbooks(db: aiosqlite.Connection) -> None:
     """Insert seed playbooks only when the table is empty (idempotent)."""
     async with db.execute("SELECT COUNT(*) FROM technique_playbooks") as cursor:
@@ -417,12 +576,32 @@ async def init_db() -> None:
         for ddl in _CREATE_TABLES:
             await db.execute(ddl)
         await _seed_technique_playbooks(db)
+        await _seed_tool_registry(db)
         # Migration: add max_iterations column if not present
         try:
             await db.execute("ALTER TABLE operations ADD COLUMN max_iterations INTEGER DEFAULT 0")
             await db.commit()
         except Exception:
             pass  # column already exists
+        # Migration: rename caldera_ability_id → c2_ability_id
+        try:
+            await db.execute("ALTER TABLE techniques RENAME COLUMN caldera_ability_id TO c2_ability_id")
+            await db.commit()
+        except Exception:
+            pass
+        # Migration: update engine values 'caldera' → 'c2'
+        try:
+            await db.execute("UPDATE technique_executions SET engine = 'c2' WHERE engine = 'caldera'")
+            await db.execute("UPDATE mission_steps SET engine = 'c2' WHERE engine = 'caldera'")
+            await db.commit()
+        except Exception:
+            pass
+        # Migration: add is_active column to targets
+        try:
+            await db.execute("ALTER TABLE targets ADD COLUMN is_active INTEGER DEFAULT 0")
+            await db.commit()
+        except Exception:
+            pass
         await db.commit()
 
 

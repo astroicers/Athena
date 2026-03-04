@@ -76,14 +76,21 @@ class DecisionEngine:
         technique_risk = RiskLevel(
             (selected_option or {}).get("risk_level", "medium")
         )
-        engine = (selected_option or {}).get("recommended_engine", "caldera")
+        engine = (selected_option or {}).get("recommended_engine", "ssh")
 
-        # Find target — use first available compromised or first target
+        # Priority: explicit active target > heuristic fallback
         cursor = await db.execute(
-            "SELECT id FROM targets WHERE operation_id = ? ORDER BY is_compromised DESC LIMIT 1",
+            "SELECT id FROM targets WHERE operation_id = ? AND is_active = 1 LIMIT 1",
             (operation_id,),
         )
         target_row = await cursor.fetchone()
+        if not target_row:
+            # Fall back to original heuristic
+            cursor = await db.execute(
+                "SELECT id FROM targets WHERE operation_id = ? ORDER BY is_compromised DESC LIMIT 1",
+                (operation_id,),
+            )
+            target_row = await cursor.fetchone()
         target_id = target_row["id"] if target_row else None
 
         base = {

@@ -23,5 +23,6 @@ class Target(BaseModel):
     role: str                           # "Domain Controller"
     network_segment: str | None = None  # "10.0.1.0/24"
     is_compromised: bool = False
+    is_active: bool = False
     privilege_level: str | None = None  # "SYSTEM" | "Admin" | "User"
     operation_id: str

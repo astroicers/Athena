@@ -14,6 +14,7 @@
 
 """Orient phase — PentestGPT integration, Athena's core value."""
 
+import asyncio
 import json
 import logging
 import re
@@ -70,7 +71,7 @@ _MOCK_RECOMMENDATION = {
             "technique_name": "OS Credential Dumping: LSASS Memory",
             "reasoning": "SeDebugPrivilege available on DC-01, direct LSASS dump for NTLM hashes.",
             "risk_level": "medium",
-            "recommended_engine": "caldera",
+            "recommended_engine": "ssh",
             "confidence": 0.87,
             "prerequisites": ["SeDebugPrivilege (available)", "Local Admin (confirmed)"],
         },
@@ -79,7 +80,7 @@ _MOCK_RECOMMENDATION = {
             "technique_name": "Access Token Manipulation",
             "reasoning": "Stealthier approach using token impersonation, lower detection risk.",
             "risk_level": "low",
-            "recommended_engine": "caldera",
+            "recommended_engine": "ssh",
             "confidence": 0.72,
             "prerequisites": ["SeImpersonatePrivilege"],
         },
@@ -88,7 +89,7 @@ _MOCK_RECOMMENDATION = {
             "technique_name": "Abuse Elevation Control: Bypass UAC",
             "reasoning": "UAC bypass on workstations for privilege escalation without credential dump.",
             "risk_level": "low",
-            "recommended_engine": "shannon",
+            "recommended_engine": "c2",
             "confidence": 0.65,
             "prerequisites": ["Local Admin on target workstation"],
         },
@@ -145,9 +146,9 @@ Only recommend techniques whose prerequisites are CONFIRMED by collected intelli
 If a prerequisite is unverified, flag it and suggest a Discovery technique to verify it first.
 
 ### 4. Engine Routing
-- Primary Engine: standard MITRE ATT&CK techniques with known ability mappings.
-- Adaptive Engine: for unknown defenses, high-stealth requirements, or novel environments.
-- Default to Primary Engine unless there is a specific reason for Adaptive Engine.
+- SSH Engine ("ssh"): standard execution via DirectSSH — default for most techniques.
+- C2 Engine ("c2"): agent-based execution requiring a live C2 agent on target.
+- Default to SSH Engine unless there is a specific reason for C2 Engine.
 - When recommending techniques, PREFER techniques listed in AVAILABLE TECHNIQUE PLAYBOOKS (Section 7.6). Only suggest techniques outside that list if there is a compelling tactical reason.
 
 ### 5. Risk Calibration
@@ -170,7 +171,7 @@ Respond with ONLY valid JSON (no markdown, no extra text). The JSON must match t
       "technique_name": "Full MITRE Name",
       "reasoning": "why this technique NOW, citing prerequisites and intelligence",
       "risk_level": "low|medium|high|critical",
-      "recommended_engine": "caldera|shannon",
+      "recommended_engine": "ssh|c2",
       "confidence": 0.0-1.0,
       "prerequisites": ["list of prerequisites with verification status"]
     }
@@ -266,8 +267,23 @@ class OrientEngine:
             db, operation_id, observe_summary
         )
 
-        # Call LLM
+        # Broadcast LLM call start for red team visibility
+        backend_name = self._resolve_backend()
+        await self._ws.broadcast(operation_id, "orient.thinking", {
+            "status": "started",
+            "backend": backend_name,
+        })
+
+        t0 = asyncio.get_event_loop().time()
         llm_response = await self._call_llm(system_prompt, user_prompt)
+        latency_ms = int((asyncio.get_event_loop().time() - t0) * 1000)
+
+        # Broadcast LLM call completion with latency
+        await self._ws.broadcast(operation_id, "orient.thinking", {
+            "status": "completed",
+            "backend": backend_name,
+            "latency_ms": latency_ms,
+        })
 
         # Strip markdown code blocks if present (e.g. ```json ... ```)
         cleaned = llm_response.strip()
@@ -508,12 +524,18 @@ class OrientEngine:
         )
 
         # Q12: Available technique playbooks (ADR-018 Layer C)
-        # Query primary target once (used for both platform detection and persistence status)
+        # Use active target for primary platform detection if set
         prim_tgt_cursor = await db.execute(
-            "SELECT id, os FROM targets WHERE operation_id = ? ORDER BY id LIMIT 1",
+            "SELECT id, os FROM targets WHERE operation_id = ? AND is_active = 1 LIMIT 1",
             (operation_id,),
         )
         prim_tgt_row = await prim_tgt_cursor.fetchone()
+        if not prim_tgt_row:
+            prim_tgt_cursor = await db.execute(
+                "SELECT id, os FROM targets WHERE operation_id = ? ORDER BY id LIMIT 1",
+                (operation_id,),
+            )
+            prim_tgt_row = await prim_tgt_cursor.fetchone()
         target_os = (prim_tgt_row["os"] or "").lower() if prim_tgt_row else ""
         platform = "windows" if "windows" in target_os else "linux"
         primary_target_id = prim_tgt_row["id"] if prim_tgt_row else None

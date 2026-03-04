@@ -140,6 +140,24 @@ class TargetCreate(BaseModel):
         )
 
 
+class TargetSetActive(BaseModel):
+    target_id: str  # empty string = deselect all
+
+
+class TargetBatchCreate(BaseModel):
+    entries: list[TargetCreate]
+    role: str = "target"
+    os: str | None = None
+    network_segment: str | None = None
+
+
+class BatchImportResult(BaseModel):
+    created: list[str]            # created target IDs
+    skipped_duplicates: list[str]  # duplicate IP addresses
+    total_requested: int
+    total_created: int
+
+
 # ---------------------------------------------------------------------------
 # Topology
 # ---------------------------------------------------------------------------
@@ -187,7 +205,7 @@ class TechniqueCreate(BaseModel):
     description: str | None = None
     kill_chain_stage: str = "exploit"
     risk_level: str = "medium"
-    caldera_ability_id: str | None = None
+    c2_ability_id: str | None = None
     platforms: list[str] = ["linux"]
 
 
@@ -200,7 +218,7 @@ class TechniqueWithStatus(BaseModel):
     description: str | None = None
     kill_chain_stage: KillChainStage
     risk_level: RiskLevel
-    caldera_ability_id: str | None = None
+    c2_ability_id: str | None = None
     platforms: list[str] = []
     latest_status: TechniqueStatus | None = None
     latest_execution_id: str | None = None

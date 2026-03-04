@@ -35,9 +35,20 @@
       "command": "python",
       "args": ["-m", "server"],
       "env": {},
-      "enabled": false,
-      "description": "SSH credential testing",
+      "http_url": "http://mcp-credential-checker:8080/mcp",
+      "enabled": true,
+      "description": "SSH, RDP, and WinRM credential testing",
       "tool_prefix": "cred"
+    },
+    "attack-executor": {
+      "transport": "stdio",
+      "command": "python",
+      "args": ["-m", "server"],
+      "env": {},
+      "http_url": "http://mcp-attack-executor:8080/mcp",
+      "enabled": true,
+      "description": "Post-compromise SSH/WinRM technique execution",
+      "tool_prefix": "attack"
     }
   }
 }

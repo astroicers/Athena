@@ -8,56 +8,14 @@
 #
 # For commercial licensing, contact: [TODO: contact email]
 
-"""Shared SSH utilities for DirectSSHEngine and PersistentSSHChannelEngine."""
+"""Shared SSH credential parsers.
 
-from typing import Any
+Technique executors and fact extraction have moved to the
+mcp-attack-executor MCP server (tools/attack-executor/server.py).
+Only credential parsers remain here for use by persistence_engine.py.
+"""
 
-# MITRE ID → SSH command mapping. {target_ip} replaced at runtime.
-TECHNIQUE_EXECUTORS: dict[str, str] = {
-    "T1592": "uname -a && id && cat /etc/os-release",
-    "T1046": "netstat -tulnp 2>/dev/null || ss -tulnp 2>/dev/null",
-    "T1059.004": "bash -c 'id && whoami && hostname'",
-    "T1003.001": "cat /etc/shadow 2>/dev/null || echo 'NO_SHADOW_ACCESS'",
-    "T1087": "cat /etc/passwd | cut -d: -f1,3,7",
-    "T1083": "find / -name '*.conf' -readable 2>/dev/null | head -20",
-    "T1190": "curl -sI http://localhost/ 2>/dev/null | head -5",
-    "T1595.001": "echo 'NMAP_LOCAL_ONLY'",
-    "T1595.002": "echo 'NMAP_LOCAL_ONLY'",
-    "T1021.004": "id && hostname",
-    "T1078.001": "id && cat /etc/passwd | grep -v nologin | grep -v false",
-    "T1110.001": "echo 'HANDLED_BY_INITIAL_ACCESS_ENGINE'",
-    "T1110.003": "echo 'HANDLED_BY_INITIAL_ACCESS_ENGINE'",
-    "T1021.004_priv": "sudo -l 2>/dev/null && sudo -n id 2>/dev/null",
-    "T1021.004_recon": "id && hostname && ip addr show && cat /etc/hosts",
-    "T1560.001": "tar czf /tmp/.bundle.tgz /etc/passwd /etc/shadow 2>/dev/null && echo BUNDLED",
-    "T1105": "which curl wget python3 nc 2>/dev/null | head -5",
-    "T1053.003": "ls -la /etc/cron.d/ 2>/dev/null | head -5",
-    "T1543.002": "systemctl list-units --type=service --state=running 2>/dev/null | head -10",
-    "T1136.001": "id; getent passwd | cut -d: -f1,3,7 | head -10",
-}
-
-TECHNIQUE_FACT_TRAITS: dict[str, list[str]] = {
-    "T1592": ["host.os", "host.user"],
-    "T1046": ["service.open_port"],
-    "T1059.004": ["host.process"],
-    "T1003.001": ["credential.hash"],
-    "T1087": ["host.user"],
-    "T1083": ["host.file"],
-    "T1190": ["service.web"],
-    "T1595.001": ["network.host.ip"],
-    "T1595.002": ["vuln.cve"],
-    "T1021.004": ["host.session"],
-    "T1078.001": ["host.user"],
-    "T1110.001": ["credential.ssh"],
-    "T1110.003": ["credential.ssh"],
-    "T1021.004_priv": ["host.privilege"],
-    "T1021.004_recon": ["host.os", "host.network"],
-    "T1560.001": ["host.file"],
-    "T1105": ["host.binary"],
-    "T1053.003": ["host.persistence"],
-    "T1543.002": ["host.service"],
-    "T1136.001": ["host.user"],
-}
+import base64
 
 
 def _parse_credential(cred_value: str) -> tuple[str, str, str, int]:
@@ -93,37 +51,23 @@ def _parse_credential(cred_value: str) -> tuple[str, str, str, int]:
     return user, password, host, port
 
 
-def _parse_stdout_to_facts(
-    mitre_id: str,
-    stdout: str,
-    source: str = "direct_ssh",
-    output_parser: str | None = None,
-) -> list[dict[str, Any]]:
-    """Extract facts from command stdout based on technique type.
+def _parse_key_credential(target: str) -> tuple[str, str, int, str]:
+    """Parse 'user@host:port#<base64_private_key>' format.
 
-    output_parser options:
-    - None / "first_line": take first non-empty line (default)
-    - "json": parse JSON output, serialize back to string
-    - any other string: treat as regex, use first capture group
+    Returns (username, host, port, key_content).
+    Raises ValueError if the format is invalid or base64 decoding fails.
     """
-    if not stdout.strip():
-        return []
-    traits = TECHNIQUE_FACT_TRAITS.get(mitre_id, [])
-    if not traits:
-        return []
-
-    if output_parser == "json":
-        try:
-            import json as _json
-            parsed = _json.loads(stdout)
-            value = _json.dumps(parsed)[:500]
-        except Exception:
-            value = stdout.splitlines()[0].strip()[:500]
-    elif output_parser and output_parser != "first_line":
-        import re
-        m = re.search(output_parser, stdout)
-        value = m.group(1)[:500] if m and m.lastindex else stdout.splitlines()[0].strip()[:500]
-    else:
-        value = stdout.splitlines()[0].strip()[:500]
-
-    return [{"trait": t, "value": value, "score": 1, "source": source} for t in traits]
+    try:
+        conn_part, key_b64 = target.split("#", 1)
+        key_content = base64.b64decode(key_b64).decode()
+        user, hostport = conn_part.split("@", 1)
+        if ":" in hostport:
+            host, port_str = hostport.rsplit(":", 1)
+            port = int(port_str)
+        else:
+            host, port = hostport, 22
+        return user, host, port, key_content
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise ValueError(f"Invalid ssh_key credential format: {exc}") from exc
+    except Exception as exc:  # binascii.Error from b64decode
+        raise ValueError(f"Invalid ssh_key credential format: {exc}") from exc

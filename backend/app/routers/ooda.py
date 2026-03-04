@@ -11,6 +11,7 @@
 """OODA loop endpoints."""
 
 import asyncio
+import functools
 import json
 import logging
 import uuid
@@ -18,53 +19,26 @@ import uuid
 import aiosqlite
 from fastapi import APIRouter, Depends
 
-from app.clients.c2_client import C2EngineClient
-from app.clients.mock_c2_client import MockC2Client
-from app.config import settings
 from app.database import get_db, _DB_FILE
 from app.models import OODAIteration
-from app.models.ooda import OodaTriggerQueued
+from app.models.ooda import OodaTriggerQueued, OODADirectiveCreate
 from app.models.api_schemas import OODATimelineEntry
 from app.routers._deps import ensure_operation
-from app.services.c5isr_mapper import C5ISRMapper
-from app.services.decision_engine import DecisionEngine
-from app.services.engine_router import EngineRouter
-from app.services.fact_collector import FactCollector
 from app.services.ooda_controller import OODAController
-from app.services.orient_engine import OrientEngine
 from app.ws_manager import ws_manager
 from app.services.ooda_scheduler import start_auto_loop, stop_auto_loop, get_loop_status
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# Module-level singleton — built once, reused across requests
-_controller: OODAController | None = None
-
-
+@functools.lru_cache(maxsize=1)
 def _get_controller() -> OODAController:
-    """Return singleton OODAController, building it on first call."""
-    global _controller
-    if _controller is not None:
-        return _controller
+    """Return singleton OODAController, built once and cached.
 
-    fc = FactCollector(ws_manager)
-    orient = OrientEngine(ws_manager)
-    decision = DecisionEngine()
-    c5isr = C5ISRMapper(ws_manager)
-
-    # Engine clients — MOCK_C2_ENGINE controls mock vs real C2 engine independently of MOCK_LLM
-    c2_engine: MockC2Client | C2EngineClient = MockC2Client()
-    if not settings.MOCK_C2_ENGINE:
-        try:
-            c2_engine = C2EngineClient(settings.C2_ENGINE_URL, settings.C2_ENGINE_API_KEY)
-        except Exception:
-            logger.warning("Failed to connect to C2 engine, falling back to mock")
-
-    router_svc = EngineRouter(c2_engine, fc, ws_manager)
-
-    _controller = OODAController(fc, orient, decision, router_svc, c5isr, ws_manager)
-    return _controller
+    Delegates to build_ooda_controller() which correctly wires MCP engine.
+    """
+    from app.services.ooda_controller import build_ooda_controller  # noqa: PLC0415
+    return build_ooda_controller()
 
 
 def _row_to_ooda(row: aiosqlite.Row) -> OODAIteration:
@@ -85,12 +59,13 @@ def _row_to_ooda(row: aiosqlite.Row) -> OODAIteration:
 
 
 @router.post("/operations/{operation_id}/ooda/trigger", status_code=202)
+
+
 async def trigger_ooda(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ) -> OodaTriggerQueued:
     """Enqueue an OODA cycle — returns 202 immediately, executes in background."""
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
     iteration_id = str(uuid.uuid4())
@@ -122,6 +97,17 @@ async def _run_ooda_background(iteration_id: str, op_id: str) -> None:
             logger.exception(
                 "Background OODA cycle %s failed: %s", iteration_id, exc
             )
+            try:
+                await db.execute(
+                    "UPDATE ooda_iterations SET phase = 'failed' "
+                    "WHERE id = ? OR (operation_id = ? AND completed_at IS NULL)",
+                    (iteration_id, op_id),
+                )
+                await db.commit()
+            except Exception:
+                logger.exception(
+                    "Failed to update ooda_iteration status for %s", iteration_id
+                )
             await ws_manager.broadcast(op_id, "ooda.failed", {
                 "iteration_id": iteration_id,
                 "error": str(exc),
@@ -129,11 +115,12 @@ async def _run_ooda_background(iteration_id: str, op_id: str) -> None:
 
 
 @router.get("/operations/{operation_id}/ooda/current", response_model=OODAIteration | None)
+
+
 async def get_current_ooda(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
     cursor = await db.execute(
@@ -148,11 +135,12 @@ async def get_current_ooda(
 
 
 @router.get("/operations/{operation_id}/ooda/history", response_model=list[OODAIteration])
+
+
 async def get_ooda_history(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
     cursor = await db.execute(
@@ -168,12 +156,13 @@ async def get_ooda_history(
     "/operations/{operation_id}/ooda/timeline",
     response_model=list[OODATimelineEntry],
 )
+
+
 async def get_ooda_timeline(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
     """Flatten iterations into per-phase timeline entries."""
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
     cursor = await db.execute(
@@ -246,7 +235,43 @@ async def get_ooda_timeline(
     return entries
 
 
+@router.post("/operations/{operation_id}/ooda/directive", status_code=201)
+async def create_directive(
+    operation_id: str,
+    body: OODADirectiveCreate,
+    db: aiosqlite.Connection = Depends(get_db),
+):
+    """Store a human operator directive to influence the next OODA orient phase."""
+    await ensure_operation(db, operation_id)
+    directive_id = str(uuid.uuid4())
+    await db.execute(
+        "INSERT INTO ooda_directives (id, operation_id, directive, scope) VALUES (?, ?, ?, ?)",
+        (directive_id, operation_id, body.directive, body.scope),
+    )
+    await db.commit()
+    return {"id": directive_id, "status": "stored"}
+
+
+@router.get("/operations/{operation_id}/ooda/directive/latest")
+async def get_latest_directive(
+    operation_id: str,
+    db: aiosqlite.Connection = Depends(get_db),
+):
+    """Get the most recent directive for this operation."""
+    await ensure_operation(db, operation_id)
+    cursor = await db.execute(
+        "SELECT * FROM ooda_directives WHERE operation_id = ? ORDER BY created_at DESC LIMIT 1",
+        (operation_id,),
+    )
+    row = await cursor.fetchone()
+    if not row:
+        return None
+    return dict(row)
+
+
 @router.post("/operations/{operation_id}/ooda/auto-start")
+
+
 async def start_ooda_auto_loop(
     operation_id: str,
     interval_sec: int = 30,
@@ -264,6 +289,8 @@ async def start_ooda_auto_loop(
 
 
 @router.delete("/operations/{operation_id}/ooda/auto-stop")
+
+
 async def stop_ooda_auto_loop(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
@@ -274,6 +301,8 @@ async def stop_ooda_auto_loop(
 
 
 @router.get("/operations/{operation_id}/ooda/auto-status")
+
+
 async def get_ooda_auto_status(operation_id: str):
     """Get auto loop status for this operation (purely in-memory, no DB check needed)."""
     return get_loop_status(operation_id)

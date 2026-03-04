@@ -23,8 +23,7 @@ from datetime import datetime, timezone
 
 import aiosqlite
 
-from app.clients._ssh_common import _parse_credential
-from app.clients.persistent_ssh_client import _parse_key_credential
+from app.clients._ssh_common import _parse_credential, _parse_key_credential
 from app.config import settings
 
 logger = logging.getLogger(__name__)

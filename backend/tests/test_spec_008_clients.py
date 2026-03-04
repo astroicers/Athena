@@ -135,22 +135,31 @@ async def test_engine_router_metasploit_route(seeded_db):
     assert exec_row["status"] == "success"
 
 
-async def test_engine_router_persistent_ssh_route():
-    """EXECUTION_ENGINE=persistent_ssh routes to PersistentSSHChannelEngine."""
+async def test_engine_router_mcp_ssh_route():
+    """EXECUTION_ENGINE=mcp_ssh routes to _execute_via_mcp_executor."""
     import aiosqlite
     from unittest.mock import AsyncMock, MagicMock, patch
     from app.services.engine_router import EngineRouter
     from app.clients.mock_c2_client import MockC2Client
     from app.services.fact_collector import FactCollector
-    from app.ws_manager import WebSocketManager
     from app.clients import ExecutionResult
 
     mock_ws = MagicMock()
     mock_ws.broadcast = AsyncMock()
+    mock_mcp = MagicMock()
+    mock_mcp.execute = AsyncMock(
+        return_value=ExecutionResult(
+            success=True, execution_id="exec-123",
+            output="Linux test", facts=[], error=None,
+        )
+    )
+    mock_fc = MagicMock()
+    mock_fc.collect_from_result = AsyncMock(return_value=[])
     router = EngineRouter(
         c2_engine=MockC2Client(),
-        fact_collector=FactCollector(ws_manager=mock_ws),
+        fact_collector=mock_fc,
         ws_manager=mock_ws,
+        mcp_engine=mock_mcp,
     )
 
     async with aiosqlite.connect(":memory:") as db:
@@ -186,27 +195,22 @@ async def test_engine_router_persistent_ssh_route():
         """)
         await db.commit()
 
-        mock_exec_result = ExecutionResult(
-            success=True, execution_id="exec-123",
-            output="Linux test", facts=[], error=None,
-        )
+        with patch("app.services.engine_router.settings") as mock_settings:
+            mock_settings.EXECUTION_ENGINE = "mcp_ssh"
+            mock_settings.MOCK_C2_ENGINE = False
+            mock_settings.MCP_ENABLED = True
+            mock_settings.PERSISTENCE_ENABLED = False
 
-        with patch("app.config.settings.EXECUTION_ENGINE", "persistent_ssh"), \
-             patch("app.config.settings.MOCK_C2_ENGINE", False), \
-             patch(
-                 "app.clients.persistent_ssh_client.PersistentSSHChannelEngine.execute",
-                 new_callable=AsyncMock,
-                 return_value=mock_exec_result,
-             ) as mock_persistent_execute:
             result = await router.execute(
                 db=db,
                 technique_id="T1592",
                 target_id="tgt-1",
-                engine="persistent_ssh",
+                engine="auto",
                 operation_id="op-persist-test",
             )
 
     assert result["status"] == "success"
-    assert mock_persistent_execute.call_count == 1
-    assert mock_persistent_execute.call_args[0][0] == "T1592"  # ability_id
-    assert mock_persistent_execute.call_args[0][1] == "root:toor@127.0.0.1:22"  # credential_string
+    assert result["engine"] == "mcp_ssh"
+    mock_mcp.execute.assert_awaited_once()
+    call_args = mock_mcp.execute.call_args
+    assert call_args[0][0] == "attack-executor:execute_technique"

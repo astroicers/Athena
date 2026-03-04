@@ -97,6 +97,24 @@ services:
       - "127.0.0.1:58093:8080"
     restart: unless-stopped
 
+  mcp-credential-checker:
+    build: { context: ./tools/credential-checker }
+    profiles: [mcp]
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--port", "8080"]
+    ports:
+      - "127.0.0.1:58094:8080"
+    restart: unless-stopped
+
+  mcp-attack-executor:
+    build: { context: ./tools/attack-executor }
+    profiles: [mcp]
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--port", "8080"]
+    environment:
+      - SESSION_IDLE_TIMEOUT_SEC=300
+    ports:
+      - "127.0.0.1:58095:8080"
+    restart: unless-stopped
+
 volumes:
   backend-data:
     driver: local

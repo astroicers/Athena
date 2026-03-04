@@ -30,9 +30,8 @@ class Settings(BaseSettings):
     C2_AGENT_CALLBACK_URL: str = ""
     C2_ENGINE_API_KEY: str = ""
     MOCK_C2_ENGINE: bool = True
-    # "ssh" | "persistent_ssh" | "c2" | "mock"
-    EXECUTION_ENGINE: str = "ssh"
-    PERSISTENT_SSH_SESSION_TIMEOUT_SEC: int = 300
+    # "mcp_ssh" | "c2" | "mock"
+    EXECUTION_ENGINE: str = "mcp_ssh"
     C2_MOCK_BEACON: bool = False  # True skips 30s beacon wait (only relevant when EXECUTION_ENGINE=c2)
     ANTHROPIC_API_KEY: str = ""
     ANTHROPIC_AUTH_TOKEN: str = ""
@@ -58,15 +57,16 @@ class Settings(BaseSettings):
     MSF_RPC_SSL: bool = False
     MOCK_METASPLOIT: bool = True
     PERSISTENCE_ENABLED: bool = False
-    WINRM_ENABLED: bool = False
-    WINRM_TIMEOUT_SEC: int = 30
     # MCP integration
-    MCP_ENABLED: bool = False
+    MCP_ENABLED: bool = True
     MCP_SERVERS_FILE: str = "mcp_servers.json"
-    MCP_TOOL_TIMEOUT_SEC: int = 120
+    MCP_TOOL_TIMEOUT_SEC: int = 300
     MCP_RECONNECT_INTERVAL_SEC: int = 5
     MCP_MAX_RETRIES: int = 3
     MCP_TRANSPORT_MODE: str = "auto"  # "stdio" | "http" | "auto"
+    # OODA auto-trigger
+    AUTO_OODA_AFTER_RECON: bool = True
+    AUTO_OODA_DELAY_SEC: int = 5
 
 
 settings = Settings()

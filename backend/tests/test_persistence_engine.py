@@ -21,8 +21,10 @@ async def test_persistence_probe_disabled_by_default():
 
 
 def test_technique_executors_has_persistence_techniques():
-    """TECHNIQUE_EXECUTORS 應包含持久化技術 T1053.003 和 T1543.002。"""
-    from app.clients._ssh_common import TECHNIQUE_EXECUTORS, TECHNIQUE_FACT_TRAITS
+    """MCP attack-executor TECHNIQUE_EXECUTORS should contain persistence techniques."""
+    import sys
+    sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent.parent.parent / "tools" / "attack-executor"))
+    from server import TECHNIQUE_EXECUTORS, TECHNIQUE_FACT_TRAITS
     assert "T1053.003" in TECHNIQUE_EXECUTORS
     assert "T1543.002" in TECHNIQUE_EXECUTORS
     assert "T1136.001" in TECHNIQUE_EXECUTORS

@@ -231,26 +231,42 @@ async def get_topology(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
-    """Build topology graph from targets and agents."""
+    """Build topology graph: Athena C2 centre + target hosts + state-aware edges."""
     db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
-    # Targets → host nodes
+    # ── Athena C2 centre node ──
+    nodes: list[TopologyNode] = [
+        TopologyNode(
+            id="athena-c2",
+            label="ATHENA",
+            type="c2",
+            data={"role": "c2", "is_compromised": False, "is_active": True},
+        )
+    ]
+
+    # ── Targets → host nodes (deduplicate by ip_address) ──
     cursor = await db.execute(
         "SELECT * FROM targets WHERE operation_id = ?", (operation_id,)
     )
     target_rows = await cursor.fetchall()
 
-    nodes: list[TopologyNode] = []
+    seen_ips: set[str] = set()
+    target_ids: list[str] = []  # track for phase lookup
     for t in target_rows:
+        ip = t["ip_address"]
+        if ip in seen_ips:
+            continue
+        seen_ips.add(ip)
+        target_ids.append(t["id"])
         nodes.append(
             TopologyNode(
                 id=t["id"],
-                label=f"{t['hostname']} ({t['ip_address']})",
+                label=f"{t['hostname']} ({ip})",
                 type="host",
                 data={
                     "hostname": t["hostname"],
-                    "ip_address": t["ip_address"],
+                    "ip_address": ip,
                     "os": t["os"],
                     "role": t["role"],
                     "is_compromised": bool(t["is_compromised"]),
@@ -260,33 +276,67 @@ async def get_topology(
             )
         )
 
-    # Agents → agent nodes + edges to their host
-    cursor = await db.execute(
-        "SELECT * FROM agents WHERE operation_id = ?", (operation_id,)
-    )
-    agent_rows = await cursor.fetchall()
-
+    # ── Compute attack_phase per target and build Athena→host edges ──
     edges: list[TopologyEdge] = []
-    for a in agent_rows:
-        nodes.append(
-            TopologyNode(
-                id=a["id"],
-                label=a["paw"],
-                type="agent",
-                data={
-                    "paw": a["paw"],
-                    "status": a["status"],
-                    "privilege": a["privilege"],
-                    "platform": a["platform"],
-                },
-            )
+
+    for tid in target_ids:
+        # Agent status (highest priority)
+        cur = await db.execute(
+            "SELECT paw, status, privilege FROM agents "
+            "WHERE host_id = ? AND operation_id = ? ORDER BY last_beacon DESC LIMIT 1",
+            (tid, operation_id),
         )
-        edges.append(
-            TopologyEdge(
-                source=a["id"],
-                target=a["host_id"],
-                label=f"beacon ({a['status']})",
-            )
+        agent = await cur.fetchone()
+
+        # Technique execution status
+        cur = await db.execute(
+            "SELECT status FROM technique_executions "
+            "WHERE target_id = ? AND operation_id = ? ORDER BY created_at DESC LIMIT 1",
+            (tid, operation_id),
         )
+        exec_row = await cur.fetchone()
+
+        # Recon scan status
+        cur = await db.execute(
+            "SELECT status FROM recon_scans "
+            "WHERE target_id = ? AND operation_id = ? ORDER BY started_at DESC LIMIT 1",
+            (tid, operation_id),
+        )
+        scan_row = await cur.fetchone()
+
+        # Determine phase (priority: session > attacking > scanning > attempted > idle)
+        phase = "idle"
+        edge_label = None
+
+        if agent and agent["status"] == "alive":
+            phase = "session"
+            priv = agent["privilege"] or "user"
+            edge_label = f"SSH ({priv})"
+        elif exec_row and exec_row["status"] == "running":
+            phase = "attacking"
+            edge_label = "Attacking..."
+        elif scan_row and scan_row["status"] == "running":
+            phase = "scanning"
+            edge_label = "Scanning..."
+        elif exec_row or scan_row:
+            phase = "attempted"
+            edge_label = "Attempted"
+
+        # Store phase in the host node data
+        for n in nodes:
+            if n.id == tid:
+                n.data["attack_phase"] = phase
+                break
+
+        # Build edge from Athena → host (only if not idle)
+        if phase != "idle":
+            edges.append(
+                TopologyEdge(
+                    source="athena-c2",
+                    target=tid,
+                    label=edge_label,
+                    data={"phase": phase},
+                )
+            )
 
     return TopologyData(nodes=nodes, edges=edges)

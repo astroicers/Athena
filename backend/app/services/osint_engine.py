@@ -8,9 +8,8 @@
 #
 # For commercial licensing, contact: [TODO: contact email]
 
-"""OSINTEngine — domain subdomain enumeration and IP resolution."""
+"""OSINTEngine — delegates subdomain enumeration to MCP and processes results."""
 
-import asyncio
 import logging
 import time
 import uuid
@@ -44,18 +43,14 @@ class OSINTEngine:
         domain: str,
         max_subdomains: int | None = None,
     ) -> OSINTResult:
-        """Enumerate subdomains for a domain and persist results as facts and targets.
+        """Enumerate subdomains for a domain via MCP and persist results.
 
         Steps:
         1. If mock mode, return deterministic mock result.
-        2. Query crt.sh (passive, no binary needed).
-        3. Query subfinder if available (graceful degradation if missing).
-        4. DNS-resolve all discovered subdomains.
-        5. Deduplicate and apply scope limits.
-        6. Create Target records in DB for discovered hosts.
-        7. Write facts: osint.subdomain, osint.resolved_ip, osint.certificate_san.
-        8. Broadcast fact.new events.
-        9. Return OSINTResult.
+        2. Delegate discovery to MCP osint-recon server.
+        3. Create Target records in DB for discovered hosts.
+        4. Write facts and broadcast events.
+        5. Return OSINTResult.
         """
         db.row_factory = aiosqlite.Row
         limit = max_subdomains or settings.OSINT_MAX_SUBDOMAINS
@@ -68,35 +63,13 @@ class OSINTEngine:
                 domain=domain,
             )
 
-        # Steps 2–5: MCP mode or direct queries
-        if settings.MCP_ENABLED:
-            subdomain_infos, sources_used = await self._discover_via_mcp(domain, limit)
-        else:
-            # Step 2: crt.sh
-            crtsh_subs = await self._crtsh_query(domain)
-            sources_used = ["crtsh"] if crtsh_subs else []
+        # Steps 2–5: MCP-only (no direct crtsh/subfinder/DNS execution)
+        if not settings.MCP_ENABLED:
+            raise ConnectionError(
+                "MCP is required for OSINT discovery (MCP_ENABLED=false)"
+            )
 
-            # Step 3: subfinder
-            subfinder_subs: list[str] = []
-            if settings.SUBFINDER_ENABLED:
-                subfinder_subs = await self._subfinder_query(domain)
-                if subfinder_subs:
-                    sources_used.append("subfinder")
-
-            # Step 4: Deduplicate all subdomains
-            all_subs: set[str] = set(crtsh_subs) | set(subfinder_subs)
-            all_subs.discard(domain)  # exclude apex domain itself
-            all_subs_list = sorted(all_subs)[:limit]
-
-            # Step 5: DNS resolve
-            resolved = await self._resolve_all(all_subs_list)
-
-            # Build SubdomainInfo list
-            subdomain_infos = []
-            for sub in all_subs_list:
-                ips = resolved.get(sub, [])
-                source = "crtsh" if sub in crtsh_subs else "subfinder"
-                subdomain_infos.append(SubdomainInfo(subdomain=sub, resolved_ips=ips, source=source))
+        subdomain_infos, sources_used = await self._discover_via_mcp(domain, limit)
 
         # Steps 6–8: Write targets and facts
         facts_written = 0
@@ -249,90 +222,6 @@ class OSINTEngine:
                 resolved.setdefault(sub, []).append(ip)
         return resolved
 
-    async def _crtsh_query(self, domain: str) -> list[str]:
-        """Query crt.sh certificate transparency logs for subdomains."""
-        try:
-            import httpx
-            url = f"https://crt.sh/?q=%.{domain}&output=json"
-            async with httpx.AsyncClient(timeout=settings.OSINT_REQUEST_TIMEOUT_SEC) as client:
-                resp = await client.get(url)
-                if resp.status_code != 200:
-                    logger.warning("crt.sh returned status %s for %s", resp.status_code, domain)
-                    return []
-                data = resp.json()
-        except Exception as exc:
-            logger.warning("crt.sh query failed for %s: %s", domain, exc)
-            return []
-
-        subdomains: set[str] = set()
-        for entry in data:
-            name_value = entry.get("name_value", "")
-            for name in name_value.split("\n"):
-                name = name.strip().lower()
-                # Filter: must end with the domain, skip wildcards and apex
-                if name.endswith(f".{domain}") and not name.startswith("*"):
-                    subdomains.add(name)
-        return sorted(subdomains)
-
-    async def _subfinder_query(self, domain: str) -> list[str]:
-        """Run subfinder binary if available. Returns empty list on failure."""
-        try:
-            proc = await asyncio.create_subprocess_exec(
-                "subfinder", "-d", domain, "-silent",
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.DEVNULL,
-            )
-            stdout, _ = await asyncio.wait_for(
-                proc.communicate(),
-                timeout=settings.OSINT_REQUEST_TIMEOUT_SEC,
-            )
-            lines = stdout.decode(errors="ignore").strip().split("\n")
-            return [ln.strip().lower() for ln in lines if ln.strip() and domain in ln]
-        except (FileNotFoundError, OSError):
-            logger.debug("subfinder not available — skipping")
-            return []
-        except asyncio.TimeoutError:
-            logger.warning("subfinder timed out for %s", domain)
-            return []
-        except Exception as exc:
-            logger.warning("subfinder error for %s: %s", domain, exc)
-            return []
-
-    async def _resolve_all(self, subdomains: list[str]) -> dict[str, list[str]]:
-        """DNS A/AAAA resolution via dnspython. Returns {subdomain: [ip, ...]}."""
-        try:
-            import dns.asyncresolver
-            import dns.exception
-        except ImportError:
-            logger.warning("dnspython not installed — DNS resolution unavailable")
-            return {}
-
-        result: dict[str, list[str]] = {}
-        resolver = dns.asyncresolver.Resolver()
-        resolver.timeout = 3
-        resolver.lifetime = 5
-
-        async def resolve_one(sub: str) -> None:
-            ips: list[str] = []
-            for rdtype in ("A", "AAAA"):
-                try:
-                    answers = await resolver.resolve(sub, rdtype)
-                    ips.extend(str(r) for r in answers)
-                except (dns.exception.DNSException, Exception):
-                    pass
-            if ips:
-                result[sub] = ips
-
-        # Resolve concurrently (but limit concurrency)
-        semaphore = asyncio.Semaphore(20)
-
-        async def resolve_with_sem(sub: str) -> None:
-            async with semaphore:
-                await resolve_one(sub)
-
-        await asyncio.gather(*[resolve_with_sem(s) for s in subdomains])
-        return result
-
     async def _write_fact(
         self,
         db: aiosqlite.Connection,
@@ -368,19 +257,16 @@ class OSINTEngine:
         hostname: str,
         ip_address: str,
     ) -> bool:
-        """Create a Target record if no target with this IP exists in the operation."""
-        cursor = await db.execute(
-            "SELECT id FROM targets WHERE ip_address = ? AND operation_id = ?",
-            (ip_address, operation_id),
-        )
-        if await cursor.fetchone() is not None:
-            return False  # Already exists
+        """Create a Target record if no target with this IP exists in the operation.
 
+        Uses INSERT OR IGNORE with UNIQUE(ip_address, operation_id) constraint
+        to avoid race conditions under concurrent discovery.
+        """
         target_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
-        await db.execute(
+        cursor = await db.execute(
             """
-            INSERT INTO targets
+            INSERT OR IGNORE INTO targets
                 (id, hostname, ip_address, os, role, network_segment,
                  is_compromised, privilege_level, operation_id, created_at)
             VALUES (?, ?, ?, NULL, 'discovered', 'external', 0, NULL, ?, ?)
@@ -388,7 +274,7 @@ class OSINTEngine:
             (target_id, hostname, ip_address, operation_id, now),
         )
         await db.commit()
-        return True
+        return cursor.rowcount > 0
 
     async def _mock_result(
         self,

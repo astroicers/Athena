@@ -159,11 +159,18 @@ class VulnLookupService:
                 findings.append(finding)
             return findings
 
-        # Cache miss → MCP or direct NVD query
+        # Cache miss → MCP or direct NVD query (with graceful fallback)
         try:
+            _mcp_ok = False
             if settings.MCP_ENABLED:
-                nvd_results = await self._query_nvd_via_mcp(cpe)
-            else:
+                try:
+                    nvd_results = await self._query_nvd_via_mcp(cpe)
+                    _mcp_ok = True
+                except ConnectionError:
+                    logger.warning(
+                        "MCP vuln-lookup unavailable, falling back to direct NVD API"
+                    )
+            if not _mcp_ok:
                 nvd_results = await self._query_nvd(cpe)
         except Exception as exc:
             logger.warning("NVD API query failed for %s: %s", cpe, exc)

@@ -161,7 +161,7 @@ class BatchImportResult(BaseModel):
 class TopologyNode(BaseModel):
     id: str
     label: str
-    type: str = "host"  # "host" | "agent"
+    type: str = "host"  # "host" | "c2" | "agent"
     x: float | None = None
     y: float | None = None
     data: dict = {}
@@ -171,6 +171,7 @@ class TopologyEdge(BaseModel):
     source: str
     target: str
     label: str | None = None
+    data: dict = {}
 
 
 class TopologyData(BaseModel):

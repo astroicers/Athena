@@ -12,8 +12,14 @@ import re
 import time
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
-mcp = FastMCP("athena-vuln-lookup")
+# Allow Docker internal network hostnames (mcp-vuln, etc.)
+_security = TransportSecuritySettings(
+    enable_dns_rebinding_protection=False,
+)
+
+mcp = FastMCP("athena-vuln-lookup", transport_security=_security)
 
 # Static CPE mapping — same as Athena's VulnLookupService._banner_to_cpe
 _CPE_MAP: dict[str, tuple[str, str]] = {
@@ -200,4 +206,14 @@ async def nvd_cve_lookup(cpe: str, max_results: int = 10) -> str:
 
 
 if __name__ == "__main__":
-    mcp.run()
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--transport", default="stdio", choices=["stdio", "sse", "streamable-http"])
+    parser.add_argument("--host", default="0.0.0.0")
+    parser.add_argument("--port", type=int, default=8080)
+    args = parser.parse_args()
+
+    mcp.settings.host = args.host
+    mcp.settings.port = args.port
+    mcp.run(transport=args.transport)

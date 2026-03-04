@@ -10,6 +10,7 @@ services:
     volumes:
       - backend-data:/app/data
       - ~/.claude/.credentials.json:/root/.claude/.credentials.json:ro
+      - ./mcp_servers.json:/app/mcp_servers.json:ro
     env_file:
       - .env
     environment:
@@ -61,13 +62,21 @@ services:
       -u ${MSF_RPC_USER:-msf} -a 0.0.0.0 -p 55553 -S -f
     restart: unless-stopped
 
+  # MCP shared base image — build first with: make build-mcp-base
+  mcp-base:
+    build:
+      context: ./tools
+      dockerfile: Dockerfile.base
+    image: athena-mcp-base:latest
+    profiles: [build-only]
+
   # MCP Tool Servers — optional, enable with: docker compose --profile mcp up -d
   mcp-nmap:
     build: { context: ./tools/nmap-scanner }
     profiles: [mcp]
     command: ["python", "-m", "server", "--transport", "streamable-http", "--port", "8080"]
     ports:
-      - "127.0.0.1:8091:8080"
+      - "127.0.0.1:58091:8080"
     restart: unless-stopped
 
   mcp-osint:
@@ -75,7 +84,7 @@ services:
     profiles: [mcp]
     command: ["python", "-m", "server", "--transport", "streamable-http", "--port", "8080"]
     ports:
-      - "127.0.0.1:8092:8080"
+      - "127.0.0.1:58092:8080"
     restart: unless-stopped
 
   mcp-vuln:
@@ -85,7 +94,7 @@ services:
     environment:
       - NVD_API_KEY=${NVD_API_KEY:-}
     ports:
-      - "127.0.0.1:8093:8080"
+      - "127.0.0.1:58093:8080"
     restart: unless-stopped
 
 volumes:

@@ -11,6 +11,7 @@
 """OODA loop endpoints."""
 
 import asyncio
+import json
 import logging
 import uuid
 
@@ -201,6 +202,47 @@ async def get_ooda_timeline(
                         timestamp=row["started_at"] or "",
                     )
                 )
+    # ── Also include completed recon scans as timeline entries ──────────
+    recon_cursor = await db.execute(
+        """
+        SELECT rs.target_id, rs.open_ports, rs.os_guess,
+               rs.initial_access_method, rs.credential_found,
+               rs.completed_at, rs.ip_address AS scan_ip,
+               t.hostname, t.ip_address
+        FROM recon_scans rs
+        LEFT JOIN targets t ON t.id = rs.target_id
+        WHERE rs.operation_id = ? AND rs.status = 'completed'
+        ORDER BY rs.completed_at ASC
+        """,
+        (operation_id,),
+    )
+    recon_rows = await recon_cursor.fetchall()
+
+    for row in recon_rows:
+        ports = json.loads(row["open_ports"] or "[]")
+        host = row["hostname"] or row["ip_address"] or row["scan_ip"] or "unknown"
+        parts = [f"Target: {host}"]
+        if ports:
+            port_list = ", ".join(
+                f"{p['port']}/{p.get('service', '?')}" for p in ports
+            )
+            parts.append(f"Ports: {port_list}")
+        if row["os_guess"]:
+            parts.append(f"OS: {row['os_guess']}")
+        if row["credential_found"]:
+            parts.append(f"Credential: {row['credential_found']}")
+        elif row["initial_access_method"] and row["initial_access_method"] != "none":
+            parts.append(f"Access: {row['initial_access_method']}")
+
+        entries.append(
+            OODATimelineEntry(
+                iteration_number=0,
+                phase="recon",
+                summary=" · ".join(parts),
+                timestamp=row["completed_at"] or "",
+            )
+        )
+
     return entries
 
 

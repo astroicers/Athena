@@ -50,6 +50,7 @@ class ReconScanResult(BaseModel):
     ip_address: str
     os_guess: str | None
     services_found: int
+    services: list[ServiceInfo] = []
     facts_written: int
     initial_access: InitialAccessResult
     scan_duration_sec: float

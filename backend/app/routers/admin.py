@@ -60,6 +60,9 @@ async def reset_operation(
         "DELETE FROM mission_steps WHERE operation_id = ?", (operation_id,)
     )
     await db.execute(
+        "DELETE FROM recon_scans WHERE operation_id = ?", (operation_id,)
+    )
+    await db.execute(
         "DELETE FROM agents WHERE operation_id = ?", (operation_id,)
     )
     await db.execute(

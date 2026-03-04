@@ -9,8 +9,14 @@ import asyncio
 import json
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
-mcp = FastMCP("athena-nmap-scanner")
+# Allow Docker internal network hostnames (mcp-nmap, etc.)
+_security = TransportSecuritySettings(
+    enable_dns_rebinding_protection=False,
+)
+
+mcp = FastMCP("athena-nmap-scanner", transport_security=_security)
 
 # Default port list matching Athena's ReconEngine
 _DEFAULT_PORTS = (
@@ -82,7 +88,7 @@ async def nmap_scan(target: str, ports: str = _DEFAULT_PORTS) -> str:
     if os_guess:
         facts.append({"trait": "host.os", "value": os_guess})
 
-    raw_output = nm.get_nmap_last_output() or ""
+    raw_output = (nm.get_nmap_last_output() or b"").decode(errors="replace")
     return json.dumps({
         "facts": facts,
         "raw_output": raw_output[:2000],
@@ -97,4 +103,14 @@ def _run_nmap(ip: str, ports: str, nmap_lib) -> "nmap_lib.PortScanner":
 
 
 if __name__ == "__main__":
-    mcp.run()
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--transport", default="stdio", choices=["stdio", "sse", "streamable-http"])
+    parser.add_argument("--host", default="0.0.0.0")
+    parser.add_argument("--port", type=int, default=8080)
+    args = parser.parse_args()
+
+    mcp.settings.host = args.host
+    mcp.settings.port = args.port
+    mcp.run(transport=args.transport)

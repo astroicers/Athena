@@ -148,20 +148,3 @@ async def update_mission_step(
     cursor = await db.execute("SELECT * FROM mission_steps WHERE id = ?", (step_id,))
     row = await cursor.fetchone()
     return _row_to_step(row)
-
-
-@router.post("/operations/{operation_id}/mission/execute")
-async def execute_mission(
-    operation_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
-):
-    """STUB — Queue all mission steps for execution."""
-    db.row_factory = aiosqlite.Row
-    await ensure_operation(db, operation_id)
-
-    cursor = await db.execute(
-        "SELECT COUNT(*) AS cnt FROM mission_steps WHERE operation_id = ?",
-        (operation_id,),
-    )
-    row = await cursor.fetchone()
-    return {"message": "Execution queued", "steps_count": row["cnt"]}

@@ -60,12 +60,13 @@ class Settings(BaseSettings):
     PERSISTENCE_ENABLED: bool = False
     WINRM_ENABLED: bool = False
     WINRM_TIMEOUT_SEC: int = 30
-    # MCP integration (Phase 1)
+    # MCP integration
     MCP_ENABLED: bool = False
     MCP_SERVERS_FILE: str = "mcp_servers.json"
     MCP_TOOL_TIMEOUT_SEC: int = 120
     MCP_RECONNECT_INTERVAL_SEC: int = 5
     MCP_MAX_RETRIES: int = 3
+    MCP_TRANSPORT_MODE: str = "auto"  # "stdio" | "http" | "auto"
 
 
 settings = Settings()

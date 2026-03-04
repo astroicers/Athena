@@ -234,22 +234,26 @@ class InitialAccessEngine:
 
         paw = f"SSH-{ip_address}"
         privilege = "root" if credential.startswith("root:") else "user"
+        now = datetime.now().isoformat()
 
-        await db.execute(
-            """
-            INSERT OR REPLACE INTO agents
-                (id, paw, host_id, status, privilege, platform, operation_id, last_beacon)
-            VALUES (?, ?, ?, 'alive', ?, 'linux', ?, ?)
-            """,
-            (
-                str(uuid4()),
-                paw,
-                target_id,
-                privilege,
-                operation_id,
-                datetime.now().isoformat(),
-            ),
+        # Upsert: update existing agent or insert new one
+        existing = await db.execute(
+            "SELECT id FROM agents WHERE paw = ? AND operation_id = ?",
+            (paw, operation_id),
         )
+        row = await existing.fetchone()
+        if row:
+            await db.execute(
+                "UPDATE agents SET host_id=?, status='alive', privilege=?, last_beacon=? WHERE id=?",
+                (target_id, privilege, now, row[0]),
+            )
+        else:
+            await db.execute(
+                """INSERT INTO agents
+                    (id, paw, host_id, status, privilege, platform, operation_id, last_beacon)
+                VALUES (?, ?, ?, 'alive', ?, 'linux', ?, ?)""",
+                (str(uuid4()), paw, target_id, privilege, operation_id, now),
+            )
         await db.commit()
 
     async def _mock_ssh_result(

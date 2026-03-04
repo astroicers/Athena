@@ -9,8 +9,14 @@ import asyncio
 import json
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
-mcp = FastMCP("athena-osint-recon")
+# Allow Docker internal network hostnames (mcp-osint, etc.)
+_security = TransportSecuritySettings(
+    enable_dns_rebinding_protection=False,
+)
+
+mcp = FastMCP("athena-osint-recon", transport_security=_security)
 
 
 @mcp.tool()
@@ -165,4 +171,14 @@ async def dns_resolve(subdomains: str) -> str:
 
 
 if __name__ == "__main__":
-    mcp.run()
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--transport", default="stdio", choices=["stdio", "sse", "streamable-http"])
+    parser.add_argument("--host", default="0.0.0.0")
+    parser.add_argument("--port", type=int, default=8080)
+    args = parser.parse_args()
+
+    mcp.settings.host = args.host
+    mcp.settings.port = args.port
+    mcp.run(transport=args.transport)

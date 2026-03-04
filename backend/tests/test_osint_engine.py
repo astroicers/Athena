@@ -24,6 +24,7 @@ def make_mock_db():
     db = AsyncMock()
     cursor = AsyncMock()
     cursor.fetchone = AsyncMock(return_value=None)
+    cursor.rowcount = 1
     db.execute = AsyncMock(return_value=cursor)
     db.commit = AsyncMock()
     db.row_factory = None
@@ -60,6 +61,7 @@ async def test_mock_mode_writes_facts():
         captured.append((sql, params))
         cursor = AsyncMock()
         cursor.fetchone = AsyncMock(return_value=None)
+        cursor.rowcount = 1
         return cursor
 
     db.execute = AsyncMock(side_effect=capture_execute)
@@ -80,71 +82,56 @@ async def test_mock_mode_writes_facts():
             assert "osint" in params, f"Expected 'osint' category in params: {params}"
 
 
-async def test_crtsh_query_parsing():
-    """_crtsh_query correctly parses subdomains from crt.sh JSON response."""
+async def test_mcp_required_when_not_mock():
+    """When MOCK_C2_ENGINE=False and MCP_ENABLED=False, discover raises ConnectionError."""
+    db = make_mock_db()
+
+    with patch("app.services.osint_engine.settings") as mock_settings, \
+         patch("app.services.osint_engine.ws_manager.broadcast", new=AsyncMock()):
+        mock_settings.MOCK_C2_ENGINE = False
+        mock_settings.MCP_ENABLED = False
+        mock_settings.OSINT_MAX_SUBDOMAINS = 500
+
+        with pytest.raises(ConnectionError, match="MCP is required"):
+            await OSINTEngine().discover(db, "op-001", "example.com")
+
+
+async def test_parse_mcp_subdomains():
+    """_parse_mcp_subdomains correctly parses osint.subdomain facts from MCP result."""
     engine = OSINTEngine()
-    mock_response_data = [
-        {"name_value": "mail.example.com\nwww.example.com"},
-        {"name_value": "*.example.com"},  # wildcard — should be excluded
-        {"name_value": "api.example.com"},
-    ]
+    import json
+    mcp_result = {
+        "content": [{
+            "type": "text",
+            "text": json.dumps({
+                "facts": [
+                    {"trait": "osint.subdomain", "value": "www.example.com"},
+                    {"trait": "osint.subdomain", "value": "api.example.com"},
+                    {"trait": "other.trait", "value": "ignored"},
+                ]
+            }),
+        }],
+    }
 
-    with patch("httpx.AsyncClient") as mock_client_cls:
-        mock_client = AsyncMock()
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = mock_response_data
-        mock_client.get = AsyncMock(return_value=mock_response)
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-        mock_client_cls.return_value = mock_client
-
-        with patch("app.services.osint_engine.settings") as mock_settings:
-            mock_settings.OSINT_REQUEST_TIMEOUT_SEC = 30
-            subs = await engine._crtsh_query("example.com")
-
-    # Should include subdomain entries, not wildcards, not apex
-    assert "mail.example.com" in subs
+    subs = engine._parse_mcp_subdomains(mcp_result)
     assert "www.example.com" in subs
     assert "api.example.com" in subs
-    # Wildcard entries should be filtered out
-    assert not any(s.startswith("*") for s in subs)
-
-
-async def test_subfinder_graceful_degradation():
-    """When subfinder binary is not found, returns empty list without error."""
-    engine = OSINTEngine()
-
-    with patch("asyncio.create_subprocess_exec", side_effect=FileNotFoundError("subfinder not found")):
-        result = await engine._subfinder_query("example.com")
-
-    assert result == []
+    assert len(subs) == 2
 
 
 async def test_create_target_if_missing_deduplicates():
-    """_create_target_if_missing returns False when IP already exists for this operation."""
+    """_create_target_if_missing returns False when IP already exists (INSERT OR IGNORE)."""
     db = make_mock_db()
-
-    # First call: target doesn't exist (fetchone returns None)
-    cursor_miss = AsyncMock()
-    cursor_miss.fetchone = AsyncMock(return_value=None)
-
-    # Second call: target already exists (fetchone returns a row)
-    cursor_hit = AsyncMock()
-    cursor_hit.fetchone = AsyncMock(return_value={"id": "existing-target-id"})
 
     call_count = 0
 
     async def side_effect(sql, params=None, /):
         nonlocal call_count
         call_count += 1
-        if "SELECT id FROM targets" in sql:
-            if call_count == 1:
-                return cursor_miss
-            else:
-                return cursor_hit
         cursor = AsyncMock()
-        cursor.fetchone = AsyncMock(return_value=None)
+        if "INSERT OR IGNORE" in sql:
+            # First insert succeeds (rowcount=1), second is ignored (rowcount=0)
+            cursor.rowcount = 1 if call_count == 1 else 0
         return cursor
 
     db.execute = AsyncMock(side_effect=side_effect)
@@ -153,7 +140,7 @@ async def test_create_target_if_missing_deduplicates():
 
     # First call should create the target
     created1 = await engine._create_target_if_missing(db, "op-001", "www.test.com", "10.0.0.1")
-    # Second call with same IP should not create
+    # Second call with same IP should not create (INSERT OR IGNORE → rowcount=0)
     created2 = await engine._create_target_if_missing(db, "op-001", "mail.test.com", "10.0.0.1")
 
     assert created1 is True

@@ -80,3 +80,24 @@ async def health_check(db: aiosqlite.Connection = Depends(get_db)):
         version="0.1.0",
         services=services,
     )
+
+
+@router.get("/mcp/status")
+async def mcp_status():
+    """Return MCP subsystem status with circuit breaker states."""
+    if not settings.MCP_ENABLED:
+        return {"enabled": False, "servers": [], "tool_count": 0}
+
+    from app.services.mcp_client_manager import get_mcp_manager
+
+    mcp_mgr = get_mcp_manager()
+    if mcp_mgr is None:
+        return {"enabled": True, "servers": [], "tool_count": 0}
+
+    servers = mcp_mgr.list_servers()
+    total_tools = sum(s.get("tool_count", 0) for s in servers)
+    return {
+        "enabled": True,
+        "servers": servers,
+        "tool_count": total_tools,
+    }

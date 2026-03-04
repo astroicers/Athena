@@ -48,6 +48,14 @@ build:
 	@echo "🔨 Building $(APP_NAME) services..."
 	docker-compose build
 
+build-mcp-base:  ## Build the shared MCP base image
+	@echo "🔨 Building MCP base image..."
+	docker build -t athena-mcp-base:latest -f tools/Dockerfile.base tools/
+
+build-mcp: build-mcp-base  ## Build all MCP tool server images
+	@echo "🔨 Building MCP tool servers..."
+	docker-compose --profile mcp build
+
 clean:
 	@echo "🧹 Cleaning..."
 	rm -rf ./tmp/* 2>/dev/null || true
@@ -65,15 +73,15 @@ logs:
 	docker-compose logs -f --tail=100
 
 up:
-	@echo "🚀 Starting Athena (detached)..."
-	docker-compose up --build -d
+	@echo "🚀 Starting Athena + MCP tools (detached)..."
+	docker-compose --profile mcp up --build -d
 	@echo "✅ Backend: http://localhost:8000/api/health"
 	@echo "✅ Frontend: http://localhost:3000"
 	@echo "📋 Logs: make logs"
 
 down:
 	@echo "⏹  Stopping Athena..."
-	docker-compose down
+	docker-compose --profile mcp down
 
 docker-clean:
 	@echo "🧹 Cleaning Docker (images + volumes)..."

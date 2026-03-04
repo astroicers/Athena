@@ -5,6 +5,7 @@
       "command": "python",
       "args": ["-m", "server"],
       "env": {},
+      "http_url": "http://mcp-nmap:8080/mcp",
       "enabled": true,
       "description": "Nmap port scanner and service detection",
       "tool_prefix": "nmap"
@@ -14,6 +15,7 @@
       "command": "python",
       "args": ["-m", "server"],
       "env": {},
+      "http_url": "http://mcp-osint:8080/mcp",
       "enabled": true,
       "description": "OSINT subdomain enumeration and DNS resolution",
       "tool_prefix": "osint"
@@ -23,29 +25,9 @@
       "command": "python",
       "args": ["-m", "server"],
       "env": {},
+      "http_url": "http://mcp-vuln:8080/mcp",
       "enabled": true,
       "description": "CVE lookup via NVD API with CPE mapping",
-      "tool_prefix": "vuln"
-    },
-    "nmap-scanner-http": {
-      "transport": "http",
-      "url": "http://mcp-nmap:8080",
-      "enabled": false,
-      "description": "Nmap scanner (containerized)",
-      "tool_prefix": "nmap"
-    },
-    "osint-recon-http": {
-      "transport": "http",
-      "url": "http://mcp-osint:8080",
-      "enabled": false,
-      "description": "OSINT recon (containerized)",
-      "tool_prefix": "osint"
-    },
-    "vuln-lookup-http": {
-      "transport": "http",
-      "url": "http://mcp-vuln:8080",
-      "enabled": false,
-      "description": "Vuln lookup (containerized)",
       "tool_prefix": "vuln"
     },
     "credential-checker": {

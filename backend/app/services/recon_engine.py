@@ -8,16 +8,14 @@
 #
 # For commercial licensing, contact: [TODO: contact email]
 
-"""ReconEngine — runs nmap scans and writes results to the facts table."""
+"""ReconEngine — delegates nmap scans to MCP and writes results to the facts table."""
 
-import asyncio
 import logging
 import time
 import uuid
 from datetime import datetime, timezone
 
 import aiosqlite
-import nmap
 
 from app.config import settings
 from app.models.recon import ReconResult, ServiceInfo
@@ -98,62 +96,16 @@ class ReconEngine:
             )
 
         # ------------------------------------------------------------------
-        # Step 3: MCP mode or direct nmap
+        # Step 3: MCP-only nmap (no direct execution)
         # ------------------------------------------------------------------
-        if settings.MCP_ENABLED:
-            services, os_guess, raw_xml, scan_duration = await self._scan_via_mcp(
-                ip_address
+        if not settings.MCP_ENABLED:
+            raise ConnectionError(
+                "MCP is required for nmap scanning (MCP_ENABLED=false)"
             )
-        else:
-            loop = asyncio.get_event_loop()
-            t_start = time.monotonic()
-            nm: nmap.PortScanner = await loop.run_in_executor(
-                None,
-                self._run_nmap,
-                ip_address,
-            )
-            scan_duration = time.monotonic() - t_start
 
-            services: list[ServiceInfo] = []
-            os_guess: str | None = None
-
-            if ip_address in nm.all_hosts():
-                host_data = nm[ip_address]
-
-                if "osmatch" in host_data and host_data["osmatch"]:
-                    raw_os = host_data["osmatch"][0].get("name", "")
-                    os_guess = raw_os.replace(" ", "_") if raw_os else None
-
-                for proto in host_data.all_protocols():
-                    for port in host_data[proto].keys():
-                        port_data = host_data[proto][port]
-                        if port_data.get("state") != "open":
-                            continue
-                        svc_name = port_data.get("name", "unknown")
-                        svc_version = (
-                            " ".join(
-                                filter(
-                                    None,
-                                    [
-                                        port_data.get("product", ""),
-                                        port_data.get("version", ""),
-                                        port_data.get("extrainfo", ""),
-                                    ],
-                                )
-                            ).strip()
-                            or "unknown"
-                        )
-                        services.append(
-                            ServiceInfo(
-                                port=port,
-                                protocol=proto,
-                                service=svc_name,
-                                version=svc_version,
-                                state="open",
-                            )
-                        )
-
-            raw_xml: str | None = nm.get_nmap_last_output() or None
+        services, os_guess, raw_xml, scan_duration = await self._scan_via_mcp(
+            ip_address
+        )
 
         # ------------------------------------------------------------------
         # Steps 5–7: Write facts and broadcast events
@@ -264,21 +216,6 @@ class ReconEngine:
                 os_guess = value
 
         return services, os_guess, raw_xml, scan_duration
-
-    @staticmethod
-    def _run_nmap(ip: str) -> nmap.PortScanner:
-        """Synchronous nmap call — intended to run inside an executor."""
-        nm = nmap.PortScanner()
-        nm.scan(
-            hosts=ip,
-            arguments=(
-                "-sV -Pn --script=banner "
-                "-p 21,22,23,25,53,80,110,135,139,143,443,445,"
-                "1433,3000,3306,3389,3500,5432,5900,6379,"
-                "8080,8443,8888,9090,27017"
-            ),
-        )
-        return nm
 
     async def _mock_result(
         self,

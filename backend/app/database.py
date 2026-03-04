@@ -210,6 +210,7 @@ _CREATE_TABLES: list[str] = [
         id TEXT PRIMARY KEY,
         operation_id TEXT REFERENCES operations(id) ON DELETE CASCADE,
         target_id TEXT REFERENCES targets(id) ON DELETE CASCADE,
+        ip_address TEXT,
         status TEXT DEFAULT 'pending',
         nmap_result TEXT,
         open_ports TEXT,
@@ -635,6 +636,12 @@ async def init_db() -> None:
             await db.commit()
         except Exception:
             pass
+        # Migration: add ip_address column to recon_scans
+        try:
+            await db.execute("ALTER TABLE recon_scans ADD COLUMN ip_address TEXT")
+            await db.commit()
+        except Exception:
+            pass  # column already exists
         # Migration: deduplicate targets and agents, then add unique indexes
         try:
             # Remove duplicate targets (keep the earliest row per ip+operation)

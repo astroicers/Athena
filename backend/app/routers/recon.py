@@ -23,7 +23,7 @@ from pydantic import BaseModel
 from app.config import settings
 from app.database import get_db, _DB_FILE
 from app.models.osint import OSINTDiscoverQueued, OSINTResult
-from app.models.recon import ReconScanResult, InitialAccessResult, ReconScanQueued
+from app.models.recon import ReconScanResult, InitialAccessResult, ReconScanQueued, ServiceInfo
 from app.routers._deps import ensure_operation
 from app.services.initial_access_engine import InitialAccessEngine
 from app.services.osint_engine import OSINTEngine
@@ -89,10 +89,10 @@ async def run_recon_scan(
     await db.execute(
         """
         INSERT INTO recon_scans
-            (id, operation_id, target_id, status, started_at)
-        VALUES (?, ?, ?, 'queued', ?)
+            (id, operation_id, target_id, ip_address, status, started_at)
+        VALUES (?, ?, ?, ?, 'queued', ?)
         """,
-        (scan_id, op_id, body.target_id, now_utc),
+        (scan_id, op_id, body.target_id, ip_address, now_utc),
     )
     await db.commit()
 
@@ -178,10 +178,21 @@ async def _run_scan_background(
                 error=None,
             )
             if body.enable_initial_access:
-                ia_engine = InitialAccessEngine()
-                ia_result = await ia_engine.try_ssh_login(
-                    db, op_id, target_id, ip_address, port=22
+                # Only attempt SSH if port 22 was found open by nmap
+                ssh_open = any(
+                    svc.port == 22 and svc.service in ("ssh", "unknown")
+                    for svc in recon_result.services
                 )
+                if ssh_open:
+                    ia_engine = InitialAccessEngine()
+                    ia_result = await ia_engine.try_ssh_login(
+                        db, op_id, target_id, ip_address, port=22
+                    )
+                else:
+                    logger.info(
+                        "Skipping initial access for %s — port 22 not open (%d services found)",
+                        ip_address, len(recon_result.services),
+                    )
 
                 # Bootstrap C2 agent if SSH succeeded and not in mock mode
                 if ia_result.success and not settings.MOCK_C2_ENGINE:
@@ -209,9 +220,15 @@ async def _run_scan_background(
                 await asyncio.sleep(1.0)
 
             # Update DB as completed
-            open_ports_json = json.dumps(
-                [{"port": svc.port, "service": svc.service} for svc in recon_result.services]
-            )
+            open_ports_json = json.dumps([
+                {
+                    "port": svc.port,
+                    "protocol": svc.protocol,
+                    "service": svc.service,
+                    "version": svc.version,
+                }
+                for svc in recon_result.services
+            ])
             completed_at = datetime.now(timezone.utc).isoformat()
             await db.execute(
                 """
@@ -269,12 +286,93 @@ async def _run_scan_background(
             )
 
 
+@router.get(
+    "/operations/{op_id}/recon/scans/{scan_id}",
+    response_model=ReconScanResult,
+)
+async def get_recon_scan_result(
+    op_id: str,
+    scan_id: str,
+    db: aiosqlite.Connection = Depends(get_db),
+) -> ReconScanResult:
+    """Return a full ReconScanResult for a completed scan (used by frontend modal)."""
+    db.row_factory = aiosqlite.Row
+    await ensure_operation(db, op_id)
+
+    cursor = await db.execute(
+        """
+        SELECT s.id, s.operation_id, s.target_id, s.status,
+               s.open_ports, s.os_guess,
+               s.initial_access_method, s.credential_found,
+               s.agent_deployed, s.started_at, s.completed_at,
+               t.ip_address
+        FROM recon_scans s
+        JOIN targets t ON t.id = s.target_id
+        WHERE s.id = ? AND s.operation_id = ?
+        """,
+        (scan_id, op_id),
+    )
+    row = await cursor.fetchone()
+    if row is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Scan '{scan_id}' not found in operation '{op_id}'",
+        )
+
+    open_ports = json.loads(row["open_ports"] or "[]")
+    started = row["started_at"] or ""
+    completed = row["completed_at"] or ""
+    # Calculate duration from timestamps
+    scan_duration = 0.0
+    if started and completed:
+        try:
+            t_start = datetime.fromisoformat(started)
+            t_end = datetime.fromisoformat(completed)
+            scan_duration = (t_end - t_start).total_seconds()
+        except ValueError:
+            pass
+
+    services = [
+        ServiceInfo(
+            port=p["port"],
+            protocol=p.get("protocol", "tcp"),
+            service=p.get("service", "unknown"),
+            version=p.get("version", ""),
+            state="open",
+        )
+        for p in open_ports
+    ]
+
+    return ReconScanResult(
+        scan_id=row["id"],
+        status=row["status"],
+        target_id=row["target_id"],
+        operation_id=row["operation_id"],
+        ip_address=row["ip_address"],
+        os_guess=row["os_guess"],
+        services_found=len(open_ports),
+        services=services,
+        facts_written=0,  # not stored in DB; already reflected in facts table
+        initial_access=InitialAccessResult(
+            success=bool(row["credential_found"]),
+            method=row["initial_access_method"] or "none",
+            credential=row["credential_found"],
+            agent_deployed=bool(row["agent_deployed"]),
+            error=None,
+        ),
+        scan_duration_sec=round(scan_duration, 1),
+    )
+
+
 @router.get("/operations/{op_id}/recon/status")
 async def get_recon_status(
     op_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ) -> dict:
-    """Return the most recent recon scan row for this operation."""
+    """Return the most recent recon scan row for this operation.
+
+    Auto-fails scans stuck in 'running'/'queued' for more than 10 minutes.
+    """
     db.row_factory = aiosqlite.Row
 
     await ensure_operation(db, op_id)
@@ -299,7 +397,27 @@ async def get_recon_status(
             detail=f"No recon scans found for operation '{op_id}'",
         )
 
-    return dict(row)
+    result = dict(row)
+
+    # Auto-fail stuck scans (running/queued > 10 minutes)
+    if result["status"] in ("running", "queued") and result.get("started_at"):
+        try:
+            started = datetime.fromisoformat(result["started_at"])
+            elapsed = (datetime.now(timezone.utc) - started).total_seconds()
+            if elapsed > 600:  # 10 minutes
+                now_iso = datetime.now(timezone.utc).isoformat()
+                await db.execute(
+                    "UPDATE recon_scans SET status='failed', completed_at=? WHERE id=?",
+                    (now_iso, result["id"]),
+                )
+                await db.commit()
+                result["status"] = "failed"
+                result["completed_at"] = now_iso
+                logger.warning("Auto-failed stuck recon scan %s (>10 min)", result["id"])
+        except (ValueError, TypeError):
+            pass
+
+    return result
 
 
 @router.post(

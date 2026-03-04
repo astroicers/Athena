@@ -41,7 +41,15 @@ async def test_health_includes_mcp_servers(client):
 @pytest.mark.asyncio
 async def test_health_no_mcp_when_disabled(client):
     """When MCP_ENABLED=False, health response has no mcp_servers."""
-    resp = await client.get("/api/health")
+    with patch("app.routers.health.settings") as s:
+        s.MOCK_C2_ENGINE = True
+        s.MOCK_LLM = True
+        s.MCP_ENABLED = False
+        s.ANTHROPIC_API_KEY = ""
+        s.ANTHROPIC_AUTH_TOKEN = ""
+        s.LLM_BACKEND = "auto"
+        s.OPENAI_API_KEY = ""
+        resp = await client.get("/api/health")
     assert resp.status_code == 200
     data = resp.json()
     assert "mcp_servers" not in data["services"]

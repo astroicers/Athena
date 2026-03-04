@@ -29,6 +29,7 @@ import aiosqlite
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.config import settings
 from app.database import _DB_FILE, get_db, init_db
 from app.services.ooda_scheduler import start_scheduler, stop_scheduler
 from app.routers import (
@@ -68,7 +69,25 @@ async def lifespan(app: FastAPI):
             from app.seed.demo_scenario import seed
             await seed()
 
+    # MCP integration — only when opted in
+    mcp_manager = None
+    if settings.MCP_ENABLED:
+        from app.services.mcp_client_manager import (
+            MCPClientManager,
+            set_mcp_manager,
+        )
+
+        mcp_manager = MCPClientManager()
+        await mcp_manager.startup()
+        app.state.mcp_manager = mcp_manager
+        set_mcp_manager(mcp_manager)
+
     yield  # application runs here
+
+    if mcp_manager is not None:
+        await mcp_manager.shutdown()
+        from app.services.mcp_client_manager import set_mcp_manager as _set
+        _set(None)
     stop_scheduler()
 
 

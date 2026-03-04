@@ -160,6 +160,7 @@ async def test_run_scan_background_marks_completed(tmp_db):
     with patch("app.routers.recon._DB_FILE", db_path), \
          patch("aiosqlite.connect") as mock_connect, \
          patch("app.routers.recon.ReconEngine") as MockReconEngine, \
+         patch("app.routers.recon.asyncio.sleep", new_callable=AsyncMock), \
          patch("app.ws_manager.ws_manager") as mock_ws:
 
         # Make aiosqlite.connect return tmp_db as an async context manager
@@ -218,6 +219,7 @@ async def test_run_scan_background_marks_failed_on_exception(tmp_db):
     with patch("app.routers.recon._DB_FILE", ":memory:"), \
          patch("aiosqlite.connect") as mock_connect, \
          patch("app.routers.recon.ReconEngine") as MockReconEngine, \
+         patch("app.routers.recon.asyncio.sleep", new_callable=AsyncMock), \
          patch("app.ws_manager.ws_manager") as mock_ws:
 
         mock_connect.return_value.__aenter__ = AsyncMock(return_value=tmp_db)

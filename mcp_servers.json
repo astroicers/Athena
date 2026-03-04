@@ -1,0 +1,31 @@
+{
+  "servers": {
+    "nmap-scanner": {
+      "transport": "stdio",
+      "command": "python",
+      "args": ["-m", "server"],
+      "env": {},
+      "enabled": true,
+      "description": "Nmap port scanner and service detection",
+      "tool_prefix": "nmap"
+    },
+    "osint-recon": {
+      "transport": "stdio",
+      "command": "python",
+      "args": ["-m", "server"],
+      "env": {},
+      "enabled": true,
+      "description": "OSINT subdomain enumeration and DNS resolution",
+      "tool_prefix": "osint"
+    },
+    "vuln-lookup": {
+      "transport": "stdio",
+      "command": "python",
+      "args": ["-m", "server"],
+      "env": {},
+      "enabled": true,
+      "description": "CVE lookup via NVD API with CPE mapping",
+      "tool_prefix": "vuln"
+    }
+  }
+}

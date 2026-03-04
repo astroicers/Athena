@@ -37,11 +37,13 @@ class EngineRouter:
         c2_engine: BaseEngineClient,
         fact_collector: FactCollector,
         ws_manager: WebSocketManager,
+        mcp_engine: BaseEngineClient | None = None,
     ):
         self._c2_engine = c2_engine
         self._fact_collector = fact_collector
         self._ws = ws_manager
         self._capability_matcher = AgentCapabilityMatcher()
+        self._mcp_engine = mcp_engine
 
     async def execute(
         self, db: aiosqlite.Connection, technique_id: str, target_id: str,
@@ -72,6 +74,13 @@ class EngineRouter:
         )
         tech_row = await cursor.fetchone()
         ability_id = (tech_row["c2_ability_id"] if tech_row else None) or technique_id
+
+        # ── MCP route: engine == "mcp" ────────────────────────────────────────
+        if engine == "mcp" and settings.MCP_ENABLED and self._mcp_engine:
+            return await self._execute_mcp(
+                db, exec_id, now, ability_id, technique_id, target_id,
+                engine, operation_id, ooda_iteration_id,
+            )
 
         # ── Metasploit route: exploit=true CVE fact → highest priority ────────
         # Check BEFORE SSH/Caldera routing (ADR-019)
@@ -377,6 +386,46 @@ class EngineRouter:
             (privilege, target_id),
         )
         await db.commit()
+
+    async def _execute_mcp(
+        self,
+        db: aiosqlite.Connection,
+        exec_id: str,
+        now: str,
+        ability_id: str,
+        technique_id: str,
+        target_id: str,
+        engine: str,
+        operation_id: str,
+        ooda_iteration_id: str | None,
+    ) -> dict:
+        """MCP execution path — call tool via MCP server."""
+        await db.execute(
+            "INSERT INTO technique_executions "
+            "(id, technique_id, target_id, operation_id, ooda_iteration_id, "
+            "engine, status, started_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, 'running', ?)",
+            (exec_id, technique_id, target_id, operation_id,
+             ooda_iteration_id, "mcp", now),
+        )
+        await db.commit()
+
+        await self._ws.broadcast(operation_id, "execution.update", {
+            "id": exec_id, "technique_id": technique_id,
+            "status": "running", "engine": "mcp",
+        })
+
+        target_ip = await self._get_target_ip(db, target_id)
+        target_str = target_ip or target_id
+
+        result: ExecutionResult = await self._mcp_engine.execute(
+            ability_id, target_str,
+        )
+
+        return await self._finalize_execution(
+            db, exec_id, technique_id, target_id, "mcp",
+            operation_id, result,
+        )
 
     async def _execute_c2(
         self,

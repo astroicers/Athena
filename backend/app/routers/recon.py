@@ -36,6 +36,16 @@ from app.services.recon_engine import ReconEngine
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# Mock scan phases with delays (only used when MOCK_C2_ENGINE=True)
+_MOCK_SCAN_PHASES: list[tuple[str, float]] = [
+    ("host_discovery", 1.0),
+    ("port_scan", 2.0),
+    ("service_detection", 1.5),
+    ("os_fingerprint", 1.0),
+    ("credential_test", 1.5),
+    ("finalizing", 1.0),
+]
+
 
 class ReconScanRequest(BaseModel):
     target_id: str
@@ -119,6 +129,21 @@ async def _run_scan_background(
     """Background task: run nmap + initial access, broadcast WS events."""
     from app.ws_manager import ws_manager  # local import to avoid circular
 
+    total_mock_steps = len(_MOCK_SCAN_PHASES)
+
+    async def _broadcast_phase(phase: str, step: int) -> None:
+        await ws_manager.broadcast(
+            op_id,
+            "recon.progress",
+            {
+                "scan_id": scan_id,
+                "target_id": target_id,
+                "phase": phase,
+                "step": step,
+                "total_steps": total_mock_steps,
+            },
+        )
+
     async with aiosqlite.connect(_DB_FILE) as db:
         db.row_factory = aiosqlite.Row
         try:
@@ -131,11 +156,22 @@ async def _run_scan_background(
                 op_id, "recon.started", {"scan_id": scan_id, "target_id": target_id}
             )
 
+            # ── Mock mode: simulate phased scan with delays ─────────────
+            if settings.MOCK_C2_ENGINE:
+                for idx, (phase_key, delay) in enumerate(_MOCK_SCAN_PHASES[:4]):
+                    await _broadcast_phase(phase_key, idx + 1)
+                    await asyncio.sleep(delay)
+
             # Run nmap scan
             recon_result = await ReconEngine().scan(db, op_id, target_id)
-            await ws_manager.broadcast(
-                op_id, "recon.progress", {"scan_id": scan_id, "phase": "initial_access"}
-            )
+
+            if settings.MOCK_C2_ENGINE:
+                await _broadcast_phase("credential_test", 5)
+                await asyncio.sleep(1.5)
+            else:
+                await ws_manager.broadcast(
+                    op_id, "recon.progress", {"scan_id": scan_id, "phase": "initial_access"}
+                )
 
             # Optional initial access
             ia_result = InitialAccessResult(
@@ -170,6 +206,11 @@ async def _run_scan_background(
                         agent_deployed=deployed,
                         error=ia_result.error,
                     )
+
+            # Mock mode: finalizing phase
+            if settings.MOCK_C2_ENGINE:
+                await _broadcast_phase("finalizing", 6)
+                await asyncio.sleep(1.0)
 
             # Update DB as completed
             open_ports_json = json.dumps(

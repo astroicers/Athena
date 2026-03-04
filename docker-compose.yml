@@ -49,6 +49,18 @@ services:
       - c2-engine-data:/usr/src/app/data
     restart: unless-stopped
 
+  # Metasploit RPC — optional, enable with: docker compose --profile msf up -d
+  msf-rpc:
+    image: metasploitframework/metasploit-framework:latest
+    profiles: [msf]
+    ports:
+      - "127.0.0.1:55553:55553"
+    entrypoint: []
+    command: >
+      /usr/src/metasploit-framework/msfrpcd -P ${MSF_RPC_PASSWORD:-msf_password}
+      -u ${MSF_RPC_USER:-msf} -a 0.0.0.0 -p 55553 -S -f
+    restart: unless-stopped
+
 volumes:
   backend-data:
     driver: local

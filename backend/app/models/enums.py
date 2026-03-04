@@ -61,6 +61,7 @@ class ExecutionEngine(str, Enum):
     MOCK = "mock"
     METASPLOIT = "metasploit"
     WINRM = "winrm"
+    MCP = "mcp"
 
 
 class C5ISRDomain(str, Enum):

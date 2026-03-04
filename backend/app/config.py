@@ -12,12 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent  # .../Athena
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=str(_PROJECT_ROOT / ".env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     DATABASE_URL: str = "sqlite:///backend/data/athena.db"
@@ -58,6 +64,10 @@ class Settings(BaseSettings):
     PERSISTENCE_ENABLED: bool = False
     WINRM_ENABLED: bool = False
     WINRM_TIMEOUT_SEC: int = 30
+    # MCP integration (Phase 1)
+    MCP_ENABLED: bool = False
+    MCP_SERVERS_FILE: str = "mcp_servers.json"
+    MCP_TOOL_TIMEOUT_SEC: int = 120
 
 
 settings = Settings()

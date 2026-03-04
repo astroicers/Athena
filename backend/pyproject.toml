@@ -19,6 +19,7 @@ dependencies = [
     "dnspython>=2.4.0",
     "apscheduler>=3.10.0",
     "pymetasploit3>=1.0.3",
+    "mcp>=1.6.0",
 ]
 
 [project.optional-dependencies]

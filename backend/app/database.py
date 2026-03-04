@@ -335,7 +335,7 @@ TECHNIQUE_PLAYBOOK_SEEDS = [
      "tags": '["lateral_movement"]'},
     {"mitre_id": "T1078.001", "platform": "linux",
      "command": "id && cat /etc/passwd | grep -v nologin | grep -v false",
-     "facts_traits": '["credential.ssh"]',
+     "facts_traits": '["host.user"]',
      "tags": '["initial_access"]'},
     {"mitre_id": "T1110.001", "platform": "linux",
      "command": "echo 'SSH_BRUTEFORCE_HANDLED_BY_INITIAL_ACCESS_ENGINE'",
@@ -412,6 +412,7 @@ TOOL_REGISTRY_SEEDS = [
         "mitre_techniques": '["T1046","T1595.001","T1595.002"]',
         "risk_level": "medium",
         "output_traits": '["network.host.ip","service.port","service.banner","host.os"]',
+        "config_json": '{"mcp_server":"nmap-scanner","mcp_tool":"nmap_scan"}',
     },
     {
         "tool_id": "subfinder",
@@ -422,6 +423,7 @@ TOOL_REGISTRY_SEEDS = [
         "mitre_techniques": '["T1595.001","T1596"]',
         "risk_level": "low",
         "output_traits": '["network.host.hostname"]',
+        "config_json": '{"mcp_server":"osint-recon","mcp_tool":"subfinder_query"}',
     },
     {
         "tool_id": "crtsh",
@@ -432,6 +434,7 @@ TOOL_REGISTRY_SEEDS = [
         "mitre_techniques": '["T1596"]',
         "risk_level": "low",
         "output_traits": '["osint.subdomain","osint.certificate_san"]',
+        "config_json": '{"mcp_server":"osint-recon","mcp_tool":"crtsh_query"}',
     },
     {
         "tool_id": "nvd_lookup",
@@ -442,6 +445,7 @@ TOOL_REGISTRY_SEEDS = [
         "mitre_techniques": '["T1595.002"]',
         "risk_level": "low",
         "output_traits": '["vuln.cve","vulnerability.cve"]',
+        "config_json": '{"mcp_server":"vuln-lookup","mcp_tool":"nvd_cve_lookup"}',
     },
     {
         "tool_id": "ssh",
@@ -465,10 +469,10 @@ TOOL_REGISTRY_SEEDS = [
     },
     {
         "tool_id": "c2",
-        "name": "C2 (Caldera)",
+        "name": "C2 Engine",
         "kind": "engine",
         "category": "execution",
-        "description": "MITRE Caldera C2 framework integration",
+        "description": "C2 framework integration for technique execution",
         "mitre_techniques": "[]",
         "risk_level": "high",
         "output_traits": "[]",
@@ -520,8 +524,8 @@ async def _seed_tool_registry(db: aiosqlite.Connection) -> None:
             """
             INSERT OR IGNORE INTO tool_registry
                 (id, tool_id, name, kind, category, description,
-                 mitre_techniques, risk_level, output_traits, source)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'seed')
+                 mitre_techniques, risk_level, output_traits, config_json, source)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'seed')
             """,
             (
                 str(uuid4()),
@@ -533,6 +537,7 @@ async def _seed_tool_registry(db: aiosqlite.Connection) -> None:
                 seed["mitre_techniques"],
                 seed["risk_level"],
                 seed["output_traits"],
+                seed.get("config_json", "{}"),
             ),
         )
 
@@ -596,9 +601,28 @@ async def init_db() -> None:
             await db.commit()
         except Exception:
             pass
+        # Migration: debrand C2 (Caldera) → C2 Engine (ADR-019)
+        try:
+            await db.execute(
+                "UPDATE tool_registry SET name = 'C2 Engine',"
+                " description = 'C2 framework integration for technique execution'"
+                " WHERE tool_id = 'c2' AND name = 'C2 (Caldera)'"
+            )
+            await db.commit()
+        except Exception:
+            pass
         # Migration: add is_active column to targets
         try:
             await db.execute("ALTER TABLE targets ADD COLUMN is_active INTEGER DEFAULT 0")
+            await db.commit()
+        except Exception:
+            pass
+        # Migration: fix poisoned credential.ssh facts from T1078.001 id output
+        try:
+            await db.execute(
+                "UPDATE facts SET trait = 'host.user' "
+                "WHERE trait = 'credential.ssh' AND value LIKE 'uid=%'"
+            )
             await db.commit()
         except Exception:
             pass

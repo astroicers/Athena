@@ -72,31 +72,35 @@ class OSINTEngine:
                 domain=domain,
             )
 
-        # Step 2: crt.sh
-        crtsh_subs = await self._crtsh_query(domain)
-        sources_used = ["crtsh"] if crtsh_subs else []
+        # Steps 2–5: MCP mode or direct queries
+        if settings.MCP_ENABLED:
+            subdomain_infos, sources_used = await self._discover_via_mcp(domain, limit)
+        else:
+            # Step 2: crt.sh
+            crtsh_subs = await self._crtsh_query(domain)
+            sources_used = ["crtsh"] if crtsh_subs else []
 
-        # Step 3: subfinder
-        subfinder_subs: list[str] = []
-        if settings.SUBFINDER_ENABLED:
-            subfinder_subs = await self._subfinder_query(domain)
-            if subfinder_subs:
-                sources_used.append("subfinder")
+            # Step 3: subfinder
+            subfinder_subs: list[str] = []
+            if settings.SUBFINDER_ENABLED:
+                subfinder_subs = await self._subfinder_query(domain)
+                if subfinder_subs:
+                    sources_used.append("subfinder")
 
-        # Step 4: Deduplicate all subdomains
-        all_subs: set[str] = set(crtsh_subs) | set(subfinder_subs)
-        all_subs.discard(domain)  # exclude apex domain itself
-        all_subs_list = sorted(all_subs)[:limit]
+            # Step 4: Deduplicate all subdomains
+            all_subs: set[str] = set(crtsh_subs) | set(subfinder_subs)
+            all_subs.discard(domain)  # exclude apex domain itself
+            all_subs_list = sorted(all_subs)[:limit]
 
-        # Step 5: DNS resolve
-        resolved = await self._resolve_all(all_subs_list)
+            # Step 5: DNS resolve
+            resolved = await self._resolve_all(all_subs_list)
 
-        # Build SubdomainInfo list
-        subdomain_infos: list[SubdomainInfo] = []
-        for sub in all_subs_list:
-            ips = resolved.get(sub, [])
-            source = "crtsh" if sub in crtsh_subs else "subfinder"
-            subdomain_infos.append(SubdomainInfo(subdomain=sub, resolved_ips=ips, source=source))
+            # Build SubdomainInfo list
+            subdomain_infos = []
+            for sub in all_subs_list:
+                ips = resolved.get(sub, [])
+                source = "crtsh" if sub in crtsh_subs else "subfinder"
+                subdomain_infos.append(SubdomainInfo(subdomain=sub, resolved_ips=ips, source=source))
 
         # Steps 6–8: Write targets and facts
         facts_written = 0
@@ -152,6 +156,102 @@ class OSINTEngine:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    async def _discover_via_mcp(
+        self, domain: str, limit: int
+    ) -> "tuple[list[SubdomainInfo], list[str]]":
+        """Delegate OSINT discovery to MCP osint-recon server."""
+        import json as _json
+
+        from app.services.mcp_client_manager import get_mcp_manager
+
+        manager = get_mcp_manager()
+        if manager is None or not manager.is_connected("osint-recon"):
+            raise ConnectionError("MCP osint-recon server is not connected")
+
+        sources_used: list[str] = []
+
+        # 1. crt.sh query
+        crtsh_result = await manager.call_tool(
+            "osint-recon", "crtsh_query", {"domain": domain}
+        )
+        crtsh_subs = self._parse_mcp_subdomains(crtsh_result)
+        if crtsh_subs:
+            sources_used.append("crtsh")
+
+        # 2. subfinder query (if enabled)
+        subfinder_subs: set[str] = set()
+        if settings.SUBFINDER_ENABLED:
+            sf_result = await manager.call_tool(
+                "osint-recon", "subfinder_query", {"domain": domain}
+            )
+            subfinder_subs = set(self._parse_mcp_subdomains(sf_result))
+            if subfinder_subs:
+                sources_used.append("subfinder")
+
+        # 3. Deduplicate
+        all_subs = sorted((set(crtsh_subs) | subfinder_subs) - {domain})[:limit]
+
+        # 4. DNS resolve
+        if all_subs:
+            resolve_result = await manager.call_tool(
+                "osint-recon", "dns_resolve", {"subdomains": ",".join(all_subs)}
+            )
+            resolved = self._parse_mcp_resolved_ips(resolve_result)
+        else:
+            resolved = {}
+
+        # 5. Build SubdomainInfo list
+        subdomain_infos: list[SubdomainInfo] = []
+        for sub in all_subs:
+            ips = resolved.get(sub, [])
+            source = "crtsh" if sub in crtsh_subs else "subfinder"
+            subdomain_infos.append(SubdomainInfo(subdomain=sub, resolved_ips=ips, source=source))
+
+        return subdomain_infos, sources_used
+
+    @staticmethod
+    def _parse_mcp_subdomains(mcp_result: dict) -> list[str]:
+        """Parse osint.subdomain facts from MCP result."""
+        import json as _json
+
+        text_parts = [
+            block.get("text", "")
+            for block in mcp_result.get("content", [])
+            if isinstance(block, dict) and block.get("type") == "text"
+        ]
+        text = "\n".join(text_parts)
+        try:
+            data = _json.loads(text)
+        except _json.JSONDecodeError:
+            return []
+        return [
+            f["value"]
+            for f in data.get("facts", [])
+            if f.get("trait") == "osint.subdomain"
+        ]
+
+    @staticmethod
+    def _parse_mcp_resolved_ips(mcp_result: dict) -> dict[str, list[str]]:
+        """Parse osint.resolved_ip facts from MCP result → {subdomain: [ip, ...]}."""
+        import json as _json
+
+        text_parts = [
+            block.get("text", "")
+            for block in mcp_result.get("content", [])
+            if isinstance(block, dict) and block.get("type") == "text"
+        ]
+        text = "\n".join(text_parts)
+        try:
+            data = _json.loads(text)
+        except _json.JSONDecodeError:
+            return {}
+        resolved: dict[str, list[str]] = {}
+        for f in data.get("facts", []):
+            if f.get("trait") == "osint.resolved_ip" and ":" in f.get("value", ""):
+                sub, ip = f["value"].rsplit(":", 1)
+                resolved.setdefault(sub, []).append(ip)
+        return resolved
 
     async def _crtsh_query(self, domain: str) -> list[str]:
         """Query crt.sh certificate transparency logs for subdomains."""

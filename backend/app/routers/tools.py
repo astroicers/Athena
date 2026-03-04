@@ -19,7 +19,7 @@ import uuid
 from datetime import datetime, timezone
 
 import aiosqlite
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.database import get_db
 from app.models.tool_registry import (
@@ -210,17 +210,37 @@ async def delete_tool(
 @router.post("/{tool_id}/check")
 async def check_tool(
     tool_id: str,
+    request: Request,
     db: aiosqlite.Connection = Depends(get_db),
 ):
-    """Health check stub — returns availability status for a tool."""
+    """Health check — returns availability status for a tool.
+
+    For MCP-backed tools (config_json.mcp_server), pings the MCP server.
+    """
     db.row_factory = aiosqlite.Row
     cursor = await db.execute(
-        "SELECT tool_id, name, enabled FROM tool_registry WHERE tool_id = ?",
+        "SELECT tool_id, name, enabled, config_json FROM tool_registry WHERE tool_id = ?",
         (tool_id,),
     )
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Tool not found")
+
+    config = json.loads(row["config_json"] or "{}")
+    mcp_server = config.get("mcp_server")
+
+    if mcp_server and hasattr(request.app.state, "mcp_manager"):
+        manager = request.app.state.mcp_manager
+        is_healthy = await manager.health_check(mcp_server)
+        return {
+            "tool_id": row["tool_id"],
+            "available": is_healthy,
+            "detail": (
+                f"{row['name']} MCP server '{mcp_server}' is "
+                f"{'available' if is_healthy else 'unavailable'}"
+            ),
+        }
+
     return {
         "tool_id": row["tool_id"],
         "available": bool(row["enabled"]),

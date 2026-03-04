@@ -163,9 +163,12 @@ class VulnLookupService:
                 findings.append(finding)
             return findings
 
-        # Cache miss → query NVD API
+        # Cache miss → MCP or direct NVD query
         try:
-            nvd_results = await self._query_nvd(cpe)
+            if settings.MCP_ENABLED:
+                nvd_results = await self._query_nvd_via_mcp(cpe)
+            else:
+                nvd_results = await self._query_nvd(cpe)
         except Exception as exc:
             logger.warning("NVD API query failed for %s: %s", cpe, exc)
             return []
@@ -220,6 +223,54 @@ class VulnLookupService:
             if count_row and count_row[0] > 0:
                 return list(rows)  # Cache hit (may be empty list if no CVEs found)
         return None  # Cache miss
+
+    async def _query_nvd_via_mcp(self, cpe: str) -> list[dict]:
+        """Query NVD via MCP vuln-lookup server."""
+        import json as _json
+        import re
+
+        from app.services.mcp_client_manager import get_mcp_manager
+
+        manager = get_mcp_manager()
+        if manager is None or not manager.is_connected("vuln-lookup"):
+            raise ConnectionError("MCP vuln-lookup server is not connected")
+
+        result = await manager.call_tool(
+            "vuln-lookup", "nvd_cve_lookup", {"cpe": cpe}
+        )
+
+        text_parts = [
+            block.get("text", "")
+            for block in result.get("content", [])
+            if isinstance(block, dict) and block.get("type") == "text"
+        ]
+        text = "\n".join(text_parts)
+
+        try:
+            data = _json.loads(text)
+        except _json.JSONDecodeError:
+            logger.warning("MCP nvd_cve_lookup returned non-JSON: %s", text[:200])
+            return []
+
+        results: list[dict] = []
+        for fact in data.get("facts", []):
+            if fact.get("trait") != "vuln.cve":
+                continue
+            value = fact.get("value", "")
+            # Parse: "CVE-ID:cvss=N:severity=X:exploit=BOOL:desc=..."
+            cve_id_match = re.match(r"(CVE-\d+-\d+)", value)
+            cvss_match = re.search(r"cvss=([\d.]+)", value)
+            exploit_match = re.search(r"exploit=(true|false)", value)
+            desc_match = re.search(r"desc=(.+)$", value)
+
+            results.append({
+                "cve_id": cve_id_match.group(1) if cve_id_match else "",
+                "cvss_score": float(cvss_match.group(1)) if cvss_match else 0.0,
+                "description": desc_match.group(1) if desc_match else "",
+                "exploit_available": exploit_match.group(1) == "true" if exploit_match else False,
+            })
+
+        return results
 
     async def _query_nvd(self, cpe: str) -> list[dict]:
         """Query NVD NIST API v2 for CVEs matching a CPE string."""

@@ -102,65 +102,62 @@ class ReconEngine:
             )
 
         # ------------------------------------------------------------------
-        # Step 3: Run nmap in executor (blocking call)
+        # Step 3: MCP mode or direct nmap
         # ------------------------------------------------------------------
-        loop = asyncio.get_event_loop()
-        t_start = time.monotonic()
-        nm: nmap.PortScanner = await loop.run_in_executor(
-            None,
-            self._run_nmap,
-            ip_address,
-        )
-        scan_duration = time.monotonic() - t_start
+        if settings.MCP_ENABLED:
+            services, os_guess, raw_xml, scan_duration = await self._scan_via_mcp(
+                ip_address
+            )
+        else:
+            loop = asyncio.get_event_loop()
+            t_start = time.monotonic()
+            nm: nmap.PortScanner = await loop.run_in_executor(
+                None,
+                self._run_nmap,
+                ip_address,
+            )
+            scan_duration = time.monotonic() - t_start
 
-        # ------------------------------------------------------------------
-        # Step 4: Parse results
-        # ------------------------------------------------------------------
-        services: list[ServiceInfo] = []
-        os_guess: str | None = None
+            services: list[ServiceInfo] = []
+            os_guess: str | None = None
 
-        if ip_address in nm.all_hosts():
-            host_data = nm[ip_address]
+            if ip_address in nm.all_hosts():
+                host_data = nm[ip_address]
 
-            # OS detection
-            if "osmatch" in host_data and host_data["osmatch"]:
-                raw_os = host_data["osmatch"][0].get("name", "")
-                os_guess = raw_os.replace(" ", "_") if raw_os else None
+                if "osmatch" in host_data and host_data["osmatch"]:
+                    raw_os = host_data["osmatch"][0].get("name", "")
+                    os_guess = raw_os.replace(" ", "_") if raw_os else None
 
-            # Open ports / services
-            for proto in host_data.all_protocols():
-                for port in host_data[proto].keys():
-                    port_data = host_data[proto][port]
-                    if port_data.get("state") != "open":
-                        continue
-                    svc_name = port_data.get("name", "unknown")
-                    svc_version = (
-                        " ".join(
-                            filter(
-                                None,
-                                [
-                                    port_data.get("product", ""),
-                                    port_data.get("version", ""),
-                                    port_data.get("extrainfo", ""),
-                                ],
-                            )
-                        ).strip()
-                        or "unknown"
-                    )
-                    services.append(
-                        ServiceInfo(
-                            port=port,
-                            protocol=proto,
-                            service=svc_name,
-                            version=svc_version,
-                            state="open",
+                for proto in host_data.all_protocols():
+                    for port in host_data[proto].keys():
+                        port_data = host_data[proto][port]
+                        if port_data.get("state") != "open":
+                            continue
+                        svc_name = port_data.get("name", "unknown")
+                        svc_version = (
+                            " ".join(
+                                filter(
+                                    None,
+                                    [
+                                        port_data.get("product", ""),
+                                        port_data.get("version", ""),
+                                        port_data.get("extrainfo", ""),
+                                    ],
+                                )
+                            ).strip()
+                            or "unknown"
                         )
-                    )
+                        services.append(
+                            ServiceInfo(
+                                port=port,
+                                protocol=proto,
+                                service=svc_name,
+                                version=svc_version,
+                                state="open",
+                            )
+                        )
 
-        # Raw XML from the scan command string is not readily available via
-        # python-nmap's high-level API; we leave raw_xml as the CSV summary
-        # produced by nm.csv() which is close enough for audit purposes.
-        raw_xml: str | None = nm.get_nmap_last_output() or None
+            raw_xml: str | None = nm.get_nmap_last_output() or None
 
         # ------------------------------------------------------------------
         # Steps 5–7: Write facts and broadcast events
@@ -214,6 +211,63 @@ class ReconEngine:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    async def _scan_via_mcp(
+        self, ip_address: str
+    ) -> "tuple[list[ServiceInfo], str | None, str | None, float]":
+        """Delegate nmap scan to MCP nmap-scanner server."""
+        import json as _json
+
+        from app.services.mcp_client_manager import get_mcp_manager
+
+        manager = get_mcp_manager()
+        if manager is None or not manager.is_connected("nmap-scanner"):
+            raise ConnectionError("MCP nmap-scanner server is not connected")
+
+        t_start = time.monotonic()
+        result = await manager.call_tool(
+            "nmap-scanner", "nmap_scan", {"target": ip_address}
+        )
+        scan_duration = time.monotonic() - t_start
+
+        # Parse MCP result → ServiceInfo objects
+        services: list[ServiceInfo] = []
+        os_guess: str | None = None
+        raw_xml: str | None = None
+
+        text_parts = [
+            block.get("text", "")
+            for block in result.get("content", [])
+            if isinstance(block, dict) and block.get("type") == "text"
+        ]
+        text = "\n".join(text_parts)
+
+        try:
+            data = _json.loads(text)
+        except _json.JSONDecodeError:
+            logger.warning("MCP nmap_scan returned non-JSON: %s", text[:200])
+            return services, os_guess, raw_xml, scan_duration
+
+        raw_xml = data.get("raw_output")
+
+        for fact in data.get("facts", []):
+            trait = fact.get("trait", "")
+            value = fact.get("value", "")
+
+            if trait == "service.open_port" and "/" in value:
+                parts = value.split("/", 3)
+                if len(parts) >= 4:
+                    services.append(ServiceInfo(
+                        port=int(parts[0]),
+                        protocol=parts[1],
+                        service=parts[2],
+                        version=parts[3].replace("_", " "),
+                        state="open",
+                    ))
+            elif trait == "host.os":
+                os_guess = value
+
+        return services, os_guess, raw_xml, scan_duration
 
     @staticmethod
     def _run_nmap(ip: str) -> nmap.PortScanner:

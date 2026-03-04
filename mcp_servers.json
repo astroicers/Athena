@@ -47,6 +47,15 @@
       "enabled": false,
       "description": "Vuln lookup (containerized)",
       "tool_prefix": "vuln"
+    },
+    "credential-checker": {
+      "transport": "stdio",
+      "command": "python",
+      "args": ["-m", "server"],
+      "env": {},
+      "enabled": false,
+      "description": "SSH credential testing",
+      "tool_prefix": "cred"
     }
   }
 }

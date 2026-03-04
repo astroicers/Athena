@@ -18,6 +18,7 @@ import { Button } from "@/components/atoms/Button";
 import { ToolRegistryTable } from "@/components/tools/ToolRegistryTable";
 import { AddToolModal } from "@/components/tools/AddToolModal";
 import { SectionHeader } from "@/components/atoms/SectionHeader";
+import { MCPServerStatusPanel } from "@/components/tools/MCPServerStatusPanel";
 import { PageLoading } from "@/components/ui/PageLoading";
 import type { ToolRegistryCreate } from "@/types/tool";
 
@@ -68,6 +69,9 @@ export default function ToolsPage() {
       >
         {t("title")}
       </SectionHeader>
+
+      {/* MCP Server Status */}
+      <MCPServerStatusPanel />
 
       {/* Tab Bar */}
       <TabBar tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />

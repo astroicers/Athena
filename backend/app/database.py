@@ -72,7 +72,8 @@ _CREATE_TABLES: list[str] = [
         is_active INTEGER DEFAULT 0,
         privilege_level TEXT,
         operation_id TEXT REFERENCES operations(id) ON DELETE CASCADE,
-        created_at TEXT DEFAULT (datetime('now'))
+        created_at TEXT DEFAULT (datetime('now')),
+        UNIQUE(ip_address, operation_id)
     );
     """,
     """
@@ -86,7 +87,8 @@ _CREATE_TABLES: list[str] = [
         beacon_interval_sec INTEGER DEFAULT 5,
         platform TEXT DEFAULT 'windows',
         operation_id TEXT REFERENCES operations(id) ON DELETE CASCADE,
-        created_at TEXT DEFAULT (datetime('now'))
+        created_at TEXT DEFAULT (datetime('now')),
+        UNIQUE(paw, operation_id)
     );
     """,
     """
@@ -503,6 +505,17 @@ TOOL_REGISTRY_SEEDS = [
         "risk_level": "low",
         "output_traits": "[]",
     },
+    {
+        "tool_id": "credential_checker",
+        "name": "Credential Checker",
+        "kind": "tool",
+        "category": "credential_access",
+        "description": "SSH credential testing via MCP",
+        "mitre_techniques": '["T1110.001","T1021.004"]',
+        "risk_level": "high",
+        "output_traits": '["credential.ssh"]',
+        "config_json": '{"mcp_server":"credential-checker","mcp_tool":"ssh_credential_check"}',
+    },
 ]
 
 
@@ -622,6 +635,31 @@ async def init_db() -> None:
             await db.commit()
         except Exception:
             pass
+        # Migration: deduplicate targets and agents, then add unique indexes
+        try:
+            # Remove duplicate targets (keep the earliest row per ip+operation)
+            await db.execute("""
+                DELETE FROM targets WHERE rowid NOT IN (
+                    SELECT MIN(rowid) FROM targets GROUP BY ip_address, operation_id
+                )
+            """)
+            await db.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_targets_ip_op "
+                "ON targets(ip_address, operation_id)"
+            )
+            # Remove duplicate agents (keep the earliest row per paw+operation)
+            await db.execute("""
+                DELETE FROM agents WHERE rowid NOT IN (
+                    SELECT MIN(rowid) FROM agents GROUP BY paw, operation_id
+                )
+            """)
+            await db.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_agents_paw_op "
+                "ON agents(paw, operation_id)"
+            )
+            await db.commit()
+        except Exception:
+            pass  # indexes already exist or table was freshly created with UNIQUE
         await db.commit()
 
 

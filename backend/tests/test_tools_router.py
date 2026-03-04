@@ -96,23 +96,23 @@ async def tools_client():
 # 1. GET /api/tools — list all seeded tools
 # ---------------------------------------------------------------------------
 async def test_list_tools(tools_client: AsyncClient):
-    """GET /api/tools returns the 10 seeded tools."""
+    """GET /api/tools returns the 11 seeded tools."""
     resp = await tools_client.get("/api/tools")
     assert resp.status_code == 200
     data = resp.json()
     assert isinstance(data, list)
-    assert len(data) == 10
+    assert len(data) == 11
 
 
 # ---------------------------------------------------------------------------
 # 2. GET /api/tools?kind=tool — filter by kind=tool
 # ---------------------------------------------------------------------------
 async def test_list_tools_filter_kind(tools_client: AsyncClient):
-    """GET /api/tools?kind=tool returns only the 4 tool-kind entries."""
+    """GET /api/tools?kind=tool returns only the 5 tool-kind entries."""
     resp = await tools_client.get("/api/tools", params={"kind": "tool"})
     assert resp.status_code == 200
     data = resp.json()
-    assert len(data) == 4
+    assert len(data) == 5
     assert all(t["kind"] == "tool" for t in data)
 
 

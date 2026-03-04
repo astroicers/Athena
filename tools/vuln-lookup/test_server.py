@@ -117,3 +117,10 @@ async def test_nvd_cve_lookup_api_error():
     data = json.loads(result_str)
     assert data["facts"] == []
     assert "failed" in data["raw_output"].lower()
+
+
+async def test_nvd_rate_limiter_exists():
+    """Rate limiter function should be importable and callable."""
+    from server import _nvd_rate_limit
+
+    assert callable(_nvd_rate_limit)

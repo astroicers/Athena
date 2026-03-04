@@ -5,9 +5,11 @@ Returns JSON with {"facts": [{"trait": ..., "value": ...}]}
 to integrate with Athena's fact collection pipeline.
 """
 
+import asyncio
 import json
 import os
 import re
+import time
 
 from mcp.server.fastmcp import FastMCP
 
@@ -91,6 +93,26 @@ async def banner_to_cpe(service: str, version: str) -> str:
     })
 
 
+# NVD rate limiter: 5/30s (free) or 50/30s (API key)
+_NVD_RATE_LOCK = asyncio.Lock()
+_NVD_CALL_TIMES: list[float] = []
+
+
+async def _nvd_rate_limit():
+    """Throttle NVD API calls: 5/30s (free) or 50/30s (API key)."""
+    api_key = os.environ.get("NVD_API_KEY", "")
+    max_calls = 50 if api_key else 5
+    window = 30.0
+    async with _NVD_RATE_LOCK:
+        now = time.monotonic()
+        while _NVD_CALL_TIMES and now - _NVD_CALL_TIMES[0] > window:
+            _NVD_CALL_TIMES.pop(0)
+        if len(_NVD_CALL_TIMES) >= max_calls:
+            sleep_for = window - (now - _NVD_CALL_TIMES[0]) + 0.1
+            await asyncio.sleep(sleep_for)
+        _NVD_CALL_TIMES.append(time.monotonic())
+
+
 @mcp.tool()
 async def nvd_cve_lookup(cpe: str, max_results: int = 10) -> str:
     """Query NVD NIST API v2 for CVEs matching a CPE string.
@@ -104,6 +126,8 @@ async def nvd_cve_lookup(cpe: str, max_results: int = 10) -> str:
         Value format: "CVE-ID:cvss=SCORE:severity=LEVEL:exploit=BOOL"
     """
     import httpx
+
+    await _nvd_rate_limit()
 
     headers: dict[str, str] = {}
     api_key = os.environ.get("NVD_API_KEY", "")

@@ -359,7 +359,10 @@
     "registering": "REGISTERING...",
     "toolIdRequired": "Tool ID is required.",
     "nameRequired": "Name is required.",
-    "failedCreate": "Failed to create tool. Please check the values and try again."
+    "failedCreate": "Failed to create tool. Please check the values and try again.",
+    "mcpServers": "MCP Servers",
+    "mcpTools": "tools",
+    "mcpDisconnected": "disconnected"
   },
   "Topology": {
     "noData": "No topology data available",

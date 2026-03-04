@@ -359,7 +359,10 @@
     "registering": "註冊中...",
     "toolIdRequired": "請填寫工具 ID。",
     "nameRequired": "請填寫名稱。",
-    "failedCreate": "建立工具失敗，請檢查輸入值後再試。"
+    "failedCreate": "建立工具失敗，請檢查輸入值後再試。",
+    "mcpServers": "MCP 伺服器",
+    "mcpTools": "個工具",
+    "mcpDisconnected": "已斷線"
   },
   "Topology": {
     "noData": "無拓撲資料",

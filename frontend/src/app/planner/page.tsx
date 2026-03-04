@@ -243,10 +243,10 @@ export default function PlannerPage() {
 
   async function handleConfirmDelete() {
     if (!deletingTarget) return;
-    const hostname = deletingTarget.hostname;
+    const { id, hostname } = deletingTarget;
     setDeletingTarget(null);
     try {
-      await api.delete(`/operations/${DEFAULT_OP_ID}/targets/${deletingTarget.id}`);
+      await api.delete(`/operations/${DEFAULT_OP_ID}/targets/${id}`);
       addToast(t("targetDeleted", { hostname }), "success");
       refreshTargets();
     } catch (err) {
@@ -339,8 +339,8 @@ export default function PlannerPage() {
       <DataTable columns={STEP_COLUMNS} data={steps as StepRow[]} keyField="id" emptyMessage={t("noSteps")} />
 
       {/* OODA Timeline + Host Cards */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
           <OODATimeline entries={timeline} />
           <p className="text-[10px] font-mono text-athena-text-secondary/60 mt-1 ml-1">{tHints("oodaTimeline")}</p>
         </div>

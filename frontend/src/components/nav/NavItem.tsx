@@ -14,16 +14,17 @@
 
 "use client";
 
+import React from "react";
 import Link from "next/link";
 
 interface NavItemProps {
   href: string;
-  icon: string;
+  icon: React.ComponentType;
   label: string;
   isActive: boolean;
 }
 
-export function NavItem({ href, icon, label, isActive }: NavItemProps) {
+export function NavItem({ href, icon: Icon, label, isActive }: NavItemProps) {
   return (
     <Link
       href={href}
@@ -34,7 +35,7 @@ export function NavItem({ href, icon, label, isActive }: NavItemProps) {
             : "text-athena-text-secondary hover:text-athena-text hover:bg-athena-elevated"
         }`}
     >
-      <span className="text-base">{icon}</span>
+      <Icon />
       <span>{label}</span>
     </Link>
   );

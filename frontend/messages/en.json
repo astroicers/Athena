@@ -40,7 +40,9 @@
   "Navigator": {
     "attackPath": "Attack Path Timeline",
     "mitreMatrix": "MITRE ATT&CK Matrix",
-    "selectTechnique": "Select a technique to view details"
+    "selectTechnique": "Select a technique to view details",
+    "compactView": "COMPACT",
+    "expandView": "EXPAND"
   },
   "Planner": {
     "missionSteps": "Mission Steps",

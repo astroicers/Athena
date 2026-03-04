@@ -31,9 +31,10 @@ interface MITRECellProps {
   status: TechniqueStatus | null;
   isSelected?: boolean;
   onClick?: () => void;
+  compact?: boolean;
 }
 
-export function MITRECell({ mitreId, name, status, isSelected, onClick }: MITRECellProps) {
+export function MITRECell({ mitreId, name, status, isSelected, onClick, compact = false }: MITRECellProps) {
   const colorClass = STATUS_COLORS[status || TechniqueStatus.UNTESTED] || STATUS_COLORS[TechniqueStatus.UNTESTED];
 
   return (
@@ -44,7 +45,7 @@ export function MITRECell({ mitreId, name, status, isSelected, onClick }: MITREC
       } hover:brightness-110 cursor-pointer`}
     >
       <div className="font-bold truncate">{mitreId}</div>
-      <div className="truncate opacity-80">{name}</div>
+      {!compact && <div className="truncate opacity-80">{name}</div>}
     </button>
   );
 }

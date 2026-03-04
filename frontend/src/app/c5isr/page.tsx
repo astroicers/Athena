@@ -105,7 +105,7 @@ export default function C5ISRPage() {
   return (
     <div className="space-y-4">
       {/* KPI Row */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <MetricCard
           title={t("activeAgents")}
           value={op?.activeAgents ?? "—"}
@@ -129,8 +129,8 @@ export default function C5ISRPage() {
       </div>
 
       {/* OODA + C5ISR */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2 space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 space-y-4">
           <OODAIndicator currentPhase={op?.currentOodaPhase ?? null} />
           <p className="text-[10px] font-mono text-athena-text-secondary/60 -mt-3 ml-1">{tHints("oodaCycle")}</p>
           <C5ISRStatusBoard domains={domains} />

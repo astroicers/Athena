@@ -40,7 +40,9 @@
   "Navigator": {
     "attackPath": "攻擊路徑時間軸",
     "mitreMatrix": "MITRE ATT&CK 矩陣",
-    "selectTechnique": "選擇技術以檢視詳情"
+    "selectTechnique": "選擇技術以檢視詳情",
+    "compactView": "精簡",
+    "expandView": "展開"
   },
   "Planner": {
     "missionSteps": "任務步驟",

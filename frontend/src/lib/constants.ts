@@ -12,11 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import {
+  C5ISRIcon,
+  NavigatorIcon,
+  PlannerIcon,
+  MonitorIcon,
+  ToolsIcon,
+} from "@/components/atoms/NavIcons";
+
 export const NAV_ITEMS = [
-  { href: "/c5isr", icon: "⌘", label: "C5ISR Board" },
-  { href: "/navigator", icon: "◎", label: "MITRE Navigator" },
-  { href: "/planner", icon: "⚑", label: "Mission Planner" },
-  { href: "/monitor", icon: "◉", label: "Battle Monitor" },
+  { href: "/c5isr", icon: C5ISRIcon, labelKey: "c5isr" },
+  { href: "/navigator", icon: NavigatorIcon, labelKey: "navigator" },
+  { href: "/planner", icon: PlannerIcon, labelKey: "planner" },
+  { href: "/monitor", icon: MonitorIcon, labelKey: "monitor" },
+  { href: "/tools", icon: ToolsIcon, labelKey: "tools" },
 ] as const;
 
 export const C5ISR_DOMAINS = [

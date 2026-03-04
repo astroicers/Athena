@@ -271,7 +271,7 @@ export default function MonitorPage() {
   return (
     <div className="space-y-4 h-full">
       {/* KPI Row */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <MetricCard
           title={t("dataExfiltrated")}
           value={operation ? formatBytes(operation.dataExfiltratedBytes) : "—"}
@@ -301,9 +301,9 @@ export default function MonitorPage() {
       {activeTab === "overview" && (
         <>
           {/* Main content: Topology + Sidebar */}
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
             {/* 3D Topology — 3 cols */}
-            <div className="col-span-3 space-y-3">
+            <div className="lg:col-span-3 space-y-3">
               <div>
                 <h2 className="text-xs font-mono text-athena-text-secondary uppercase tracking-wider mb-2">
                   {t("networkTopology")}

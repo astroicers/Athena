@@ -15,6 +15,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { api } from "@/lib/api";
 import { useOperation } from "@/hooks/useOperation";
 import { useWebSocket } from "@/hooks/useWebSocket";
@@ -28,6 +30,7 @@ import { Badge } from "@/components/atoms/Badge";
 import { HexConfirmModal } from "@/components/modal/HexConfirmModal";
 import { AddTargetModal } from "@/components/modal/AddTargetModal";
 import { ReconResultModal } from "@/components/modal/ReconResultModal";
+import { TerminalPanel } from "@/components/terminal/TerminalPanel";
 import { MissionStepStatus, RiskLevel, OODAPhase } from "@/types/enums";
 import type { MissionStep } from "@/types/mission";
 import type { OODATimelineEntry } from "@/types/ooda";
@@ -47,26 +50,33 @@ const STEP_VARIANT: Record<string, "success" | "warning" | "error" | "info"> = {
 
 type StepRow = MissionStep & Record<string, unknown>;
 
-const STEP_COLUMNS: Column<StepRow>[] = [
-  { key: "stepNumber", header: "#", sortable: true },
-  { key: "techniqueId", header: "Technique", render: (r) => (
-    <span><span className="text-athena-accent">{r.techniqueId}</span> {r.techniqueName}</span>
-  )},
-  { key: "targetLabel", header: "Target" },
-  { key: "engine", header: "Engine", render: (r) => String(r.engine).toUpperCase() },
-  {
-    key: "status",
-    header: "Status",
-    sortable: true,
-    render: (r) => (
-      <Badge variant={STEP_VARIANT[r.status] || "info"}>
-        {String(r.status).toUpperCase()}
-      </Badge>
-    ),
-  },
-];
-
 export default function PlannerPage() {
+  const t = useTranslations("Planner");
+  const tCommon = useTranslations("Common");
+  const tHints = useTranslations("Hints");
+  const tTips = useTranslations("Tooltips");
+  const tEmpty = useTranslations("EmptyStates");
+  const tErrors = useTranslations("Errors");
+
+  const STEP_COLUMNS: Column<StepRow>[] = [
+    { key: "stepNumber", header: "#", sortable: true },
+    { key: "techniqueId", header: "Technique", render: (r) => (
+      <span><span className="text-athena-accent">{r.techniqueId}</span> {r.techniqueName}</span>
+    )},
+    { key: "targetLabel", header: "Target" },
+    { key: "engine", header: "Engine", render: (r) => String(r.engine).toUpperCase() },
+    {
+      key: "status",
+      header: "Status",
+      sortable: true,
+      render: (r) => (
+        <Badge variant={STEP_VARIANT[r.status] || "info"}>
+          {String(r.status).toUpperCase()}
+        </Badge>
+      ),
+    },
+  ];
+
   const { operation } = useOperation(DEFAULT_OP_ID);
   const { addToast } = useToast();
   const ws = useWebSocket(DEFAULT_OP_ID);
@@ -84,17 +94,19 @@ export default function PlannerPage() {
   const [showAddTarget, setShowAddTarget] = useState(false);
   const [scanningTargetId, setScanningTargetId] = useState<string | null>(null);
   const [reconResult, setReconResult] = useState<ReconScanResult | null>(null);
+  const [terminalTarget, setTerminalTarget] = useState<Target | null>(null);
+  const [deletingTarget, setDeletingTarget] = useState<Target | null>(null);
 
   function refreshAllData() {
-    api.get<MissionStep[]>(`/operations/${DEFAULT_OP_ID}/mission/steps`).then(setSteps).catch(() => addToast("Failed to load steps", "error"));
-    api.get<OODATimelineEntry[]>(`/operations/${DEFAULT_OP_ID}/ooda/timeline`).then(setTimeline).catch(() => addToast("Failed to load timeline", "error"));
-    api.get<Target[]>(`/operations/${DEFAULT_OP_ID}/targets`).then(setTargets).catch(() => addToast("Failed to load targets", "error"));
+    api.get<MissionStep[]>(`/operations/${DEFAULT_OP_ID}/mission/steps`).then(setSteps).catch(() => addToast(tErrors("failedLoadSteps"), "error"));
+    api.get<OODATimelineEntry[]>(`/operations/${DEFAULT_OP_ID}/ooda/timeline`).then(setTimeline).catch(() => addToast(tErrors("failedLoadTimeline"), "error"));
+    api.get<Target[]>(`/operations/${DEFAULT_OP_ID}/targets`).then(setTargets).catch(() => addToast(tErrors("failedLoadTargets"), "error"));
   }
 
   function refreshTargets() {
     api.get<Target[]>(`/operations/${DEFAULT_OP_ID}/targets`)
       .then(setTargets)
-      .catch(() => addToast("Failed to load targets", "error"));
+      .catch(() => addToast(tErrors("failedLoadTargets"), "error"));
   }
 
   useEffect(() => {
@@ -103,7 +115,7 @@ export default function PlannerPage() {
       api.get<MissionStep[]>(`/operations/${DEFAULT_OP_ID}/mission/steps`).then(setSteps),
       api.get<OODATimelineEntry[]>(`/operations/${DEFAULT_OP_ID}/ooda/timeline`).then(setTimeline),
       api.get<Target[]>(`/operations/${DEFAULT_OP_ID}/targets`).then(setTargets),
-    ]).catch(() => addToast("Failed to load mission data", "error"))
+    ]).catch(() => addToast(tErrors("failedLoadSteps"), "error"))
       .finally(() => setIsLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -119,7 +131,7 @@ export default function PlannerPage() {
       ws.subscribe("ooda.failed", (raw: unknown) => {
         const data = raw as Record<string, unknown>;
         setOodaPhase(null);
-        addToast((data.error as string) || "OODA cycle failed", "error");
+        addToast((data.error as string) || tErrors("oodaFailed"), "error");
       }),
       ws.subscribe("execution.update", () => refreshAllData()),
       ws.subscribe("operation.reset", () => refreshAllData()),
@@ -128,7 +140,7 @@ export default function PlannerPage() {
         refreshTargets();
         setScanningTargetId(null);
         addToast(
-          `Recon complete — ${data.facts_written ?? 0} facts written`,
+          t("reconComplete", { factsWritten: (data.facts_written as number) ?? 0 }),
           "success",
         );
       }),
@@ -136,7 +148,7 @@ export default function PlannerPage() {
         const data = raw as Record<string, unknown>;
         setScanningTargetId(null);
         addToast(
-          (data.error as string) || "Recon scan failed",
+          (data.error as string) || tErrors("failedReconScan"),
           "error",
         );
       }),
@@ -148,7 +160,7 @@ export default function PlannerPage() {
   function handleExecute() {
     setShowConfirm(false);
     api.post(`/operations/${DEFAULT_OP_ID}/mission/execute`)
-      .catch(() => addToast("Failed to execute mission", "error"));
+      .catch(() => addToast(tErrors("failedExecuteMission"), "error"));
   }
 
   async function handleReset() {
@@ -162,7 +174,7 @@ export default function PlannerPage() {
       setTimeout(() => setResetStatus("idle"), 2000);
     } catch {
       setResetStatus("idle");
-      addToast("Failed to reset operation", "error");
+      addToast(tErrors("failedResetOperation"), "error");
     }
   }
 
@@ -170,12 +182,13 @@ export default function PlannerPage() {
     setShowOodaConfirm(false);
     try {
       await api.post(`/operations/${DEFAULT_OP_ID}/ooda/trigger`);
-      addToast("OODA cycle started", "info");
+      addToast(t("oodaStarted"), "info");
       // ooda.phase WebSocket events will trigger refreshAllData() automatically
     } catch (err) {
       const apiError = err as ApiError;
-      addToast(apiError.detail || "Failed to trigger OODA cycle", "error");
+      addToast(apiError.detail || tErrors("failedTriggerOoda"), "error");
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addToast]);
 
   async function handleExport() {
@@ -188,9 +201,9 @@ export default function PlannerPage() {
       a.download = `athena-report-${new Date().toISOString().slice(0, 19).replace(/:/g, "")}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      addToast("Report exported", "success");
+      addToast(t("reportExported"), "success");
     } catch {
-      addToast("Failed to export report", "error");
+      addToast(tErrors("failedExportReport"), "error");
     }
   }
 
@@ -205,7 +218,40 @@ export default function PlannerPage() {
     } catch (err) {
       setScanningTargetId(null);
       const apiError = err as ApiError;
-      addToast(apiError.detail || "Failed to start recon scan", "error");
+      addToast(apiError.detail || tErrors("failedReconScan"), "error");
+    }
+  }
+
+  async function handleSetActive(targetId: string, active: boolean) {
+    try {
+      const updated = await api.patch<Target[]>(
+        `/operations/${DEFAULT_OP_ID}/targets/active`,
+        { target_id: active ? targetId : "" },
+      );
+      setTargets(updated);
+      addToast(active ? t("targetActivated") : t("targetDeactivated"), "info");
+    } catch {
+      addToast(tErrors("failedSetActive"), "error");
+    }
+  }
+
+  function handleDeleteRequest(targetId: string) {
+    const tgt = targets.find(t => t.id === targetId);
+    if (!tgt) return;
+    setDeletingTarget(tgt);
+  }
+
+  async function handleConfirmDelete() {
+    if (!deletingTarget) return;
+    const hostname = deletingTarget.hostname;
+    setDeletingTarget(null);
+    try {
+      await api.delete(`/operations/${DEFAULT_OP_ID}/targets/${deletingTarget.id}`);
+      addToast(t("targetDeleted", { hostname }), "success");
+      refreshTargets();
+    } catch (err) {
+      const apiError = err as ApiError;
+      addToast(apiError.detail || tErrors("failedDeleteTarget"), "error");
     }
   }
 
@@ -216,73 +262,138 @@ export default function PlannerPage() {
       {/* Mission Steps + Execute */}
       <div className="flex items-center justify-between">
         <h2 className="text-xs font-mono text-athena-text-secondary uppercase tracking-wider">
-          Mission Steps — {operation?.codename || "PHANTOM-EYE"}
+          {t("missionSteps")} — {operation?.codename || "PHANTOM-EYE"}
         </h2>
         <div className="flex items-center gap-2">
           {resetStatus === "done" && (
-            <span className="text-[10px] font-mono text-athena-success">RESET OK</span>
+            <span className="text-[10px] font-mono text-athena-success">{t("resetOk")}</span>
           )}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setShowResetConfirm(true)}
-            disabled={resetStatus === "resetting"}
-          >
-            {resetStatus === "resetting" ? "RESETTING..." : "RESET"}
-          </Button>
+          <Tooltip text={tTips("reset")}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowResetConfirm(true)}
+              disabled={resetStatus === "resetting"}
+              icon={
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 4v6h6" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                </svg>
+              }
+            >
+              {resetStatus === "resetting" ? t("resetting") : tCommon("reset")}
+            </Button>
+          </Tooltip>
           {oodaPhase && (
             <span className="text-[10px] font-mono text-athena-accent animate-pulse">
               {oodaPhase.toUpperCase()}...
             </span>
           )}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setShowOodaConfirm(true)}
-          >
-            OODA CYCLE
-          </Button>
-          <Button variant="secondary" size="sm" onClick={handleExport}>
-            EXPORT
-          </Button>
-          <Button variant="primary" size="sm" onClick={() => setShowConfirm(true)}>
-            EXECUTE MISSION
-          </Button>
+          <Tooltip text={tTips("oodaCycle")}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowOodaConfirm(true)}
+              disabled={targets.length === 0}
+              icon={
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M23 4v6h-6" /><path d="M1 20v-6h6" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+              }
+            >
+              {t("oodaCycle")}
+            </Button>
+          </Tooltip>
+          <Tooltip text={tTips("export")}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleExport}
+              disabled={targets.length === 0}
+              icon={
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+              }
+            >
+              {tCommon("export")}
+            </Button>
+          </Tooltip>
+          <Tooltip text={tTips("executeMission")}>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setShowConfirm(true)}
+              disabled={targets.length === 0}
+              icon={
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="5 3 19 12 5 21 5 3" />
+                </svg>
+              }
+            >
+              {t("executeMission")}
+            </Button>
+          </Tooltip>
         </div>
       </div>
-      <DataTable columns={STEP_COLUMNS} data={steps as StepRow[]} keyField="id" emptyMessage="No mission steps defined" />
+      <p className="text-[10px] font-mono text-athena-text-secondary/60 -mt-3 ml-1">{tHints("missionSteps")}</p>
+      <DataTable columns={STEP_COLUMNS} data={steps as StepRow[]} keyField="id" emptyMessage={t("noSteps")} />
 
       {/* OODA Timeline + Host Cards */}
       <div className="grid grid-cols-3 gap-4">
         <div className="col-span-2">
           <OODATimeline entries={timeline} />
+          <p className="text-[10px] font-mono text-athena-text-secondary/60 mt-1 ml-1">{tHints("oodaTimeline")}</p>
         </div>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider">
-              Target Hosts
+              {t("targetHosts")}
             </h3>
-            <Button variant="secondary" size="sm" onClick={() => setShowAddTarget(true)}>
-              + ADD
-            </Button>
+            <Tooltip text={tTips("addTarget")}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowAddTarget(true)}
+                icon={
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                }
+              >
+                {t("addTarget")}
+              </Button>
+            </Tooltip>
           </div>
+          <p className="text-[10px] font-mono text-athena-text-secondary/60 -mt-2 ml-1">{tHints("targetHosts")}</p>
           {targets.length === 0 ? (
-            <div className="bg-athena-surface border border-athena-border rounded-athena-md p-4 text-center">
-              <span className="text-xs font-mono text-athena-text-secondary">No targets</span>
+            <div className="border-2 border-dashed border-athena-border/50 rounded-athena-md p-4 text-center">
+              <span className="text-xs font-mono text-athena-text-secondary whitespace-pre-line">{tEmpty("plannerGuide")}</span>
             </div>
           ) : (
-            targets.map((t) => (
-              <HostNodeCard
-                key={t.id}
-                id={t.id}
-                hostname={t.hostname}
-                ipAddress={t.ipAddress}
-                role={t.role}
-                isCompromised={t.isCompromised}
-                privilegeLevel={t.privilegeLevel}
-                isScanning={scanningTargetId === t.id}
-                onScan={handleReconScan}
-              />
+            targets.map((tgt) => (
+              <div key={tgt.id}>
+                <HostNodeCard
+                  id={tgt.id}
+                  hostname={tgt.hostname}
+                  ipAddress={tgt.ipAddress}
+                  role={tgt.role}
+                  isCompromised={tgt.isCompromised}
+                  isActive={tgt.isActive}
+                  privilegeLevel={tgt.privilegeLevel}
+                  isScanning={scanningTargetId === tgt.id}
+                  onScan={handleReconScan}
+                  onSetActive={handleSetActive}
+                  onDelete={handleDeleteRequest}
+                />
+                {tgt.isCompromised && (
+                  <button
+                    onClick={() => setTerminalTarget(tgt)}
+                    className="mt-1 w-full text-[10px] font-mono text-athena-success border border-athena-success/40 rounded-athena-sm py-1 hover:bg-athena-success/10 transition-colors uppercase tracking-wider"
+                  >
+                    {t("terminal")}
+                  </button>
+                )}
+              </div>
             ))
           )}
         </div>
@@ -312,6 +423,14 @@ export default function PlannerPage() {
         onCancel={() => setShowResetConfirm(false)}
       />
 
+      <HexConfirmModal
+        isOpen={deletingTarget !== null}
+        title={t("deleteTarget", { hostname: deletingTarget?.hostname ?? "" })}
+        riskLevel={RiskLevel.HIGH}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeletingTarget(null)}
+      />
+
       <AddTargetModal
         isOpen={showAddTarget}
         operationId={DEFAULT_OP_ID}
@@ -328,6 +447,16 @@ export default function PlannerPage() {
         result={reconResult}
         onClose={() => setReconResult(null)}
       />
+
+      {terminalTarget && (
+        <TerminalPanel
+          operationId={DEFAULT_OP_ID}
+          targetId={terminalTarget.id}
+          targetName={terminalTarget.hostname || terminalTarget.ipAddress}
+          targetIp={terminalTarget.ipAddress}
+          onClose={() => setTerminalTarget(null)}
+        />
+      )}
     </div>
   );
 }

@@ -14,13 +14,14 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { OODAPhase } from "@/types/enums";
 
-const PHASES: { key: OODAPhase; label: string }[] = [
-  { key: OODAPhase.OBSERVE, label: "OBSERVE" },
-  { key: OODAPhase.ORIENT, label: "ORIENT" },
-  { key: OODAPhase.DECIDE, label: "DECIDE" },
-  { key: OODAPhase.ACT, label: "ACT" },
+const PHASE_KEYS: { key: OODAPhase; label: string; tKey: "observe" | "orient" | "decide" | "act" }[] = [
+  { key: OODAPhase.OBSERVE, label: "OBSERVE", tKey: "observe" },
+  { key: OODAPhase.ORIENT, label: "ORIENT", tKey: "orient" },
+  { key: OODAPhase.DECIDE, label: "DECIDE", tKey: "decide" },
+  { key: OODAPhase.ACT, label: "ACT", tKey: "act" },
 ];
 
 interface OODAIndicatorProps {
@@ -28,21 +29,25 @@ interface OODAIndicatorProps {
 }
 
 export function OODAIndicator({ currentPhase }: OODAIndicatorProps) {
+  const t = useTranslations("OODA");
+  const tHints = useTranslations("Hints");
+
   return (
     <div className="bg-athena-surface border border-athena-border rounded-athena-md p-4">
-      <h3 className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-3">
-        OODA Cycle
+      <h3 className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-1">
+        {t("cycle")}
       </h3>
+      <p className="text-[10px] font-mono text-athena-text-secondary/60 mb-3">{tHints("oodaCycle")}</p>
       <div className="flex items-center gap-1">
-        {PHASES.map((phase, i) => {
+        {PHASE_KEYS.map((phase, i) => {
           const isActive = currentPhase === phase.key;
           const isPast =
             currentPhase != null &&
-            PHASES.findIndex((p) => p.key === currentPhase) > i;
+            PHASE_KEYS.findIndex((p) => p.key === currentPhase) > i;
           return (
             <div key={phase.key} className="flex items-center gap-1 flex-1">
               <div
-                className={`flex items-center justify-center w-full py-2 rounded-athena-sm text-[10px] font-mono font-bold transition-all ${
+                className={`flex flex-col items-center justify-center w-full py-2 rounded-athena-sm text-[10px] font-mono font-bold transition-all ${
                   isActive
                     ? "bg-athena-accent/20 text-athena-accent border border-athena-accent"
                     : isPast
@@ -51,8 +56,9 @@ export function OODAIndicator({ currentPhase }: OODAIndicatorProps) {
                 }`}
               >
                 {phase.label}
+                <span className="text-[10px] font-normal opacity-70">{t(phase.tKey)}</span>
               </div>
-              {i < PHASES.length - 1 && (
+              {i < PHASE_KEYS.length - 1 && (
                 <span className="text-athena-text-secondary text-xs shrink-0">→</span>
               )}
             </div>

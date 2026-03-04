@@ -14,14 +14,15 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { RiskLevel } from "@/types/enums";
 import { Button } from "@/components/atoms/Button";
 
-const RISK_STYLES: Record<string, { border: string; label: string }> = {
-  [RiskLevel.LOW]: { border: "border-athena-success", label: "LOW RISK" },
-  [RiskLevel.MEDIUM]: { border: "border-athena-warning", label: "MEDIUM RISK" },
-  [RiskLevel.HIGH]: { border: "border-athena-error", label: "HIGH RISK" },
-  [RiskLevel.CRITICAL]: { border: "border-athena-critical", label: "CRITICAL" },
+const RISK_STYLES: Record<string, { border: string; labelKey: "lowRisk" | "mediumRisk" | "highRisk" | "critical" }> = {
+  [RiskLevel.LOW]: { border: "border-athena-success", labelKey: "lowRisk" },
+  [RiskLevel.MEDIUM]: { border: "border-athena-warning", labelKey: "mediumRisk" },
+  [RiskLevel.HIGH]: { border: "border-athena-error", labelKey: "highRisk" },
+  [RiskLevel.CRITICAL]: { border: "border-athena-critical", labelKey: "critical" },
 };
 
 interface HexConfirmModalProps {
@@ -39,19 +40,22 @@ export function HexConfirmModal({
   onConfirm,
   onCancel,
 }: HexConfirmModalProps) {
+  const t = useTranslations("HexConfirm");
+  const tCommon = useTranslations("Common");
+
   if (!isOpen) return null;
 
   const style = RISK_STYLES[riskLevel] || RISK_STYLES[RiskLevel.MEDIUM];
   const isCritical = riskLevel === RiskLevel.CRITICAL;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-athena-bg/80 backdrop-blur-sm">
       <div
         className={`bg-athena-surface border-2 ${style.border} rounded-athena-lg p-6 max-w-md w-full mx-4`}
       >
         <div className="text-center mb-4">
           <span className="text-xs font-mono text-athena-text-secondary">
-            {style.label}
+            {t(style.labelKey)}
           </span>
           <h2 className="text-lg font-mono font-bold text-athena-text mt-1">
             {title}
@@ -60,19 +64,19 @@ export function HexConfirmModal({
 
         {isCritical && (
           <p className="text-xs text-athena-critical text-center mb-4 font-mono">
-            This action requires double confirmation. Proceed with extreme caution.
+            {t("criticalWarning")}
           </p>
         )}
 
         <div className="flex gap-3 justify-center mt-6">
           <Button variant="secondary" onClick={onCancel}>
-            ABORT
+            {tCommon("abort")}
           </Button>
           <Button
             variant={isCritical ? "danger" : "primary"}
             onClick={onConfirm}
           >
-            {isCritical ? "CONFIRM EXECUTE" : "EXECUTE"}
+            {isCritical ? t("confirmExecute") : tCommon("execute")}
           </Button>
         </div>
       </div>

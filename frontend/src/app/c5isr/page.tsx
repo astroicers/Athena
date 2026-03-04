@@ -15,6 +15,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { useOperation } from "@/hooks/useOperation";
 import { useWebSocket } from "@/hooks/useWebSocket";
@@ -44,28 +45,12 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "error" | "info"> =
   [TechniqueStatus.QUEUED]: "info",
 };
 
-const EXEC_COLUMNS: Column<TechRow>[] = [
-  { key: "mitreId", header: "MITRE ID", sortable: true },
-  { key: "name", header: "Technique" },
-  { key: "tactic", header: "Tactic" },
-  { key: "riskLevel", header: "Risk", render: (r) => String(r.riskLevel ?? "—").toUpperCase() },
-  {
-    key: "latestStatus",
-    header: "Status",
-    sortable: true,
-    render: (r) => {
-      const status = r.latestStatus;
-      if (!status) return <span className="text-athena-text-secondary">—</span>;
-      return (
-        <Badge variant={STATUS_VARIANT[status] || "info"}>
-          {status.toUpperCase()}
-        </Badge>
-      );
-    },
-  },
-];
-
 export default function C5ISRPage() {
+  const t = useTranslations("C5ISR");
+  const tOODA = useTranslations("OODA");
+  const tHints = useTranslations("Hints");
+  const tErrors = useTranslations("Errors");
+
   const { operation } = useOperation(DEFAULT_OP_ID);
   const { addToast } = useToast();
   const ws = useWebSocket(DEFAULT_OP_ID);
@@ -74,12 +59,33 @@ export default function C5ISRPage() {
   const [recommendation, setRecommendation] = useState<OrientRecommendation | null>(null);
   const [execRows, setExecRows] = useState<TechniqueWithStatus[]>([]);
 
+  const EXEC_COLUMNS: Column<TechRow>[] = [
+    { key: "mitreId", header: "MITRE ID", sortable: true },
+    { key: "name", header: "Technique" },
+    { key: "tactic", header: "Tactic" },
+    { key: "riskLevel", header: "Risk", render: (r) => String(r.riskLevel ?? "—").toUpperCase() },
+    {
+      key: "latestStatus",
+      header: "Status",
+      sortable: true,
+      render: (r) => {
+        const status = r.latestStatus;
+        if (!status) return <span className="text-athena-text-secondary">—</span>;
+        return (
+          <Badge variant={STATUS_VARIANT[status] || "info"}>
+            {status.toUpperCase()}
+          </Badge>
+        );
+      },
+    },
+  ];
+
   useEffect(() => {
     Promise.all([
       api.get<C5ISRStatus[]>(`/operations/${DEFAULT_OP_ID}/c5isr`).then(setDomains),
       api.get<OrientRecommendation>(`/operations/${DEFAULT_OP_ID}/recommendations/latest`).then(setRecommendation),
       api.get<TechniqueWithStatus[]>(`/operations/${DEFAULT_OP_ID}/techniques`).then(setExecRows),
-    ]).catch(() => addToast("Failed to load C5ISR data", "error"))
+    ]).catch(() => addToast(tErrors("failedLoadC5isr"), "error"))
       .finally(() => setIsLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -101,24 +107,24 @@ export default function C5ISRPage() {
       {/* KPI Row */}
       <div className="grid grid-cols-4 gap-3">
         <MetricCard
-          title="Active Agents"
+          title={t("activeAgents")}
           value={op?.activeAgents ?? "—"}
           accentColor="var(--color-accent)"
         />
         <MetricCard
-          title="Success Rate"
+          title={t("successRate")}
           value={op ? `${op.successRate}%` : "—"}
-          accentColor="var(--color-success)"
+          accentColor={op && op.successRate < 50 ? "var(--color-warning)" : "var(--color-success)"}
         />
         <MetricCard
-          title="Techniques Executed"
+          title={t("techniquesExecuted")}
           value={op?.techniquesExecuted ?? "—"}
-          subtitle={op ? `of ${op.techniquesTotal} total` : undefined}
+          subtitle={op ? t("totalSubtitle", { total: op.techniquesTotal }) : undefined}
         />
         <MetricCard
-          title="Threat Level"
+          title={t("threatLevel")}
           value={op?.threatLevel?.toFixed(1) ?? "—"}
-          accentColor="var(--color-error)"
+          accentColor={op && op.threatLevel >= 7 ? "var(--color-error)" : "var(--color-warning)"}
         />
       </div>
 
@@ -126,7 +132,9 @@ export default function C5ISRPage() {
       <div className="grid grid-cols-3 gap-4">
         <div className="col-span-2 space-y-4">
           <OODAIndicator currentPhase={op?.currentOodaPhase ?? null} />
+          <p className="text-[10px] font-mono text-athena-text-secondary/60 -mt-3 ml-1">{tHints("oodaCycle")}</p>
           <C5ISRStatusBoard domains={domains} />
+          <p className="text-[10px] font-mono text-athena-text-secondary/60 -mt-3 ml-1">{tHints("c5isrStatus")}</p>
         </div>
         <div className="space-y-4">
           <RecommendCard recommendation={recommendation} />
@@ -136,9 +144,10 @@ export default function C5ISRPage() {
       {/* Execution Table */}
       <div>
         <h2 className="text-xs font-mono text-athena-text-secondary uppercase tracking-wider mb-2">
-          Active Operations
+          {t("activeOperations")}
         </h2>
-        <DataTable columns={EXEC_COLUMNS} data={execRows as TechRow[]} keyField="id" emptyMessage="No technique executions" />
+        <p className="text-[10px] font-mono text-athena-text-secondary/60 -mt-1 mb-2 ml-1">{tHints("executionTable")}</p>
+        <DataTable columns={EXEC_COLUMNS} data={execRows as TechRow[]} keyField="id" emptyMessage={t("noTechniques")} />
       </div>
     </div>
   );

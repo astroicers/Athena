@@ -14,11 +14,11 @@
 
 "use client";
 
-import { ButtonHTMLAttributes } from "react";
+import React, { ButtonHTMLAttributes } from "react";
 
 const VARIANT_STYLES = {
   primary:
-    "bg-athena-accent/20 text-athena-accent border border-athena-accent hover:bg-athena-accent/30",
+    "bg-athena-accent text-athena-bg font-bold border border-athena-accent hover:bg-athena-accent-hover",
   secondary:
     "bg-athena-surface text-athena-text border border-athena-border hover:bg-athena-elevated",
   danger:
@@ -34,6 +34,7 @@ const SIZE_STYLES = {
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: keyof typeof VARIANT_STYLES;
   size?: keyof typeof SIZE_STYLES;
+  icon?: React.ReactNode;
 }
 
 export function Button({
@@ -41,18 +42,20 @@ export function Button({
   size = "md",
   disabled,
   className = "",
+  icon,
   children,
   ...props
 }: ButtonProps) {
   return (
     <button
-      className={`inline-flex items-center justify-center font-mono font-semibold rounded-athena-md transition-colors
+      className={`inline-flex items-center justify-center gap-1.5 font-mono font-semibold rounded-athena-md transition-colors
         ${VARIANT_STYLES[variant]} ${SIZE_STYLES[size]}
         ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
         ${className}`}
       disabled={disabled}
       {...props}
     >
+      {icon && <span className="shrink-0">{icon}</span>}
       {children}
     </button>
   );

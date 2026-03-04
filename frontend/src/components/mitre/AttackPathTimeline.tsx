@@ -14,6 +14,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { TechniqueStatus } from "@/types/enums";
 import type { AttackPathEntry, AttackPathResponse } from "@/types/attackPath";
 
@@ -104,7 +105,7 @@ function TechniquePill({ entry }: { entry: AttackPathEntry }) {
   return (
     <div className="relative group">
       <div
-        className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono cursor-default ${pillBg(entry.status)}`}
+        className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono cursor-default ${pillBg(entry.status)}`}
         title={tooltipLines}
       >
         <StatusDot status={entry.status} />
@@ -115,7 +116,7 @@ function TechniquePill({ entry }: { entry: AttackPathEntry }) {
         className={
           "absolute z-50 left-0 top-full mt-1 min-w-[180px] max-w-[240px] " +
           "bg-athena-elevated border border-athena-border rounded-athena-sm p-2 " +
-          "text-[9px] font-mono text-athena-text-primary shadow-lg " +
+          "text-[10px] font-mono text-athena-text-primary shadow-lg " +
           "invisible opacity-0 group-hover:visible group-hover:opacity-100 " +
           "transition-opacity duration-150 pointer-events-none whitespace-pre-wrap"
         }
@@ -153,6 +154,8 @@ interface AttackPathTimelineProps {
 }
 
 export function AttackPathTimeline({ data, loading }: AttackPathTimelineProps) {
+  const tNav = useTranslations("Navigator");
+  const tHints = useTranslations("Hints");
   // Build tactic → entries map
   const tacticMap = new Map<string, AttackPathEntry[]>();
   if (data) {
@@ -170,8 +173,8 @@ export function AttackPathTimeline({ data, loading }: AttackPathTimelineProps) {
   return (
     <div className="bg-athena-surface border border-athena-border rounded-athena-md p-3">
       {/* Section header */}
-      <h2 className="text-xs font-mono text-athena-text-secondary uppercase tracking-wider mb-3">
-        Attack Path Timeline
+      <h2 className="text-xs font-mono text-athena-text-secondary uppercase tracking-wider mb-3" title={tHints("attackPath")}>
+        {tNav("attackPath")}
       </h2>
 
       {/* Horizontal scroll container */}
@@ -205,12 +208,12 @@ export function AttackPathTimeline({ data, loading }: AttackPathTimelineProps) {
                     {/* Tactic header */}
                     <div className="mb-1.5">
                       <div
-                        className="text-[9px] font-mono font-bold uppercase truncate"
+                        className="text-[10px] font-mono font-bold uppercase truncate"
                         style={{ color: accentColor }}
                       >
                         {TACTIC_LABELS[tid] ?? tid}
                       </div>
-                      <div className="text-[8px] font-mono text-athena-text-secondary opacity-60">
+                      <div className="text-[10px] font-mono text-athena-text-secondary opacity-60">
                         {tid}
                       </div>
                     </div>
@@ -218,7 +221,7 @@ export function AttackPathTimeline({ data, loading }: AttackPathTimelineProps) {
                     {/* Technique pills */}
                     <div className="space-y-1">
                       {isEmpty ? (
-                        <div className="text-[8px] font-mono text-athena-text-secondary/40 italic">
+                        <div className="text-[10px] font-mono text-athena-text-secondary/40 italic">
                           —
                         </div>
                       ) : (
@@ -230,7 +233,7 @@ export function AttackPathTimeline({ data, loading }: AttackPathTimelineProps) {
 
                     {/* Coverage badge */}
                     {data && data.tacticCoverage[tid] !== undefined && data.tacticCoverage[tid] > 0 && (
-                      <div className="mt-1 text-[8px] font-mono text-athena-text-secondary opacity-60 text-right">
+                      <div className="mt-1 text-[10px] font-mono text-athena-text-secondary opacity-60 text-right">
                         {data.tacticCoverage[tid]}%
                       </div>
                     )}

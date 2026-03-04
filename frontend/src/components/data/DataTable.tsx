@@ -67,7 +67,7 @@ export function DataTable<T extends Record<string, unknown>>({
 
   if (data.length === 0) {
     return (
-      <div className="bg-athena-surface border border-athena-border rounded-athena-md p-6 text-center">
+      <div className="border-2 border-dashed border-athena-border/50 rounded-athena-md p-6 text-center">
         <span className="text-xs font-mono text-athena-text-secondary">{emptyMessage}</span>
       </div>
     );

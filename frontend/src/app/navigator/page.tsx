@@ -15,6 +15,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useToast } from "@/contexts/ToastContext";
@@ -77,6 +78,11 @@ function tacticLabel(tactic: string): string {
 }
 
 export default function NavigatorPage() {
+  const t = useTranslations("Navigator");
+  const tHints = useTranslations("Hints");
+  const tEmpty = useTranslations("EmptyStates");
+  const tErrors = useTranslations("Errors");
+
   const { addToast } = useToast();
   const ws = useWebSocket(DEFAULT_OP_ID);
   const [isLoading, setIsLoading] = useState(true);
@@ -97,7 +103,7 @@ export default function NavigatorPage() {
           setAttackPath(null);
         })
         .finally(() => setLoadingPath(false)),
-    ]).catch(() => addToast("Failed to load navigator data", "error"))
+    ]).catch(() => addToast(tErrors("failedLoadC5isr"), "error"))
       .finally(() => setIsLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -107,7 +113,7 @@ export default function NavigatorPage() {
     return ws.subscribe("execution.update", () => {
       api.get<TechniqueWithStatus[]>(`/operations/${DEFAULT_OP_ID}/techniques`)
         .then(setTechniques)
-        .catch(() => addToast("Failed to refresh techniques", "error"));
+        .catch(() => addToast(tErrors("failedRefreshTechniques"), "error"));
 
       api.getAttackPath(DEFAULT_OP_ID)
         .then(setAttackPath)
@@ -142,11 +148,18 @@ export default function NavigatorPage() {
   }, [grouped]);
 
   const stageCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
+    const counts: Record<string, { total: number; tested: number; success: number; failed: number }> = {};
     for (const t of techniques) {
+      const stage = t.killChainStage || "exploit";
+      if (!counts[stage]) counts[stage] = { total: 0, tested: 0, success: 0, failed: 0 };
+      counts[stage].total += 1;
       if (t.latestStatus && t.latestStatus !== "untested") {
-        const stage = t.killChainStage || "exploit";
-        counts[stage] = (counts[stage] || 0) + 1;
+        counts[stage].tested += 1;
+        if (t.latestStatus === "success" || t.latestStatus === "partial") {
+          counts[stage].success += 1;
+        } else if (t.latestStatus === "failed") {
+          counts[stage].failed += 1;
+        }
       }
     }
     return counts;
@@ -158,18 +171,20 @@ export default function NavigatorPage() {
     <div className="space-y-4">
       {/* Attack Path Timeline — above the ATT&CK matrix */}
       <AttackPathTimeline data={attackPath} loading={loadingPath} />
+      <p className="text-[10px] font-mono text-athena-text-secondary/60 -mt-3 ml-1">{tHints("attackPath")}</p>
 
       <div className="grid grid-cols-4 gap-4">
         {/* ATT&CK Matrix — 3 cols */}
         <div className="col-span-3">
           <h2 className="text-xs font-mono text-athena-text-secondary uppercase tracking-wider mb-2">
-            MITRE ATT&CK Matrix
+            {t("mitreMatrix")}
           </h2>
+          <p className="text-[10px] font-mono text-athena-text-secondary/60 -mt-1 mb-2 ml-1">{tHints("mitreMatrix")}</p>
           <div className="bg-athena-surface border border-athena-border rounded-athena-md p-3 overflow-x-auto">
             <div className="flex gap-2 min-w-max">
               {orderedTactics.map((tactic) => (
                 <div key={tactic} className="w-28 shrink-0">
-                  <div className="text-[9px] font-mono text-athena-accent font-bold uppercase mb-2 truncate">
+                  <div className="text-[10px] font-mono text-athena-accent font-bold uppercase mb-2 truncate">
                     {tacticLabel(tactic)}
                   </div>
                   <div className="space-y-1">
@@ -196,9 +211,9 @@ export default function NavigatorPage() {
           {selected ? (
             <TechniqueCard technique={selected} />
           ) : (
-            <div className="bg-athena-surface border border-athena-border rounded-athena-md p-4">
+            <div className="border-2 border-dashed border-athena-border/50 rounded-athena-md p-4">
               <span className="text-xs font-mono text-athena-text-secondary">
-                Select a technique to view details
+                {tEmpty("navigatorNoSelection")}
               </span>
             </div>
           )}

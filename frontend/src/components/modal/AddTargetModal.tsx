@@ -14,8 +14,10 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { parseBatchInput } from "@/lib/cidr";
 import { Button } from "@/components/atoms/Button";
 
 interface AddTargetModalProps {
@@ -31,135 +33,407 @@ export function AddTargetModal({
   onSuccess,
   onCancel,
 }: AddTargetModalProps) {
-  const [hostname, setHostname] = useState("");
-  const [ipAddress, setIpAddress] = useState("");
+  const [target, setTarget] = useState("");
   const [role, setRole] = useState("target");
   const [os, setOs] = useState("");
   const [networkSegment, setNetworkSegment] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Batch mode state
+  const [mode, setMode] = useState<"single" | "batch">("single");
+  const [batchText, setBatchText] = useState("");
+  const [batchRole, setBatchRole] = useState("target");
+  const [batchOs, setBatchOs] = useState("");
+  const [batchSegment, setBatchSegment] = useState("");
+  const [batchPreview, setBatchPreview] = useState<{ ipAddress: string; hostname: string }[] | null>(null);
+  const [batchStage, setBatchStage] = useState<"input" | "preview" | "importing">("input");
+  const [batchResult, setBatchResult] = useState<string | null>(null);
+
+  const t = useTranslations("AddTarget");
+  const tCommon = useTranslations("Common");
+
+  // Reset all state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setTarget("");
+      setRole("target");
+      setOs("");
+      setNetworkSegment("");
+      setError(null);
+      setSubmitting(false);
+      setMode("single");
+      setBatchText("");
+      setBatchRole("target");
+      setBatchOs("");
+      setBatchSegment("");
+      setBatchPreview(null);
+      setBatchStage("input");
+      setBatchResult(null);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
+  function deriveHostname(value: string): string {
+    const v = value.trim();
+    if (v.includes("/")) return v;
+    if (v.includes(".")) {
+      const parts = v.split(".");
+      const lastPart = parts[parts.length - 1];
+      if (/[a-zA-Z]/.test(lastPart)) return parts[0];
+    }
+    return v;
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!hostname.trim() || !ipAddress.trim()) {
-      setError("Hostname and IP address are required.");
+    if (!target.trim()) {
+      setError(t("targetRequired"));
       return;
     }
     setError(null);
     setSubmitting(true);
     try {
       await api.post(`/operations/${operationId}/targets`, {
-        hostname: hostname.trim(),
-        ip_address: ipAddress.trim(),
+        hostname: deriveHostname(target),
+        ip_address: target.trim(),
         role,
         os: os.trim() || null,
         network_segment: networkSegment.trim() || null,
       });
-      setHostname("");
-      setIpAddress("");
+      setTarget("");
       setRole("target");
       setOs("");
       setNetworkSegment("");
       onSuccess();
     } catch (err) {
       const detail = (err as { detail?: string })?.detail;
-      setError(detail || "Failed to add target. Please check the values and try again.");
+      setError(detail || t("failedToAdd"));
     } finally {
       setSubmitting(false);
     }
   }
 
+  function handlePreview() {
+    setError(null);
+    try {
+      const entries = parseBatchInput(batchText);
+      if (entries.length > 512) {
+        setError(t("tooManyEntries"));
+        return;
+      }
+      setBatchPreview(entries);
+      setBatchStage("preview");
+    } catch {
+      setError(t("tooManyCidr"));
+    }
+  }
+
+  async function handleBatchImport() {
+    if (!batchPreview) return;
+    setBatchStage("importing");
+    setError(null);
+    try {
+      const result = await api.post<{
+        created: string[];
+        skippedDuplicates: string[];
+        totalRequested: number;
+        totalCreated: number;
+      }>(
+        `/operations/${operationId}/targets/batch`,
+        {
+          entries: batchPreview.map((e) => ({
+            hostname: e.hostname,
+            ip_address: e.ipAddress,
+            role: batchRole || undefined,
+            os: batchOs.trim() || undefined,
+            network_segment: batchSegment.trim() || undefined,
+          })),
+          role: batchRole,
+          os: batchOs.trim() || null,
+          network_segment: batchSegment.trim() || null,
+        },
+      );
+      setBatchResult(
+        t("importResult", {
+          created: result.totalCreated,
+          skipped: result.skippedDuplicates.length,
+        }),
+      );
+      setBatchStage("input");
+      setBatchText("");
+      setBatchPreview(null);
+      onSuccess();
+    } catch (err) {
+      const detail = (err as { detail?: string })?.detail;
+      setError(detail || t("failedToAdd"));
+      setBatchStage("preview");
+    }
+  }
+
+  const inputStyles =
+    "w-full bg-athena-bg border border-athena-border rounded-athena-sm px-3 py-2 text-sm font-mono text-athena-text placeholder-athena-text-secondary/50 focus:outline-none focus:border-athena-accent";
+
+  const labelStyles =
+    "block text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-1";
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-athena-bg/80 backdrop-blur-sm">
       <div className="bg-athena-surface border-2 border-athena-border rounded-athena-lg p-6 max-w-md w-full mx-4">
         <div className="mb-4">
-          <span className="text-xs font-mono text-athena-text-secondary">NEW TARGET</span>
-          <h2 className="text-lg font-mono font-bold text-athena-text mt-1">Add Target Host</h2>
+          <span className="text-xs font-mono text-athena-text-secondary">{t("newTarget")}</span>
+          <h2 className="text-lg font-mono font-bold text-athena-text mt-1">{t("addTargetTitle")}</h2>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div>
-            <label className="block text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-1">
-              Hostname <span className="text-athena-error">*</span>
-            </label>
-            <input
-              type="text"
-              value={hostname}
-              onChange={(e) => setHostname(e.target.value)}
-              placeholder="metasploitable"
-              className="w-full bg-athena-bg border border-athena-border rounded-athena-sm px-3 py-2 text-sm font-mono text-athena-text placeholder-athena-text-secondary/50 focus:outline-none focus:border-athena-accent"
-            />
-          </div>
+        {/* Tab buttons */}
+        <div className="flex gap-2 mb-4">
+          <button
+            type="button"
+            onClick={() => setMode("single")}
+            className={`text-xs font-mono px-3 py-1 rounded-athena-sm border ${
+              mode === "single"
+                ? "bg-athena-accent text-athena-bg border-athena-accent"
+                : "border-athena-border text-athena-text-secondary hover:border-athena-accent"
+            }`}
+          >
+            {t("single")}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMode("batch");
+              setBatchPreview(null);
+              setBatchStage("input");
+              setBatchResult(null);
+            }}
+            className={`text-xs font-mono px-3 py-1 rounded-athena-sm border ${
+              mode === "batch"
+                ? "bg-athena-accent text-athena-bg border-athena-accent"
+                : "border-athena-border text-athena-text-secondary hover:border-athena-accent"
+            }`}
+          >
+            {t("batch")}
+          </button>
+        </div>
 
-          <div>
-            <label className="block text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-1">
-              IP / Hostname / Domain <span className="text-athena-error">*</span>
-            </label>
-            <input
-              type="text"
-              value={ipAddress}
-              onChange={(e) => setIpAddress(e.target.value)}
-              placeholder="192.168.1.100 or target.example.com"
-              className="w-full bg-athena-bg border border-athena-border rounded-athena-sm px-3 py-2 text-sm font-mono text-athena-text placeholder-athena-text-secondary/50 focus:outline-none focus:border-athena-accent"
-            />
-          </div>
+        {/* Single mode: existing form */}
+        {mode === "single" && (
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div>
+              <label className={labelStyles}>
+                {t("target")} <span className="text-athena-error">*</span>
+              </label>
+              <input
+                type="text"
+                value={target}
+                onChange={(e) => setTarget(e.target.value)}
+                placeholder={t("targetPlaceholder")}
+                className={inputStyles}
+              />
+            </div>
 
-          <div>
-            <label className="block text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-1">
-              Role
-            </label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="w-full bg-athena-bg border border-athena-border rounded-athena-sm px-3 py-2 text-sm font-mono text-athena-text focus:outline-none focus:border-athena-accent"
-            >
-              <option value="target">target</option>
-              <option value="pivot">pivot</option>
-              <option value="c2">c2</option>
-            </select>
-          </div>
+            <div>
+              <label className={labelStyles}>
+                {t("role")}
+              </label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className={inputStyles}
+              >
+                <option value="target">target</option>
+                <option value="pivot">pivot</option>
+                <option value="c2">c2</option>
+              </select>
+            </div>
 
-          <div>
-            <label className="block text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-1">
-              OS (optional)
-            </label>
-            <input
-              type="text"
-              value={os}
-              onChange={(e) => setOs(e.target.value)}
-              placeholder="Linux"
-              className="w-full bg-athena-bg border border-athena-border rounded-athena-sm px-3 py-2 text-sm font-mono text-athena-text placeholder-athena-text-secondary/50 focus:outline-none focus:border-athena-accent"
-            />
-          </div>
+            <div>
+              <label className={labelStyles}>
+                {t("osOptional")}
+              </label>
+              <input
+                type="text"
+                value={os}
+                onChange={(e) => setOs(e.target.value)}
+                placeholder="Linux"
+                className={inputStyles}
+              />
+            </div>
 
-          <div>
-            <label className="block text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-1">
-              Network Segment (optional)
-            </label>
-            <input
-              type="text"
-              value={networkSegment}
-              onChange={(e) => setNetworkSegment(e.target.value)}
-              placeholder="192.168.0.0/24"
-              className="w-full bg-athena-bg border border-athena-border rounded-athena-sm px-3 py-2 text-sm font-mono text-athena-text placeholder-athena-text-secondary/50 focus:outline-none focus:border-athena-accent"
-            />
-          </div>
+            <div>
+              <label className={labelStyles}>
+                {t("networkSegment")}
+              </label>
+              <input
+                type="text"
+                value={networkSegment}
+                onChange={(e) => setNetworkSegment(e.target.value)}
+                placeholder="192.168.0.0/24"
+                className={inputStyles}
+              />
+            </div>
 
-          {error && (
-            <p className="text-xs font-mono text-athena-error">{error}</p>
-          )}
+            {error && (
+              <p className="text-xs font-mono text-athena-error">{error}</p>
+            )}
 
-          <div className="flex gap-3 justify-end pt-2">
-            <Button variant="secondary" type="button" onClick={onCancel} disabled={submitting}>
-              CANCEL
-            </Button>
-            <Button variant="primary" type="submit" disabled={submitting}>
-              {submitting ? "ADDING..." : "ADD TARGET"}
-            </Button>
+            <div className="flex gap-3 justify-end pt-2">
+              <Button variant="secondary" type="button" onClick={onCancel} disabled={submitting}>
+                {tCommon("cancel")}
+              </Button>
+              <Button variant="primary" type="submit" disabled={submitting}>
+                {submitting ? t("adding") : t("addTarget")}
+              </Button>
+            </div>
+          </form>
+        )}
+
+        {/* Batch mode */}
+        {mode === "batch" && (
+          <div className="space-y-3">
+            {batchResult && (
+              <p className="text-xs font-mono text-athena-success">{batchResult}</p>
+            )}
+
+            {/* Stage: input */}
+            {batchStage === "input" && (
+              <>
+                <div>
+                  <label className={labelStyles}>
+                    {t("target")} <span className="text-athena-error">*</span>
+                  </label>
+                  <textarea
+                    rows={6}
+                    value={batchText}
+                    onChange={(e) => setBatchText(e.target.value)}
+                    placeholder={t("batchPlaceholder")}
+                    className={inputStyles + " resize-none"}
+                  />
+                  <p className="text-[10px] font-mono text-athena-text-secondary mt-1">
+                    {t("batchHelp")}
+                  </p>
+                </div>
+
+                <div>
+                  <label className={labelStyles}>
+                    {t("role")}
+                  </label>
+                  <select
+                    value={batchRole}
+                    onChange={(e) => setBatchRole(e.target.value)}
+                    className={inputStyles}
+                  >
+                    <option value="target">target</option>
+                    <option value="pivot">pivot</option>
+                    <option value="c2">c2</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className={labelStyles}>
+                    {t("osOptional")}
+                  </label>
+                  <input
+                    type="text"
+                    value={batchOs}
+                    onChange={(e) => setBatchOs(e.target.value)}
+                    placeholder="Linux"
+                    className={inputStyles}
+                  />
+                </div>
+
+                <div>
+                  <label className={labelStyles}>
+                    {t("networkSegment")}
+                  </label>
+                  <input
+                    type="text"
+                    value={batchSegment}
+                    onChange={(e) => setBatchSegment(e.target.value)}
+                    placeholder="192.168.0.0/24"
+                    className={inputStyles}
+                  />
+                </div>
+
+                {error && (
+                  <p className="text-xs font-mono text-athena-error">{error}</p>
+                )}
+
+                <div className="flex gap-3 justify-end pt-2">
+                  <Button variant="secondary" type="button" onClick={onCancel}>
+                    {tCommon("cancel")}
+                  </Button>
+                  <Button
+                    variant="primary"
+                    type="button"
+                    onClick={handlePreview}
+                    disabled={!batchText.trim()}
+                  >
+                    {t("preview")}
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {/* Stage: preview */}
+            {batchStage === "preview" && batchPreview && (
+              <>
+                <p className="text-xs font-mono text-athena-text">
+                  {t("previewTitle", { count: batchPreview.length })}
+                </p>
+                <div className="max-h-48 overflow-y-auto border border-athena-border rounded-athena-sm bg-athena-bg p-2">
+                  {batchPreview.map((entry, idx) => (
+                    <div
+                      key={idx}
+                      className="text-xs font-mono text-athena-text-secondary py-0.5"
+                    >
+                      {entry.ipAddress}
+                      {entry.hostname !== entry.ipAddress && (
+                        <span className="text-athena-text-secondary/60 ml-2">
+                          ({entry.hostname})
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {error && (
+                  <p className="text-xs font-mono text-athena-error">{error}</p>
+                )}
+
+                <div className="flex gap-3 justify-end pt-2">
+                  <Button
+                    variant="secondary"
+                    type="button"
+                    onClick={() => {
+                      setBatchStage("input");
+                      setError(null);
+                    }}
+                  >
+                    {t("backToEdit")}
+                  </Button>
+                  <Button
+                    variant="primary"
+                    type="button"
+                    onClick={handleBatchImport}
+                  >
+                    {t("confirmImport")}
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {/* Stage: importing */}
+            {batchStage === "importing" && (
+              <div className="flex items-center justify-center py-8">
+                <p className="text-sm font-mono text-athena-text-secondary">
+                  {t("importing")}
+                </p>
+              </div>
+            )}
           </div>
-        </form>
+        )}
       </div>
     </div>
   );

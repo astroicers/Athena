@@ -14,6 +14,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { KillChainStage } from "@/types/enums";
 
 const STAGES: { key: KillChainStage; label: string }[] = [
@@ -26,37 +27,106 @@ const STAGES: { key: KillChainStage; label: string }[] = [
   { key: KillChainStage.ACTION, label: "ACTION" },
 ];
 
-interface KillChainIndicatorProps {
-  stageCounts: Record<string, number>;
+export interface KillChainStageCounts {
+  total: number;
+  tested: number;
+  success: number;
+  failed: number;
 }
 
+interface KillChainIndicatorProps {
+  stageCounts: Record<string, KillChainStageCounts>;
+}
+
+const BAR_H = 48;
+
 export function KillChainIndicator({ stageCounts }: KillChainIndicatorProps) {
-  const maxCount = Math.max(1, ...Object.values(stageCounts));
+  const t = useTranslations("KillChain");
+  const tHints = useTranslations("Hints");
+
+  const maxTotal = Math.max(
+    1,
+    ...Object.values(stageCounts).map((s) => s.total),
+  );
 
   return (
     <div className="bg-athena-surface border border-athena-border rounded-athena-md p-4">
-      <h3 className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-3">
-        Kill Chain Progress
+      <h3 className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-1">
+        {t("progress")}
       </h3>
+      <p className="text-[10px] font-mono text-athena-text-secondary/60 mb-3">{tHints("killChain")}</p>
       <div className="flex items-end gap-1.5 h-20">
         {STAGES.map((stage) => {
-          const count = stageCounts[stage.key] || 0;
-          const pct = (count / maxCount) * 100;
+          const data = stageCounts[stage.key] || {
+            total: 0,
+            tested: 0,
+            success: 0,
+            failed: 0,
+          };
+          const totalPct = (data.total / maxTotal) * 100;
+          const successH =
+            data.total > 0 ? (data.success / data.total) * totalPct : 0;
+          const failedH =
+            data.total > 0 ? (data.failed / data.total) * totalPct : 0;
+          const untestedH = totalPct - successH - failedH;
+
           return (
-            <div key={stage.key} className="flex-1 flex flex-col items-center gap-1">
-              <span className="text-[9px] font-mono text-athena-accent font-bold">
-                {count > 0 ? count : ""}
+            <div
+              key={stage.key}
+              className="flex-1 flex flex-col items-center gap-1"
+            >
+              <span className="text-[10px] font-mono text-athena-accent font-bold">
+                {data.total > 0 ? `${data.tested}/${data.total}` : ""}
               </span>
-              <div className="w-full bg-athena-border/30 rounded-sm overflow-hidden" style={{ height: "48px" }}>
-                <div
-                  className="w-full bg-athena-accent/70 rounded-sm transition-all"
-                  style={{ height: `${pct}%`, marginTop: `${100 - pct}%` }}
-                />
+              <div
+                className="w-full bg-athena-border/20 rounded-sm overflow-hidden flex flex-col justify-end"
+                style={{ height: `${BAR_H}px` }}
+              >
+                {successH > 0 && (
+                  <div
+                    className="w-full bg-athena-accent/70 transition-all"
+                    style={{ height: `${(successH / 100) * BAR_H}px` }}
+                  />
+                )}
+                {failedH > 0 && (
+                  <div
+                    className="w-full bg-athena-error/50 transition-all"
+                    style={{ height: `${(failedH / 100) * BAR_H}px` }}
+                  />
+                )}
+                {untestedH > 0 && (
+                  <div
+                    className="w-full bg-athena-border/40 transition-all"
+                    style={{ height: `${(untestedH / 100) * BAR_H}px` }}
+                  />
+                )}
               </div>
-              <span className="text-[8px] font-mono text-athena-text-secondary">{stage.label}</span>
+              <span className="text-[10px] font-mono text-athena-text-secondary">
+                {stage.label}
+              </span>
             </div>
           );
         })}
+      </div>
+      <div className="flex items-center gap-3 mt-2">
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 rounded-sm bg-athena-accent/70" />
+          <span className="text-[10px] font-mono text-athena-text-secondary">
+            {t("tested")}
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 rounded-sm bg-athena-error/50" />
+          <span className="text-[10px] font-mono text-athena-text-secondary">
+            {t("failed")}
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 rounded-sm bg-athena-border/40" />
+          <span className="text-[10px] font-mono text-athena-text-secondary">
+            {t("untested")}
+          </span>
+        </div>
       </div>
     </div>
   );

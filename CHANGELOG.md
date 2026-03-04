@@ -7,30 +7,117 @@
 
 ## [Unreleased]
 
-### Phase E：第三方識別符去識別化（De-branding）（2026-03-02）
+### UI Optimization Phases 1-5（SPEC-027）（2026-03-04）
 
 #### Added
-- `docs/adr/ADR-019-third-party-debranding.md` — 第三方識別符去識別化架構決策記錄（授權分析 + 映射表）
+- **SlidePanel 元件**：`frontend/src/components/ui/SlidePanel.tsx` — 右側抽屜（sm/md/lg 三種寬度、backdrop blur、ESC 關閉、aria-modal）
+- **VirtualList 元件**：`frontend/src/components/ui/VirtualList.tsx` — 泛型虛擬捲動（viewport windowing、auto-scroll-to-bottom）
+- **SidebarContext**：`frontend/src/contexts/SidebarContext.tsx` — 側邊欄 expanded/collapsed 狀態管理
+- **SectionHeader 元件**：`frontend/src/components/atoms/SectionHeader.tsx` — 統一 page/card 兩級 section header
+- **Skeleton 元件**：`frontend/src/components/ui/Skeleton.tsx` — 8 個 skeleton 變體取代全頁掃描線
+- **SVG NavIcons**：`frontend/src/components/atoms/NavIcons.tsx` — 5 個 SVG 導航圖示取代 Unicode 字元
+- **MetricCard SVG 圓弧** + trend 指示器（gauge/trend props）
+- **DomainCard SVG 六角邊框**（healthPct strokeDasharray）
+- **HostNodeCard SVG 狀態圖示**（盾牌/雷達/破盾）
+- **Button icon prop** + Planner 按鈕 SVG 圖示
+- **MITRE Matrix compact mode** toggle（w-28 ↔ w-20）
 
 #### Changed
-- **客戶端模組重命名**：`caldera_client.py` → `c2_client.py`（`C2EngineClient`）；`mock_caldera_client.py` → `mock_c2_client.py`（`MockC2Client`）；`shannon_client.py` → `ai_engine_client.py`（`AiEngineClient`）
-- **環境變數重命名**：`CALDERA_URL` → `C2_ENGINE_URL`；`CALDERA_API_KEY` → `C2_ENGINE_API_KEY`；`CALDERA_AGENT_CALLBACK_URL` → `C2_AGENT_CALLBACK_URL`；`MOCK_CALDERA` → `MOCK_C2_ENGINE`；`CALDERA_MOCK_BEACON` → `C2_MOCK_BEACON`；`SHANNON_URL` → `AI_ENGINE_URL`
-- **Enum 重命名**（底層值不變，DB 無遷移）：`ExecutionEngine.CALDERA = "caldera"` → `C2`；`SHANNON = "shannon"` → `ADAPTIVE`（Python + TypeScript 同步）
-- **推薦模型重命名**：`PentestGPTRecommendation` → `OrientRecommendation`（後端 + 前端 + 測試全同步）
-- **Health API 回應 key 重命名**：`"caldera"` → `"c2_engine"`；`"shannon"` → `"ai_engine"`（`health.py` + `test_spec_004_api.py`）
-- **OrientEngine 系統提示詞更新**：Engine Routing 段落去除第三方名稱（Primary Engine / Adaptive Engine）
-- **infra 目錄重命名**：`infra/caldera/` → `infra/c2-engine/`；`infra/pentestgpt/` 移除
-- **docker-compose.yml**：caldera service 重命名為 c2-engine；env var key 同步更新
-- **Makefile**：`caldera-*` targets → `c2-engine-*`；`vendor-init` PentestGPT clone 部分移除
-- **README.md**：新增「致謝與靈感來源」區塊，明確聲明 Caldera/PentestGPT 為概念借鑒、無程式碼依賴
-- **ADR-006**：Rev 2 追加，說明 ShannonClient DEPRECATED + 識別符去識別化
-
-#### Deprecated
-- `caldera_client.py`、`mock_caldera_client.py`、`shannon_client.py` — 已刪除，由新命名模組取代
+- **Primary Button**：`bg-athena-accent/20` → `bg-athena-accent text-athena-bg font-bold`（實心填充）
+- **全域 Focus 指示器**：新增 `:focus-visible` 規則（1px accent outline）
+- **Modal backdrop**：4 個 Modal 改為 `bg-athena-bg/80 backdrop-blur-sm`（半透明毛玻璃）
+- **最小字型底線**：`text-[8px]`/`text-[9px]` → `text-[10px]`（~28 個元件）
+- **空狀態改善**：虛線邊框 + 引導文字（DataTable、Monitor、Planner、Navigator）
+- **響應式斷點**：4 頁面加入 `lg:` 響應式前綴（grid-cols-2 lg:grid-cols-4 等）
+- **Monitor 佈局重組**：從 6 層垂直堆疊改為固定高度 2x2 dashboard grid
+- **可收合側邊欄**：expanded 224px ↔ collapsed 64px，icon-only + tooltip
+- **Recommendation History**：從 inline accordion 移入 SlidePanel 右側抽屜
+- **Live Log Stream**：改用 VirtualList 虛擬捲動
+- **15+ inline header** 統一改用 SectionHeader 元件
+- **4 頁面 PageLoading** 改用對應 Skeleton 元件
+- **NetworkTopology** Canvas 節點加入角色圖示（DC/Server/Workstation/Router）
 
 #### Metrics
-- pytest: 維持 95 passed（0 regression）
-- 去識別化識別符：CalderaClient、MockCalderaClient、ShannonClient、PentestGPTRecommendation、CALDERA_URL 等共 26 個識別符全部替換
+- vitest: 27 files, 63 passed (0 regression)
+- TypeScript: `next build` clean
+- 影響檔案：40+ 前端元件
+
+---
+
+### Phase F：UX 精修 + LLM 監控 + Web Terminal + Topology Tab（2026-03-04）
+
+#### Added
+- **LLM 即時監控**：`backend/app/services/orient_engine.py` 在 LLM 呼叫前後廣播 `orient.thinking` WebSocket 事件（含 `status`、`backend`、`latency_ms` 欄位）
+- **AIDecisionPanel LLM 狀態列**：`frontend/src/components/topology/AIDecisionPanel.tsx` 新增 `llmThinking`、`llmBackend`、`llmLatencyMs` 可選 props；AI 分析中顯示 `● ANALYZING...`，完成後顯示 latency
+- **Recommendation History API**：`backend/app/routers/recommendations.py` 新增 `GET /operations/{op_id}/recommendations?limit=N` 端點（支援 1–100 筆分頁）
+- **Recommendation History 面板**：`frontend/src/app/monitor/page.tsx` 在 RecommendationPanel 下方加可摺疊歷史列表（最多 20 筆，每筆可展開 situationAssessment）
+- **Web Terminal 後端**：`backend/app/routers/terminal.py` 新增 WebSocket 端點 `ws://{op_id}/targets/{target_id}/terminal`，對已 compromised 目標建立 SSH 連線（asyncssh），支援互動式命令執行；安全黑名單防止破壞性指令
+- **Web Terminal 前端 Hook**：`frontend/src/hooks/useTerminal.ts` WebSocket terminal hook，管理連線、entries、prompt、sendCommand
+- **Web Terminal UI**：`frontend/src/components/terminal/TerminalPanel.tsx` 全螢幕 modal terminal，含輸入歷史（↑↓ 導航，最多 100 筆）、輸入/輸出/錯誤/系統 entry 色彩區分
+- **TERMINAL 按鈕**：`frontend/src/app/planner/page.tsx` 在已 compromised 的 HostNodeCard 下方加 `▶ Terminal` 按鈕，點擊開啟 TerminalPanel modal
+- **Topology Tab**：`frontend/src/app/monitor/page.tsx` 新增 `[OVERVIEW]` / `[TOPOLOGY]` Tab 切換（使用現有 `TabBar` 元件）
+- **TopologyView 元件**：`frontend/src/components/topology/TopologyView.tsx` 全頁拓撲佈局（拓撲圖 3/4 + 節點詳情 1/4，Kill Chain 條貼底），高度動態計算填滿剩餘視窗
+- **NodeDetailPanel 元件**：`frontend/src/components/topology/NodeDetailPanel.tsx` 點擊節點顯示 IP、OS、角色、Compromised 狀態、Kill Chain 進度條（7 階段彩色方塊）、已收集 Facts 清單
+- **NetworkTopology 可互動性**：新增 `onNodeClick?: (nodeId: string) => void` 和 `nodeSizeMultiplier?: number` props；`height` 也可外部覆寫
+
+#### Changed
+- **OODA Timeline 重寫**：`frontend/src/components/ooda/OODATimeline.tsx` — 依 iterationNumber 分組、可摺疊（預設展開最新 1 個）、ORIENT 文字截斷（>150 字元 + [展開]）、phase filter chips（ALL/OBS/ORI/DEC/ACT）、預設顯示最新 3 個 iteration
+- **移除 ACCEPT RECOMMENDATION 按鈕**：`frontend/src/components/ooda/RecommendationPanel.tsx` 移除 `handleAccept()`、ACCEPT 按鈕、`operationId`/`onAccepted` props（ACT 永遠自動執行，ACCEPT 只寫 DB 標記無功能意義）
+- **Modal 背景不透明**：AddTargetModal、ReconResultModal、HexConfirmModal、TerminalPanel overlay 從 `bg-black/60`/`bg-black/70` 改為 `bg-black`（純黑背景，視覺清晰）
+- **無目標時禁用操作按鈕**：`frontend/src/app/planner/page.tsx` OODA CYCLE、EXPORT、EXECUTE MISSION 三個按鈕在 `targets.length === 0` 時自動 disabled
+- **網路拓撲節點縮小**：NetworkTopology 節點尺寸大幅縮小（DC: 16→3、compromised: 12→2、預設: 8→1.5），glow 層從 3 層改為 2 層，乘數從 6 改為 3，避免單節點填滿整個圖
+
+#### Fixed
+- **Web Terminal "Could not parse host"**：`terminal.py` credential 查詢未依 `source_target_id` 篩選，可能取得錯誤目標的憑證；credential 不含 `@host:port` 時未 fallback 至 target IP。修正：加入 `source_target_id` 篩選 + `host` 為空時使用 `target["ip_address"]`
+
+#### Metrics
+- pytest: 237 passed（0 regression）
+- TypeScript: `tsc --noEmit` clean
+- 影響檔案：10+ 前端元件、2 後端 router、1 後端 service
+
+---
+
+### Phase E Rev 2：第三方識別符深度去識別化（Deep De-branding）（2026-03-04）
+
+#### Added
+- `docs/adr/ADR-019-third-party-debranding.md` Rev 2 — 深度去識別化修訂（Enum 值替換 + DB 遷移 + Shannon 完全刪除）
+
+#### Changed
+- **ExecutionEngine Enum 值全面替換**（Rev 1 僅改名不改值 → Rev 2 值也替換）：
+  - `"caldera"` → `"c2"`、`"shannon"` → 移除；新增 `"ssh"`、`"persistent_ssh"`、`"mock"`、`"metasploit"`、`"winrm"` 六個實際引擎值
+  - Python enum（`backend/app/models/enums.py`）+ TypeScript enum（`frontend/src/types/enums.ts`）同步
+- **DB Schema 遷移**（冪等 `try/except pass`）：
+  - `ALTER TABLE techniques RENAME COLUMN caldera_ability_id TO c2_ability_id`
+  - `UPDATE techniques/technique_executions/mission_steps SET engine='ssh' WHERE engine='caldera'`
+  - `engine DEFAULT 'ssh'`（原 `'caldera'`）
+- **EngineRouter 簡化**：移除 `adaptive_engine` 參數；`_execute_caldera()` → `_execute_c2()`；移除 Shannon 分支
+- **OrientEngine**：mock 推薦 engine `"caldera"` → `"ssh"`、`"shannon"` → `"c2"`；系統提示詞 engine routing 段落重寫
+- **DecisionEngine**：fallback default `"caldera"` → `"ssh"`
+- **InitialAccessEngine**：`bootstrap_caldera_agent()` → `bootstrap_c2_agent()`
+- **Router 更新**：`/techniques/sync-caldera` → `/techniques/sync-c2`；agents log message `"Caldera"` → `"C2 engine"`
+- **Health API**：`ai_engine` 狀態區塊完全移除（非僅 key 重命名）
+- **OODAController**：移除 AiEngineClient import、更新 EngineRouter 建構
+- **Seed data**：`caldera_ability_id` → `c2_ability_id`、mission_steps engine `"caldera"` → `"ssh"`
+- **API schemas**：`caldera_ability_id` → `c2_ability_id`（TechniqueCreate + TechniqueWithStatus）
+- **Config**：移除 `AI_ENGINE_URL` 設定
+- **Frontend types**：`calderaAbilityId` → `c2AbilityId`（technique.ts）
+- **.env.example**：更新註解 `"caldera"` → `"c2"`、移除 `AI_ENGINE_URL=`
+- **10+ 測試檔案**同步更新（test_spec_004/007/008、test_e2e_ooda、test_integration、test_playbook_crud、test_lateral_movement、AIDecisionPanel.test、TechniqueCard.test、useExecutionUpdate.test、LogEntryRow.test）
+
+#### Removed
+- `backend/app/clients/ai_engine_client.py` — Shannon client 完全刪除（非重命名保留）
+
+#### Metrics
+- pytest: 224 passed（0 regression）
+- Vitest: 63 passed, 27 suites（0 regression）
+- TypeScript: `tsc --noEmit` clean
+- 影響 30+ 檔案
+
+### UI 改善（2026-03-04）
+
+#### Changed
+- **AddTargetModal**：合併 HOSTNAME 與 IP/HOSTNAME/DOMAIN 為單一 TARGET 欄位；新增 `deriveHostname()` 自動推導 hostname
+- **Sidebar 底部**：移除裝飾性 "System Operational" StatusDot + "VIPER-1 / Commander" 區塊，替換為 [GitHub](https://github.com/astroicers/Athena) 連結 + Apache-2.0 授權資訊
 
 ### Phase A：企業化外部滲透測試基礎建設（2026-03-01）
 

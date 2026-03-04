@@ -1,16 +1,12 @@
 // Copyright 2026 Athena Contributors
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// Change Date: Four years from release date of each version
+// Change License: Apache License, Version 2.0
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// For commercial licensing, contact: [TODO: contact email]
 
 "use client";
 
@@ -32,6 +28,8 @@ interface RecommendCardProps {
 
 export function RecommendCard({ recommendation }: RecommendCardProps) {
   const t = useTranslations("Recommendation");
+  const tUI = useTranslations("UI");
+  const tRisk = useTranslations("Risk");
 
   if (!recommendation) {
     return (
@@ -50,7 +48,7 @@ export function RecommendCard({ recommendation }: RecommendCardProps) {
           {t("title")}
         </span>
         <span className="text-xs font-mono text-athena-accent font-bold">
-          {Math.round(recommendation.confidence * 100)}% confidence
+          {tUI("confidence", { value: Math.round(recommendation.confidence * 100) })}
         </span>
       </div>
       <p className="text-xs font-mono text-athena-text-secondary mb-3">
@@ -70,7 +68,7 @@ export function RecommendCard({ recommendation }: RecommendCardProps) {
             <span className="text-athena-accent">{opt.techniqueId}</span>
             <span className="text-athena-text flex-1">{opt.techniqueName}</span>
             <Badge variant={RISK_VARIANT[opt.riskLevel] || "info"}>
-              {opt.riskLevel.toUpperCase()}
+              {tRisk(opt.riskLevel as any)}
             </Badge>
             <span className="text-athena-text-secondary">
               {opt.recommendedEngine.toUpperCase()}

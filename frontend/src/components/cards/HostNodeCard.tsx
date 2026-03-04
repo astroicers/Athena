@@ -1,22 +1,19 @@
 // Copyright 2026 Athena Contributors
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// Change Date: Four years from release date of each version
+// Change License: Apache License, Version 2.0
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// For commercial licensing, contact: [TODO: contact email]
 
 "use client";
 
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/atoms/Badge";
 import { Button } from "@/components/atoms/Button";
+import { ProgressBar } from "@/components/atoms/ProgressBar";
 
 interface HostNodeCardProps {
   id?: string;
@@ -27,6 +24,9 @@ interface HostNodeCardProps {
   privilegeLevel: string | null;
   isScanning?: boolean;
   isActive?: boolean;
+  scanPhase?: string | null;
+  scanStep?: number;
+  scanTotalSteps?: number;
   onScan?: (targetId: string) => void;
   onSetActive?: (targetId: string, active: boolean) => void;
   onDelete?: (targetId: string) => void;
@@ -70,6 +70,9 @@ export function HostNodeCard({
   privilegeLevel,
   isScanning = false,
   isActive = false,
+  scanPhase = null,
+  scanStep = 0,
+  scanTotalSteps = 0,
   onScan,
   onSetActive,
   onDelete,
@@ -120,6 +123,26 @@ export function HostNodeCard({
               </div>
             )}
           </div>
+          {isScanning && (
+            <div className="mt-2 space-y-1">
+              <div className="flex items-center justify-between text-[10px] font-mono">
+                <span className="text-[#00d4ff] animate-pulse">
+                  {scanPhase
+                    ? t(`phase_${scanPhase}` as Parameters<typeof t>[0])
+                    : t("scanning")}
+                </span>
+                {scanTotalSteps > 0 && (
+                  <span className="text-athena-text-secondary">
+                    {scanStep}/{scanTotalSteps}
+                  </span>
+                )}
+              </div>
+              <ProgressBar
+                value={scanStep}
+                max={scanTotalSteps || 1}
+              />
+            </div>
+          )}
           {(onScan || onSetActive || onDelete) && id && (
             <div className="mt-3 flex gap-2 flex-wrap">
               {onScan && (

@@ -1,5 +1,13 @@
 # Copyright 2026 Athena Contributors
-# Licensed under the Apache License, Version 2.0
+#
+# Use of this software is governed by the Business Source License 1.1
+# included in the LICENSE file.
+#
+# Change Date: Four years from release date of each version
+# Change License: Apache License, Version 2.0
+#
+# For commercial licensing, contact: [TODO: contact email]
+
 """Metasploit RPC engine for Non-SSH initial access (ADR-019).
 
 Connects to msfrpcd and executes exploit modules. Falls back to mock mode

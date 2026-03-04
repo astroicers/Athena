@@ -1,68 +1,98 @@
 #!/usr/bin/env python3
-"""Add Apache 2.0 license headers to all Python source files."""
+"""Replace Apache 2.0 license headers with BSL 1.1 headers in all source files."""
 
 import pathlib
+import re
 import sys
 
 PY_HEADER = """\
 # Copyright 2026 Athena Contributors
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# Use of this software is governed by the Business Source License 1.1
+# included in the LICENSE file.
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# Change Date: Four years from release date of each version
+# Change License: Apache License, Version 2.0
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# For commercial licensing, contact: [TODO: contact email]
 
 """
 
 TS_HEADER = """\
 // Copyright 2026 Athena Contributors
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// Change Date: Four years from release date of each version
+// Change License: Apache License, Version 2.0
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// For commercial licensing, contact: [TODO: contact email]
 
 """
 
-SENTINEL = "Licensed under the Apache License"
+SENTINEL = "Business Source License"
+OLD_SENTINEL = "Licensed under the Apache License"
+
+# Regex to match old Apache 2.0 header block (Python: # comments)
+# Matches both full 14-line headers and short 2-line headers
+OLD_PY_HEADER_RE = re.compile(
+    r"^# Copyright 2026 Athena Contributors\n"
+    r"(?:#[^\n]*\n)*"
+    r"(?:# limitations under the License\.\n|# Licensed under the Apache License[^\n]*\n)"
+    r"\n?",
+    re.MULTILINE,
+)
+
+# Regex to match old Apache 2.0 header block (TypeScript: // comments)
+OLD_TS_HEADER_RE = re.compile(
+    r"^(// Copyright 2026 Athena Contributors\n"
+    r"(?://[^\n]*\n)*"
+    r"// limitations under the License\.\n)"
+    r"\n?",
+    re.MULTILINE,
+)
 
 
-def add_headers(root: pathlib.Path, extensions: list[str], header: str) -> int:
+def update_headers(
+    root: pathlib.Path,
+    extensions: list[str],
+    new_header: str,
+    old_header_re: re.Pattern,
+) -> int:
     count = 0
     for ext in extensions:
         for f in sorted(root.rglob(f"*{ext}")):
             content = f.read_text(encoding="utf-8")
             if SENTINEL in content:
                 continue
-            f.write_text(header + content, encoding="utf-8")
-            count += 1
-            print(f"  + {f}")
+            if OLD_SENTINEL in content:
+                new_content = old_header_re.sub("", content, count=1)
+                f.write_text(new_header + new_content, encoding="utf-8")
+                count += 1
+                print(f"  ~ {f} (replaced)")
+            else:
+                f.write_text(new_header + content, encoding="utf-8")
+                count += 1
+                print(f"  + {f} (added)")
     return count
 
 
 def main():
     project = pathlib.Path(__file__).resolve().parent.parent
 
-    print("=== Adding Python license headers ===")
-    py_count = add_headers(project / "backend" / "app", [".py"], PY_HEADER)
+    print("=== Updating Python license headers ===")
+    py_count = 0
+    for d in ["backend/app", "backend/tests"]:
+        py_count += update_headers(
+            project / d, [".py"], PY_HEADER, OLD_PY_HEADER_RE
+        )
     print(f"  Python files updated: {py_count}")
 
-    print("\n=== Adding TypeScript license headers ===")
-    ts_count = add_headers(project / "frontend" / "src", [".ts", ".tsx"], TS_HEADER)
+    print("\n=== Updating TypeScript license headers ===")
+    ts_count = update_headers(
+        project / "frontend" / "src", [".ts", ".tsx"], TS_HEADER, OLD_TS_HEADER_RE
+    )
     print(f"  TypeScript files updated: {ts_count}")
 
     print(f"\nTotal: {py_count + ts_count} files updated")

@@ -1,18 +1,16 @@
 // Copyright 2026 Athena Contributors
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// Change Date: Four years from release date of each version
+// Change License: Apache License, Version 2.0
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// For commercial licensing, contact: [TODO: contact email]
 
 "use client";
+
+import { useMemo } from "react";
 
 interface SituationEdgeProps {
   fromX: number;
@@ -20,6 +18,9 @@ interface SituationEdgeProps {
   toX: number;
   toY: number;
   status: "completed" | "active" | "pending";
+  fromColor: string;
+  toColor: string;
+  index: number;
 }
 
 export function SituationEdge({
@@ -28,35 +29,82 @@ export function SituationEdge({
   toX,
   toY,
   status,
+  fromColor,
+  toColor,
+  index,
 }: SituationEdgeProps) {
-  const color =
-    status === "completed"
-      ? "#00d4ff"
-      : status === "active"
-        ? "#00d4ff"
-        : "#2a2a4a";
+  const gradId = `edge-grad-${index}`;
+  const pathId = `edge-path-${index}`;
 
-  const opacity = status === "completed" ? 1 : status === "active" ? 0.8 : 0.5;
+  const isPending = status === "pending";
+  const isCompleted = status === "completed";
 
-  const dashArray =
-    status === "completed"
-      ? undefined
-      : status === "active"
-        ? "8 4"
-        : "4 4";
+  // Cubic bezier with a subtle upward curve
+  const midX = (fromX + toX) / 2;
+  const curveY = fromY - 18;
+  const d = `M ${fromX} ${fromY} C ${midX} ${curveY}, ${midX} ${curveY}, ${toX} ${toY}`;
+
+  const opacity = isCompleted ? 0.9 : status === "active" ? 0.7 : 0.25;
+  const strokeWidth = isCompleted ? 2 : 1.5;
+
+  // Number of animated particles
+  const particleCount = isCompleted ? 3 : status === "active" ? 1 : 0;
+
+  const particles = useMemo(() => {
+    if (particleCount === 0) return [];
+    return Array.from({ length: particleCount }, (_, i) => {
+      const delay = (i / particleCount) * 3; // stagger evenly across duration
+      return { key: `p-${index}-${i}`, delay };
+    });
+  }, [particleCount, index]);
 
   return (
-    <line
-      x1={fromX}
-      y1={fromY}
-      x2={toX}
-      y2={toY}
-      stroke={color}
-      strokeWidth={1.5}
-      strokeDasharray={dashArray}
-      opacity={opacity}
-      markerEnd="url(#arrowhead)"
-      className={status === "active" ? "situation-edge-flow" : undefined}
-    />
+    <g>
+      <defs>
+        {/* Gradient from source → target stage colour */}
+        <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor={isPending ? "#2a2a4a" : fromColor} stopOpacity={opacity} />
+          <stop offset="100%" stopColor={isPending ? "#2a2a4a" : toColor} stopOpacity={opacity} />
+        </linearGradient>
+      </defs>
+
+      {/* Invisible reference path for animateMotion */}
+      <path id={pathId} d={d} fill="none" stroke="none" />
+
+      {/* Visible edge path */}
+      <path
+        d={d}
+        fill="none"
+        stroke={`url(#${gradId})`}
+        strokeWidth={strokeWidth}
+        strokeDasharray={isPending ? "4 6" : isCompleted ? undefined : "8 4"}
+        strokeLinecap="round"
+        className={status === "active" ? "situation-edge-flow" : undefined}
+      />
+
+      {/* Arrow head at end */}
+      {!isPending && (
+        <circle
+          cx={toX}
+          cy={toY}
+          r={3}
+          fill={toColor}
+          opacity={opacity}
+        />
+      )}
+
+      {/* Animated particles along the path */}
+      {particles.map(({ key, delay }) => (
+        <circle key={key} r={2.5} fill="#00d4ff" opacity={0.9}>
+          <animateMotion
+            dur="3s"
+            repeatCount="indefinite"
+            begin={`${delay}s`}
+          >
+            <mpath xlinkHref={`#${pathId}`} />
+          </animateMotion>
+        </circle>
+      ))}
+    </g>
   );
 }

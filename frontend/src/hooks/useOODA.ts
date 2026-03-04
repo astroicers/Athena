@@ -1,35 +1,55 @@
 // Copyright 2026 Athena Contributors
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// Change Date: Four years from release date of each version
+// Change License: Apache License, Version 2.0
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// For commercial licensing, contact: [TODO: contact email]
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { OODAPhase } from "@/types/enums";
 import type { UseWebSocketReturn } from "./useWebSocket";
 
-export function useOODA(ws: UseWebSocketReturn): OODAPhase | null {
-  const [phase, setPhase] = useState<OODAPhase | null>(null);
+// Module-level cache so the phase survives page navigation (component unmount/remount).
+let _cachedPhase: OODAPhase | null = null;
+
+export interface UseOODAReturn {
+  phase: OODAPhase | null;
+  clearPhase: () => void;
+}
+
+export function useOODA(ws: UseWebSocketReturn): UseOODAReturn {
+  const [phase, setPhase] = useState<OODAPhase | null>(_cachedPhase);
+
+  const clearPhase = useCallback(() => {
+    _cachedPhase = null;
+    setPhase(null);
+  }, []);
 
   useEffect(() => {
-    const unsub = ws.subscribe("ooda.phase", (data) => {
-      const payload = data as { phase?: OODAPhase };
-      if (payload.phase) {
-        setPhase(payload.phase);
-      }
-    });
-    return unsub;
+    const unsubs = [
+      ws.subscribe("ooda.phase", (data) => {
+        const payload = data as { phase?: OODAPhase };
+        if (payload.phase) {
+          _cachedPhase = payload.phase;
+          setPhase(payload.phase);
+        }
+      }),
+      ws.subscribe("ooda.failed", () => {
+        _cachedPhase = null;
+        setPhase(null);
+      }),
+      ws.subscribe("operation.reset", () => {
+        _cachedPhase = null;
+        setPhase(null);
+      }),
+    ];
+    return () => unsubs.forEach((fn) => fn());
   }, [ws]);
 
-  return phase;
+  return { phase, clearPhase };
 }

@@ -16,7 +16,8 @@ VERSION  ?= latest
         rag-index rag-search rag-stats rag-rebuild \
         guardrail-log guardrail-reset \
         c2-engine-init c2-engine-up c2-engine-down c2-engine-logs c2-engine-status c2-engine-backup \
-        real-mode mock-mode
+        real-mode mock-mode \
+        new-tool
 
 #---------------------------------------------------------------------------
 # Help
@@ -96,7 +97,7 @@ dev-frontend:
 
 seed:
 	@echo "🌱 Loading demo seed data (OP-2024-017)..."
-	cd backend && python -m app.seed.demo_scenario
+	cd backend && python3 -m app.seed.demo_scenario
 
 #---------------------------------------------------------------------------
 # Test
@@ -105,14 +106,14 @@ seed:
 test:
 	@echo "🧪 Running all tests..."
 	@echo "── Backend (pytest) ──"
-	cd backend && python -m pytest tests/ -v --tb=short
+	cd backend && python3 -m pytest tests/ -v --tb=short
 	@echo ""
 	@echo "── Frontend (npm test) ──"
 	cd frontend && npm test
 
 test-backend:
 	@echo "🧪 Running backend tests..."
-	cd backend && python -m pytest tests/ -v
+	cd backend && python3 -m pytest tests/ -v
 
 test-frontend:
 	@echo "🧪 Running frontend tests..."
@@ -121,17 +122,17 @@ test-frontend:
 test-filter:
 	@if [ -z "$(FILTER)" ]; then echo "使用方式：make test-filter FILTER=xxx"; exit 1; fi
 	@echo "🧪 Running filtered: $(FILTER)"
-	cd backend && python -m pytest tests/ -k "$(FILTER)" -v
+	cd backend && python3 -m pytest tests/ -k "$(FILTER)" -v
 
 coverage:
 	@echo "📊 Running coverage report..."
-	cd backend && python -m pytest tests/ --cov=app --cov-report=html --cov-report=term
+	cd backend && python3 -m pytest tests/ --cov=app --cov-report=html --cov-report=term
 	@echo "Coverage HTML report: backend/htmlcov/index.html"
 
 lint:
 	@echo "🔍 Linting..."
 	@echo "── Backend (ruff) ──"
-	@cd backend && python -m ruff check . 2>/dev/null || (cd backend && python -m flake8 . 2>/dev/null) || echo "⚠️  請安裝 ruff 或 flake8"
+	@cd backend && python3 -m ruff check . 2>/dev/null || (cd backend && python3 -m flake8 . 2>/dev/null) || echo "⚠️  請安裝 ruff 或 flake8"
 	@echo ""
 	@echo "── Frontend (next lint) ──"
 	@cd frontend && npm run lint 2>/dev/null || echo "⚠️  前端 lint 尚未配置"
@@ -337,14 +338,36 @@ c2-engine-backup:  ## 備份 C2 引擎 data volume
 
 real-mode:  ## .env 切為真實模式（MOCK_*=false）
 	@if [ ! -f .env ]; then cp .env.example .env; fi
+	@sed -i '/^MOCK_CALDERA=/d' .env
 	@grep -q '^MOCK_C2_ENGINE=' .env && sed -i 's/^MOCK_C2_ENGINE=.*/MOCK_C2_ENGINE=false/' .env || echo 'MOCK_C2_ENGINE=false' >> .env
 	@grep -q '^MOCK_LLM=' .env && sed -i 's/^MOCK_LLM=.*/MOCK_LLM=false/' .env || echo 'MOCK_LLM=false' >> .env
+	@grep -q '^MOCK_METASPLOIT=' .env && sed -i 's/^MOCK_METASPLOIT=.*/MOCK_METASPLOIT=false/' .env || echo 'MOCK_METASPLOIT=false' >> .env
 	@echo "✅ Real mode enabled. Restart Athena to apply."
 	@echo "   確認 C2 引擎運行中: make c2-engine-status"
 	@echo "   確認 LLM API key 已設定: grep API_KEY .env"
 
 mock-mode:  ## .env 切為 mock 模式（MOCK_*=true）
 	@if [ ! -f .env ]; then cp .env.example .env; fi
+	@sed -i '/^MOCK_CALDERA=/d' .env
 	@grep -q '^MOCK_C2_ENGINE=' .env && sed -i 's/^MOCK_C2_ENGINE=.*/MOCK_C2_ENGINE=true/' .env || echo 'MOCK_C2_ENGINE=true' >> .env
 	@grep -q '^MOCK_LLM=' .env && sed -i 's/^MOCK_LLM=.*/MOCK_LLM=true/' .env || echo 'MOCK_LLM=true' >> .env
+	@grep -q '^MOCK_METASPLOIT=' .env && sed -i 's/^MOCK_METASPLOIT=.*/MOCK_METASPLOIT=true/' .env || echo 'MOCK_METASPLOIT=true' >> .env
 	@echo "✅ Mock mode enabled. Restart Athena to apply."
+
+#---------------------------------------------------------------------------
+# MCP Tool Scaffolding
+#---------------------------------------------------------------------------
+
+new-tool:  ## 建立新的 MCP tool server scaffold（用法: make new-tool NAME=my-scanner）
+	@if [ -z "$(NAME)" ]; then echo "Usage: make new-tool NAME=my-scanner"; exit 1; fi
+	@mkdir -p tools/$(NAME)
+	@cp tools/_template/pyproject.toml tools/$(NAME)/pyproject.toml
+	@cp tools/_template/Dockerfile tools/$(NAME)/Dockerfile
+	@cp tools/_template/server.py tools/$(NAME)/server.py
+	@cp tools/_template/README.md tools/$(NAME)/README.md
+	@sed -i "s/{{TOOL_NAME}}/$(NAME)/g" tools/$(NAME)/pyproject.toml tools/$(NAME)/Dockerfile tools/$(NAME)/server.py tools/$(NAME)/README.md
+	@echo "✅ MCP tool scaffold created: tools/$(NAME)/"
+	@echo "   Next steps:"
+	@echo "   1. Edit tools/$(NAME)/server.py — add your tool logic"
+	@echo "   2. Add server entry to mcp_servers.json"
+	@echo "   3. Register in tool_registry via POST /api/tools"

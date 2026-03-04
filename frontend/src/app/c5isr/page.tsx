@@ -1,16 +1,12 @@
 // Copyright 2026 Athena Contributors
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// Change Date: Four years from release date of each version
+// Change License: Apache License, Version 2.0
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// For commercial licensing, contact: [TODO: contact email]
 
 "use client";
 
@@ -51,6 +47,8 @@ export default function C5ISRPage() {
   const tOODA = useTranslations("OODA");
   const tHints = useTranslations("Hints");
   const tErrors = useTranslations("Errors");
+  const tStatus = useTranslations("Status");
+  const tRisk = useTranslations("Risk");
 
   const { operation } = useOperation(DEFAULT_OP_ID);
   const { addToast } = useToast();
@@ -61,20 +59,20 @@ export default function C5ISRPage() {
   const [execRows, setExecRows] = useState<TechniqueWithStatus[]>([]);
 
   const EXEC_COLUMNS: Column<TechRow>[] = [
-    { key: "mitreId", header: "MITRE ID", sortable: true },
-    { key: "name", header: "Technique" },
-    { key: "tactic", header: "Tactic" },
-    { key: "riskLevel", header: "Risk", render: (r) => String(r.riskLevel ?? "—").toUpperCase() },
+    { key: "mitreId", header: t("colMitreId"), sortable: true },
+    { key: "name", header: t("colTechnique") },
+    { key: "tactic", header: t("colTactic") },
+    { key: "riskLevel", header: t("colRisk"), render: (r) => r.riskLevel ? tRisk(String(r.riskLevel) as any) : "—" },
     {
       key: "latestStatus",
-      header: "Status",
+      header: t("colStatus"),
       sortable: true,
       render: (r) => {
         const status = r.latestStatus;
         if (!status) return <span className="text-athena-text-secondary">—</span>;
         return (
           <Badge variant={STATUS_VARIANT[status] || "info"}>
-            {status.toUpperCase()}
+            {tStatus(status as any)}
           </Badge>
         );
       },

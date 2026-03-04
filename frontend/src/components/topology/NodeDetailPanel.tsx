@@ -1,20 +1,17 @@
 // Copyright 2026 Athena Contributors
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// Change Date: Four years from release date of each version
+// Change License: Apache License, Version 2.0
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// For commercial licensing, contact: [TODO: contact email]
 
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import type { TopologyData } from "@/types/api";
 import { KillChainStage } from "@/types/enums";
 import { api } from "@/lib/api";
@@ -38,15 +35,6 @@ const KC_STAGES: KillChainStage[] = [
   KillChainStage.ACTION,
 ];
 
-const KC_LABELS: Record<KillChainStage, string> = {
-  [KillChainStage.RECON]: "RECON",
-  [KillChainStage.WEAPONIZE]: "WEAPON",
-  [KillChainStage.DELIVER]: "DELIVER",
-  [KillChainStage.EXPLOIT]: "EXPLOIT",
-  [KillChainStage.INSTALL]: "INSTALL",
-  [KillChainStage.C2]: "C2",
-  [KillChainStage.ACTION]: "ACTION",
-};
 
 interface NodeDetailPanelProps {
   nodeId: string | null;
@@ -61,6 +49,8 @@ export function NodeDetailPanel({
   nodeKillChainMap,
   operationId,
 }: NodeDetailPanelProps) {
+  const t = useTranslations("Topology");
+  const tKC = useTranslations("KillChain");
   const [facts, setFacts] = useState<FactRow[]>([]);
   const [loadingFacts, setLoadingFacts] = useState(false);
 
@@ -82,7 +72,7 @@ export function NodeDetailPanel({
     return (
       <div className="bg-athena-surface border border-athena-border rounded-athena-md p-4 h-full flex items-center justify-center">
         <span className="text-xs font-mono text-athena-text-secondary text-center">
-          Select a node<br />to view details
+          {t("selectNode")}<br />{t("toViewDetails")}
         </span>
       </div>
     );
@@ -110,17 +100,17 @@ export function NodeDetailPanel({
               : "text-green-400 border-green-500/40 bg-green-500/10"
           }`}
         >
-          {isCompromised ? "COMPROMISED" : "SECURE"}
+          {isCompromised ? t("compromised") : t("secure")}
         </span>
       </div>
 
       {/* Basic info */}
       <div className="space-y-1.5">
         {[
-          ["IP", ip],
-          ["OS", os],
-          ["ROLE", role],
-          ...(priv ? [["PRIV", priv]] : []),
+          [t("ip"), ip],
+          [t("os"), os],
+          [t("role"), role],
+          ...(priv ? [[t("privilege"), priv]] : []),
         ].map(([label, value]) => (
           <div key={label} className="flex gap-2 text-[11px] font-mono">
             <span className="text-athena-text-secondary w-10 shrink-0">{label}</span>
@@ -132,7 +122,7 @@ export function NodeDetailPanel({
       {/* Kill Chain progress */}
       <div>
         <div className="text-[10px] font-mono text-athena-text-secondary mb-2 tracking-wider">
-          KILL CHAIN
+          {t("killChain")}
         </div>
         <div className="flex gap-0.5">
           {KC_STAGES.map((stage, i) => {
@@ -142,7 +132,7 @@ export function NodeDetailPanel({
               <div
                 key={stage}
                 className="flex-1 flex flex-col items-center gap-1"
-                title={KC_LABELS[stage]}
+                title={tKC(stage as any)}
               >
                 <div
                   className="w-full h-2 rounded-sm"
@@ -160,7 +150,7 @@ export function NodeDetailPanel({
                     className="text-[10px] font-mono leading-none"
                     style={{ color: KILL_CHAIN_COLORS[stage] }}
                   >
-                    {KC_LABELS[stage]}
+                    {tKC(stage as any)}
                   </span>
                 )}
               </div>
@@ -169,7 +159,7 @@ export function NodeDetailPanel({
         </div>
         {kcStage === null && (
           <p className="text-[10px] font-mono text-athena-text-secondary mt-1">
-            No attack stage recorded
+            {t("noAttackStage")}
           </p>
         )}
       </div>
@@ -177,11 +167,11 @@ export function NodeDetailPanel({
       {/* Collected Facts */}
       <div>
         <div className="text-[10px] font-mono text-athena-text-secondary mb-2 tracking-wider">
-          COLLECTED FACTS {loadingFacts && <span className="animate-pulse">…</span>}
+          {t("collectedFacts")} {loadingFacts && <span className="animate-pulse">…</span>}
           {!loadingFacts && <span className="ml-1 text-athena-accent">({facts.length})</span>}
         </div>
         {facts.length === 0 && !loadingFacts && (
-          <p className="text-[10px] font-mono text-athena-text-secondary">No facts collected</p>
+          <p className="text-[10px] font-mono text-athena-text-secondary">{t("noFacts")}</p>
         )}
         <div className="space-y-1">
           {facts.map((f) => (

@@ -1,16 +1,12 @@
 // Copyright 2026 Athena Contributors
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// Change Date: Four years from release date of each version
+// Change License: Apache License, Version 2.0
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// For commercial licensing, contact: [TODO: contact email]
 
 "use client";
 
@@ -18,11 +14,11 @@ import { useTranslations } from "next-intl";
 import { SectionHeader } from "@/components/atoms/SectionHeader";
 import { OODAPhase } from "@/types/enums";
 
-const PHASE_KEYS: { key: OODAPhase; label: string; tKey: "observe" | "orient" | "decide" | "act" }[] = [
-  { key: OODAPhase.OBSERVE, label: "OBSERVE", tKey: "observe" },
-  { key: OODAPhase.ORIENT, label: "ORIENT", tKey: "orient" },
-  { key: OODAPhase.DECIDE, label: "DECIDE", tKey: "decide" },
-  { key: OODAPhase.ACT, label: "ACT", tKey: "act" },
+const PHASE_KEYS: { key: OODAPhase; tKey: "observe" | "orient" | "decide" | "act" }[] = [
+  { key: OODAPhase.OBSERVE, tKey: "observe" },
+  { key: OODAPhase.ORIENT, tKey: "orient" },
+  { key: OODAPhase.DECIDE, tKey: "decide" },
+  { key: OODAPhase.ACT, tKey: "act" },
 ];
 
 interface OODAIndicatorProps {
@@ -56,8 +52,7 @@ export function OODAIndicator({ currentPhase }: OODAIndicatorProps) {
                       : "bg-athena-border/30 text-athena-text-secondary"
                 }`}
               >
-                {phase.label}
-                <span className="text-[10px] font-normal opacity-70">{t(phase.tKey)}</span>
+                {t(phase.tKey)}
               </div>
               {i < PHASE_KEYS.length - 1 && (
                 <span className="text-athena-text-secondary text-xs shrink-0">→</span>

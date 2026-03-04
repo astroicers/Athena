@@ -162,13 +162,18 @@ export function MetricCard({ label, value, trend }: MetricCardProps) {
 
 ### License Header
 
-所有新的原始碼檔案**必須**包含 Apache 2.0 授權標頭：
+所有新的原始碼檔案**必須**包含 BSL 1.1 授權標頭：
 
 ```python
 # Copyright 2026 Athena Contributors
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# ...（完整 14 行）
+# Use of this software is governed by the Business Source License 1.1
+# included in the LICENSE file.
+#
+# Change Date: Four years from release date of each version
+# Change License: Apache License, Version 2.0
+#
+# For commercial licensing, contact: [TODO: contact email]
 ```
 
 可使用 `python3 scripts/add_license_headers.py` 批次新增。
@@ -211,6 +216,6 @@ make test
 
 ## 授權 License
 
-本專案採用 [Apache License 2.0](LICENSE)。
+本專案採用 [Business Source License 1.1](LICENSE)。
 
-提交 Pull Request 即表示您同意將您的貢獻以 Apache 2.0 授權發佈。
+提交 Pull Request 即表示您同意將您的貢獻以 BSL 1.1 授權發佈。

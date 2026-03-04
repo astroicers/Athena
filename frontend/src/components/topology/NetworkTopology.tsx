@@ -1,20 +1,17 @@
 // Copyright 2026 Athena Contributors
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// Change Date: Four years from release date of each version
+// Change License: Apache License, Version 2.0
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// For commercial licensing, contact: [TODO: contact email]
 
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import type { TopologyData } from "@/types/api";
 import { KillChainStage } from "@/types/enums";
 
@@ -132,6 +129,7 @@ export function NetworkTopology({
   onNodeClick,
   height = GRAPH_HEIGHT,
 }: NetworkTopologyProps) {
+  const t = useTranslations("Topology");
   // Outer wrapper ref — always mounted, used for width measurement
   const wrapperRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line
@@ -291,7 +289,7 @@ export function NetworkTopology({
     return (
       <div ref={wrapperRef} className="bg-athena-surface border border-athena-border rounded-athena-md p-6 flex items-center justify-center" style={{ height }}>
         <span className="text-xs font-mono text-athena-text-secondary">
-          No topology data available
+          {t("noData")}
         </span>
       </div>
     );
@@ -301,7 +299,7 @@ export function NetworkTopology({
     return (
       <div ref={wrapperRef} className="bg-athena-bg rounded-athena-md border border-athena-border flex items-center justify-center" style={{ height }}>
         <span className="text-xs font-mono text-athena-text-secondary animate-pulse">
-          Loading topology...
+          {t("loading")}
         </span>
       </div>
     );
@@ -317,9 +315,9 @@ export function NetworkTopology({
       <button
         onClick={handleReset}
         className="absolute top-2 right-2 z-10 px-2 py-1 rounded border border-athena-border bg-athena-surface/80 hover:bg-athena-surface text-[10px] font-mono text-athena-text-secondary hover:text-athena-text-primary transition-colors backdrop-blur-sm"
-        title="Reset view"
+        title={t("resetView")}
       >
-        &#x25CE; Reset
+        &#x25CE; {t("reset")}
       </button>
       <ForceGraph2DComp
         ref={(el: unknown) => { fgRef.current = el; }}

@@ -1,16 +1,12 @@
 # Copyright 2026 Athena Contributors
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# Use of this software is governed by the Business Source License 1.1
+# included in the LICENSE file.
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# Change Date: Four years from release date of each version
+# Change License: Apache License, Version 2.0
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# For commercial licensing, contact: [TODO: contact email]
 
 """Shared SSH utilities for DirectSSHEngine and PersistentSSHChannelEngine."""
 
@@ -51,7 +47,7 @@ TECHNIQUE_FACT_TRAITS: dict[str, list[str]] = {
     "T1595.001": ["network.host.ip"],
     "T1595.002": ["vuln.cve"],
     "T1021.004": ["host.session"],
-    "T1078.001": ["credential.ssh"],
+    "T1078.001": ["host.user"],
     "T1110.001": ["credential.ssh"],
     "T1110.003": ["credential.ssh"],
     "T1021.004_priv": ["host.privilege"],
@@ -65,7 +61,15 @@ TECHNIQUE_FACT_TRAITS: dict[str, list[str]] = {
 
 
 def _parse_credential(cred_value: str) -> tuple[str, str, str, int]:
-    """Parse 'user:pass@host:port' or 'user:pass' → (user, pass, host, port)."""
+    """Parse 'user:pass@host:port' or 'user:pass' → (user, pass, host, port).
+
+    Raises ``ValueError`` if *cred_value* does not look like a credential
+    (e.g. command output accidentally stored with the wrong fact trait).
+    """
+    if cred_value.startswith("uid=") or "\n" in cred_value:
+        raise ValueError(
+            f"Value does not look like a credential: {cred_value[:80]}"
+        )
     host = ""
     port = 22
     if "@" in cred_value:

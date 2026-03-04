@@ -1,16 +1,12 @@
 // Copyright 2026 Athena Contributors
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// Change Date: Four years from release date of each version
+// Change License: Apache License, Version 2.0
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// For commercial licensing, contact: [TODO: contact email]
 
 "use client";
 
@@ -75,7 +71,7 @@ export default function MonitorPage() {
   const { operation } = useOperation(DEFAULT_OP_ID);
   const { addToast } = useToast();
   const ws = useWebSocket(DEFAULT_OP_ID);
-  const oodaPhase = useOODA(ws);
+  const { phase: oodaPhase } = useOODA(ws);
   const executionUpdate = useExecutionUpdate(ws);
   const liveLogs = useLiveLog(ws);
   const [isLoading, setIsLoading] = useState(true);
@@ -262,7 +258,7 @@ export default function MonitorPage() {
   const MONITOR_TABS = [
     { id: "overview", label: t("overview") },
     { id: "topology", label: t("topology") },
-    { id: "situation", label: "SITUATION" },
+    { id: "situation", label: t("situation") },
   ];
 
   return (

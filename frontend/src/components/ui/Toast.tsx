@@ -1,19 +1,16 @@
 // Copyright 2026 Athena Contributors
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// Change Date: Four years from release date of each version
+// Change License: Apache License, Version 2.0
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// For commercial licensing, contact: [TODO: contact email]
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useToast } from "@/contexts/ToastContext";
 import type { ToastSeverity } from "@/contexts/ToastContext";
 
@@ -24,14 +21,15 @@ const SEVERITY_STYLES: Record<ToastSeverity, string> = {
   error: "border-l-[var(--color-error)] text-[var(--color-error)]",
 };
 
-const SEVERITY_LABEL: Record<ToastSeverity, string> = {
-  info: "INFO",
-  success: "OK",
-  warning: "WARN",
-  error: "ERR",
+const SEVERITY_KEY: Record<ToastSeverity, "info" | "ok" | "warn" | "err"> = {
+  info: "info",
+  success: "ok",
+  warning: "warn",
+  error: "err",
 };
 
 export function ToastContainer() {
+  const t = useTranslations("UI");
   const { toasts, removeToast } = useToast();
 
   if (toasts.length === 0) return null;
@@ -50,7 +48,7 @@ export function ToastContainer() {
           `}
           onClick={() => removeToast(toast.id)}
         >
-          <span className="font-bold mr-2">[{SEVERITY_LABEL[toast.severity]}]</span>
+          <span className="font-bold mr-2">[{t(SEVERITY_KEY[toast.severity])}]</span>
           <span className="text-[var(--color-text-primary)]">{toast.message}</span>
         </div>
       ))}

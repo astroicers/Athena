@@ -1,16 +1,12 @@
 // Copyright 2026 Athena Contributors
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// Change Date: Four years from release date of each version
+// Change License: Apache License, Version 2.0
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// For commercial licensing, contact: [TODO: contact email]
 
 "use client";
 
@@ -20,6 +16,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { api } from "@/lib/api";
 import { useOperation } from "@/hooks/useOperation";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { useOODA } from "@/hooks/useOODA";
 import { useToast } from "@/contexts/ToastContext";
 import { PlannerPageSkeleton } from "@/components/ui/Skeleton";
 import { DataTable, Column } from "@/components/data/DataTable";
@@ -58,21 +55,23 @@ export default function PlannerPage() {
   const tTips = useTranslations("Tooltips");
   const tEmpty = useTranslations("EmptyStates");
   const tErrors = useTranslations("Errors");
+  const tOoda = useTranslations("OODA");
+  const tStatus = useTranslations("Status");
 
   const STEP_COLUMNS: Column<StepRow>[] = [
-    { key: "stepNumber", header: "#", sortable: true },
-    { key: "techniqueId", header: "Technique", render: (r) => (
+    { key: "stepNumber", header: t("colStep"), sortable: true },
+    { key: "techniqueId", header: t("colTechnique"), render: (r) => (
       <span><span className="text-athena-accent">{r.techniqueId}</span> {r.techniqueName}</span>
     )},
-    { key: "targetLabel", header: "Target" },
-    { key: "engine", header: "Engine", render: (r) => String(r.engine).toUpperCase() },
+    { key: "targetLabel", header: t("colTarget") },
+    { key: "engine", header: t("colEngine"), render: (r) => String(r.engine).toUpperCase() },
     {
       key: "status",
-      header: "Status",
+      header: t("colStatus"),
       sortable: true,
       render: (r) => (
         <Badge variant={STEP_VARIANT[r.status] || "info"}>
-          {String(r.status).toUpperCase()}
+          {tStatus(String(r.status) as any)}
         </Badge>
       ),
     },
@@ -81,19 +80,24 @@ export default function PlannerPage() {
   const { operation } = useOperation(DEFAULT_OP_ID);
   const { addToast } = useToast();
   const ws = useWebSocket(DEFAULT_OP_ID);
+  const { phase: oodaPhase } = useOODA(ws);
   const [isLoading, setIsLoading] = useState(true);
   const [steps, setSteps] = useState<MissionStep[]>([]);
   const [timeline, setTimeline] = useState<OODATimelineEntry[]>([]);
   const [targets, setTargets] = useState<Target[]>([]);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [oodaPhase, setOodaPhase] = useState<string | null>(null);
   const [showOodaConfirm, setShowOodaConfirm] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetStatus, setResetStatus] = useState<"idle" | "resetting" | "done">("idle");
 
   // Phase 13: Recon UI state
   const [showAddTarget, setShowAddTarget] = useState(false);
-  const [scanningTargetId, setScanningTargetId] = useState<string | null>(null);
+  const [scanState, setScanState] = useState<{
+    targetId: string;
+    phase: string | null;
+    step: number;
+    totalSteps: number;
+  } | null>(null);
   const [reconResult, setReconResult] = useState<ReconScanResult | null>(null);
   const [terminalTarget, setTerminalTarget] = useState<Target | null>(null);
   const [deletingTarget, setDeletingTarget] = useState<Target | null>(null);
@@ -124,22 +128,32 @@ export default function PlannerPage() {
   // WebSocket: refresh data on OODA, execution, reset, and recon events
   useEffect(() => {
     const unsubs = [
-      ws.subscribe("ooda.phase", (raw: unknown) => {
-        const data = raw as Record<string, unknown>;
-        setOodaPhase((data.phase as string) ?? null);
+      ws.subscribe("ooda.phase", () => {
         refreshAllData();
       }),
       ws.subscribe("ooda.failed", (raw: unknown) => {
         const data = raw as Record<string, unknown>;
-        setOodaPhase(null);
         addToast((data.error as string) || tErrors("oodaFailed"), "error");
       }),
       ws.subscribe("execution.update", () => refreshAllData()),
       ws.subscribe("operation.reset", () => refreshAllData()),
+      ws.subscribe("recon.progress", (raw: unknown) => {
+        const data = raw as Record<string, unknown>;
+        setScanState((prev) =>
+          prev
+            ? {
+                ...prev,
+                phase: (data.phase as string) ?? prev.phase,
+                step: (data.step as number) ?? prev.step,
+                totalSteps: (data.total_steps as number) ?? prev.totalSteps,
+              }
+            : prev,
+        );
+      }),
       ws.subscribe("recon.completed", (raw: unknown) => {
         const data = raw as Record<string, unknown>;
         refreshTargets();
-        setScanningTargetId(null);
+        setScanState(null);
         addToast(
           t("reconComplete", { factsWritten: (data.facts_written as number) ?? 0 }),
           "success",
@@ -147,7 +161,7 @@ export default function PlannerPage() {
       }),
       ws.subscribe("recon.failed", (raw: unknown) => {
         const data = raw as Record<string, unknown>;
-        setScanningTargetId(null);
+        setScanState(null);
         addToast(
           (data.error as string) || tErrors("failedReconScan"),
           "error",
@@ -170,7 +184,6 @@ export default function PlannerPage() {
     try {
       await api.post(`/operations/${DEFAULT_OP_ID}/reset`);
       setResetStatus("done");
-      setOodaPhase(null);
       refreshAllData();
       setTimeout(() => setResetStatus("idle"), 2000);
     } catch {
@@ -209,7 +222,7 @@ export default function PlannerPage() {
   }
 
   async function handleReconScan(targetId: string) {
-    setScanningTargetId(targetId);
+    setScanState({ targetId, phase: null, step: 0, totalSteps: 6 });
     try {
       await api.post<ReconScanQueued>(
         `/operations/${DEFAULT_OP_ID}/recon/scan`,
@@ -217,7 +230,7 @@ export default function PlannerPage() {
       );
       // 202 Accepted — background task started; WS events handle UI update
     } catch (err) {
-      setScanningTargetId(null);
+      setScanState(null);
       const apiError = err as ApiError;
       addToast(apiError.detail || tErrors("failedReconScan"), "error");
     }
@@ -285,8 +298,8 @@ export default function PlannerPage() {
             </Button>
           </Tooltip>
           {oodaPhase && (
-            <span className="text-[10px] font-mono text-athena-accent animate-pulse">
-              {oodaPhase.toUpperCase()}...
+            <span className="text-xs font-mono font-bold text-athena-accent bg-athena-accent/20 border border-athena-accent rounded-athena-sm px-3 py-1 animate-pulse">
+              {tOoda(oodaPhase as "observe" | "orient" | "decide" | "act")}...
             </span>
           )}
           <Tooltip text={tTips("oodaCycle")}>
@@ -383,7 +396,10 @@ export default function PlannerPage() {
                   isCompromised={tgt.isCompromised}
                   isActive={tgt.isActive}
                   privilegeLevel={tgt.privilegeLevel}
-                  isScanning={scanningTargetId === tgt.id}
+                  isScanning={scanState?.targetId === tgt.id}
+                  scanPhase={scanState?.targetId === tgt.id ? scanState.phase : null}
+                  scanStep={scanState?.targetId === tgt.id ? scanState.step : 0}
+                  scanTotalSteps={scanState?.targetId === tgt.id ? scanState.totalSteps : 0}
                   onScan={handleReconScan}
                   onSetActive={handleSetActive}
                   onDelete={handleDeleteRequest}
@@ -404,7 +420,7 @@ export default function PlannerPage() {
 
       <HexConfirmModal
         isOpen={showConfirm}
-        title="Execute Mission Plan"
+        title={t("confirmExecute")}
         riskLevel={RiskLevel.HIGH}
         onConfirm={handleExecute}
         onCancel={() => setShowConfirm(false)}
@@ -412,7 +428,7 @@ export default function PlannerPage() {
 
       <HexConfirmModal
         isOpen={showOodaConfirm}
-        title="Trigger OODA Cycle"
+        title={t("confirmOoda")}
         riskLevel={RiskLevel.MEDIUM}
         onConfirm={handleOodaTrigger}
         onCancel={() => setShowOodaConfirm(false)}
@@ -420,7 +436,7 @@ export default function PlannerPage() {
 
       <HexConfirmModal
         isOpen={showResetConfirm}
-        title="Reset Operation"
+        title={t("confirmReset")}
         riskLevel={RiskLevel.HIGH}
         onConfirm={handleReset}
         onCancel={() => setShowResetConfirm(false)}

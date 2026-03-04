@@ -1,16 +1,12 @@
 // Copyright 2026 Athena Contributors
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// Change Date: Four years from release date of each version
+// Change License: Apache License, Version 2.0
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// For commercial licensing, contact: [TODO: contact email]
 
 "use client";
 
@@ -18,14 +14,14 @@ import { useTranslations } from "next-intl";
 import { SectionHeader } from "@/components/atoms/SectionHeader";
 import { KillChainStage } from "@/types/enums";
 
-const STAGES: { key: KillChainStage; label: string }[] = [
-  { key: KillChainStage.RECON, label: "RECON" },
-  { key: KillChainStage.WEAPONIZE, label: "WEAPON" },
-  { key: KillChainStage.DELIVER, label: "DELIVER" },
-  { key: KillChainStage.EXPLOIT, label: "EXPLOIT" },
-  { key: KillChainStage.INSTALL, label: "INSTALL" },
-  { key: KillChainStage.C2, label: "C2" },
-  { key: KillChainStage.ACTION, label: "ACTION" },
+const STAGES: { key: KillChainStage }[] = [
+  { key: KillChainStage.RECON },
+  { key: KillChainStage.WEAPONIZE },
+  { key: KillChainStage.DELIVER },
+  { key: KillChainStage.EXPLOIT },
+  { key: KillChainStage.INSTALL },
+  { key: KillChainStage.C2 },
+  { key: KillChainStage.ACTION },
 ];
 
 export interface KillChainStageCounts {
@@ -103,7 +99,7 @@ export function KillChainIndicator({ stageCounts }: KillChainIndicatorProps) {
                 )}
               </div>
               <span className="text-[10px] font-mono text-athena-text-secondary">
-                {stage.label}
+                {t(stage.key as any)}
               </span>
             </div>
           );

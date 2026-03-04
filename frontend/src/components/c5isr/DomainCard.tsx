@@ -1,19 +1,16 @@
 // Copyright 2026 Athena Contributors
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// Change Date: Four years from release date of each version
+// Change License: Apache License, Version 2.0
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// For commercial licensing, contact: [TODO: contact email]
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/atoms/Badge";
 import { ProgressBar } from "@/components/atoms/ProgressBar";
 import { C5ISRDomainStatus } from "@/types/enums";
@@ -28,15 +25,6 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "error" | "info"> =
   [C5ISRDomainStatus.DEGRADED]: "warning",
   [C5ISRDomainStatus.OFFLINE]: "error",
   [C5ISRDomainStatus.CRITICAL]: "error",
-};
-
-const DOMAIN_LABELS: Record<string, string> = {
-  command: "COMMAND",
-  control: "CONTROL",
-  comms: "COMMS",
-  computers: "COMPUTERS",
-  cyber: "CYBER",
-  isr: "ISR",
 };
 
 function healthVariant(pct: number): "success" | "warning" | "error" | "default" {
@@ -107,6 +95,8 @@ interface DomainCardProps {
 }
 
 export function DomainCard({ domain }: DomainCardProps) {
+  const t = useTranslations("C5ISR");
+  const tStatus = useTranslations("Status");
   const color = healthColor(domain.healthPct);
   const borderClass = healthBorderClass(domain.healthPct);
 
@@ -119,10 +109,10 @@ export function DomainCard({ domain }: DomainCardProps) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-mono font-bold text-athena-text">
-            {DOMAIN_LABELS[domain.domain] || domain.domain.toUpperCase()}
+            {t(("domain" + domain.domain.charAt(0).toUpperCase() + domain.domain.slice(1)) as any)}
           </span>
           <Badge variant={STATUS_VARIANT[domain.status] || "info"}>
-            {domain.status.toUpperCase()}
+            {tStatus(domain.status as any)}
           </Badge>
         </div>
         <ProgressBar value={domain.healthPct} max={100} variant={healthVariant(domain.healthPct)} />

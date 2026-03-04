@@ -1,7 +1,7 @@
 # Athena
 
 [![Star on GitHub](https://img.shields.io/github/stars/astroicers/Athena?style=social)](https://github.com/astroicers/Athena)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-BSL%201.1-blue.svg)](LICENSE)
 
 > **C5ISR + OODA — AI 驅動的網路作戰指揮平台**
 >
@@ -235,7 +235,11 @@ make up                 # docker-compose up --build -d
 
 ## 授權
 
-- Athena 核心：Apache 2.0
+Athena 核心程式碼採用 **Business Source License 1.1 (BSL 1.1)** 授權。
+
+- **非商業用途免費** — 個人使用、學術研究、教育用途、CTF 競賽皆可自由使用
+- **商業用途** — 需另行取得商業授權，請聯繫 [TODO: contact email]
+- **自動開源** — 每個版本發佈 4 年後自動轉為 Apache License 2.0
 - MITRE ATT&CK 知識庫：CC BY 4.0（僅引用，不分發）
 
-Athena 核心程式碼為完全自主實作，設計過程中受 MITRE ATT&CK 框架啟發。
+詳見 [LICENSE](LICENSE) 檔案。

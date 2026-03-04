@@ -1,16 +1,12 @@
 // Copyright 2026 Athena Contributors
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// Change Date: Four years from release date of each version
+// Change License: Apache License, Version 2.0
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// For commercial licensing, contact: [TODO: contact email]
 
 "use client";
 
@@ -132,7 +128,7 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
                     : "border-athena-border text-athena-text-secondary hover:border-athena-accent/50"
                 }`}
               >
-                {p.slice(0, 3).toUpperCase()}
+                {t(p as "observe" | "orient" | "decide" | "act")}
               </button>
             ))}
           </div>
@@ -211,7 +207,7 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
                               {time}
                             </span>
                             <Badge variant={PHASE_VARIANT[entry.phase] || "info"}>
-                              {entry.phase.toUpperCase()}
+                              {t(entry.phase as "observe" | "orient" | "decide" | "act")}
                             </Badge>
                           </div>
                           <p className="text-xs font-mono text-athena-text leading-relaxed">

@@ -1,16 +1,12 @@
 // Copyright 2026 Athena Contributors
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// Change Date: Four years from release date of each version
+// Change License: Apache License, Version 2.0
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// For commercial licensing, contact: [TODO: contact email]
 
 "use client";
 
@@ -44,6 +40,8 @@ export function AIDecisionPanel({
 }: AIDecisionPanelProps) {
   const t = useTranslations("AIDecision");
   const tHints = useTranslations("Hints");
+  const tStatus = useTranslations("Status");
+  const tKC = useTranslations("KillChain");
 
   const isRunning = activeStatus === "running";
   const stageColor = activeKillChainStage ? KILL_CHAIN_COLORS[activeKillChainStage] : null;
@@ -89,7 +87,7 @@ export function AIDecisionPanel({
                   borderColor: stageColor ?? undefined,
                 }}
               >
-                {activeKillChainStage.toUpperCase()}
+                {tKC(activeKillChainStage as any)}
               </span>
             )}
           </div>
@@ -121,7 +119,7 @@ export function AIDecisionPanel({
                       : "text-athena-text-secondary"
                   }`}
                 >
-                  {activeStatus === "running" ? t("running") : activeStatus.toUpperCase()}
+                  {activeStatus === "running" ? t("running") : tStatus(activeStatus as any)}
                 </span>
               )}
             </div>

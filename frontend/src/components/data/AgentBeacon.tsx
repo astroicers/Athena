@@ -1,19 +1,16 @@
 // Copyright 2026 Athena Contributors
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// Change Date: Four years from release date of each version
+// Change License: Apache License, Version 2.0
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// For commercial licensing, contact: [TODO: contact email]
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { AgentStatus } from "@/types/enums";
 
 const STATUS_STYLES: Record<string, { dot: string; text: string }> = {
@@ -32,6 +29,7 @@ interface AgentBeaconProps {
 }
 
 export function AgentBeacon({ paw, status, privilege, platform, lastBeacon }: AgentBeaconProps) {
+  const tStatus = useTranslations("Status");
   const style = STATUS_STYLES[status] || STATUS_STYLES[AgentStatus.PENDING];
   const beaconTime = lastBeacon?.split("T")[1]?.slice(0, 8) || "—";
 
@@ -41,7 +39,7 @@ export function AgentBeacon({ paw, status, privilege, platform, lastBeacon }: Ag
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className={`text-xs font-mono font-bold ${style.text}`}>{paw}</span>
-          <span className="text-[10px] font-mono text-athena-text-secondary uppercase">{status}</span>
+          <span className="text-[10px] font-mono text-athena-text-secondary">{tStatus(status as any)}</span>
         </div>
         <div className="flex items-center gap-3 text-[10px] font-mono text-athena-text-secondary">
           <span>{platform}</span>

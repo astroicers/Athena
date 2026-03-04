@@ -1,16 +1,12 @@
 // Copyright 2026 Athena Contributors
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// Change Date: Four years from release date of each version
+// Change License: Apache License, Version 2.0
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// For commercial licensing, contact: [TODO: contact email]
 
 "use client";
 
@@ -41,11 +37,53 @@ function getHealthTextClass(pct: number): string {
   return "text-red-400";
 }
 
+/** Small hex gauge matching DomainCard HexGauge style */
+function MiniHexGauge({ value, color }: { value: number; color: string }) {
+  // Flat-top hexagon vertices for 28x32 viewBox
+  const points = "14,1 25.5,8 25.5,24 14,31 2.5,24 2.5,8";
+  const perimeter = 86; // approximate
+  const filled = (Math.min(100, Math.max(0, value)) / 100) * perimeter;
+
+  return (
+    <svg width="28" height="32" viewBox="0 0 28 32" className="shrink-0">
+      {/* Background hex */}
+      <polygon
+        points={points}
+        fill="none"
+        stroke="#2a2a4a"
+        strokeWidth="1.2"
+      />
+      {/* Foreground hex — filled proportional to health % */}
+      <polygon
+        points={points}
+        fill="none"
+        stroke={color}
+        strokeWidth="1.2"
+        strokeDasharray={`${filled} ${perimeter - filled}`}
+        strokeLinecap="round"
+      />
+      {/* Percentage label */}
+      <text
+        x="14"
+        y="17.5"
+        textAnchor="middle"
+        dominantBaseline="central"
+        fill={color}
+        fontFamily="var(--font-mono)"
+        fontSize="8"
+        fontWeight="700"
+      >
+        {value}
+      </text>
+    </svg>
+  );
+}
+
 export function C5ISRMiniBar({ health }: C5ISRMiniBarProps) {
   const domains = DOMAIN_ORDER.filter((d) => d in health || DOMAIN_LABELS[d]);
 
   return (
-    <div className="flex items-center justify-center gap-3 py-2 px-4">
+    <div className="flex items-center justify-center gap-3 py-2.5 px-4">
       <span className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mr-1">
         C5ISR
       </span>
@@ -58,18 +96,13 @@ export function C5ISRMiniBar({ health }: C5ISRMiniBarProps) {
         return (
           <div
             key={domain}
-            className="flex flex-col items-center gap-0.5 px-2 py-1 rounded bg-athena-surface border border-athena-border"
+            className="flex flex-col items-center gap-0.5"
           >
-            <span className="text-[10px] font-mono text-athena-text-secondary font-bold">
+            <span className="text-[9px] font-mono text-athena-text-secondary font-bold tracking-wider">
               {label}
             </span>
-            <div className="w-10 h-1.5 rounded-full bg-athena-border overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: color }}
-              />
-            </div>
-            <span className={`text-[10px] font-mono font-bold ${textClass}`}>
+            <MiniHexGauge value={pct} color={color} />
+            <span className={`text-[9px] font-mono font-bold ${textClass}`}>
               {pct}%
             </span>
           </div>

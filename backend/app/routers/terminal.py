@@ -1,19 +1,16 @@
 # Copyright 2026 Athena Contributors
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# Use of this software is governed by the Business Source License 1.1
+# included in the LICENSE file.
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# Change Date: Four years from release date of each version
+# Change License: Apache License, Version 2.0
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# For commercial licensing, contact: [TODO: contact email]
 
 """Interactive SSH terminal WebSocket endpoint for compromised targets."""
 
+import asyncio
 import json
 import logging
 
@@ -89,6 +86,29 @@ async def ssh_terminal(
 
         cred_value = cred_row["value"]
 
+        # Defence-in-depth: if the stored value doesn't look like a
+        # credential (e.g. poisoned by command output), fall back to
+        # a properly-formatted credential fact.
+        if "@" not in cred_value or ":" not in cred_value.split("@")[0]:
+            cursor = await db.execute(
+                "SELECT value FROM facts "
+                "WHERE operation_id = ? AND source_target_id = ? "
+                "AND trait = 'credential.ssh' "
+                "AND value LIKE '%:%@%:%' "
+                "ORDER BY collected_at DESC LIMIT 1",
+                (operation_id, target_id),
+            )
+            fallback_row = await cursor.fetchone()
+            if fallback_row:
+                cred_value = fallback_row["value"]
+            else:
+                await websocket.send_text(json.dumps({
+                    "error": "No valid SSH credential found "
+                    "(stored value does not match user:pass@host:port format)"
+                }))
+                await websocket.close()
+                return
+
     # Parse credential: user:pass@host:port
     from app.clients._ssh_common import _parse_credential  # noqa: PLC0415
 
@@ -101,20 +121,37 @@ async def ssh_terminal(
         await websocket.close()
         return
 
-    # Establish SSH connection
-    try:
-        import asyncssh  # noqa: PLC0415
+    # Establish SSH connection (retry up to 3 times with backoff)
+    import asyncssh  # noqa: PLC0415
 
-        conn = await asyncssh.connect(
-            host,
-            port=port,
-            username=user,
-            password=password,
-            known_hosts=None,
-            connect_timeout=15,
-        )
-    except Exception as exc:
-        await websocket.send_text(json.dumps({"error": f"SSH connection failed: {exc}"}))
+    _MAX_RETRIES = 3
+    _RETRY_DELAYS = (1, 3, 5)
+    conn = None
+    last_error: Exception | None = None
+    for attempt in range(_MAX_RETRIES):
+        try:
+            conn = await asyncssh.connect(
+                host,
+                port=port,
+                username=user,
+                password=password,
+                known_hosts=None,
+                connect_timeout=15,
+            )
+            break
+        except Exception as exc:  # noqa: BLE001
+            last_error = exc
+            logger.warning(
+                "SSH terminal attempt %d/%d failed for %s@%s:%s: %s",
+                attempt + 1, _MAX_RETRIES, user, host, port, exc,
+            )
+            if attempt < _MAX_RETRIES - 1:
+                await asyncio.sleep(_RETRY_DELAYS[attempt])
+
+    if conn is None:
+        await websocket.send_text(json.dumps({
+            "error": f"SSH connection failed after {_MAX_RETRIES} attempts: {last_error}"
+        }))
         await websocket.close()
         return
 

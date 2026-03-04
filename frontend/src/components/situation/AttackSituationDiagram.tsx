@@ -1,20 +1,17 @@
 // Copyright 2026 Athena Contributors
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// Change Date: Four years from release date of each version
+// Change License: Apache License, Version 2.0
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// For commercial licensing, contact: [TODO: contact email]
 
 "use client";
 
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { KillChainStage } from "@/types/enums";
 import type { OODAPhase } from "@/types/enums";
 import type { TechniqueWithStatus } from "@/types/technique";
@@ -41,16 +38,6 @@ const KILL_CHAIN_COLORS: Record<string, string> = {
   action: "#ff0040",
 };
 
-const STAGE_LABELS: Record<string, string> = {
-  recon: "RECON",
-  weaponize: "WEAPON",
-  deliver: "DELIVER",
-  exploit: "EXPLOIT",
-  install: "INSTALL",
-  c2: "C2",
-  action: "ACTION",
-};
-
 const KILL_CHAIN_ORDER: KillChainStage[] = [
   KillChainStage.RECON,
   KillChainStage.WEAPONIZE,
@@ -61,10 +48,10 @@ const KILL_CHAIN_ORDER: KillChainStage[] = [
   KillChainStage.ACTION,
 ];
 
-const NODE_SPACING = 155;
-const START_X = 80;
-const CENTER_Y = 150;
-const NODE_WIDTH = 140;
+const NODE_SPACING = 160;
+const START_X = 90;
+const CENTER_Y = 170;
+const HEX_HW = 60; // half-width of hex node for edge offset
 
 export function AttackSituationDiagram({
   techniques,
@@ -72,6 +59,8 @@ export function AttackSituationDiagram({
   executionUpdate,
   c5isrDomains,
 }: AttackSituationDiagramProps) {
+  const t = useTranslations("Situation");
+  const tKC = useTranslations("KillChain");
   const situation = useSituationData(
     techniques,
     oodaPhase,
@@ -124,41 +113,38 @@ export function AttackSituationDiagram({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-athena-border">
         <span className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider">
-          Attack Situation Diagram
+          {t("title")}
         </span>
         <span className="text-[10px] font-mono text-athena-accent">
-          Progress: {Math.round(situation.overallProgress)}%
+          {t("progress", { value: Math.round(situation.overallProgress) })}
         </span>
       </div>
 
       {/* SVG Diagram */}
       <svg
-        viewBox="0 0 1200 300"
+        viewBox="0 0 1200 340"
         preserveAspectRatio="xMidYMid meet"
         className="w-full"
-        style={{ minHeight: 200 }}
+        style={{ minHeight: 220 }}
       >
         <defs>
-          {/* Arrow marker */}
-          <marker
-            id="arrowhead"
-            markerWidth="8"
-            markerHeight="6"
-            refX="8"
-            refY="3"
-            orient="auto"
-          >
-            <polygon points="0 0, 8 3, 0 6" fill="#00d4ff" opacity="0.7" />
-          </marker>
+          {/* Background grid pattern */}
+          <pattern id="sit-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path
+              d="M 40 0 L 0 0 0 40"
+              fill="none"
+              stroke="#2a2a4a"
+              strokeWidth="0.5"
+              opacity="0.25"
+            />
+          </pattern>
 
-          {/* Glow filter for active stage */}
-          <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="4" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
+          {/* Scan-line gradient */}
+          <linearGradient id="sit-scanline" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#00d4ff" stopOpacity="0" />
+            <stop offset="50%" stopColor="#00d4ff" stopOpacity="0.04" />
+            <stop offset="100%" stopColor="#00d4ff" stopOpacity="0" />
+          </linearGradient>
         </defs>
 
         {/* CSS animations inside SVG */}
@@ -168,7 +154,7 @@ export function AttackSituationDiagram({
           }
           @keyframes situation-pulse {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
+            50% { opacity: 0.6; }
           }
           .situation-edge-flow {
             animation: situation-flow 1.5s linear infinite;
@@ -177,20 +163,49 @@ export function AttackSituationDiagram({
             0% { stroke-dashoffset: 0; }
             100% { stroke-dashoffset: -24; }
           }
+          .situation-scanline {
+            animation: sit-scan 6s linear infinite;
+          }
+          @keyframes sit-scan {
+            0%   { transform: translateY(-340px); }
+            100% { transform: translateY(340px); }
+          }
         `}</style>
 
+        {/* Background grid */}
+        <rect width="1200" height="340" fill="url(#sit-grid)" />
+
+        {/* Animated scan line */}
+        <rect
+          width="1200"
+          height="60"
+          fill="url(#sit-scanline)"
+          className="situation-scanline"
+        />
+
+        {/* Centre guide line (very subtle) */}
+        <line
+          x1="0" y1={CENTER_Y} x2="1200" y2={CENTER_Y}
+          stroke="#2a2a4a" strokeWidth="0.5" opacity="0.2"
+          strokeDasharray="6 8"
+        />
+
         {/* Edges */}
-        {KILL_CHAIN_ORDER.slice(0, -1).map((_, i) => {
+        {KILL_CHAIN_ORDER.slice(0, -1).map((stage, i) => {
           const from = nodePositions[i];
           const to = nodePositions[i + 1];
+          const nextStage = KILL_CHAIN_ORDER[i + 1];
           return (
             <SituationEdge
               key={`edge-${i}`}
-              fromX={from.x + NODE_WIDTH / 2}
+              fromX={from.x + HEX_HW}
               fromY={from.y}
-              toX={to.x - NODE_WIDTH / 2}
+              toX={to.x - HEX_HW}
               toY={to.y}
               status={edgeStatuses[i]}
+              fromColor={KILL_CHAIN_COLORS[stage] ?? "#666"}
+              toColor={KILL_CHAIN_COLORS[nextStage] ?? "#666"}
+              index={i}
             />
           );
         })}
@@ -204,7 +219,7 @@ export function AttackSituationDiagram({
             y={nodePositions[i].y}
             isCurrentStage={i === situation.currentStageIndex}
             color={KILL_CHAIN_COLORS[stage] ?? "#666"}
-            label={STAGE_LABELS[stage] ?? stage.toUpperCase()}
+            label={tKC(stage as any)}
           />
         ))}
 

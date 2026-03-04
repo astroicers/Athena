@@ -1,19 +1,16 @@
 // Copyright 2026 Athena Contributors
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// Change Date: Four years from release date of each version
+// Change License: Apache License, Version 2.0
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// For commercial licensing, contact: [TODO: contact email]
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { LogSeverity } from "@/types/enums";
 import type { LogEntry } from "@/types/log";
 
@@ -30,14 +27,15 @@ interface LogEntryRowProps {
 }
 
 export function LogEntryRow({ entry }: LogEntryRowProps) {
+  const tSev = useTranslations("LogSeverity");
   const style = SEVERITY_STYLES[entry.severity] || SEVERITY_STYLES[LogSeverity.INFO];
   const time = entry.timestamp.split("T")[1]?.slice(0, 8) || entry.timestamp;
 
   return (
     <div className={`flex items-start gap-2 px-3 py-1.5 border-l-2 text-xs font-mono ${style}`}>
       <span className="text-athena-text-secondary shrink-0 w-16">{time}</span>
-      <span className="shrink-0 w-20 uppercase text-[10px]">
-        [{entry.severity}]
+      <span className="shrink-0 w-20 text-[10px]">
+        [{tSev(entry.severity as any)}]
       </span>
       <span className="text-athena-text-secondary shrink-0 w-16 truncate">
         {entry.source}

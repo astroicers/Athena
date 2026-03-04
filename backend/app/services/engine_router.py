@@ -411,6 +411,27 @@ class EngineRouter:
             "status": "running", "engine": "mcp",
         })
 
+        # Look up tool_registry for matching MCP tool (qualified name)
+        try:
+            tr_cursor = await db.execute(
+                "SELECT config_json FROM tool_registry "
+                "WHERE enabled = 1 AND config_json LIKE '%mcp_server%' LIMIT 10"
+            )
+            tr_rows = await tr_cursor.fetchall()
+            for tr_row in tr_rows:
+                import json as _json
+
+                cfg = _json.loads(
+                    tr_row["config_json"] if isinstance(tr_row, dict) else tr_row[0] or "{}"
+                )
+                mcp_srv = cfg.get("mcp_server")
+                mcp_tool = cfg.get("mcp_tool")
+                if mcp_srv and mcp_tool:
+                    ability_id = f"{mcp_srv}:{mcp_tool}"
+                    break
+        except Exception:
+            pass  # fall through to default ability_id
+
         target_ip = await self._get_target_ip(db, target_id)
         target_str = target_ip or target_id
 

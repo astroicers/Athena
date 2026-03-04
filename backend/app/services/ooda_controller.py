@@ -197,6 +197,10 @@ class OODAController:
             await self._write_log(db, operation_id, "warning",
                 f"OODA #{next_num} Act: awaiting commander approval — {decision.get('reason', 'manual required')}")
 
+        # Post-Act MCP enrichment
+        if execution_result:
+            await self._run_mcp_enrichment(db, operation_id, execution_result)
+
         completed_at = datetime.now(timezone.utc).isoformat()
         await db.execute(
             "UPDATE ooda_iterations SET act_summary = ?, completed_at = ? WHERE id = ?",
@@ -358,6 +362,21 @@ class OODAController:
                 (status, step_id),
             )
         await db.commit()
+
+    async def _run_mcp_enrichment(
+        self, db, operation_id: str, execution_result: dict
+    ) -> None:
+        """Post-Act hook: log MCP enrichment opportunity for future chaining."""
+        if not settings.MCP_ENABLED:
+            return
+        if execution_result.get("engine") != "mcp":
+            return
+        if execution_result.get("status") != "success":
+            return
+        logger.info(
+            "OODA enrichment: MCP execution succeeded for %s — enrichment pipeline available",
+            operation_id,
+        )
 
 
 def build_ooda_controller() -> "OODAController":

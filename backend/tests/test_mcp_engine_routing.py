@@ -10,7 +10,7 @@
 
 """Tests for MCP engine routing in EngineRouter."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -49,3 +49,40 @@ async def test_build_ooda_controller_wires_mcp_engine():
 
             controller = build_ooda_controller()
     assert controller._router._mcp_engine is not None
+
+
+@pytest.mark.asyncio
+async def test_execute_mcp_calls_mcp_engine(seeded_db):
+    """MCP route calls mcp_engine.execute with the ability_id."""
+    from app.clients import ExecutionResult
+    from app.services.engine_router import EngineRouter
+
+    mock_mcp = MagicMock()
+    mock_mcp.execute = AsyncMock(
+        return_value=ExecutionResult(
+            success=True,
+            execution_id="e1",
+            output='{"facts": []}',
+            facts=[],
+        )
+    )
+    mock_fc = MagicMock()
+    mock_fc.collect_from_result = AsyncMock(return_value=[])
+    mock_ws = MagicMock()
+    mock_ws.broadcast = AsyncMock()
+
+    with patch("app.services.engine_router.settings") as s:
+        s.MCP_ENABLED = True
+        s.MOCK_C2_ENGINE = True
+        s.EXECUTION_ENGINE = "ssh"
+        router = EngineRouter(MagicMock(), mock_fc, mock_ws, mcp_engine=mock_mcp)
+        result = await router.execute(
+            seeded_db,
+            technique_id="T1003.001",
+            target_id="test-target-1",
+            engine="mcp",
+            operation_id="test-op-1",
+        )
+
+    mock_mcp.execute.assert_awaited_once()
+    assert result["engine"] == "mcp"

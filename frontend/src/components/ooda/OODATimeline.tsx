@@ -17,6 +17,7 @@
 import { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/atoms/Badge";
+import { SectionHeader } from "@/components/atoms/SectionHeader";
 import type { OODATimelineEntry } from "@/types/ooda";
 
 const PHASE_VARIANT: Record<string, "success" | "warning" | "error" | "info"> = {
@@ -104,37 +105,41 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
   return (
     <div className="bg-athena-surface border border-athena-border rounded-athena-md p-4">
       {/* Header + filter bar */}
-      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <h3 className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider" title={tHints("oodaTimeline")}>
-          {t("timeline")}
-        </h3>
-        <div className="flex items-center gap-1 flex-wrap">
-          {/* Phase filter chips */}
-          <button
-            onClick={() => setPhaseFilter([])}
-            className={`text-[10px] font-mono px-1.5 py-0.5 rounded border transition-colors ${
-              phaseFilter.length === 0
-                ? "border-athena-accent text-athena-accent bg-athena-accent/10"
-                : "border-athena-border text-athena-text-secondary hover:border-athena-accent/50"
-            }`}
-          >
-            {t("all")}
-          </button>
-          {PHASE_LABELS.map((p) => (
+      <SectionHeader
+        level="card"
+        className="mb-3 flex-wrap gap-2"
+        title={tHints("oodaTimeline")}
+        trailing={
+          <div className="flex items-center gap-1 flex-wrap">
+            {/* Phase filter chips */}
             <button
-              key={p}
-              onClick={() => togglePhaseFilter(p)}
+              onClick={() => setPhaseFilter([])}
               className={`text-[10px] font-mono px-1.5 py-0.5 rounded border transition-colors ${
-                phaseFilter.includes(p)
+                phaseFilter.length === 0
                   ? "border-athena-accent text-athena-accent bg-athena-accent/10"
                   : "border-athena-border text-athena-text-secondary hover:border-athena-accent/50"
               }`}
             >
-              {p.slice(0, 3).toUpperCase()}
+              {t("all")}
             </button>
-          ))}
-        </div>
-      </div>
+            {PHASE_LABELS.map((p) => (
+              <button
+                key={p}
+                onClick={() => togglePhaseFilter(p)}
+                className={`text-[10px] font-mono px-1.5 py-0.5 rounded border transition-colors ${
+                  phaseFilter.includes(p)
+                    ? "border-athena-accent text-athena-accent bg-athena-accent/10"
+                    : "border-athena-border text-athena-text-secondary hover:border-athena-accent/50"
+                }`}
+              >
+                {p.slice(0, 3).toUpperCase()}
+              </button>
+            ))}
+          </div>
+        }
+      >
+        {t("timeline")}
+      </SectionHeader>
 
       {/* Iteration groups */}
       <div className="space-y-2">

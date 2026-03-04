@@ -16,6 +16,7 @@
 
 import { useTranslations } from "next-intl";
 import { TechniqueStatus } from "@/types/enums";
+import { SectionHeader } from "@/components/atoms/SectionHeader";
 import type { AttackPathEntry, AttackPathResponse } from "@/types/attackPath";
 
 // ─── Tactic metadata ──────────────────────────────────────────────────────────
@@ -173,9 +174,9 @@ export function AttackPathTimeline({ data, loading }: AttackPathTimelineProps) {
   return (
     <div className="bg-athena-surface border border-athena-border rounded-athena-md p-3">
       {/* Section header */}
-      <h2 className="text-xs font-mono text-athena-text-secondary uppercase tracking-wider mb-3" title={tHints("attackPath")}>
+      <SectionHeader className="mb-3" title={tHints("attackPath")}>
         {tNav("attackPath")}
-      </h2>
+      </SectionHeader>
 
       {/* Horizontal scroll container */}
       <div className="overflow-x-auto">

@@ -36,6 +36,84 @@ export const KILL_CHAIN_COLORS: Record<KillChainStage, string> = {
 
 const GRAPH_HEIGHT = 420;
 
+/** Draw a small role icon inside a topology node using Canvas 2D API */
+function drawRoleIcon(ctx: CanvasRenderingContext2D, x: number, y: number, role: string, size: number) {
+  ctx.save();
+  const s = Math.min(size * 0.55, 6); // icon scale relative to node size
+  ctx.strokeStyle = "rgba(255,255,255,0.85)";
+  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.lineWidth = 0.8;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  const r = role.toLowerCase();
+
+  if (r.includes("domain controller") || r === "dc") {
+    // Crown / tower shape
+    ctx.beginPath();
+    ctx.moveTo(x - s, y + s * 0.6);
+    ctx.lineTo(x - s, y - s * 0.3);
+    ctx.lineTo(x - s * 0.5, y);
+    ctx.lineTo(x, y - s * 0.7);
+    ctx.lineTo(x + s * 0.5, y);
+    ctx.lineTo(x + s, y - s * 0.3);
+    ctx.lineTo(x + s, y + s * 0.6);
+    ctx.closePath();
+    ctx.stroke();
+  } else if (r.includes("server")) {
+    // Server rack: stacked rectangles
+    const w = s * 0.9;
+    const h = s * 0.35;
+    for (let i = 0; i < 3; i++) {
+      const ry = y - s * 0.6 + i * (h + 1);
+      ctx.strokeRect(x - w, ry, w * 2, h);
+      // Small dot on right side of each rack unit
+      ctx.beginPath();
+      ctx.arc(x + w * 0.6, ry + h / 2, 0.5, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+  } else if (r.includes("workstation") || r.includes("desktop") || r === "host") {
+    // Monitor screen
+    const w = s * 0.8;
+    const h = s * 0.6;
+    ctx.strokeRect(x - w, y - h, w * 2, h * 1.4);
+    // Stand
+    ctx.beginPath();
+    ctx.moveTo(x, y + h * 0.4);
+    ctx.lineTo(x, y + h * 0.8);
+    ctx.moveTo(x - s * 0.4, y + h * 0.8);
+    ctx.lineTo(x + s * 0.4, y + h * 0.8);
+    ctx.stroke();
+  } else if (r.includes("router") || r.includes("switch") || r.includes("gateway")) {
+    // Network device: diamond/arrows
+    ctx.beginPath();
+    ctx.moveTo(x, y - s * 0.6);
+    ctx.lineTo(x + s * 0.6, y);
+    ctx.lineTo(x, y + s * 0.6);
+    ctx.lineTo(x - s * 0.6, y);
+    ctx.closePath();
+    ctx.stroke();
+    // 4 small arrows pointing outward
+    const d = s * 0.3;
+    ctx.beginPath();
+    ctx.moveTo(x, y - s * 0.6 - d);
+    ctx.lineTo(x, y - s * 0.6);
+    ctx.moveTo(x + s * 0.6 + d, y);
+    ctx.lineTo(x + s * 0.6, y);
+    ctx.moveTo(x, y + s * 0.6 + d);
+    ctx.lineTo(x, y + s * 0.6);
+    ctx.moveTo(x - s * 0.6 - d, y);
+    ctx.lineTo(x - s * 0.6, y);
+    ctx.stroke();
+  } else {
+    // Default: simple circle dot
+    ctx.beginPath();
+    ctx.arc(x, y, s * 0.3, 0, 2 * Math.PI);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 interface NetworkTopologyProps {
   data: TopologyData | null;
   nodeKillChainMap?: Record<string, KillChainStage>;
@@ -168,6 +246,10 @@ export function NetworkTopology({
     ctx.arc(x - size * 0.2, y - size * 0.2, size * 0.3, 0, 2 * Math.PI);
     ctx.fillStyle = "rgba(255,255,255,0.25)";
     ctx.fill();
+
+    // Role icon
+    const role = (node.role as string) || "host";
+    drawRoleIcon(ctx, x, y, role, size);
 
     // Kill Chain stage ring
     const kcStage = node.killChainStage as KillChainStage | null;

@@ -16,6 +16,7 @@
 
 import { useTranslations } from "next-intl";
 import { DomainCard } from "./DomainCard";
+import { SectionHeader } from "@/components/atoms/SectionHeader";
 import type { C5ISRStatus } from "@/types/c5isr";
 
 interface C5ISRStatusBoardProps {
@@ -37,9 +38,9 @@ export function C5ISRStatusBoard({ domains }: C5ISRStatusBoardProps) {
 
   return (
     <div>
-      <h2 className="text-xs font-mono text-athena-text-secondary uppercase tracking-wider mb-3">
+      <SectionHeader className="mb-3">
         {t("domainStatus")}
-      </h2>
+      </SectionHeader>
       <div className="grid grid-cols-3 gap-3">
         {domains.map((d) => (
           <DomainCard key={d.id} domain={d} />

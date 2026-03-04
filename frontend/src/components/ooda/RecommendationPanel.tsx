@@ -17,6 +17,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/atoms/Badge";
+import { SectionHeader } from "@/components/atoms/SectionHeader";
 import type { OrientRecommendation, TacticalOption } from "@/types/recommendation";
 import { RiskLevel } from "@/types/enums";
 
@@ -101,9 +102,9 @@ export function RecommendationPanel({
   if (!recommendation) {
     return (
       <div className="bg-athena-surface border border-athena-border rounded-athena-md p-4">
-        <h3 className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-3" title={tHints("recommendation")}>
+        <SectionHeader level="card" className="mb-3" title={tHints("recommendation")}>
           {t("title")}
-        </h3>
+        </SectionHeader>
         <div className="text-center py-4">
           <span className="text-xs font-mono text-athena-text-secondary">
             {t("noRecommendation")}
@@ -117,21 +118,25 @@ export function RecommendationPanel({
 
   return (
     <div className="bg-athena-surface border border-athena-border rounded-athena-md p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider" title={tHints("recommendation")}>
-          {t("title")}
-        </h3>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono text-athena-text-secondary">
-            {t("confidence", { value: (recommendation.confidence * 100).toFixed(0) })}
-          </span>
-          {isDecided && (
-            <Badge variant={recommendation.accepted ? "success" : "error"}>
-              {recommendation.accepted ? t("accepted") : t("rejected")}
-            </Badge>
-          )}
-        </div>
-      </div>
+      <SectionHeader
+        level="card"
+        className="mb-3"
+        title={tHints("recommendation")}
+        trailing={
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-mono text-athena-text-secondary">
+              {t("confidence", { value: (recommendation.confidence * 100).toFixed(0) })}
+            </span>
+            {isDecided && (
+              <Badge variant={recommendation.accepted ? "success" : "error"}>
+                {recommendation.accepted ? t("accepted") : t("rejected")}
+              </Badge>
+            )}
+          </div>
+        }
+      >
+        {t("title")}
+      </SectionHeader>
 
       {/* Situation Assessment */}
       <div className="bg-athena-bg border border-athena-border/50 rounded-athena-sm p-3 mb-3">

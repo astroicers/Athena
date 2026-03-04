@@ -20,7 +20,7 @@ import { api } from "@/lib/api";
 import { useOperation } from "@/hooks/useOperation";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useToast } from "@/contexts/ToastContext";
-import { PageLoading } from "@/components/ui/PageLoading";
+import { C5ISRPageSkeleton } from "@/components/ui/Skeleton";
 import { MetricCard } from "@/components/cards/MetricCard";
 import { RecommendCard } from "@/components/cards/RecommendCard";
 import { C5ISRStatusBoard } from "@/components/c5isr/C5ISRStatusBoard";
@@ -31,6 +31,7 @@ import type { OrientRecommendation } from "@/types/recommendation";
 import type { TechniqueWithStatus } from "@/types/technique";
 import type { Operation } from "@/types/operation";
 import { Badge } from "@/components/atoms/Badge";
+import { SectionHeader } from "@/components/atoms/SectionHeader";
 import { TechniqueStatus } from "@/types/enums";
 
 const DEFAULT_OP_ID = "op-0001";
@@ -98,7 +99,7 @@ export default function C5ISRPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ws.subscribe]);
 
-  if (isLoading) return <PageLoading />;
+  if (isLoading) return <C5ISRPageSkeleton />;
 
   const op: Operation | null = operation;
 
@@ -143,9 +144,9 @@ export default function C5ISRPage() {
 
       {/* Execution Table */}
       <div>
-        <h2 className="text-xs font-mono text-athena-text-secondary uppercase tracking-wider mb-2">
+        <SectionHeader className="mb-2">
           {t("activeOperations")}
-        </h2>
+        </SectionHeader>
         <p className="text-[10px] font-mono text-athena-text-secondary/60 -mt-1 mb-2 ml-1">{tHints("executionTable")}</p>
         <DataTable columns={EXEC_COLUMNS} data={execRows as TechRow[]} keyField="id" emptyMessage={t("noTechniques")} />
       </div>

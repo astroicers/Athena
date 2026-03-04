@@ -21,7 +21,7 @@ import { api } from "@/lib/api";
 import { useOperation } from "@/hooks/useOperation";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useToast } from "@/contexts/ToastContext";
-import { PageLoading } from "@/components/ui/PageLoading";
+import { PlannerPageSkeleton } from "@/components/ui/Skeleton";
 import { DataTable, Column } from "@/components/data/DataTable";
 import { OODATimeline } from "@/components/ooda/OODATimeline";
 import { HostNodeCard } from "@/components/cards/HostNodeCard";
@@ -31,6 +31,7 @@ import { HexConfirmModal } from "@/components/modal/HexConfirmModal";
 import { AddTargetModal } from "@/components/modal/AddTargetModal";
 import { ReconResultModal } from "@/components/modal/ReconResultModal";
 import { TerminalPanel } from "@/components/terminal/TerminalPanel";
+import { SectionHeader } from "@/components/atoms/SectionHeader";
 import { MissionStepStatus, RiskLevel, OODAPhase } from "@/types/enums";
 import type { MissionStep } from "@/types/mission";
 import type { OODATimelineEntry } from "@/types/ooda";
@@ -255,15 +256,15 @@ export default function PlannerPage() {
     }
   }
 
-  if (isLoading) return <PageLoading />;
+  if (isLoading) return <PlannerPageSkeleton />;
 
   return (
     <div className="space-y-4">
       {/* Mission Steps + Execute */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xs font-mono text-athena-text-secondary uppercase tracking-wider">
+        <SectionHeader>
           {t("missionSteps")} — {operation?.codename || "PHANTOM-EYE"}
-        </h2>
+        </SectionHeader>
         <div className="flex items-center gap-2">
           {resetStatus === "done" && (
             <span className="text-[10px] font-mono text-athena-success">{t("resetOk")}</span>
@@ -345,25 +346,27 @@ export default function PlannerPage() {
           <p className="text-[10px] font-mono text-athena-text-secondary/60 mt-1 ml-1">{tHints("oodaTimeline")}</p>
         </div>
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider">
-              {t("targetHosts")}
-            </h3>
-            <Tooltip text={tTips("addTarget")}>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setShowAddTarget(true)}
-                icon={
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                }
-              >
-                {t("addTarget")}
-              </Button>
-            </Tooltip>
-          </div>
+          <SectionHeader
+            level="card"
+            trailing={
+              <Tooltip text={tTips("addTarget")}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowAddTarget(true)}
+                  icon={
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                  }
+                >
+                  {t("addTarget")}
+                </Button>
+              </Tooltip>
+            }
+          >
+            {t("targetHosts")}
+          </SectionHeader>
           <p className="text-[10px] font-mono text-athena-text-secondary/60 -mt-2 ml-1">{tHints("targetHosts")}</p>
           {targets.length === 0 ? (
             <div className="border-2 border-dashed border-athena-border/50 rounded-athena-md p-4 text-center">

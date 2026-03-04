@@ -15,6 +15,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { SectionHeader } from "@/components/atoms/SectionHeader";
 import { KillChainStage } from "@/types/enums";
 
 const STAGES: { key: KillChainStage; label: string }[] = [
@@ -51,9 +52,9 @@ export function KillChainIndicator({ stageCounts }: KillChainIndicatorProps) {
 
   return (
     <div className="bg-athena-surface border border-athena-border rounded-athena-md p-4">
-      <h3 className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-1">
+      <SectionHeader level="card" className="mb-1">
         {t("progress")}
-      </h3>
+      </SectionHeader>
       <p className="text-[10px] font-mono text-athena-text-secondary/60 mb-3">{tHints("killChain")}</p>
       <div className="flex items-end gap-1.5 h-20">
         {STAGES.map((stage) => {

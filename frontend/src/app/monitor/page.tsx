@@ -22,7 +22,7 @@ import { useOperation } from "@/hooks/useOperation";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useLiveLog } from "@/hooks/useLiveLog";
 import { useToast } from "@/contexts/ToastContext";
-import { PageLoading } from "@/components/ui/PageLoading";
+import { MonitorPageSkeleton } from "@/components/ui/Skeleton";
 import { MetricCard } from "@/components/cards/MetricCard";
 import { NetworkTopology } from "@/components/topology/NetworkTopology";
 import { ThreatLevelGauge } from "@/components/topology/ThreatLevelGauge";
@@ -42,6 +42,7 @@ import type { LogEntry } from "@/types/log";
 import type { TechniqueWithStatus } from "@/types/technique";
 import { AgentStatus, KillChainStage } from "@/types/enums";
 import { AIDecisionPanel } from "@/components/topology/AIDecisionPanel";
+import { SectionHeader } from "@/components/atoms/SectionHeader";
 import { AttackSituationDiagram } from "@/components/situation/AttackSituationDiagram";
 
 const DEFAULT_OP_ID = "op-0001";
@@ -247,7 +248,7 @@ export default function MonitorPage() {
     return map;
   }, [topology, techniques]);
 
-  if (isLoading) return <PageLoading />;
+  if (isLoading) return <MonitorPageSkeleton />;
 
   const activeTechnique = executionUpdate
     ? techniques.find(
@@ -305,9 +306,9 @@ export default function MonitorPage() {
             {/* 3D Topology — 3 cols */}
             <div className="lg:col-span-3 space-y-3">
               <div>
-                <h2 className="text-xs font-mono text-athena-text-secondary uppercase tracking-wider mb-2">
+                <SectionHeader className="mb-2">
                   {t("networkTopology")}
-                </h2>
+                </SectionHeader>
                 <p className="text-[10px] font-mono text-athena-text-secondary/60 -mt-1 mb-2 ml-1">{tHints("topology")}</p>
                 <NetworkTopology data={topology} nodeKillChainMap={nodeKillChainMap} />
               </div>
@@ -321,9 +322,9 @@ export default function MonitorPage() {
 
               {/* Agent Beacons */}
               <div>
-                <h3 className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-2">
+                <SectionHeader level="card" className="mb-2">
                   {t("agentBeacons")}
-                </h3>
+                </SectionHeader>
                 <p className="text-[10px] font-mono text-athena-text-secondary/60 -mt-1 mb-2 ml-1">{tHints("agentBeacons")}</p>
                 <div className="space-y-2">
                   {agents.length === 0 ? (
@@ -445,9 +446,9 @@ export default function MonitorPage() {
 
           {/* Live Log Stream */}
           <div>
-            <h2 className="text-xs font-mono text-athena-text-secondary uppercase tracking-wider mb-2">
+            <SectionHeader className="mb-2">
               {t("liveLogStream")}
-            </h2>
+            </SectionHeader>
             <p className="text-[10px] font-mono text-athena-text-secondary/60 -mt-1 mb-2 ml-1">{tHints("logStream")}</p>
             <div className="bg-athena-surface border border-athena-border rounded-athena-md max-h-48 overflow-y-auto">
               {allLogs.length === 0 ? (

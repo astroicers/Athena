@@ -15,6 +15,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { SectionHeader } from "@/components/atoms/SectionHeader";
 import { KillChainStage } from "@/types/enums";
 import { KILL_CHAIN_COLORS } from "./NetworkTopology";
 
@@ -57,9 +58,9 @@ export function AIDecisionPanel({
             style={{ backgroundColor: stageColor }}
           />
         )}
-        <h3 className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider">
+        <SectionHeader level="card">
           {t("title")}
-        </h3>
+        </SectionHeader>
       </div>
       <p className="text-[10px] font-mono text-athena-text-secondary/60 mb-2">{tHints("aiDecision")}</p>
 

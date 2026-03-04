@@ -15,6 +15,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { SectionHeader } from "@/components/atoms/SectionHeader";
 import { OODAPhase } from "@/types/enums";
 
 const PHASE_KEYS: { key: OODAPhase; label: string; tKey: "observe" | "orient" | "decide" | "act" }[] = [
@@ -34,9 +35,9 @@ export function OODAIndicator({ currentPhase }: OODAIndicatorProps) {
 
   return (
     <div className="bg-athena-surface border border-athena-border rounded-athena-md p-4">
-      <h3 className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-1">
+      <SectionHeader level="card" className="mb-1">
         {t("cycle")}
-      </h3>
+      </SectionHeader>
       <p className="text-[10px] font-mono text-athena-text-secondary/60 mb-3">{tHints("oodaCycle")}</p>
       <div className="flex items-center gap-1">
         {PHASE_KEYS.map((phase, i) => {

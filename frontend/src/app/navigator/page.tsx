@@ -19,7 +19,7 @@ import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useToast } from "@/contexts/ToastContext";
-import { PageLoading } from "@/components/ui/PageLoading";
+import { NavigatorPageSkeleton } from "@/components/ui/Skeleton";
 import { MITRECell } from "@/components/mitre/MITRECell";
 import { KillChainIndicator } from "@/components/mitre/KillChainIndicator";
 import { AttackPathTimeline } from "@/components/mitre/AttackPathTimeline";
@@ -29,6 +29,7 @@ import type { TechniqueWithStatus } from "@/types/technique";
 import type { OrientRecommendation } from "@/types/recommendation";
 import type { AttackPathResponse } from "@/types/attackPath";
 import type { TechniqueStatus } from "@/types/enums";
+import { SectionHeader } from "@/components/atoms/SectionHeader";
 
 const DEFAULT_OP_ID = "op-0001";
 
@@ -166,7 +167,7 @@ export default function NavigatorPage() {
     return counts;
   }, [techniques]);
 
-  if (isLoading) return <PageLoading />;
+  if (isLoading) return <NavigatorPageSkeleton />;
 
   return (
     <div className="space-y-4">
@@ -177,17 +178,19 @@ export default function NavigatorPage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         {/* ATT&CK Matrix — 3 cols */}
         <div className="lg:col-span-3">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-xs font-mono text-athena-text-secondary uppercase tracking-wider">
-              {t("mitreMatrix")}
-            </h2>
-            <button
-              onClick={() => setCompact(!compact)}
-              className="text-[10px] font-mono text-athena-text-secondary hover:text-athena-accent transition-colors px-2 py-0.5 border border-athena-border rounded-athena-sm"
-            >
-              {compact ? t("expandView") : t("compactView")}
-            </button>
-          </div>
+          <SectionHeader
+            className="mb-2"
+            trailing={
+              <button
+                onClick={() => setCompact(!compact)}
+                className="text-[10px] font-mono text-athena-text-secondary hover:text-athena-accent transition-colors px-2 py-0.5 border border-athena-border rounded-athena-sm"
+              >
+                {compact ? t("expandView") : t("compactView")}
+              </button>
+            }
+          >
+            {t("mitreMatrix")}
+          </SectionHeader>
           <p className="text-[10px] font-mono text-athena-text-secondary/60 -mt-1 mb-2 ml-1">{tHints("mitreMatrix")}</p>
           <div className="bg-athena-surface border border-athena-border rounded-athena-md p-3 overflow-x-auto">
             <div className="flex gap-2 min-w-max">

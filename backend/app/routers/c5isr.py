@@ -39,11 +39,12 @@ def _row_to_c5isr(row: aiosqlite.Row) -> C5ISRStatus:
     "/operations/{operation_id}/c5isr",
     response_model=list[C5ISRStatus],
 )
+
+
 async def list_c5isr(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
     cursor = await db.execute(
@@ -57,13 +58,14 @@ async def list_c5isr(
     "/operations/{operation_id}/c5isr/{domain}",
     response_model=C5ISRStatus,
 )
+
+
 async def update_c5isr(
     operation_id: str,
     domain: str,
     body: C5ISRUpdate,
     db: aiosqlite.Connection = Depends(get_db),
 ):
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
     # Validate domain

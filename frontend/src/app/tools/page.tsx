@@ -34,13 +34,11 @@ export default function ToolsPage() {
     createTool,
   } = useTools();
 
-  // MCP server statuses for real-time tool availability
   const { servers } = useMCPServers();
-  const mcpStatuses = useMemo(() => {
+
+  const containerStatuses = useMemo(() => {
     const map: Record<string, boolean> = {};
-    for (const srv of servers) {
-      map[srv.name] = srv.connected;
-    }
+    for (const srv of servers) map[srv.name] = srv.connected;
     return map;
   }, [servers]);
 
@@ -69,12 +67,12 @@ export default function ToolsPage() {
         {t("title")}
       </SectionHeader>
 
-      {/* All tools in a single table */}
+      {/* All tools in a single table with container status */}
       <ToolRegistryTable
         tools={tools}
         onToggleEnabled={toggleEnabled}
         onDelete={deleteTool}
-        mcpStatuses={mcpStatuses}
+        containerStatuses={containerStatuses}
       />
 
       {/* Add Tool Modal */}

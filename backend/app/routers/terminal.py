@@ -35,6 +35,8 @@ def _is_dangerous(cmd: str) -> bool:
 
 
 @router.websocket("/ws/{operation_id}/targets/{target_id}/terminal")
+
+
 async def ssh_terminal(
     operation_id: str,
     target_id: str,

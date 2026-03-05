@@ -81,13 +81,13 @@ _MOCK_RECOMMENDATION = {
             "prerequisites": ["SeImpersonatePrivilege"],
         },
         {
-            "technique_id": "T1548.002",
-            "technique_name": "Abuse Elevation Control: Bypass UAC",
-            "reasoning": "UAC bypass on workstations for privilege escalation without credential dump.",
-            "risk_level": "low",
-            "recommended_engine": "c2",
+            "technique_id": "T1558.003",
+            "technique_name": "Steal or Forge Kerberos Tickets: Kerberoasting",
+            "reasoning": "AD environment with SPN-enabled service accounts — Kerberoasting extracts TGS tickets.",
+            "risk_level": "medium",
+            "recommended_engine": "winrm",
             "confidence": 0.65,
-            "prerequisites": ["Local Admin on target workstation"],
+            "prerequisites": ["Domain user access", "AD environment"],
         },
     ],
 }
@@ -561,7 +561,7 @@ class OrientEngine:
             "SELECT DISTINCT f.value, f.source_target_id, t.hostname, t.ip_address "
             "FROM facts f "
             "LEFT JOIN targets t ON t.id = f.source_target_id "
-            "WHERE f.operation_id = ? AND f.trait = 'credential.ssh' "
+            "WHERE f.operation_id = ? AND f.trait IN ('credential.ssh', 'credential.rdp', 'credential.winrm') "
             "LIMIT 10",
             (operation_id,),
         )
@@ -587,10 +587,10 @@ class OrientEngine:
                 for r in uncompromised_rows
             ]
             lateral_str = (
-                "Available SSH credentials:\n" + "\n".join(cred_lines) +
+                "Available credentials:\n" + "\n".join(cred_lines) +
                 "\n\nUncompromised targets:\n" + "\n".join(target_lines) +
-                "\n\nConsider using T1021.004 (SSH) to move laterally "
-                "from a compromised host to these targets."
+                "\n\nConsider lateral movement via available protocols: "
+                "T1021.004 (SSH), T1021.001 (WinRM/RDP)."
             )
         else:
             lateral_str = "No lateral movement opportunities identified yet."
@@ -661,6 +661,24 @@ class OrientEngine:
             lateral_opportunities=lateral_str,
             mcp_tools_summary=mcp_tools_summary,
         )
+
+        # --- Section 9: Operator directive (if any) ---
+        directive_cursor = await db.execute(
+            "SELECT id, directive FROM ooda_directives "
+            "WHERE operation_id = ? AND consumed_at IS NULL "
+            "ORDER BY created_at DESC LIMIT 1",
+            (operation_id,),
+        )
+        directive_row = await directive_cursor.fetchone()
+        if directive_row:
+            user_prompt += (
+                f"\n\n## OPERATOR DIRECTIVE (PRIORITY)\n{directive_row['directive']}"
+            )
+            await db.execute(
+                "UPDATE ooda_directives SET consumed_at = datetime('now') WHERE id = ?",
+                (directive_row["id"],),
+            )
+            await db.commit()
 
         return _ORIENT_SYSTEM_PROMPT, user_prompt
 

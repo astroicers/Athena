@@ -55,14 +55,17 @@ def _row_to_operation(row: aiosqlite.Row) -> Operation:
 
 
 @router.get("/operations", response_model=list[Operation])
+
+
 async def list_operations(db: aiosqlite.Connection = Depends(get_db)):
-    db.row_factory = aiosqlite.Row
     cursor = await db.execute("SELECT * FROM operations ORDER BY created_at DESC")
     rows = await cursor.fetchall()
     return [_row_to_operation(r) for r in rows]
 
 
 @router.post("/operations", response_model=Operation, status_code=201)
+
+
 async def create_operation(
     body: OperationCreate,
     db: aiosqlite.Connection = Depends(get_db),
@@ -78,18 +81,18 @@ async def create_operation(
     )
     await db.commit()
 
-    db.row_factory = aiosqlite.Row
     cursor = await db.execute("SELECT * FROM operations WHERE id = ?", (op_id,))
     row = await cursor.fetchone()
     return _row_to_operation(row)
 
 
 @router.get("/operations/{operation_id}", response_model=Operation)
+
+
 async def get_operation(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
-    db.row_factory = aiosqlite.Row
     cursor = await db.execute("SELECT * FROM operations WHERE id = ?", (operation_id,))
     row = await cursor.fetchone()
     if not row:
@@ -98,13 +101,14 @@ async def get_operation(
 
 
 @router.patch("/operations/{operation_id}", response_model=Operation)
+
+
 async def update_operation(
     operation_id: str,
     body: OperationUpdate,
     db: aiosqlite.Connection = Depends(get_db),
 ):
     # Verify existence
-    db.row_factory = aiosqlite.Row
     cursor = await db.execute("SELECT id FROM operations WHERE id = ?", (operation_id,))
     if not await cursor.fetchone():
         raise HTTPException(status_code=404, detail="Operation not found")
@@ -135,11 +139,12 @@ async def update_operation(
 
 
 @router.get("/operations/{operation_id}/summary", response_model=OperationSummary)
+
+
 async def get_operation_summary(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
-    db.row_factory = aiosqlite.Row
 
     # Operation
     cursor = await db.execute("SELECT * FROM operations WHERE id = ?", (operation_id,))

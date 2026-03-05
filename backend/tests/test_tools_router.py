@@ -62,6 +62,7 @@ async def tools_client():
     ``get_db`` dependency so every request uses this test database.
     """
     db = await aiosqlite.connect(":memory:")
+    db.row_factory = aiosqlite.Row
     await db.execute("PRAGMA foreign_keys = ON;")
     for ddl in _CREATE_TABLES:
         await db.execute(ddl)
@@ -96,12 +97,12 @@ async def tools_client():
 # 1. GET /api/tools — list all seeded tools
 # ---------------------------------------------------------------------------
 async def test_list_tools(tools_client: AsyncClient):
-    """GET /api/tools returns the 11 seeded tools."""
+    """GET /api/tools returns the 10 seeded tools (c2 deprecated)."""
     resp = await tools_client.get("/api/tools")
     assert resp.status_code == 200
     data = resp.json()
     assert isinstance(data, list)
-    assert len(data) == 11
+    assert len(data) == 10
 
 
 # ---------------------------------------------------------------------------
@@ -120,11 +121,11 @@ async def test_list_tools_filter_kind(tools_client: AsyncClient):
 # 3. GET /api/tools?kind=engine — filter by kind=engine
 # ---------------------------------------------------------------------------
 async def test_list_tools_filter_engine(tools_client: AsyncClient):
-    """GET /api/tools?kind=engine returns only the 6 engine entries."""
+    """GET /api/tools?kind=engine returns only the 5 engine entries (c2 deprecated)."""
     resp = await tools_client.get("/api/tools", params={"kind": "engine"})
     assert resp.status_code == 200
     data = resp.json()
-    assert len(data) == 6
+    assert len(data) == 5
     assert all(t["kind"] == "engine" for t in data)
 
 

@@ -11,7 +11,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .enums import OODAPhase
 
@@ -34,3 +34,17 @@ class OODAIteration(BaseModel):
 class OodaTriggerQueued(BaseModel):
     status: Literal["queued"] = "queued"
     operation_id: str
+
+
+class OODADirectiveCreate(BaseModel):
+    directive: str = Field(..., min_length=1, max_length=2000)
+    scope: Literal["next_cycle"] = "next_cycle"
+
+
+class OODADirective(BaseModel):
+    id: str
+    operation_id: str
+    directive: str
+    scope: str
+    created_at: datetime
+    consumed_at: datetime | None = None

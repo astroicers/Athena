@@ -41,14 +41,10 @@ _MOCK_SCAN_PHASES: list[tuple[str, float]] = [
     ("credential_test", 1.5),
     ("finalizing", 1.0),
 ]
-
-
 class ReconScanRequest(BaseModel):
     target_id: str
     enable_initial_access: bool = True
     c2_host: str | None = None  # defaults to settings.C2_ENGINE_URL
-
-
 class OSINTDiscoverRequest(BaseModel):
     domain: str
     max_subdomains: int = 500
@@ -59,13 +55,14 @@ class OSINTDiscoverRequest(BaseModel):
     response_model=ReconScanQueued,
     status_code=202,
 )
+
+
 async def run_recon_scan(
     op_id: str,
     body: ReconScanRequest,
     db: aiosqlite.Connection = Depends(get_db),
 ) -> ReconScanQueued:
     """Enqueue a recon scan — returns immediately, executes in background."""
-    db.row_factory = aiosqlite.Row
 
     # ── 1. Validate operation exists ─────────────────────────────────────────
     await ensure_operation(db, op_id)
@@ -157,6 +154,8 @@ async def _run_scan_background(
                 for idx, (phase_key, delay) in enumerate(_MOCK_SCAN_PHASES[:4]):
                     await _broadcast_phase(phase_key, idx + 1)
                     await asyncio.sleep(delay)
+            else:
+                await _broadcast_phase("nmap_scan", 1)
 
             # Run nmap scan
             recon_result = await ReconEngine().scan(db, op_id, target_id)
@@ -165,11 +164,9 @@ async def _run_scan_background(
                 await _broadcast_phase("credential_test", 5)
                 await asyncio.sleep(1.5)
             else:
-                await ws_manager.broadcast(
-                    op_id, "recon.progress", {"scan_id": scan_id, "phase": "initial_access"}
-                )
+                await _broadcast_phase("initial_access", 3)
 
-            # Optional initial access
+            # Optional initial access — multi-protocol (SSH/RDP/WinRM)
             ia_result = InitialAccessResult(
                 success=False,
                 method="none",
@@ -178,24 +175,21 @@ async def _run_scan_background(
                 error=None,
             )
             if body.enable_initial_access:
-                # Only attempt SSH if port 22 was found open by nmap
-                ssh_open = any(
-                    svc.port == 22 and svc.service in ("ssh", "unknown")
+                ia_engine = InitialAccessEngine()
+                services_dicts = [
+                    {"port": svc.port, "service": svc.service}
                     for svc in recon_result.services
+                ]
+                ia_result = await ia_engine.try_initial_access(
+                    db, op_id, target_id, ip_address, services_dicts,
                 )
-                if ssh_open:
-                    ia_engine = InitialAccessEngine()
-                    ia_result = await ia_engine.try_ssh_login(
-                        db, op_id, target_id, ip_address, port=22
-                    )
-                else:
-                    logger.info(
-                        "Skipping initial access for %s — port 22 not open (%d services found)",
-                        ip_address, len(recon_result.services),
-                    )
 
-                # Bootstrap C2 agent if SSH succeeded and not in mock mode
-                if ia_result.success and not settings.MOCK_C2_ENGINE:
+                # Bootstrap C2 agent only for SSH success (RDP/WinRM can't deploy sandcat)
+                if (
+                    ia_result.success
+                    and ia_result.method == "ssh_credential"
+                    and not settings.MOCK_C2_ENGINE
+                ):
                     c2_host = (
                         body.c2_host
                         or settings.C2_AGENT_CALLBACK_URL
@@ -214,10 +208,12 @@ async def _run_scan_background(
                         error=ia_result.error,
                     )
 
-            # Mock mode: finalizing phase
+            # Finalizing phase
             if settings.MOCK_C2_ENGINE:
                 await _broadcast_phase("finalizing", 6)
                 await asyncio.sleep(1.0)
+            else:
+                await _broadcast_phase("finalizing", 5)
 
             # Update DB as completed
             open_ports_json = json.dumps([
@@ -286,43 +282,11 @@ async def _run_scan_background(
             )
 
 
-@router.get(
-    "/operations/{op_id}/recon/scans/{scan_id}",
-    response_model=ReconScanResult,
-)
-async def get_recon_scan_result(
-    op_id: str,
-    scan_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
-) -> ReconScanResult:
-    """Return a full ReconScanResult for a completed scan (used by frontend modal)."""
-    db.row_factory = aiosqlite.Row
-    await ensure_operation(db, op_id)
-
-    cursor = await db.execute(
-        """
-        SELECT s.id, s.operation_id, s.target_id, s.status,
-               s.open_ports, s.os_guess,
-               s.initial_access_method, s.credential_found,
-               s.agent_deployed, s.started_at, s.completed_at,
-               t.ip_address
-        FROM recon_scans s
-        JOIN targets t ON t.id = s.target_id
-        WHERE s.id = ? AND s.operation_id = ?
-        """,
-        (scan_id, op_id),
-    )
-    row = await cursor.fetchone()
-    if row is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Scan '{scan_id}' not found in operation '{op_id}'",
-        )
-
+def _build_scan_result(row: aiosqlite.Row) -> ReconScanResult:
+    """Build a ReconScanResult from a recon_scans DB row (joined with targets)."""
     open_ports = json.loads(row["open_ports"] or "[]")
     started = row["started_at"] or ""
     completed = row["completed_at"] or ""
-    # Calculate duration from timestamps
     scan_duration = 0.0
     if started and completed:
         try:
@@ -352,7 +316,7 @@ async def get_recon_scan_result(
         os_guess=row["os_guess"],
         services_found=len(open_ports),
         services=services,
-        facts_written=0,  # not stored in DB; already reflected in facts table
+        facts_written=0,
         initial_access=InitialAccessResult(
             success=bool(row["credential_found"]),
             method=row["initial_access_method"] or "none",
@@ -364,7 +328,75 @@ async def get_recon_scan_result(
     )
 
 
+_SCAN_SELECT = """
+    SELECT s.id, s.operation_id, s.target_id, s.status,
+           s.open_ports, s.os_guess,
+           s.initial_access_method, s.credential_found,
+           s.agent_deployed, s.started_at, s.completed_at,
+           t.ip_address
+    FROM recon_scans s
+    JOIN targets t ON t.id = s.target_id
+"""
+
+
+@router.get(
+    "/operations/{op_id}/recon/scans/{scan_id}",
+    response_model=ReconScanResult,
+)
+
+
+async def get_recon_scan_result(
+    op_id: str,
+    scan_id: str,
+    db: aiosqlite.Connection = Depends(get_db),
+) -> ReconScanResult:
+    """Return a full ReconScanResult for a completed scan (used by frontend modal)."""
+    await ensure_operation(db, op_id)
+
+    cursor = await db.execute(
+        _SCAN_SELECT + " WHERE s.id = ? AND s.operation_id = ?",
+        (scan_id, op_id),
+    )
+    row = await cursor.fetchone()
+    if row is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Scan '{scan_id}' not found in operation '{op_id}'",
+        )
+
+    return _build_scan_result(row)
+
+
+@router.get(
+    "/operations/{op_id}/recon/scans/by-target/{target_id}",
+    response_model=ReconScanResult | None,
+)
+
+
+async def get_latest_scan_by_target(
+    op_id: str,
+    target_id: str,
+    db: aiosqlite.Connection = Depends(get_db),
+) -> ReconScanResult | None:
+    """Return the latest completed scan for a specific target."""
+    await ensure_operation(db, op_id)
+
+    cursor = await db.execute(
+        _SCAN_SELECT
+        + " WHERE s.operation_id = ? AND s.target_id = ? AND s.status = 'completed'"
+        " ORDER BY s.completed_at DESC LIMIT 1",
+        (op_id, target_id),
+    )
+    row = await cursor.fetchone()
+    if row is None:
+        return None
+
+    return _build_scan_result(row)
+
+
 @router.get("/operations/{op_id}/recon/status")
+
+
 async def get_recon_status(
     op_id: str,
     db: aiosqlite.Connection = Depends(get_db),
@@ -373,7 +405,6 @@ async def get_recon_status(
 
     Auto-fails scans stuck in 'running'/'queued' for more than 10 minutes.
     """
-    db.row_factory = aiosqlite.Row
 
     await ensure_operation(db, op_id)
 
@@ -425,13 +456,14 @@ async def get_recon_status(
     response_model=OSINTDiscoverQueued,
     status_code=202,
 )
+
+
 async def run_osint_discover(
     op_id: str,
     body: OSINTDiscoverRequest,
     db: aiosqlite.Connection = Depends(get_db),
 ) -> OSINTDiscoverQueued:
     """Enqueue OSINT discovery — returns 202 immediately, executes in background."""
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, op_id)
 
     _task = asyncio.create_task(

@@ -230,6 +230,22 @@ class OODAController:
             )
             await db.commit()
 
+        # Broadcast ooda.completed — after ALL DB updates are committed
+        try:
+            await self._ws.broadcast(
+                operation_id, "ooda.completed",
+                {
+                    "iteration_id": ooda_id,
+                    "iteration_number": next_num,
+                    "technique_executed": decision.get("technique_id"),
+                    "success": bool(
+                        execution_result and execution_result.get("status") == "success"
+                    ),
+                },
+            )
+        except Exception:
+            pass  # fire-and-forget
+
         # Return iteration summary
         cursor = await db.execute(
             "SELECT * FROM ooda_iterations WHERE id = ?", (ooda_id,)

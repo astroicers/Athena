@@ -39,13 +39,14 @@ def _row_to_engagement(row: aiosqlite.Row) -> Engagement:
     response_model=Engagement,
     status_code=201,
 )
+
+
 async def create_engagement(
     op_id: str,
     body: EngagementCreate,
     db: aiosqlite.Connection = Depends(get_db),
 ) -> Engagement:
     """Create a Rules of Engagement record for an operation."""
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, op_id)
 
     # Only one engagement per operation
@@ -86,12 +87,13 @@ async def create_engagement(
 
 
 @router.get("/operations/{op_id}/engagement", response_model=Engagement)
+
+
 async def get_engagement(
     op_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ) -> Engagement:
     """Get the engagement/ROE for an operation."""
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, op_id)
 
     cursor = await db.execute(
@@ -108,12 +110,13 @@ async def get_engagement(
 
 
 @router.patch("/operations/{op_id}/engagement/activate", response_model=Engagement)
+
+
 async def activate_engagement(
     op_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ) -> Engagement:
     """Activate an engagement (draft -> active). Enables scope enforcement."""
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, op_id)
 
     cursor = await db.execute(
@@ -138,12 +141,13 @@ async def activate_engagement(
 
 
 @router.patch("/operations/{op_id}/engagement/suspend", response_model=Engagement)
+
+
 async def suspend_engagement(
     op_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ) -> Engagement:
     """Suspend an active engagement (emergency stop)."""
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, op_id)
 
     cursor = await db.execute(

@@ -11,6 +11,7 @@ VERSION  ?= latest
         diagram \
         adr-new adr-list \
         spec-new spec-list \
+        postmortem-new postmortem-list \
         agent-done agent-status agent-reset agent-locks agent-unlock agent-lock-gc \
         session-checkpoint session-log \
         rag-index rag-search rag-stats rag-rebuild \
@@ -34,6 +35,7 @@ help:
 	@echo "📐 Docs:        diagram"
 	@echo "📋 ADR:         adr-new TITLE=... | adr-list"
 	@echo "📄 Spec:        spec-new TITLE=... | spec-list"
+	@echo "🔥 Postmortem:  postmortem-new TITLE=... | postmortem-list"
 	@echo "🤖 Agent:       agent-done TASK=... STATUS=... | agent-status | agent-reset | agent-unlock FILE=... | agent-lock-gc"
 	@echo "💾 Session:     session-checkpoint NEXT=... | session-log"
 	@echo "🧠 RAG:         rag-index | rag-search Q=... | rag-stats | rag-rebuild"
@@ -201,7 +203,48 @@ spec-new:
 
 spec-list:
 	@echo "📋 Spec 列表："; \
-	ls docs/specs/SPEC-*.md 2>/dev/null | while read f; do echo "  $$f"; done || echo "  (無 Spec)"
+	ls docs/specs/SPEC-*.md 2>/dev/null | while read f; do \
+		STATUS=$$(grep -m1 '| \*\*狀態\*\*' $$f 2>/dev/null | awk -F'|' '{gsub(/^ +| +$$/,"",$$3); print $$3}'); \
+		if [ -z "$$STATUS" ]; then \
+			DONE=$$(grep -c '\- \[x\]' $$f 2>/dev/null; true); \
+			TODO=$$(grep -c '\- \[ \]' $$f 2>/dev/null; true); \
+			DONE=$${DONE:-0}; TODO=$${TODO:-0}; \
+			TOTAL=$$((DONE + TODO)); \
+			if [ "$$TOTAL" -eq 0 ]; then STATUS="Draft"; \
+			elif [ "$$TODO" -eq 0 ]; then STATUS="Done"; \
+			else STATUS="$$DONE/$$TOTAL"; fi; \
+		fi; \
+		TITLE=$$(head -1 $$f | sed 's/# //'); \
+		echo "  $$TITLE [$$STATUS]"; \
+	done || echo "  (無 Spec)"
+
+#---------------------------------------------------------------------------
+# Postmortem 管理
+#---------------------------------------------------------------------------
+
+postmortem-new:
+	@if [ -z "$(TITLE)" ]; then read -p "事後分析標題: " TITLE; fi; \
+	mkdir -p docs/postmortems; \
+	COUNT=$$(ls docs/postmortems/PM-*.md 2>/dev/null | wc -l | tr -d ' '); \
+	NUM=$$(printf "%03d" $$((COUNT + 1))); \
+	SLUG=$$(echo "$(TITLE)" | tr ' ' '-' | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]-'); \
+	FILE="docs/postmortems/PM-$$NUM-$$SLUG.md"; \
+	cp .asp/templates/Postmortem_Template.md $$FILE; \
+	SED_I=$$([ "$$(uname)" = "Darwin" ] && echo "sed -i ''" || echo "sed -i"); \
+	$$SED_I "s/PM-000/PM-$$NUM/g" $$FILE; \
+	$$SED_I "s/事件標題/$(TITLE)/g" $$FILE; \
+	$$SED_I "s/YYYY-MM-DD/$$(date +%Y-%m-%d)/g" $$FILE; \
+	echo "✅ 已建立: $$FILE"
+
+postmortem-list:
+	@echo "📋 Postmortem 列表："; \
+	FILES=$$(ls docs/postmortems/PM-*.md 2>/dev/null); \
+	if [ -z "$$FILES" ]; then echo "  (無 Postmortem)"; else \
+	echo "$$FILES" | while read f; do \
+		SEVERITY=$$(grep -m1 "嚴重等級" $$f | grep -oE 'P[0-9]+' | head -1); \
+		TITLE=$$(head -1 $$f | sed 's/# \[PM-[0-9]*\]: //'); \
+		echo "  $$(basename $$f .md) [$$SEVERITY] $$TITLE"; \
+	done; fi
 
 #---------------------------------------------------------------------------
 # Multi-Agent

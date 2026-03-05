@@ -9,18 +9,14 @@
 // For commercial licensing, contact: [TODO: contact email]
 
 import {
-  C5ISRIcon,
-  NavigatorIcon,
   PlannerIcon,
   MonitorIcon,
   ToolsIcon,
 } from "@/components/atoms/NavIcons";
 
 export const NAV_ITEMS = [
-  { href: "/c5isr", icon: C5ISRIcon, labelKey: "c5isr" },
-  { href: "/navigator", icon: NavigatorIcon, labelKey: "navigator" },
   { href: "/planner", icon: PlannerIcon, labelKey: "planner" },
-  { href: "/monitor", icon: MonitorIcon, labelKey: "monitor" },
+  { href: "/warroom", icon: MonitorIcon, labelKey: "warRoom" },
   { href: "/tools", icon: ToolsIcon, labelKey: "tools" },
 ] as const;
 

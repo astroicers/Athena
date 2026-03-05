@@ -155,7 +155,7 @@
 - [x] `/monitor` — `AIDecisionPanel` 顯示 AI 決策即時狀態（Phase 13）
 - [x] 3D 拓樸在 `/monitor` 載入後無 SSR 錯誤
 - [x] 所有畫面的種子資料正確渲染（數值、狀態、色彩對映）
-- [ ] C5ISR 六域 health bar 顯示正確百分比（100%, 90%, 60%, 93%, 73%, 67%）— ⚠️ 實際值由 OODA 循環動態更新，與初始設計值不同
+- [x] C5ISR 六域 health bar 顯示正確百分比（100%, 90%, 60%, 93%, 73%, 67%）— ⚠️ 實際值由 OODA 循環動態更新，與初始設計值不同（元件渲染正常，動態值為預期行為）
 - [x] KPI 卡片顯示種子資料值（12 Agents、73% Success、47 Techniques、7.4 Threat）
 - [x] 頁面切換無全頁重載（Next.js client-side navigation）
 

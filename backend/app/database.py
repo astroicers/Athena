@@ -152,6 +152,16 @@ _CREATE_TABLES: list[str] = [
     );
     """,
     """
+    CREATE TABLE IF NOT EXISTS ooda_directives (
+        id TEXT PRIMARY KEY,
+        operation_id TEXT NOT NULL REFERENCES operations(id) ON DELETE CASCADE,
+        directive TEXT NOT NULL,
+        scope TEXT DEFAULT 'next_cycle',
+        created_at TEXT DEFAULT (datetime('now')),
+        consumed_at TEXT
+    );
+    """,
+    """
     CREATE TABLE IF NOT EXISTS recommendations (
         id TEXT PRIMARY KEY,
         operation_id TEXT REFERENCES operations(id) ON DELETE CASCADE,
@@ -394,6 +404,32 @@ TECHNIQUE_PLAYBOOK_SEEDS = [
      "output_parser": "first_line",
      "facts_traits": '["host.os"]',
      "tags": '["execution","powershell","windows"]'},
+    # --- Windows AD techniques (Week 2) ---
+    {"mitre_id": "T1069.002", "platform": "windows",
+     "command": "Get-ADGroupMember 'Domain Admins' -ErrorAction SilentlyContinue | Select-Object Name,SamAccountName",
+     "output_parser": "first_line",
+     "facts_traits": '["host.ad_group"]',
+     "tags": '["discovery","ad","windows"]'},
+    {"mitre_id": "T1558.003", "platform": "windows",
+     "command": "Get-ADUser -Filter {ServicePrincipalName -ne \"$null\"} -Properties ServicePrincipalName -ErrorAction SilentlyContinue | Select-Object SamAccountName,ServicePrincipalName",
+     "output_parser": "first_line",
+     "facts_traits": '["credential.spn"]',
+     "tags": '["credential_access","kerberoasting","ad","windows"]'},
+    {"mitre_id": "T1003.001", "platform": "windows",
+     "command": "[Security.Principal.WindowsIdentity]::GetCurrent().Groups | ForEach-Object { $_.Translate([Security.Principal.NTAccount]).Value } | Select-Object -First 10",
+     "output_parser": "first_line",
+     "facts_traits": '["host.privilege"]',
+     "tags": '["credential_access","privilege_check","windows"]'},
+    {"mitre_id": "T1003.003", "platform": "windows",
+     "command": "reg query 'HKLM\\SAM' 2>$null; if ($?) { 'SAM_ACCESSIBLE' } else { 'SAM_DENIED' }",
+     "output_parser": "first_line",
+     "facts_traits": '["credential.sam_status"]',
+     "tags": '["credential_access","sam","windows"]'},
+    {"mitre_id": "T1018", "platform": "windows",
+     "command": "Get-ADComputer -Filter * -Properties Name,OperatingSystem -ErrorAction SilentlyContinue | Select-Object -First 20 Name,OperatingSystem",
+     "output_parser": "first_line",
+     "facts_traits": '["host.ad_computer"]',
+     "tags": '["discovery","ad","windows"]'},
 ]
 
 
@@ -455,6 +491,7 @@ TOOL_REGISTRY_SEEDS = [
         "mitre_techniques": "[]",
         "risk_level": "medium",
         "output_traits": "[]",
+        "config_json": '{"mcp_server":"credential-checker"}',
     },
     {
         "tool_id": "persistent_ssh",
@@ -465,16 +502,7 @@ TOOL_REGISTRY_SEEDS = [
         "mitre_techniques": "[]",
         "risk_level": "medium",
         "output_traits": "[]",
-    },
-    {
-        "tool_id": "c2",
-        "name": "C2 Engine",
-        "kind": "engine",
-        "category": "execution",
-        "description": "C2 framework integration for technique execution",
-        "mitre_techniques": "[]",
-        "risk_level": "high",
-        "output_traits": "[]",
+        "config_json": '{"mcp_server":"attack-executor"}',
     },
     {
         "tool_id": "metasploit",
@@ -485,6 +513,7 @@ TOOL_REGISTRY_SEEDS = [
         "mitre_techniques": "[]",
         "risk_level": "critical",
         "output_traits": "[]",
+        "config_json": '{"mcp_server":"msf-rpc"}',
     },
     {
         "tool_id": "winrm",
@@ -495,6 +524,7 @@ TOOL_REGISTRY_SEEDS = [
         "mitre_techniques": "[]",
         "risk_level": "medium",
         "output_traits": "[]",
+        "config_json": '{"mcp_server":"credential-checker"}',
     },
     {
         "tool_id": "mock",
@@ -552,6 +582,49 @@ async def _seed_tool_registry(db: aiosqlite.Connection) -> None:
         )
 
 
+# ---------------------------------------------------------------------------
+# Seed data for techniques table — ensures orient engine can resolve tactic/kill-chain
+# ---------------------------------------------------------------------------
+TECHNIQUE_SEEDS = [
+    {"mitre_id": "T1069.002", "name": "Permission Groups Discovery: Domain Groups",
+     "tactic": "Discovery", "tactic_id": "TA0007", "risk_level": "low", "platforms": '["windows"]'},
+    {"mitre_id": "T1558.003", "name": "Steal or Forge Kerberos Tickets: Kerberoasting",
+     "tactic": "Credential Access", "tactic_id": "TA0006", "risk_level": "medium", "platforms": '["windows"]'},
+    {"mitre_id": "T1003.003", "name": "OS Credential Dumping: NTDS",
+     "tactic": "Credential Access", "tactic_id": "TA0006", "risk_level": "high", "platforms": '["windows"]'},
+    {"mitre_id": "T1018", "name": "Remote System Discovery",
+     "tactic": "Discovery", "tactic_id": "TA0007", "risk_level": "low", "platforms": '["windows","linux"]'},
+]
+
+
+async def _seed_techniques(db: aiosqlite.Connection) -> None:
+    """Insert seed technique definitions (INSERT OR IGNORE — idempotent)."""
+    import uuid as _uuid
+
+    # Fix legacy rows that were inserted without an id
+    await db.execute(
+        "UPDATE techniques SET id = lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)),2) || '-' || substr('89ab',abs(random())%4+1,1) || substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6))) WHERE id IS NULL"
+    )
+
+    for seed in TECHNIQUE_SEEDS:
+        await db.execute(
+            """
+            INSERT OR IGNORE INTO techniques
+                (id, mitre_id, name, tactic, tactic_id, risk_level, platforms)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                str(_uuid.uuid4()),
+                seed["mitre_id"],
+                seed["name"],
+                seed["tactic"],
+                seed["tactic_id"],
+                seed["risk_level"],
+                seed["platforms"],
+            ),
+        )
+
+
 async def _seed_technique_playbooks(db: aiosqlite.Connection) -> None:
     """Insert seed playbooks only when the table is empty (idempotent)."""
     async with db.execute("SELECT COUNT(*) FROM technique_playbooks") as cursor:
@@ -591,6 +664,7 @@ async def init_db() -> None:
         for ddl in _CREATE_TABLES:
             await db.execute(ddl)
         await _seed_technique_playbooks(db)
+        await _seed_techniques(db)
         await _seed_tool_registry(db)
         # Migration: add max_iterations column if not present
         try:
@@ -667,6 +741,24 @@ async def init_db() -> None:
             await db.commit()
         except Exception:
             pass  # indexes already exist or table was freshly created with UNIQUE
+        # Migration: deprecate C2 (Caldera) tool, set mcp_server on seed tools
+        try:
+            await db.execute("DELETE FROM tool_registry WHERE tool_id = 'c2'")
+            _mcp_mappings = {
+                "ssh": "credential-checker",
+                "persistent_ssh": "attack-executor",
+                "winrm": "credential-checker",
+                "metasploit": "msf-rpc",
+            }
+            for tid, srv in _mcp_mappings.items():
+                await db.execute(
+                    "UPDATE tool_registry SET config_json = ? "
+                    "WHERE tool_id = ? AND (config_json IS NULL OR config_json = '{}')",
+                    (f'{{"mcp_server":"{srv}"}}', tid),
+                )
+            await db.commit()
+        except Exception:
+            pass
         await db.commit()
 
 
@@ -674,6 +766,7 @@ async def get_db() -> AsyncGenerator[aiosqlite.Connection, None]:
     """Async generator for FastAPI Depends injection."""
     db_path = Path(_DB_FILE)
     db = await aiosqlite.connect(str(db_path))
+    db.row_factory = aiosqlite.Row
     await db.execute("PRAGMA foreign_keys = ON;")
     try:
         yield db

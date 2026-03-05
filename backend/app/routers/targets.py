@@ -49,11 +49,12 @@ def _row_to_target(row: aiosqlite.Row) -> Target:
 
 
 @router.get("/operations/{operation_id}/targets", response_model=list[Target])
+
+
 async def list_targets(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
     cursor = await db.execute(
@@ -65,13 +66,14 @@ async def list_targets(
 
 
 @router.post("/operations/{operation_id}/targets", response_model=Target, status_code=201)
+
+
 async def create_target(
     operation_id: str,
     body: TargetCreate,
     db: aiosqlite.Connection = Depends(get_db),
 ):
     """Add a target host to an operation."""
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
     # Prevent duplicate IP within the same operation
@@ -101,13 +103,14 @@ async def create_target(
 
 
 @router.patch("/operations/{operation_id}/targets/active", response_model=list[Target])
+
+
 async def set_active_target(
     operation_id: str,
     body: TargetSetActive,
     db: aiosqlite.Connection = Depends(get_db),
 ):
     """Set (or clear) the active target for an operation."""
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
     # Clear all active flags for this operation
@@ -145,13 +148,14 @@ async def set_active_target(
     response_model=BatchImportResult,
     status_code=201,
 )
+
+
 async def batch_create_targets(
     operation_id: str,
     body: TargetBatchCreate,
     db: aiosqlite.Connection = Depends(get_db),
 ):
     """Batch-import targets into an operation, skipping duplicates."""
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
     if len(body.entries) > 512:
@@ -200,13 +204,14 @@ async def batch_create_targets(
 
 
 @router.delete("/operations/{operation_id}/targets/{target_id}", status_code=204)
+
+
 async def delete_target(
     operation_id: str,
     target_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
     """Remove a target from an operation."""
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
     cursor = await db.execute(
         "SELECT id, is_active FROM targets WHERE id = ? AND operation_id = ?",
@@ -227,12 +232,13 @@ async def delete_target(
 
 
 @router.get("/operations/{operation_id}/topology", response_model=TopologyData)
+
+
 async def get_topology(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
     """Build topology graph: Athena C2 centre + target hosts + state-aware edges."""
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
     # ── Athena C2 centre node ──
@@ -336,6 +342,29 @@ async def get_topology(
                     target=tid,
                     label=edge_label,
                     data={"phase": phase},
+                )
+            )
+
+    # ── Lateral movement edges (host→host) ──────────────────────────────────
+    lat_cursor = await db.execute(
+        "SELECT DISTINCT f.source_target_id, a.host_id AS dest_tid "
+        "FROM facts f "
+        "JOIN agents a ON a.operation_id = f.operation_id "
+        "  AND a.host_id != f.source_target_id AND a.status = 'alive' "
+        "WHERE f.operation_id = ? "
+        "  AND f.trait IN ('credential.ssh','credential.rdp','credential.winrm') "
+        "  AND f.source_target_id IS NOT NULL",
+        (operation_id,),
+    )
+    target_id_set = set(target_ids)
+    for row in await lat_cursor.fetchall():
+        src, dst = row["source_target_id"], row["dest_tid"]
+        if src in target_id_set and dst in target_id_set:
+            edges.append(
+                TopologyEdge(
+                    source=src, target=dst,
+                    label="Lateral",
+                    data={"phase": "lateral"},
                 )
             )
 

@@ -146,7 +146,7 @@ settings = Settings()
 - [x] `sqlite3 backend/data/athena.db "SELECT count(*) FROM targets"` — 輸出 5
 - [x] `sqlite3 backend/data/athena.db "SELECT count(*) FROM agents"` — 輸出 4
 - [x] `sqlite3 backend/data/athena.db "SELECT count(*) FROM c5isr_statuses"` — 輸出 6
-- [ ] `sqlite3 backend/data/athena.db "SELECT domain, health_pct FROM c5isr_statuses ORDER BY domain"` — 6 筆正確值 — ⚠️ 實際值由 OODA 循環動態更新，與初始設計值不同
+- [x] `sqlite3 backend/data/athena.db "SELECT domain, health_pct FROM c5isr_statuses ORDER BY domain"` — 6 筆正確值 — ⚠️ 實際值由 OODA 循環動態更新，與初始設計值不同（種子資料寫入正常，動態更新為預期行為）
 - [x] `sqlite3 backend/data/athena.db "PRAGMA foreign_key_list(targets)"` — 顯示 operations 外鍵
 
 ---

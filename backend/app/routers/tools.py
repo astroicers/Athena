@@ -49,6 +49,8 @@ def _row_to_tool(row: aiosqlite.Row) -> dict:
 
 
 @router.get("", response_model=list[ToolRegistryEntry])
+
+
 async def list_tools(
     kind: str | None = None,
     category: str | None = None,
@@ -56,7 +58,6 @@ async def list_tools(
     db: aiosqlite.Connection = Depends(get_db),
 ):
     """List all tools with optional filtering by kind, category, enabled."""
-    db.row_factory = aiosqlite.Row
     query = "SELECT * FROM tool_registry WHERE 1=1"
     params: list = []
     if kind:
@@ -75,12 +76,13 @@ async def list_tools(
 
 
 @router.get("/{tool_id}", response_model=ToolRegistryEntry)
+
+
 async def get_tool(
     tool_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
     """Get a specific tool by tool_id slug (NOT uuid)."""
-    db.row_factory = aiosqlite.Row
     cursor = await db.execute(
         "SELECT * FROM tool_registry WHERE tool_id = ?", (tool_id,)
     )
@@ -91,12 +93,13 @@ async def get_tool(
 
 
 @router.post("", response_model=ToolRegistryEntry, status_code=201)
+
+
 async def create_tool(
     body: ToolRegistryCreate,
     db: aiosqlite.Connection = Depends(get_db),
 ):
     """Create a new tool (source='user')."""
-    db.row_factory = aiosqlite.Row
 
     # Check for duplicate tool_id
     cursor = await db.execute(
@@ -140,13 +143,14 @@ async def create_tool(
 
 
 @router.patch("/{tool_id}", response_model=ToolRegistryEntry)
+
+
 async def update_tool(
     tool_id: str,
     body: ToolRegistryUpdate,
     db: aiosqlite.Connection = Depends(get_db),
 ):
     """Update an existing tool. Cannot change tool_id, kind, or source."""
-    db.row_factory = aiosqlite.Row
     cursor = await db.execute(
         "SELECT * FROM tool_registry WHERE tool_id = ?", (tool_id,)
     )
@@ -183,12 +187,13 @@ async def update_tool(
 
 
 @router.delete("/{tool_id}", status_code=204)
+
+
 async def delete_tool(
     tool_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
     """Delete a user-created tool. Seed tools cannot be deleted (403)."""
-    db.row_factory = aiosqlite.Row
     cursor = await db.execute(
         "SELECT source FROM tool_registry WHERE tool_id = ?", (tool_id,)
     )
@@ -204,6 +209,8 @@ async def delete_tool(
 
 
 @router.post("/{tool_id}/check")
+
+
 async def check_tool(
     tool_id: str,
     request: Request,
@@ -213,7 +220,6 @@ async def check_tool(
 
     For MCP-backed tools (config_json.mcp_server), pings the MCP server.
     """
-    db.row_factory = aiosqlite.Row
     cursor = await db.execute(
         "SELECT tool_id, name, enabled, config_json FROM tool_registry WHERE tool_id = ?",
         (tool_id,),

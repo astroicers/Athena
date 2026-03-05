@@ -148,7 +148,13 @@ class MCPClientManager:
     # ------------------------------------------------------------------
 
     async def startup(self) -> None:
-        """Load mcp_servers.json and connect to all enabled servers."""
+        """Load mcp_servers.json and schedule connections via background health check.
+
+        Connections are deferred to the periodic health check task to avoid
+        blocking app startup and to isolate connection errors (the MCP SDK's
+        streamablehttp_client can spawn internal tasks that raise RuntimeError
+        on failure, which would crash the lifespan if run synchronously).
+        """
         config_path = Path(settings.MCP_SERVERS_FILE)
         if not config_path.is_absolute():
             project_root = Path(__file__).resolve().parent.parent.parent
@@ -174,15 +180,10 @@ class MCPClientManager:
             )
             self._configs[name] = server_cfg
             self._breakers[name] = CircuitBreakerState()
-            if server_cfg.enabled:
-                await self._connect(server_cfg)
 
-        # Soft-delete tools for servers that failed to connect
-        for name, cfg in self._configs.items():
-            if cfg.enabled and name not in self._sessions:
-                await self._soft_delete_server_tools(name)
+        logger.info("MCP: loaded %d server configs — connections deferred to background", len(self._configs))
 
-        # Start periodic health check
+        # Start periodic health check (handles initial connections)
         self._health_task = asyncio.create_task(self._periodic_health_check())
 
     async def shutdown(self) -> None:
@@ -292,16 +293,25 @@ class MCPClientManager:
         from mcp.client.streamable_http import streamablehttp_client
 
         transport_ctx = streamablehttp_client(url=url)
-        streams = await transport_ctx.__aenter__()
-        read_stream, write_stream = streams[0], streams[1]
+        try:
+            streams = await transport_ctx.__aenter__()
+            read_stream, write_stream = streams[0], streams[1]
 
-        session = ClientSession(read_stream, write_stream)
-        await session.__aenter__()
-        await session.initialize()
+            session = ClientSession(read_stream, write_stream)
+            await session.__aenter__()
+            await session.initialize()
 
-        self._transports[config.name] = transport_ctx
-        self._sessions[config.name] = session
-        await self._discover_tools(config.name, session)
+            self._transports[config.name] = transport_ctx
+            self._sessions[config.name] = session
+            await self._discover_tools(config.name, session)
+        except Exception:
+            # Clean up transport context on failure; ignore cleanup errors
+            # (anyio cancel-scope RuntimeError can occur during cleanup)
+            try:
+                await transport_ctx.__aexit__(None, None, None)
+            except Exception:
+                pass
+            raise
 
     async def _probe_http(self, url: str) -> bool:
         """Probe if an HTTP MCP endpoint is reachable (1s timeout)."""
@@ -444,36 +454,44 @@ class MCPClientManager:
 
     async def _periodic_health_check(self) -> None:
         """Background task: ping servers every 30s, reconnect OPEN circuits."""
+        first_run = True
         while True:
-            await asyncio.sleep(30)
+            if first_run:
+                await asyncio.sleep(2)  # short delay on first run
+                first_run = False
+            else:
+                await asyncio.sleep(30)
             for name, config in self._configs.items():
                 if not config.enabled:
                     continue
 
                 breaker = self._breakers.get(name, CircuitBreakerState())
 
-                if name in self._sessions:
-                    # Ping connected server
-                    healthy = await self.health_check(name)
-                    logger.debug(
-                        "MCP_AUDIT event=health_check server=%s healthy=%s circuit=%s",
-                        name, healthy, breaker.state.value,
-                    )
-                    if not healthy:
-                        breaker.record_failure(settings.MCP_MAX_RETRIES)
-                        await self._disconnect(name)
-                elif breaker.state == CircuitState.OPEN:
-                    # Try reconnect if cooldown elapsed
-                    if breaker.cooldown_elapsed(settings.MCP_RECONNECT_INTERVAL_SEC):
-                        logger.info(
-                            "MCP_AUDIT event=reconnect_attempt server=%s circuit=%s",
-                            name, breaker.state.value,
+                try:
+                    if name in self._sessions:
+                        # Ping connected server
+                        healthy = await self.health_check(name)
+                        logger.debug(
+                            "MCP_AUDIT event=health_check server=%s healthy=%s circuit=%s",
+                            name, healthy, breaker.state.value,
                         )
-                        breaker.state = CircuitState.HALF_OPEN
+                        if not healthy:
+                            breaker.record_failure(settings.MCP_MAX_RETRIES)
+                            await self._disconnect(name)
+                    elif breaker.state == CircuitState.OPEN:
+                        # Try reconnect if cooldown elapsed
+                        if breaker.cooldown_elapsed(settings.MCP_RECONNECT_INTERVAL_SEC):
+                            logger.info(
+                                "MCP_AUDIT event=reconnect_attempt server=%s circuit=%s",
+                                name, breaker.state.value,
+                            )
+                            breaker.state = CircuitState.HALF_OPEN
+                            await self._connect(config)
+                    elif breaker.state == CircuitState.CLOSED and name not in self._sessions:
+                        # Not connected but circuit is closed — try connect
                         await self._connect(config)
-                elif breaker.state == CircuitState.CLOSED and name not in self._sessions:
-                    # Not connected but circuit is closed — try connect
-                    await self._connect(config)
+                except BaseException:
+                    logger.error("Health check error for MCP server '%s'", name, exc_info=True)
 
                 # Broadcast current status
                 await self._broadcast_server_status(

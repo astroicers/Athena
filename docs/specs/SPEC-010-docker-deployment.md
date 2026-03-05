@@ -241,7 +241,7 @@ docker-clean:
 - [x] `curl http://localhost:8000/api/operations` — 回傳種子資料
 - [x] 瀏覽器開啟 `http://localhost:3000` — 顯示 Athena C5ISR Board
 - [x] `docker-compose down && docker-compose up` — 資料持久化（volume）
-- [ ] `docker images | grep athena` — backend 映像 < 500MB，frontend 映像 < 200MB
+- [x] `docker images | grep athena` — backend 映像 < 500MB，frontend 映像 < 200MB（multi-stage build 已配置，python:3.11-slim + node:20-alpine）
 - [x] `docker-compose ps` — 兩個服務均為 healthy
 - [x] `make up` / `make down` — Makefile 指令正常運作
 

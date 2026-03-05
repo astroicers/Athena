@@ -35,11 +35,12 @@ def _row_to_fact(row: aiosqlite.Row) -> Fact:
 
 
 @router.get("/operations/{operation_id}/facts", response_model=list[Fact])
+
+
 async def list_facts(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
     cursor = await db.execute(

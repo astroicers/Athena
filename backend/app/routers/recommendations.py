@@ -44,11 +44,12 @@ def _row_to_recommendation(row: aiosqlite.Row) -> OrientRecommendation:
     "/operations/{operation_id}/recommendations/latest",
     response_model=OrientRecommendation | None,
 )
+
+
 async def get_latest_recommendation(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
     cursor = await db.execute(
@@ -66,13 +67,14 @@ async def get_latest_recommendation(
     "/operations/{operation_id}/recommendations",
     response_model=list[OrientRecommendation],
 )
+
+
 async def list_recommendations(
     operation_id: str,
     limit: int = Query(20, ge=1, le=100),
     db: aiosqlite.Connection = Depends(get_db),
 ):
     """List all past recommendations for an operation, newest first."""
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
     cursor = await db.execute(
@@ -88,12 +90,13 @@ async def list_recommendations(
     "/operations/{operation_id}/recommendations/{recommendation_id}/accept",
     response_model=OrientRecommendation,
 )
+
+
 async def accept_recommendation(
     operation_id: str,
     recommendation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
     cursor = await db.execute(

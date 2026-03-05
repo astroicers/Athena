@@ -25,12 +25,13 @@ def _rows_to_dicts(rows: list) -> list[dict]:
 
 
 @router.get("/operations/{operation_id}/report")
+
+
 async def get_operation_report(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
     """Export a complete mission report as JSON."""
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
     # Operation summary
@@ -123,12 +124,13 @@ async def get_operation_report(
     "/operations/{operation_id}/report/structured",
     response_model=PentestReport,
 )
+
+
 async def get_structured_report(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ) -> PentestReport:
     """Generate a structured client-deliverable pentest report (JSON)."""
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
     from app.services.report_generator import ReportGenerator
@@ -138,13 +140,14 @@ async def get_structured_report(
 @router.get(
     "/operations/{operation_id}/report/markdown",
 )
+
+
 async def get_markdown_report(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
     """Generate a structured pentest report as downloadable Markdown."""
     from fastapi.responses import PlainTextResponse
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
     from app.services.report_generator import ReportGenerator

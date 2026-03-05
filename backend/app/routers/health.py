@@ -25,6 +25,8 @@ router = APIRouter()
 
 
 @router.get("/health", response_model=HealthStatus)
+
+
 async def health_check(db: aiosqlite.Connection = Depends(get_db)):
     """Return service health status."""
     # Check database connectivity
@@ -73,7 +75,32 @@ async def health_check(db: aiosqlite.Connection = Depends(get_db)):
         from app.services.mcp_client_manager import get_mcp_manager
 
         mcp_mgr = get_mcp_manager()
-        services["mcp_servers"] = mcp_mgr.list_servers() if mcp_mgr else []
+        mcp_list = mcp_mgr.list_servers() if mcp_mgr else []
+
+        # Append non-MCP containers that tools depend on
+        if not settings.MOCK_METASPLOIT:
+            msf_connected = False
+            try:
+                import socket
+                s = socket.create_connection(
+                    (settings.MSF_RPC_HOST, settings.MSF_RPC_PORT), timeout=2,
+                )
+                s.close()
+                msf_connected = True
+            except Exception:
+                pass
+            mcp_list.append({
+                "name": "msf-rpc",
+                "transport": "rpc",
+                "enabled": True,
+                "connected": msf_connected,
+                "tool_count": 0,
+                "description": "Metasploit Framework RPC",
+                "circuit_state": "closed" if msf_connected else "open",
+                "failure_count": 0 if msf_connected else 1,
+            })
+
+        services["mcp_servers"] = mcp_list
 
     return HealthStatus(
         status="ok",
@@ -83,6 +110,8 @@ async def health_check(db: aiosqlite.Connection = Depends(get_db)):
 
 
 @router.get("/mcp/status")
+
+
 async def mcp_status():
     """Return MCP subsystem status with circuit breaker states."""
     if not settings.MCP_ENABLED:

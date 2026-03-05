@@ -44,11 +44,12 @@ def _row_to_agent(row: aiosqlite.Row) -> Agent:
 
 
 @router.get("/operations/{operation_id}/agents", response_model=list[Agent])
+
+
 async def list_agents(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
     cursor = await db.execute(
@@ -60,12 +61,13 @@ async def list_agents(
 
 
 @router.post("/operations/{operation_id}/agents/sync", status_code=202)
+
+
 async def sync_agents(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
     """Sync agents from C2 engine — returns 202 immediately, executes in background."""
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
     _task = asyncio.create_task(_sync_agents_background(operation_id))

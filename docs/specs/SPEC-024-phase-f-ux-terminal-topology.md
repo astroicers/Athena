@@ -58,24 +58,24 @@
 
 ## ✅ Done When
 
-- [ ] `GET /operations/{op_id}/recommendations` 回傳列表，HTTP 200
-- [ ] WebSocket terminal 連線到 compromised target，`whoami` 回傳正確 username
-- [ ] 破壞性指令（`rm -rf /`）被拒絕，回傳 error
-- [ ] Monitor AIDecisionPanel 在 ORIENT 階段顯示 `● ANALYZING...`
-- [ ] OODA Timeline 預設只展開最新 1 個 iteration，舊的摺疊
-- [ ] ORIENT 文字超 150 字元顯示截斷 + `[展開]`
-- [ ] Phase filter chips 正常篩選
-- [ ] Recommendation History 面板顯示歷史列表
-- [ ] Planner 頁面 compromised target 出現 TERMINAL 按鈕
-- [ ] TerminalPanel ↑↓ 瀏覽歷史正常
-- [ ] Monitor 頁面顯示 OVERVIEW / TOPOLOGY Tab 切換
-- [ ] TOPOLOGY Tab 拓撲圖填滿 3/4 寬，Kill Chain 條貼底部
-- [ ] 點擊節點 → NodeDetailPanel 顯示 facts
-- [ ] ACCEPT RECOMMENDATION 按鈕已移除
-- [ ] Modal 背景為純黑（非半透明）
-- [ ] 無目標時 OODA CYCLE / EXPORT / EXECUTE MISSION 按鈕 disabled
-- [ ] `pytest` 227 passed
-- [ ] `tsc --noEmit` clean
+- [x] `GET /operations/{op_id}/recommendations` 回傳列表，HTTP 200
+- [x] WebSocket terminal 連線到 compromised target，`whoami` 回傳正確 username
+- [x] 破壞性指令（`rm -rf /`）被拒絕，回傳 error
+- [x] Monitor AIDecisionPanel 在 ORIENT 階段顯示 `● ANALYZING...`
+- [x] OODA Timeline 預設只展開最新 1 個 iteration，舊的摺疊
+- [x] ORIENT 文字超 150 字元顯示截斷 + `[展開]`
+- [x] Phase filter chips 正常篩選
+- [x] Recommendation History 面板顯示歷史列表
+- [x] Planner 頁面 compromised target 出現 TERMINAL 按鈕
+- [x] TerminalPanel ↑↓ 瀏覽歷史正常
+- [x] Monitor 頁面顯示 OVERVIEW / TOPOLOGY Tab 切換
+- [x] TOPOLOGY Tab 拓撲圖填滿 3/4 寬，Kill Chain 條貼底部
+- [x] 點擊節點 → NodeDetailPanel 顯示 facts
+- [x] ACCEPT RECOMMENDATION 按鈕已移除
+- [x] Modal 背景為純黑（非半透明）
+- [x] 無目標時 OODA CYCLE / EXPORT / EXECUTE MISSION 按鈕 disabled
+- [x] `pytest` 227 passed
+- [x] `tsc --noEmit` clean
 
 ---
 

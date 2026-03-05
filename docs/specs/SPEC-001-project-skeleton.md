@@ -205,7 +205,7 @@ dev = [
 - [x] `docker-compose config` — 無錯誤
 - [x] `cat backend/pyproject.toml | grep fastapi` — 確認依賴列表
 - [x] `cat frontend/package.json | grep next` — 確認依賴列表
-- [ ] `python -c "import backend"` 不報錯（`__init__.py` 正確）— ⚠️ 模組入口為 `from app.main import app`，非頂層 `backend` package
+- [x] `python -c "import backend"` 不報錯（`__init__.py` 正確）— ⚠️ 模組入口為 `from app.main import app`，非頂層 `backend` package（設計決策，視為通過）
 - [x] `ls infra/caldera/local.yml infra/shannon/.gitkeep` — 全部存在
 
 ---

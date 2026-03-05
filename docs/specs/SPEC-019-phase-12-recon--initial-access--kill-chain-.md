@@ -160,13 +160,13 @@ CREATE TABLE IF NOT EXISTS recon_scans (
 
 ## ✅ 驗收標準（Done When）
 
-- [ ] `make test-filter FILTER=recon` 全數通過（unit tests for ReconEngine + InitialAccessEngine）
-- [ ] `POST /api/operations/{op_id}/recon/scan` 在 mock 模式下回傳包含 3 個服務的結果
-- [ ] mock scan 後，`GET /api/operations/{op_id}/facts` 中可看到 `service.open_port` facts
-- [ ] `make lint` 無 error
-- [ ] 已更新 `docs/architecture.md`（加入 Recon + Initial Access 模組）
-- [ ] 已更新 `CHANGELOG.md`
-- [ ] 所有現有測試 (`make test`) 仍通過（無迴歸）
+- [x] `make test-filter FILTER=recon` 全數通過（unit tests for ReconEngine + InitialAccessEngine）
+- [x] `POST /api/operations/{op_id}/recon/scan` 在 mock 模式下回傳包含 3 個服務的結果
+- [x] mock scan 後，`GET /api/operations/{op_id}/facts` 中可看到 `service.open_port` facts
+- [x] `make lint` 無 error
+- [x] 已更新 `docs/architecture.md`（加入 Recon + Initial Access 模組）
+- [x] 已更新 `CHANGELOG.md`
+- [x] 所有現有測試 (`make test`) 仍通過（無迴歸）
 
 ---
 

@@ -76,11 +76,11 @@ Returns `agent_paw: str` — the paw of the best-fit alive agent on the target, 
 
 ## ✅ 驗收標準（Done When）
 
-- [ ] `AgentCapabilityMatcher.select_agent_for_technique()` is implemented in `backend/app/services/`
-- [ ] 15 unit test scenarios pass covering: no agents, all dead, single agent, multi-agent same privilege, multi-agent mixed privilege, no playbook entry, platform case-insensitive match, and SYSTEM > Admin > User priority
-- [ ] `engine_router._execute_caldera()` uses `AgentCapabilityMatcher` instead of raw `LIMIT 1` query
-- [ ] `make test` passes with 187+ tests (zero regressions)
-- [ ] Explicit `failed` status returned when `select_agent_for_technique()` returns `None`
+- [x] `AgentCapabilityMatcher.select_agent_for_technique()` is implemented in `backend/app/services/`
+- [x] 15 unit test scenarios pass covering: no agents, all dead, single agent, multi-agent same privilege, multi-agent mixed privilege, no playbook entry, platform case-insensitive match, and SYSTEM > Admin > User priority
+- [x] `engine_router._execute_caldera()` uses `AgentCapabilityMatcher` instead of raw `LIMIT 1` query
+- [x] `make test` passes with 187+ tests (zero regressions)
+- [x] Explicit `failed` status returned when `select_agent_for_technique()` returns `None`
 
 ---
 

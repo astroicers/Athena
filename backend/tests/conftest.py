@@ -52,6 +52,7 @@ async def tmp_db():
     ``:memory:`` databases.
     """
     db = await aiosqlite.connect(":memory:")
+    db.row_factory = aiosqlite.Row
     await db.execute("PRAGMA foreign_keys = ON;")
     for ddl in _CREATE_TABLES:
         await db.execute(ddl)

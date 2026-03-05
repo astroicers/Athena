@@ -47,15 +47,18 @@ def _row_to_technique(row: aiosqlite.Row) -> Technique:
 
 
 @router.get("/techniques", response_model=list[Technique])
+
+
 async def list_techniques(db: aiosqlite.Connection = Depends(get_db)):
     """Return the full static technique catalog."""
-    db.row_factory = aiosqlite.Row
     cursor = await db.execute("SELECT * FROM techniques ORDER BY mitre_id")
     rows = await cursor.fetchall()
     return [_row_to_technique(r) for r in rows]
 
 
 @router.post("/techniques", status_code=201)
+
+
 async def create_technique(
     body: TechniqueCreate,
     db: aiosqlite.Connection = Depends(get_db),
@@ -81,13 +84,14 @@ async def create_technique(
         ),
     )
     await db.commit()
-    db.row_factory = aiosqlite.Row
     cursor = await db.execute("SELECT * FROM techniques WHERE id = ?", (tech_id,))
     row = await cursor.fetchone()
     return dict(row)
 
 
 @router.post("/techniques/sync-c2", status_code=202)
+
+
 async def sync_c2_abilities(
     db: aiosqlite.Connection = Depends(get_db),  # noqa: ARG001  kept for DI consistency
 ):
@@ -153,12 +157,13 @@ async def _sync_techniques_background() -> None:
     "/operations/{operation_id}/techniques",
     response_model=list[TechniqueWithStatus],
 )
+
+
 async def list_techniques_with_status(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
     """Techniques enriched with the latest execution status for an operation."""
-    db.row_factory = aiosqlite.Row
 
     # Verify operation exists
     cursor = await db.execute("SELECT id FROM operations WHERE id = ?", (operation_id,))
@@ -211,12 +216,13 @@ async def list_techniques_with_status(
 
 
 @router.get("/operations/{operation_id}/attack-path", response_model=AttackPathResponse)
+
+
 async def get_attack_path(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ) -> AttackPathResponse:
     """Return full execution history for attack path timeline visualization."""
-    db.row_factory = aiosqlite.Row
     from app.routers._deps import ensure_operation
     await ensure_operation(db, operation_id)
 

@@ -107,8 +107,8 @@ export function DomainCard({ domain }: DomainCardProps) {
 
       {/* Existing card content */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-mono font-bold text-athena-text">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <span className="text-xs font-mono font-bold text-athena-text truncate">
             {t(("domain" + domain.domain.charAt(0).toUpperCase() + domain.domain.slice(1)) as any)}
           </span>
           <Badge variant={STATUS_VARIANT[domain.status] || "info"}>

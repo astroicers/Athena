@@ -21,6 +21,8 @@ router = APIRouter()
 
 
 @router.websocket("/ws/{operation_id}")
+
+
 async def websocket_endpoint(websocket: WebSocket, operation_id: str):
     await ws_manager.connect(operation_id, websocket)
     try:

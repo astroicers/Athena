@@ -39,13 +39,14 @@ def _row_to_playbook(row: aiosqlite.Row) -> dict:
 
 
 @router.get("", response_model=list[Playbook])
+
+
 async def list_playbooks(
     mitre_id: str | None = None,
     platform: str | None = None,
     db: aiosqlite.Connection = Depends(get_db),
 ):
     """List all playbooks with optional filtering."""
-    db.row_factory = aiosqlite.Row
     query = "SELECT * FROM technique_playbooks WHERE 1=1"
     params: list = []
     if mitre_id:
@@ -61,12 +62,13 @@ async def list_playbooks(
 
 
 @router.post("", response_model=Playbook, status_code=201)
+
+
 async def create_playbook(
     body: PlaybookCreate,
     db: aiosqlite.Connection = Depends(get_db),
 ):
     """Create a new playbook."""
-    db.row_factory = aiosqlite.Row
     pb_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
     await db.execute(
@@ -92,12 +94,13 @@ async def create_playbook(
 
 
 @router.get("/{playbook_id}", response_model=Playbook)
+
+
 async def get_playbook(
     playbook_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
     """Get a specific playbook by ID."""
-    db.row_factory = aiosqlite.Row
     cursor = await db.execute(
         "SELECT * FROM technique_playbooks WHERE id = ?", (playbook_id,)
     )
@@ -108,13 +111,14 @@ async def get_playbook(
 
 
 @router.patch("/{playbook_id}", response_model=Playbook)
+
+
 async def update_playbook(
     playbook_id: str,
     body: PlaybookUpdate,
     db: aiosqlite.Connection = Depends(get_db),
 ):
     """Update an existing playbook."""
-    db.row_factory = aiosqlite.Row
     cursor = await db.execute(
         "SELECT * FROM technique_playbooks WHERE id = ?", (playbook_id,)
     )
@@ -148,12 +152,13 @@ async def update_playbook(
 
 
 @router.delete("/{playbook_id}", status_code=204)
+
+
 async def delete_playbook(
     playbook_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
     """Delete a user-created playbook. Seed playbooks cannot be deleted."""
-    db.row_factory = aiosqlite.Row
     cursor = await db.execute(
         "SELECT source FROM technique_playbooks WHERE id = ?", (playbook_id,)
     )

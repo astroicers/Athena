@@ -23,6 +23,8 @@ router = APIRouter()
 
 
 @router.post("/operations/{operation_id}/reset", status_code=204)
+
+
 async def reset_operation(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),

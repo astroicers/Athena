@@ -28,9 +28,15 @@ interface HostNodeCardProps {
   scanPhase?: string | null;
   scanStep?: number;
   scanTotalSteps?: number;
+  os?: string | null;
+  openPorts?: number;
+  services?: Array<{ port: number; service: string }>;
+  credentialFound?: string | null;
+  lastScanAt?: string | null;
   onScan?: (targetId: string) => void;
   onSetActive?: (targetId: string, active: boolean) => void;
   onDelete?: (targetId: string) => void;
+  onViewScanResult?: () => void;
 }
 
 function ShieldIcon({ isCompromised, isScanning }: { isCompromised: boolean; isScanning: boolean }) {
@@ -74,9 +80,15 @@ export function HostNodeCard({
   scanPhase = null,
   scanStep = 0,
   scanTotalSteps = 0,
+  os,
+  openPorts,
+  services,
+  credentialFound,
+  lastScanAt,
   onScan,
   onSetActive,
   onDelete,
+  onViewScanResult,
 }: HostNodeCardProps) {
   const t = useTranslations("HostCard");
 
@@ -124,6 +136,57 @@ export function HostNodeCard({
               </div>
             )}
           </div>
+          {/* Scan results summary */}
+          {openPorts != null && openPorts > 0 && !isScanning && (
+            <div className="mt-2 pt-2 border-t border-athena-border/30 space-y-1">
+              {os && (
+                <div className="flex justify-between text-xs font-mono">
+                  <span className="text-athena-text-secondary">{t("os")}</span>
+                  <span className="text-athena-text">{os}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-xs font-mono">
+                <span className="text-athena-text-secondary">{t("ports")}</span>
+                <span className="text-athena-accent">{openPorts} open</span>
+              </div>
+              {services && services.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {services.slice(0, 3).map((svc) => (
+                    <span
+                      key={svc.port}
+                      className="text-[10px] font-mono bg-athena-bg border border-athena-border/50 rounded px-1.5 py-0.5 text-athena-text-secondary"
+                    >
+                      {svc.port}/{svc.service}
+                    </span>
+                  ))}
+                  {services.length > 3 && (
+                    <span className="text-[10px] font-mono text-athena-text-secondary">
+                      +{services.length - 3}
+                    </span>
+                  )}
+                </div>
+              )}
+              {credentialFound && (
+                <div className="flex justify-between text-xs font-mono">
+                  <span className="text-athena-text-secondary">{t("credential")}</span>
+                  <span className="text-athena-warning">{credentialFound}</span>
+                </div>
+              )}
+              {lastScanAt && (
+                <div className="text-[10px] font-mono text-athena-text-secondary/50 text-right">
+                  {lastScanAt.split("T")[1]?.slice(0, 8)}
+                </div>
+              )}
+              {onViewScanResult && (
+                <button
+                  onClick={onViewScanResult}
+                  className="text-[10px] font-mono text-athena-accent hover:underline"
+                >
+                  {t("viewDetails")}
+                </button>
+              )}
+            </div>
+          )}
           {isScanning && (
             <div className="mt-2 space-y-1">
               <div className="flex items-center justify-between text-[10px] font-mono">

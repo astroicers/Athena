@@ -10,6 +10,7 @@
 
 """ReportGenerator — assembles PentestReport from DB (A.5)."""
 
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
@@ -31,89 +32,152 @@ _MOCK_EXECUTIVE_SUMMARY = (
 
 
 class ReportGenerator:
-    async def generate(self, db: aiosqlite.Connection, operation_id: str) -> PentestReport:
-        """Assemble PentestReport from all DB tables for this operation."""
-        db.row_factory = aiosqlite.Row
-        generated_at = datetime.now(timezone.utc).isoformat()
+    # ── Private fetch helpers (parallelized via asyncio.gather) ──────
 
-        # 1. Operation details
+    @staticmethod
+    async def _fetch_operation(db: aiosqlite.Connection, op_id: str):
         cursor = await db.execute(
             "SELECT id, name, codename, strategic_intent, status FROM operations WHERE id = ?",
-            (operation_id,),
+            (op_id,),
         )
-        op = await cursor.fetchone()
-        op_name = op["name"] if op else "Unknown Operation"
-        op_codename = op["codename"] if op else "UNKNOWN"
+        return await cursor.fetchone()
 
-        # 2. Engagement / Scope
+    @staticmethod
+    async def _fetch_engagement(db: aiosqlite.Connection, op_id: str):
         cursor = await db.execute(
             "SELECT client_name, contact_email, in_scope, out_of_scope, status "
             "FROM engagements WHERE operation_id = ? ORDER BY created_at DESC LIMIT 1",
-            (operation_id,),
+            (op_id,),
         )
-        eng = await cursor.fetchone()
-        client_name = eng["client_name"] if eng else None
-        contact_email = eng["contact_email"] if eng else None
-        engagement_status = eng["status"] if eng else None
-        in_scope: list[str] = json.loads(eng["in_scope"]) if eng else []
-        out_of_scope: list[str] = json.loads(eng["out_of_scope"] or "[]") if eng else []
+        return await cursor.fetchone()
 
-        # 3. Targets
+    @staticmethod
+    async def _fetch_targets(db: aiosqlite.Connection, op_id: str):
         cursor = await db.execute(
             "SELECT id, ip_address, hostname, role FROM targets WHERE operation_id = ?",
-            (operation_id,),
+            (op_id,),
         )
-        targets_rows = await cursor.fetchall()
-        targets_by_id = {r["id"]: dict(r) for r in targets_rows}
-        targets_discovered = len(targets_rows)
+        return await cursor.fetchall()
 
-        # 4. Subdomain count (OSINT facts)
+    @staticmethod
+    async def _fetch_subdomain_count(db: aiosqlite.Connection, op_id: str) -> int:
         cursor = await db.execute(
             "SELECT COUNT(*) as cnt FROM facts "
             "WHERE operation_id = ? AND trait = 'osint.subdomain'",
-            (operation_id,),
+            (op_id,),
         )
         row = await cursor.fetchone()
-        subdomains_found = row["cnt"] if row else 0
+        return row["cnt"] if row else 0
 
-        # 5. Services scanned (recon service facts)
+    @staticmethod
+    async def _fetch_service_count(db: aiosqlite.Connection, op_id: str) -> int:
         cursor = await db.execute(
             "SELECT COUNT(*) as cnt FROM facts "
             "WHERE operation_id = ? AND category = 'service'",
-            (operation_id,),
+            (op_id,),
         )
         row = await cursor.fetchone()
-        services_scanned = row["cnt"] if row else 0
+        return row["cnt"] if row else 0
 
-        # 6. Vulnerability findings from vuln.cve facts
+    @staticmethod
+    async def _fetch_vulns(db: aiosqlite.Connection, op_id: str):
         cursor = await db.execute(
             "SELECT f.value, f.source_target_id "
             "FROM facts f "
             "WHERE f.operation_id = ? AND f.trait = 'vuln.cve' "
             "ORDER BY f.collected_at",
-            (operation_id,),
+            (op_id,),
         )
-        vuln_rows = await cursor.fetchall()
-        findings = self._parse_vuln_facts(vuln_rows, targets_by_id)
-        # Sort by CVSS descending
-        findings.sort(key=lambda f: f.cvss_score, reverse=True)
+        return await cursor.fetchall()
 
-        # Severity counts
-        critical_count = sum(1 for f in findings if f.severity == "critical")
-        high_count = sum(1 for f in findings if f.severity == "high")
-        medium_count = sum(1 for f in findings if f.severity == "medium")
-        low_count = sum(1 for f in findings if f.severity in ("low", "info"))
-
-        # 7. Attack narrative from OODA iterations
+    @staticmethod
+    async def _fetch_ooda(db: aiosqlite.Connection, op_id: str):
         cursor = await db.execute(
             "SELECT oi.iteration_number, oi.phase, oi.observe_summary, oi.act_summary, "
             "       oi.completed_at, r.recommended_technique_id "
             "FROM ooda_iterations oi "
             "LEFT JOIN recommendations r ON oi.recommendation_id = r.id "
             "WHERE oi.operation_id = ? ORDER BY oi.iteration_number",
-            (operation_id,),
+            (op_id,),
         )
-        ooda_rows = await cursor.fetchall()
+        return await cursor.fetchall()
+
+    @staticmethod
+    async def _fetch_recommendations(db: aiosqlite.Connection, op_id: str):
+        cursor = await db.execute(
+            "SELECT situation_assessment, recommended_technique_id, confidence, reasoning_text "
+            "FROM recommendations WHERE operation_id = ? ORDER BY created_at DESC LIMIT 5",
+            (op_id,),
+        )
+        return await cursor.fetchall()
+
+    @staticmethod
+    async def _fetch_mitre(db: aiosqlite.Connection, op_id: str):
+        cursor = await db.execute(
+            "SELECT t.tactic, te.technique_id "
+            "FROM technique_executions te "
+            "JOIN techniques t ON te.technique_id = t.mitre_id "
+            "WHERE te.operation_id = ? AND te.status = 'success'",
+            (op_id,),
+        )
+        return await cursor.fetchall()
+
+    @staticmethod
+    async def _fetch_access_count(db: aiosqlite.Connection, op_id: str) -> int:
+        cursor = await db.execute(
+            "SELECT COUNT(*) as cnt FROM recon_scans "
+            "WHERE operation_id = ? AND initial_access_method != 'none' "
+            "AND initial_access_method IS NOT NULL AND credential_found IS NOT NULL",
+            (op_id,),
+        )
+        row = await cursor.fetchone()
+        return (row["cnt"] or 0) if row else 0
+
+    # ── Main generate method ────────────────────────────────────────
+
+    async def generate(self, db: aiosqlite.Connection, operation_id: str) -> PentestReport:
+        """Assemble PentestReport from all DB tables for this operation."""
+        db.row_factory = aiosqlite.Row
+        generated_at = datetime.now(timezone.utc).isoformat()
+
+        # Fetch all independent data in parallel
+        (
+            op, eng, targets_rows, subdomains_found, services_scanned,
+            vuln_rows, ooda_rows, rec_rows, mitre_rows, access_count,
+        ) = await asyncio.gather(
+            self._fetch_operation(db, operation_id),
+            self._fetch_engagement(db, operation_id),
+            self._fetch_targets(db, operation_id),
+            self._fetch_subdomain_count(db, operation_id),
+            self._fetch_service_count(db, operation_id),
+            self._fetch_vulns(db, operation_id),
+            self._fetch_ooda(db, operation_id),
+            self._fetch_recommendations(db, operation_id),
+            self._fetch_mitre(db, operation_id),
+            self._fetch_access_count(db, operation_id),
+        )
+
+        # Process fetched data
+        op_name = op["name"] if op else "Unknown Operation"
+        op_codename = op["codename"] if op else "UNKNOWN"
+
+        client_name = eng["client_name"] if eng else None
+        contact_email = eng["contact_email"] if eng else None
+        engagement_status = eng["status"] if eng else None
+        in_scope: list[str] = json.loads(eng["in_scope"]) if eng else []
+        out_of_scope: list[str] = json.loads(eng["out_of_scope"] or "[]") if eng else []
+
+        targets_by_id = {r["id"]: dict(r) for r in targets_rows}
+        targets_discovered = len(targets_rows)
+
+        findings = self._parse_vuln_facts(vuln_rows, targets_by_id)
+        findings.sort(key=lambda f: f.cvss_score, reverse=True)
+
+        critical_count = sum(1 for f in findings if f.severity == "critical")
+        high_count = sum(1 for f in findings if f.severity == "high")
+        medium_count = sum(1 for f in findings if f.severity == "medium")
+        low_count = sum(1 for f in findings if f.severity in ("low", "info"))
+
         attack_steps = [
             AttackStep(
                 iteration_number=r["iteration_number"],
@@ -126,42 +190,15 @@ class ReportGenerator:
             for r in ooda_rows
         ]
 
-        # 8. Orient recommendations (last 5)
-        cursor = await db.execute(
-            "SELECT situation_assessment, recommended_technique_id, confidence, reasoning_text "
-            "FROM recommendations WHERE operation_id = ? ORDER BY created_at DESC LIMIT 5",
-            (operation_id,),
-        )
-        rec_rows = await cursor.fetchall()
         orient_recommendations = [dict(r) for r in rec_rows]
 
-        # 9. MITRE ATT&CK coverage
-        cursor = await db.execute(
-            "SELECT t.tactic, te.technique_id "
-            "FROM technique_executions te "
-            "JOIN techniques t ON te.technique_id = t.mitre_id "
-            "WHERE te.operation_id = ? AND te.status = 'success'",
-            (operation_id,),
-        )
-        mitre_rows = await cursor.fetchall()
         mitre_coverage: dict[str, list[str]] = {}
         for r in mitre_rows:
             mitre_coverage.setdefault(r["tactic"], [])
             if r["technique_id"] not in mitre_coverage[r["tactic"]]:
                 mitre_coverage[r["tactic"]].append(r["technique_id"])
 
-        # 10. Executive summary (mock or LLM)
-        # Simpler check via recon_scans
-        cursor = await db.execute(
-            "SELECT COUNT(*) as cnt FROM recon_scans "
-            "WHERE operation_id = ? AND initial_access_method != 'none' "
-            "AND initial_access_method IS NOT NULL AND credential_found IS NOT NULL",
-            (operation_id,),
-        )
-        row = await cursor.fetchone()
-        access_achieved = (row["cnt"] or 0) > 0
-        access_status = "achieved" if access_achieved else "attempted"
-
+        access_status = "achieved" if access_count > 0 else "attempted"
         executive_summary = _MOCK_EXECUTIVE_SUMMARY.format(
             vuln_count=len(findings),
             target_count=targets_discovered,

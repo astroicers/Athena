@@ -64,9 +64,6 @@ class Settings(BaseSettings):
     MCP_RECONNECT_INTERVAL_SEC: int = 5
     MCP_MAX_RETRIES: int = 3
     MCP_TRANSPORT_MODE: str = "auto"  # "stdio" | "http" | "auto"
-    # OODA auto-trigger
-    AUTO_OODA_AFTER_RECON: bool = True
-    AUTO_OODA_DELAY_SEC: int = 5
 
 
 settings = Settings()

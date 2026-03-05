@@ -1,11 +1,12 @@
 [project]
 name = "athena-tool-credential-checker"
 version = "0.1.0"
-description = "Athena MCP tool server: SSH/WinRM credential testing"
+description = "Athena MCP tool server: SSH, RDP, and WinRM credential testing"
 requires-python = ">=3.11"
 dependencies = [
     "mcp>=1.6.0",
     "asyncssh>=2.14.0",
+    "pywinrm>=0.4.3",
 ]
 
 [project.optional-dependencies]

@@ -7,6 +7,59 @@
 
 ## [Unreleased]
 
+### UI 整併 + 工具頁面 Container 化 + 掃描修復（2026-03-05）
+
+#### Added
+- **War Room 頁面**：整併 Monitor + C5ISR + Navigator 為統一 War Room（`/warroom`）
+- **Recon 掃描進度事件**：真實 nmap 掃描模式新增 `recon.progress` 階段事件（nmap_scan → initial_access → finalizing）
+- **`ooda.completed` WebSocket 事件**：OODA 迴圈完成後廣播，確保前端在 DB 更新後刷新
+- **msf-rpc 健康檢查**：`/api/health` 新增 msf-rpc 容器 TCP 連線偵測（`MOCK_METASPLOIT=false` 時）
+- **OODA trigger service**：`backend/app/services/ooda_trigger.py`
+- **AD playbook 測試**：`backend/tests/test_ad_playbooks.py`
+- **Lateral topology 測試**：`backend/tests/test_lateral_topology.py`
+
+#### Changed
+- **5 頁面 → 3 頁面**：移除 `/monitor`、`/c5isr`、`/navigator`，整併至 `/warroom`
+- **Tools 頁面 MCP → Container**：欄名 MCP Status → Container，移除 MCP summary bar，簡化為 ONLINE/OFFLINE/N/A 三態
+- **Seed 工具 container 映射**：所有 seed 工具設定 `config_json.mcp_server`（ssh→credential-checker, persistent_ssh→attack-executor, winrm→credential-checker, metasploit→msf-rpc）
+- **Recon 掃描 UI 修復**：真實掃描模式不再卡在「掃描中」，target 正確顯示 compromised 狀態
+- **Planner 頁面**：訂閱 `ooda.completed` 事件以即時刷新數據
+- **MCP client manager**：MCP-only 架構（Phase 7），移除直接工具執行路徑
+- **Credential checker MCP**：擴充支援 WinRM 協定
+- **Initial access engine**：強化 MCP 路由與 fallback 邏輯
+
+#### Deprecated
+- **C2 (Caldera) 工具**：從工具註冊表移除，engine routing 保留供未來替代方案
+
+#### Removed
+- **MCPServerStatusPanel 元件**：功能整併至 ToolRegistryTable
+- **TopologyView 元件**：由 NetworkTopology 取代
+- **AlertBanner 元件**：不再使用
+- **3 個獨立頁面元件**：`c5isr/page.tsx`、`monitor/page.tsx`、`navigator/page.tsx`
+- **11 個 MCP i18n key**：替換為 4 個 Container key
+
+#### Metrics
+- pytest: 297 passed, 0 failed
+- TypeScript: `next build` clean
+- 影響檔案：70+
+
+### ASP 合規補齊 + 文件同步（2026-03-05）
+
+#### Added
+- **ADR-024**：MCP Architecture and Tool Server Integration — 補齊 MCP 架構決策文件
+- **Makefile `postmortem-new` / `postmortem-list`**：新增事後分析管理指令
+- **`docs/postmortems/`**：建立 Postmortem 目錄
+
+#### Changed
+- **Makefile `spec-list`**：增強為顯示狀態（優先讀 `**狀態**` 欄位，fallback 用 checklist 推算）
+- **Makefile `help`**：新增 Postmortem 行
+- **SPEC-015** Orient Prompt：13 項 Done When 全部標記為完成
+- **SPEC-017** Anthropic SDK Migration：10 項全部標記為完成
+- **SPEC-019** Recon & Initial Access：7 項全部標記為完成
+- **SPEC-022** Agent Capability Matching：5 項全部標記為完成
+- **SPEC-024** Phase F UX Terminal Topology：18 項全部標記為完成
+- **SPEC-001/003/006/010**：補齊最後 1 項未勾選項目（附說明）
+
 ### UI Optimization Phases 1-5（SPEC-027）（2026-03-04）
 
 #### Added

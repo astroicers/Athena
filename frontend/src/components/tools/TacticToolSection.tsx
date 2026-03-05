@@ -22,7 +22,7 @@ interface TacticToolSectionProps {
   tools: ToolRegistryEntry[];
   onToggleEnabled: (toolId: string, enabled: boolean) => Promise<void>;
   onDelete: (toolId: string) => Promise<void>;
-  mcpStatuses: Record<string, boolean>;
+  containerStatuses: Record<string, boolean>;
   defaultOpen?: boolean;
   highlightToolId?: string;
 }
@@ -34,7 +34,7 @@ export function TacticToolSection({
   tools,
   onToggleEnabled,
   onDelete,
-  mcpStatuses,
+  containerStatuses,
   defaultOpen = false,
   highlightToolId,
 }: TacticToolSectionProps) {
@@ -78,7 +78,7 @@ export function TacticToolSection({
             tools={tools}
             onToggleEnabled={onToggleEnabled}
             onDelete={onDelete}
-            mcpStatuses={mcpStatuses}
+            containerStatuses={containerStatuses}
           />
         </div>
       )}

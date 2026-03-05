@@ -202,19 +202,19 @@ OpenAI — system message 前置：
 
 ## ✅ 驗收標準（Done When）
 
-- [ ] `_ORIENT_SYSTEM_PROMPT` 常數定義，含 5 個分析框架指令
-- [ ] `_ORIENT_USER_PROMPT_TEMPLATE` 取代 `_ORIENT_PROMPT_TEMPLATE`，含 8 個段落
-- [ ] `_build_prompt()` 回傳 `tuple[str, str]`
-- [ ] `_build_prompt()` 查詢 `mission_steps`（任務樹）
-- [ ] `_build_prompt()` 查詢 `ooda_iterations` LIMIT 3（工作記憶）
-- [ ] `_build_prompt()` 查詢 `recommendations` LIMIT 2（情節記憶）
-- [ ] `_build_prompt()` 查詢 `techniques` JOIN `technique_executions`（Kill Chain 進程）
-- [ ] `_build_prompt()` 查詢 `facts` 並按 `category` 分組
-- [ ] `_call_claude()` 使用 Anthropic API `system` 參數
-- [ ] `_call_openai()` 前置 `{"role": "system", ...}` message
-- [ ] `MOCK_LLM=true` 路徑不受影響 — 現有 SPEC-007 測試全過
-- [ ] 新增 5 個 prompt 結構測試（`test_spec_007_ooda_services.py`）
-- [ ] `make lint` 無錯誤
+- [x] `_ORIENT_SYSTEM_PROMPT` 常數定義，含 5 個分析框架指令
+- [x] `_ORIENT_USER_PROMPT_TEMPLATE` 取代 `_ORIENT_PROMPT_TEMPLATE`，含 8 個段落
+- [x] `_build_prompt()` 回傳 `tuple[str, str]`
+- [x] `_build_prompt()` 查詢 `mission_steps`（任務樹）
+- [x] `_build_prompt()` 查詢 `ooda_iterations` LIMIT 3（工作記憶）
+- [x] `_build_prompt()` 查詢 `recommendations` LIMIT 2（情節記憶）
+- [x] `_build_prompt()` 查詢 `techniques` JOIN `technique_executions`（Kill Chain 進程）
+- [x] `_build_prompt()` 查詢 `facts` 並按 `category` 分組
+- [x] `_call_claude()` 使用 Anthropic API `system` 參數
+- [x] `_call_openai()` 前置 `{"role": "system", ...}` message
+- [x] `MOCK_LLM=true` 路徑不受影響 — 現有 SPEC-007 測試全過
+- [x] 新增 5 個 prompt 結構測試（`test_spec_007_ooda_services.py`）
+- [x] `make lint` 無錯誤
 
 ---
 

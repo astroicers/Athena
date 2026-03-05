@@ -28,6 +28,14 @@ class FactCollector:
     async def collect(self, db: aiosqlite.Connection, operation_id: str) -> list[dict]:
         """Extract facts from recent technique executions that have results."""
         db.row_factory = aiosqlite.Row
+
+        # Batch-load existing (trait, value) pairs for in-memory dedup
+        dup_cursor = await db.execute(
+            "SELECT trait, value FROM facts WHERE operation_id = ?",
+            (operation_id,),
+        )
+        existing = {(r["trait"], r["value"]) for r in await dup_cursor.fetchall()}
+
         cursor = await db.execute(
             "SELECT te.id, te.technique_id, te.target_id, te.result_summary "
             "FROM technique_executions te "
@@ -44,20 +52,15 @@ class FactCollector:
             target_id = row["target_id"]
             summary = row["result_summary"] or ""
 
-            # Derive fact category from technique
             category = self._infer_category(technique_id, summary)
             if not summary.strip():
                 continue
 
-            # [M-6] Dedup by trait + value (not just trait)
             trait = f"execution.{technique_id}"
             value = summary[:500]
-            cursor2 = await db.execute(
-                "SELECT id FROM facts WHERE trait = ? AND value = ? AND operation_id = ?",
-                (trait, value, operation_id),
-            )
-            if await cursor2.fetchone():
+            if (trait, value) in existing:
                 continue
+            existing.add((trait, value))
 
             fact_id = str(uuid.uuid4())
             now = datetime.now(timezone.utc).isoformat()
@@ -86,6 +89,7 @@ class FactCollector:
         """Store facts extracted from an ExecutionResult.facts list."""
         new_facts: list[dict] = []
         now = datetime.now(timezone.utc).isoformat()
+        insert_params: list[tuple] = []
 
         for rf in raw_facts:
             trait = rf.get("trait", "unknown")
@@ -95,21 +99,27 @@ class FactCollector:
 
             category = self._category_from_trait(trait)
             fact_id = str(uuid.uuid4())
-            await db.execute(
+            insert_params.append((
+                fact_id, trait, str(value)[:500], category.value,
+                technique_id, target_id, operation_id, 1, now,
+            ))
+            new_facts.append({
+                "id": fact_id, "trait": trait, "value": str(value)[:500],
+                "category": category.value, "operation_id": operation_id,
+            })
+
+        if insert_params:
+            await db.executemany(
                 "INSERT INTO facts (id, trait, value, category, source_technique_id, "
                 "source_target_id, operation_id, score, collected_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (fact_id, trait, str(value)[:500], category.value, technique_id,
-                 target_id, operation_id, 1, now),
+                insert_params,
             )
-            fact = {
-                "id": fact_id, "trait": trait, "value": str(value)[:500],
-                "category": category.value, "operation_id": operation_id,
-            }
-            new_facts.append(fact)
+            await db.commit()
+
+        for fact in new_facts:
             await self._ws.broadcast(operation_id, "fact.new", fact)
 
-        await db.commit()
         return new_facts
 
     async def summarize(self, db: aiosqlite.Connection, operation_id: str) -> str:

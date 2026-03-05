@@ -42,11 +42,12 @@ def _row_to_step(row: aiosqlite.Row) -> MissionStep:
     "/operations/{operation_id}/mission/steps",
     response_model=list[MissionStep],
 )
+
+
 async def list_mission_steps(
     operation_id: str,
     db: aiosqlite.Connection = Depends(get_db),
 ):
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
     cursor = await db.execute(
@@ -62,12 +63,13 @@ async def list_mission_steps(
     response_model=MissionStep,
     status_code=201,
 )
+
+
 async def create_mission_step(
     operation_id: str,
     body: MissionStepCreate,
     db: aiosqlite.Connection = Depends(get_db),
 ):
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
     step_id = str(uuid.uuid4())
@@ -101,13 +103,14 @@ async def create_mission_step(
     "/operations/{operation_id}/mission/steps/{step_id}",
     response_model=MissionStep,
 )
+
+
 async def update_mission_step(
     operation_id: str,
     step_id: str,
     body: MissionStepUpdate,
     db: aiosqlite.Connection = Depends(get_db),
 ):
-    db.row_factory = aiosqlite.Row
     await ensure_operation(db, operation_id)
 
     cursor = await db.execute(

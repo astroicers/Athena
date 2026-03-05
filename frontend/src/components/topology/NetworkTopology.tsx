@@ -23,6 +23,7 @@ const PHASE_COLORS: Record<string, string> = {
   attempted: "#00ff8866", // faded green — tried but no session
   idle:      "#00ff88",   // green — untouched target
   c2:        "#4488ff",   // blue — Athena C2 node
+  lateral:   "#ffaa00",   // gold — lateral movement path
 };
 
 export const KILL_CHAIN_COLORS: Record<KillChainStage, string> = {
@@ -126,12 +127,22 @@ function hexPath(ctx: CanvasRenderingContext2D, x: number, y: number, radius: nu
   ctx.closePath();
 }
 
+const OODA_PHASE_COLORS: Record<string, string> = {
+  observe: "#4488ff",
+  orient: "#ffaa00",
+  decide: "#00ff88",
+  act: "#ff4444",
+};
+
 interface NetworkTopologyProps {
   data: TopologyData | null;
   nodeKillChainMap?: Record<string, KillChainStage>;
   nodeSizeMultiplier?: number;
   onNodeClick?: (nodeId: string) => void;
-  height?: number;
+  onNodeHover?: (nodeId: string | null) => void;
+  activeTargetId?: string;
+  oodaPhase?: string | null;
+  height?: number | "auto";
 }
 
 export function NetworkTopology({
@@ -139,6 +150,9 @@ export function NetworkTopology({
   nodeKillChainMap,
   nodeSizeMultiplier = 1,
   onNodeClick,
+  onNodeHover,
+  activeTargetId,
+  oodaPhase,
   height = GRAPH_HEIGHT,
 }: NetworkTopologyProps) {
   const t = useTranslations("Topology");
@@ -149,6 +163,7 @@ export function NetworkTopology({
   // eslint-disable-next-line
   const [ForceGraph2DComp, setForceGraph2DComp] = useState<any>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [containerHeight, setContainerHeight] = useState(0);
   const fitted = useRef(false);
 
   useEffect(() => {
@@ -162,8 +177,9 @@ export function NetworkTopology({
     const el = wrapperRef.current;
     if (!el) return;
     const measure = () => {
-      const w = el.getBoundingClientRect().width;
-      if (w > 0) setContainerWidth(Math.floor(w));
+      const rect = el.getBoundingClientRect();
+      if (rect.width > 0) setContainerWidth(Math.floor(rect.width));
+      if (rect.height > 0) setContainerHeight(Math.floor(rect.height));
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -304,6 +320,21 @@ export function NetworkTopology({
       }
     }
 
+    // OODA phase indicator (active target node)
+    if (activeTargetId && node.id === activeTargetId && oodaPhase) {
+      const phaseColor = OODA_PHASE_COLORS[oodaPhase] || "#ffffff";
+      const indicatorR = size + 5;
+      ctx.beginPath();
+      ctx.arc(x, y, indicatorR, 0, 2 * Math.PI);
+      ctx.strokeStyle = phaseColor;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([3, 3]);
+      ctx.globalAlpha = 0.8;
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+    }
+
     // Label
     const fontSize = Math.max(11 / globalScale, 2.5);
     ctx.font = `bold ${fontSize}px monospace`;
@@ -311,7 +342,7 @@ export function NetworkTopology({
     ctx.textBaseline = "top";
     ctx.fillStyle = "#ffffff";
     ctx.fillText(label, x, y + size + 3);
-  }, []);
+  }, [activeTargetId, oodaPhase]);
 
   const handleEngineStop = useCallback(() => {
     if (!fitted.current && fgRef.current) {
@@ -328,12 +359,17 @@ export function NetworkTopology({
     onNodeClick?.(node.id as string);
   }, [onNodeClick]);
 
+  const handleNodeHoverInternal = useCallback((node: Record<string, unknown> | null) => {
+    onNodeHover?.(node ? (node.id as string) : null);
+  }, [onNodeHover]);
+
   // Edge colour based on phase
   const getLinkColor = useCallback((link: Record<string, unknown>) => {
     const phase = (link.phase as string) || "idle";
     if (phase === "session") return "rgba(255, 68, 68, 0.7)";
     if (phase === "attacking") return "rgba(255, 136, 0, 0.7)";
     if (phase === "scanning") return "rgba(68, 136, 255, 0.7)";
+    if (phase === "lateral") return "rgba(255, 170, 0, 0.7)";
     if (phase === "attempted") return "rgba(255, 255, 255, 0.15)";
     return "rgba(0, 255, 136, 0.3)";
   }, []);
@@ -343,6 +379,7 @@ export function NetworkTopology({
     const phase = (link.phase as string) || "idle";
     if (phase === "session") return 2.5;
     if (phase === "attacking" || phase === "scanning") return 2;
+    if (phase === "lateral") return 2;
     return 0.8;
   }, []);
 
@@ -350,6 +387,7 @@ export function NetworkTopology({
   const getLinkDash = useCallback((link: Record<string, unknown>) => {
     const phase = (link.phase as string) || "idle";
     if (phase === "scanning" || phase === "attacking") return [4, 4];
+    if (phase === "lateral") return [6, 3];
     return null;
   }, []);
 
@@ -357,6 +395,7 @@ export function NetworkTopology({
   const getLinkParticles = useCallback((link: Record<string, unknown>) => {
     const phase = (link.phase as string) || "idle";
     if (phase === "session" || phase === "attacking" || phase === "scanning") return 3;
+    if (phase === "lateral") return 2;
     return 0;
   }, []);
 
@@ -365,12 +404,18 @@ export function NetworkTopology({
     if (phase === "session") return "#ff4444";
     if (phase === "attacking") return "#ff8800";
     if (phase === "scanning") return "#4488ff";
+    if (phase === "lateral") return "#ffaa00";
     return "#00ff88";
   }, []);
 
+  const isAutoHeight = height === "auto";
+  const effectiveHeight = isAutoHeight ? (containerHeight || GRAPH_HEIGHT) : height;
+  const wrapperStyle = isAutoHeight ? undefined : { height: effectiveHeight };
+  const wrapperClass = isAutoHeight ? "h-full" : "";
+
   if (!data || data.nodes.length === 0) {
     return (
-      <div ref={wrapperRef} className="bg-athena-surface border border-athena-border rounded-athena-md p-6 flex items-center justify-center" style={{ height }}>
+      <div ref={wrapperRef} className={`bg-athena-surface border border-athena-border rounded-athena-md p-6 flex items-center justify-center ${wrapperClass}`} style={wrapperStyle}>
         <span className="text-xs font-mono text-athena-text-secondary">
           {t("noData")}
         </span>
@@ -380,7 +425,7 @@ export function NetworkTopology({
 
   if (!mounted || !ForceGraph2DComp || containerWidth === 0) {
     return (
-      <div ref={wrapperRef} className="bg-athena-bg rounded-athena-md border border-athena-border flex items-center justify-center" style={{ height }}>
+      <div ref={wrapperRef} className={`bg-athena-bg rounded-athena-md border border-athena-border flex items-center justify-center ${wrapperClass}`} style={wrapperStyle}>
         <span className="text-xs font-mono text-athena-text-secondary animate-pulse">
           {t("loading")}
         </span>
@@ -391,8 +436,8 @@ export function NetworkTopology({
   return (
     <div
       ref={wrapperRef}
-      className="bg-athena-bg rounded-athena-md overflow-hidden border border-athena-border relative"
-      style={{ height }}
+      className={`bg-athena-bg rounded-athena-md overflow-hidden border border-athena-border relative ${wrapperClass}`}
+      style={wrapperStyle}
     >
       <button
         onClick={handleReset}
@@ -413,6 +458,7 @@ export function NetworkTopology({
           ctx.fill();
         }}
         onNodeClick={handleNodeClickInternal}
+        onNodeHover={onNodeHover ? handleNodeHoverInternal : undefined}
         linkColor={getLinkColor}
         linkWidth={getLinkWidth}
         linkLineDash={getLinkDash}
@@ -423,7 +469,7 @@ export function NetworkTopology({
         linkCurvature={0.2}
         backgroundColor="#0a0a1a"
         width={containerWidth}
-        height={height}
+        height={effectiveHeight}
         d3AlphaDecay={0.03}
         d3VelocityDecay={0.3}
         warmupTicks={100}

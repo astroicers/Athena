@@ -15,6 +15,7 @@ import { useTranslations } from "next-intl";
 import { Toggle } from "@/components/atoms/Toggle";
 import { Badge } from "@/components/atoms/Badge";
 import { Button } from "@/components/atoms/Button";
+import { StatusDot } from "@/components/atoms/StatusDot";
 import type { ToolRegistryEntry } from "@/types/tool";
 
 const RISK_VARIANT: Record<string, "success" | "warning" | "error" | "info"> = {
@@ -28,14 +29,23 @@ interface ToolRegistryTableProps {
   tools: ToolRegistryEntry[];
   onToggleEnabled: (toolId: string, enabled: boolean) => Promise<void>;
   onDelete: (toolId: string) => Promise<void>;
-  mcpStatuses: Record<string, boolean>;
+  containerStatuses: Record<string, boolean>;
+}
+
+function getContainerStatus(
+  tool: ToolRegistryEntry,
+  containerStatuses: Record<string, boolean>,
+): "online" | "offline" | "none" {
+  const server = tool.configJson?.mcp_server as string | undefined;
+  if (!server) return "none";
+  return containerStatuses[server] ? "online" : "offline";
 }
 
 export function ToolRegistryTable({
   tools,
   onToggleEnabled,
   onDelete,
-  mcpStatuses,
+  containerStatuses,
 }: ToolRegistryTableProps) {
   const t = useTranslations("Tools");
   const tRisk = useTranslations("Risk");
@@ -49,14 +59,6 @@ export function ToolRegistryTable({
     } finally {
       setDeletingId(null);
     }
-  }
-
-  function getMcpStatus(
-    tool: ToolRegistryEntry,
-  ): "online" | "offline" | "n/a" {
-    const mcpServer = tool.configJson?.mcp_server as string | undefined;
-    if (!mcpServer) return "n/a";
-    return mcpStatuses[mcpServer] ? "online" : "offline";
   }
 
   if (tools.length === 0) {
@@ -90,13 +92,13 @@ export function ToolRegistryTable({
               {t("colMitre")}
             </th>
             <th className="px-3 py-2 text-left text-athena-text-secondary font-medium uppercase tracking-wider">
-              {t("colMcpStatus")}
+              {t("colContainer")}
             </th>
           </tr>
         </thead>
         <tbody>
           {tools.map((tool) => {
-            const status = getMcpStatus(tool);
+            const status = getContainerStatus(tool, containerStatuses);
             return (
               <tr
                 key={tool.id}
@@ -171,33 +173,27 @@ export function ToolRegistryTable({
                   )}
                 </td>
 
-                {/* MCP Status */}
+                {/* Container status */}
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-1.5">
-                    <span
-                      className={`inline-block h-2 w-2 rounded-full ${
-                        status === "online"
-                          ? "bg-emerald-400"
-                          : status === "offline"
-                            ? "bg-amber-400"
-                            : "bg-neutral-500"
-                      }`}
-                    />
-                    <span
-                      className={`text-[10px] ${
-                        status === "online"
-                          ? "text-emerald-400"
-                          : status === "offline"
-                            ? "text-amber-400"
-                            : "text-athena-text-secondary"
-                      }`}
-                    >
-                      {status === "online"
-                        ? t("mcpOnline")
-                        : status === "offline"
-                          ? t("mcpOffline")
-                          : t("mcpNA")}
-                    </span>
+                    {status === "online" && (
+                      <>
+                        <StatusDot status="operational" pulse />
+                        <span className="text-[10px] text-athena-success">{t("containerOnline")}</span>
+                      </>
+                    )}
+                    {status === "offline" && (
+                      <>
+                        <StatusDot status="degraded" />
+                        <span className="text-[10px] text-athena-error">{t("containerOffline")}</span>
+                      </>
+                    )}
+                    {status === "none" && (
+                      <>
+                        <StatusDot status="offline" />
+                        <span className="text-[10px] text-athena-text-secondary">{t("containerNA")}</span>
+                      </>
+                    )}
                   </div>
                 </td>
               </tr>

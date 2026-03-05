@@ -23,26 +23,6 @@ const svgProps = {
   strokeLinejoin: "round" as const,
 };
 
-/** C5ISR Board — command dashboard grid */
-export function C5ISRIcon() {
-  return (
-    <svg {...svgProps}>
-      <path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" />
-    </svg>
-  );
-}
-
-/** Navigator — stacked map layers */
-export function NavigatorIcon() {
-  return (
-    <svg {...svgProps}>
-      <path d="M12 2L2 7l10 5 10-5-10-5z" />
-      <path d="M2 17l10 5 10-5" />
-      <path d="M2 12l10 5 10-5" />
-    </svg>
-  );
-}
-
 /** Planner — flag */
 export function PlannerIcon() {
   return (

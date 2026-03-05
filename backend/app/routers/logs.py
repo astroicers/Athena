@@ -36,13 +36,14 @@ def _row_to_log(row: aiosqlite.Row) -> LogEntry:
     "/operations/{operation_id}/logs",
     response_model=PaginatedLogs,
 )
+
+
 async def list_logs(
     operation_id: str,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db: aiosqlite.Connection = Depends(get_db),
 ):
-    db.row_factory = aiosqlite.Row
 
     # Verify operation
     cursor = await db.execute("SELECT id FROM operations WHERE id = ?", (operation_id,))

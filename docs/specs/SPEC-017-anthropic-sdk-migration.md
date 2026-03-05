@@ -102,16 +102,16 @@
 
 ## ✅ 驗收標準（Done When）
 
-- [ ] `make test` 全部通過（MOCK_LLM=true 預設）
-- [ ] `ruff check backend/` 無 lint 問題
-- [ ] `orient_engine.py` 不再直接呼叫 `httpx` 存取 Anthropic API
-- [ ] `orient_engine.py` 使用 `anthropic.AsyncAnthropic` SDK
-- [ ] `config.py` 包含 `ANTHROPIC_AUTH_TOKEN` 欄位
-- [ ] `config.py` 的 `CLAUDE_MODEL` 預設為 `claude-opus-4-6`
-- [ ] `health.py` 在只設 `ANTHROPIC_AUTH_TOKEN` 時回報 `"llm": "claude"`
-- [ ] `test_orient_call_claude_sends_system_param` 使用 SDK mock 通過
-- [ ] `test_call_claude_returns_json` 的參數簽名修正
-- [ ] `.env.example` 包含 `ANTHROPIC_AUTH_TOKEN` 說明
+- [x] `make test` 全部通過（MOCK_LLM=true 預設）
+- [x] `ruff check backend/` 無 lint 問題
+- [x] `orient_engine.py` 不再直接呼叫 `httpx` 存取 Anthropic API
+- [x] `orient_engine.py` 使用 `anthropic.AsyncAnthropic` SDK
+- [x] `config.py` 包含 `ANTHROPIC_AUTH_TOKEN` 欄位
+- [x] `config.py` 的 `CLAUDE_MODEL` 預設為 `claude-opus-4-6`
+- [x] `health.py` 在只設 `ANTHROPIC_AUTH_TOKEN` 時回報 `"llm": "claude"`
+- [x] `test_orient_call_claude_sends_system_param` 使用 SDK mock 通過
+- [x] `test_call_claude_returns_json` 的參數簽名修正
+- [x] `.env.example` 包含 `ANTHROPIC_AUTH_TOKEN` 說明
 
 ---
 

@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 LABEL org.opencontainers.image.title="Athena Backend" \
       org.opencontainers.image.description="AI-driven C5ISR cyber operations command platform" \
@@ -10,7 +10,7 @@ LABEL org.opencontainers.image.title="Athena Backend" \
 WORKDIR /app
 
 # Install system dependencies (nmap required by python-nmap wrapper)
-RUN apt-get update && apt-get install -y --no-install-recommends nmap && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends nmap curl && rm -rf /var/lib/apt/lists/*
 
 # Copy dependency specifications first for better Docker cache
 COPY pyproject.toml .
@@ -26,10 +26,10 @@ RUN mkdir -p /app/data
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-    CMD python -c "import httpx; httpx.get('http://localhost:8000/api/health')" || exit 1
+    CMD curl -sf http://localhost:8000/api/health || exit 1
 
 # Expose port
 EXPOSE 8000
 
 # Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--loop", "uvloop"]

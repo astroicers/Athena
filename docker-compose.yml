@@ -18,7 +18,7 @@ services:
       - C2_ENGINE_URL=http://c2-engine:8888
       - C2_ENGINE_API_KEY=${C2_ENGINE_API_KEY:-ADMIN123456}
     healthcheck:
-      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/api/health')"]
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/api/health"]
       interval: 30s
       timeout: 5s
       retries: 3

@@ -20,6 +20,8 @@ dependencies = [
     "apscheduler>=3.10.0",
     "pymetasploit3>=1.0.3",
     "mcp>=1.6.0",
+    "orjson>=3.10.0",
+    "uvloop>=0.21.0",
 ]
 
 [project.optional-dependencies]
@@ -36,7 +38,7 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py312"
 line-length = 120
 
 [tool.ruff.lint]

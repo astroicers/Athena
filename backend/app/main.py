@@ -24,6 +24,7 @@ from contextlib import asynccontextmanager
 import aiosqlite
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import ORJSONResponse
 
 from app.config import settings
 from app.database import _DB_FILE, get_db, init_db
@@ -93,6 +94,7 @@ app = FastAPI(
     title="Athena C5ISR API",
     version="0.1.0",
     lifespan=lifespan,
+    default_response_class=ORJSONResponse,
 )
 
 # ── CORS ──────────────────────────────────────────────────────────────────

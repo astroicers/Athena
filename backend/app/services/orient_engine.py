@@ -18,8 +18,6 @@ import uuid
 from datetime import datetime, timezone
 
 import aiosqlite
-import anthropic
-import httpx
 
 from app.config import settings
 from app.ws_manager import WebSocketManager
@@ -237,6 +235,9 @@ Next Logical Stage: {next_stage}
 ## 8. LATEST OBSERVE SUMMARY
 {observe_summary}
 
+## 10. ATTACK GRAPH STATUS
+{attack_graph_summary}
+
 Based on the above intelligence, provide your tactical analysis and 3 options as specified."""
 
 
@@ -245,12 +246,10 @@ class OrientEngine:
 
     def __init__(self, ws_manager: WebSocketManager):
         self._ws = ws_manager
-        self._anthropic_client: anthropic.AsyncAnthropic | None = None
-        self._oauth_manager = None  # lazy-init OAuthTokenManager
 
     async def analyze(
         self, db: aiosqlite.Connection, operation_id: str,
-        observe_summary: str,
+        observe_summary: str, *, attack_graph_summary: str = "",
     ) -> dict:
         """Call LLM (or mock) to produce OrientRecommendation."""
         db.row_factory = aiosqlite.Row
@@ -264,11 +263,14 @@ class OrientEngine:
 
         # Build prompt context (system + user)
         system_prompt, user_prompt = await self._build_prompt(
-            db, operation_id, observe_summary
+            db, operation_id, observe_summary,
+            attack_graph_summary=attack_graph_summary,
         )
 
         # Broadcast LLM call start for red team visibility
-        backend_name = self._resolve_backend()
+        from app.services.llm_client import get_llm_client
+        client = get_llm_client()
+        backend_name = client._resolve_backend() if client else "mock"
         await self._ws.broadcast(operation_id, "orient.thinking", {
             "status": "started",
             "backend": backend_name,
@@ -363,8 +365,29 @@ class OrientEngine:
             return "No intelligence collected yet."
         by_cat: dict[str, list[str]] = {}
         for r in rows:
+            trait = r["trait"]
             cat = r["category"].upper()
-            by_cat.setdefault(cat, []).append(f"  - {r['trait']}: {r['value']}")
+
+            # SPEC-028: Distinguish validated/rejected/uncertain CVEs
+            if trait == "vuln.cve.rejected":
+                # Exclude rejected CVEs from the prompt entirely
+                continue
+            elif trait == "vuln.cve.validated":
+                by_cat.setdefault(cat, []).append(
+                    f"  - [CONFIRMED] {r['value']}"
+                )
+            elif trait == "vuln.cve.uncertain":
+                by_cat.setdefault(cat, []).append(
+                    f"  - [UNCONFIRMED] {r['value']}"
+                )
+            elif trait == "vuln.cve":
+                # Legacy unvalidated CVE facts
+                by_cat.setdefault(cat, []).append(
+                    f"  - [UNVALIDATED] {r['value']}"
+                )
+            else:
+                by_cat.setdefault(cat, []).append(f"  - {trait}: {r['value']}")
+
         lines = []
         for cat, items in by_cat.items():
             lines.append(f"### {cat} INTELLIGENCE")
@@ -397,7 +420,8 @@ class OrientEngine:
     # ------------------------------------------------------------------
 
     async def _build_prompt(
-        self, db: aiosqlite.Connection, operation_id: str, observe_summary: str
+        self, db: aiosqlite.Connection, operation_id: str, observe_summary: str,
+        *, attack_graph_summary: str = "",
     ) -> tuple[str, str]:
         # --- Existing queries (preserved) ---
 
@@ -660,6 +684,7 @@ class OrientEngine:
             playbook_summary=playbook_summary,
             lateral_opportunities=lateral_str,
             mcp_tools_summary=mcp_tools_summary,
+            attack_graph_summary=attack_graph_summary or "Not available.",
         )
 
         # --- Section 9: Operator directive (if any) ---
@@ -682,140 +707,15 @@ class OrientEngine:
 
         return _ORIENT_SYSTEM_PROMPT, user_prompt
 
-    def _resolve_backend(self) -> str:
-        """Determine which LLM backend to use: api_key, oauth, or none."""
-        if settings.LLM_BACKEND != "auto":
-            return settings.LLM_BACKEND
-        if settings.ANTHROPIC_API_KEY or settings.ANTHROPIC_AUTH_TOKEN:
-            return "api_key"
-        # Check OAuth credentials from Claude Code login
-        from app.services.oauth_token_manager import OAuthTokenManager
-        if self._oauth_manager is None:
-            self._oauth_manager = OAuthTokenManager()
-        if self._oauth_manager.is_available():
-            return "oauth"
-        return "api_key"  # will fall through to OpenAI or mock
-
     async def _call_llm(self, system_prompt: str, user_prompt: str) -> str:
-        """LLM API call with dual-backend fallback (API Key / OAuth / OpenAI / mock)."""
-        backend = self._resolve_backend()
+        """LLM API call via shared LLMClient (API Key / OAuth / OpenAI / mock)."""
+        from app.services.llm_client import get_llm_client
 
-        # Try Claude via API Key
-        if backend == "api_key" and (settings.ANTHROPIC_API_KEY or settings.ANTHROPIC_AUTH_TOKEN):
-            try:
-                return await self._call_claude(system_prompt, user_prompt)
-            except Exception as e:
-                logger.warning("Claude API Key failed: %s, trying fallback", e)
-
-        # Try Claude via OAuth
-        if backend in ("oauth", "auto"):
-            try:
-                return await self._call_claude_oauth(system_prompt, user_prompt)
-            except Exception as e:
-                logger.warning("Claude OAuth failed: %s, trying fallback", e)
-                # If OAuth failed and API key is available, try that
-                if backend == "oauth" and (settings.ANTHROPIC_API_KEY or settings.ANTHROPIC_AUTH_TOKEN):
-                    try:
-                        return await self._call_claude(system_prompt, user_prompt)
-                    except Exception as e2:
-                        logger.warning("Claude API Key fallback also failed: %s", e2)
-
-        # Fallback to OpenAI
-        if settings.OPENAI_API_KEY:
-            try:
-                return await self._call_openai(system_prompt, user_prompt)
-            except Exception as e:
-                logger.warning("OpenAI API failed: %s, using mock", e)
-
-        logger.info("No LLM backend available, using mock recommendation")
-        return json.dumps(_MOCK_RECOMMENDATION)
-
-    async def _call_claude(self, system_prompt: str, user_prompt: str) -> str:
-        """Call Claude API via official Anthropic SDK.
-
-        Features over raw httpx:
-        - Automatic retry with exponential backoff (default max_retries=2)
-        - Typed error handling via anthropic exception hierarchy
-        - Connection reuse via persistent AsyncAnthropic client
-        """
-        if self._anthropic_client is None:
-            client_kwargs: dict = {"max_retries": 2}
-            if settings.ANTHROPIC_API_KEY:
-                client_kwargs["api_key"] = settings.ANTHROPIC_API_KEY
-            if settings.ANTHROPIC_AUTH_TOKEN:
-                client_kwargs["auth_token"] = settings.ANTHROPIC_AUTH_TOKEN
-            self._anthropic_client = anthropic.AsyncAnthropic(**client_kwargs)
-
-        message = await self._anthropic_client.messages.create(
-            model=settings.CLAUDE_MODEL,
-            max_tokens=4000,
-            temperature=0.7,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_prompt}],
-            timeout=60.0,
-        )
-
-        if not message.content:
-            raise ValueError("Empty content in Claude response")
-        return message.content[0].text
-
-    async def _call_claude_oauth(self, system_prompt: str, user_prompt: str) -> str:
-        """Call Claude API using OAuth token from Claude Code credentials.
-
-        Requires `anthropic-beta: oauth-2025-04-20` header for OAuth token auth.
-        Uses a separate client instance to avoid header conflicts with API Key mode.
-        """
-        from app.services.oauth_token_manager import OAuthTokenManager, OAUTH_BETA_HEADER
-
-        if self._oauth_manager is None:
-            self._oauth_manager = OAuthTokenManager()
-
-        token = await self._oauth_manager.get_access_token()
-
-        # Use a dedicated client for OAuth (different headers from API Key client)
-        client = anthropic.AsyncAnthropic(
-            auth_token=token,
-            max_retries=2,
-            default_headers={"anthropic-beta": OAUTH_BETA_HEADER},
-        )
-
-        message = await client.messages.create(
-            model=settings.CLAUDE_MODEL,
-            max_tokens=4000,
-            temperature=0.7,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_prompt}],
-            timeout=60.0,
-        )
-
-        if not message.content:
-            raise ValueError("Empty content in Claude OAuth response")
-        return message.content[0].text
-
-    async def _call_openai(self, system_prompt: str, user_prompt: str) -> str:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": settings.OPENAI_MODEL,
-                    "max_tokens": 4000,
-                    "temperature": 0.7,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            choices = data.get("choices", [])
-            if not choices:
-                raise ValueError("Empty choices in OpenAI response")
-            return choices[0]["message"]["content"]
+        result = await get_llm_client().call(system_prompt, user_prompt, task_type="orient_analysis")
+        if not result:
+            logger.info("No LLM backend available, using mock recommendation")
+            return json.dumps(_MOCK_RECOMMENDATION)
+        return result
 
     async def _store_recommendation(
         self, db: aiosqlite.Connection, operation_id: str, parsed: dict

@@ -64,6 +64,28 @@ class Settings(BaseSettings):
     MCP_RECONNECT_INTERVAL_SEC: int = 5
     MCP_MAX_RETRIES: int = 3
     MCP_TRANSPORT_MODE: str = "auto"  # "stdio" | "http" | "auto"
+    CLAUDE_MODEL_OPUS: str = "claude-opus-4-6"
+    CLAUDE_MODEL_SONNET: str = "claude-sonnet-4-20250514"
+    CLAUDE_MODEL_HAIKU: str = "claude-haiku-35-20241022"
+    NODE_SUMMARY_MODEL: str = "claude-sonnet-4-20250514"  # DEPRECATED: use TASK_MODEL_MAP["node_summary"]
+    NMAP_SCAN_TIMEOUT_SEC: int = 60
+    # Exploit validation (SPEC-028)
+    EXPLOIT_VALIDATION_ENABLED: bool = True
+    EXPLOIT_VALIDATION_SAFE_PROBE: bool = False
+    EXPLOIT_VALIDATION_LLM_TRIAGE: bool = True
+    EXPLOIT_VALIDATION_CONFIDENCE_THRESHOLD: float = 0.6
+    EXPLOIT_VALIDATION_TIMEOUT_SEC: int = 30
+    # AgentSwarm (ADR-027)
+    MAX_PARALLEL_TASKS: int = 5           # Semaphore bound, range 1-20
+    PARALLEL_TASK_TIMEOUT_SEC: int = 120  # Per-task timeout, range 10-600
 
 
 settings = Settings()
+
+TASK_MODEL_MAP: dict[str, str] = {
+    "orient_analysis": settings.CLAUDE_MODEL_OPUS,
+    "fact_summary": settings.CLAUDE_MODEL_SONNET,
+    "node_summary": settings.CLAUDE_MODEL_HAIKU,
+    "format_report": settings.CLAUDE_MODEL_HAIKU,
+    "classify_vulnerability": settings.CLAUDE_MODEL_HAIKU,
+}

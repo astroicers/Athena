@@ -32,6 +32,7 @@ from app.services.ooda_scheduler import start_scheduler, stop_scheduler
 from app.routers import (
     admin,
     agents,
+    attack_graph,
     c5isr,
     engagements,
     facts,
@@ -126,6 +127,7 @@ app.include_router(reports.router, prefix="/api", tags=["Reports"])
 app.include_router(recon.router, prefix="/api", tags=["Recon"])
 app.include_router(engagements.router, prefix="/api", tags=["Engagements"])
 app.include_router(tools.router, prefix="/api", tags=["Tools"])
+app.include_router(attack_graph.router, prefix="/api", tags=["AttackGraph"])
 
 app.include_router(playbooks_router)
 

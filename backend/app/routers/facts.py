@@ -39,13 +39,21 @@ def _row_to_fact(row: aiosqlite.Row) -> Fact:
 
 async def list_facts(
     operation_id: str,
+    target_id: str | None = None,
     db: aiosqlite.Connection = Depends(get_db),
 ):
     await ensure_operation(db, operation_id)
 
-    cursor = await db.execute(
-        "SELECT * FROM facts WHERE operation_id = ? ORDER BY collected_at DESC",
-        (operation_id,),
-    )
+    if target_id:
+        cursor = await db.execute(
+            "SELECT * FROM facts WHERE operation_id = ? AND source_target_id = ? "
+            "ORDER BY collected_at DESC",
+            (operation_id, target_id),
+        )
+    else:
+        cursor = await db.execute(
+            "SELECT * FROM facts WHERE operation_id = ? ORDER BY collected_at DESC",
+            (operation_id,),
+        )
     rows = await cursor.fetchall()
     return [_row_to_fact(r) for r in rows]

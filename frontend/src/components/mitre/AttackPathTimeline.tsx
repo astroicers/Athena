@@ -14,6 +14,7 @@ import { useTranslations } from "next-intl";
 import { TechniqueStatus } from "@/types/enums";
 import { SectionHeader } from "@/components/atoms/SectionHeader";
 import type { AttackPathEntry, AttackPathResponse } from "@/types/attackPath";
+import type { AttackGraphResponse } from "@/types/attackGraph";
 
 // ─── Tactic metadata ──────────────────────────────────────────────────────────
 
@@ -139,9 +140,74 @@ function SkeletonColumn() {
 interface AttackPathTimelineProps {
   data: AttackPathResponse | null;
   loading: boolean;
+  graphData?: AttackGraphResponse | null;
 }
 
-export function AttackPathTimeline({ data, loading }: AttackPathTimelineProps) {
+function AttackGraphSummaryPanel({ graphData }: { graphData: AttackGraphResponse }) {
+  const { stats, coverageScore, recommendedPath, unexploredBranches, nodes } = graphData;
+
+  // Build recommended path technique IDs from node IDs
+  const pathNodeMap = new Map(nodes.map((n) => [n.nodeId, n]));
+  const pathTechniques = recommendedPath
+    .map((nid) => pathNodeMap.get(nid)?.techniqueId)
+    .filter(Boolean)
+    .join(" \u2192 ");
+
+  const coveragePct = Math.round(coverageScore * 100);
+
+  return (
+    <div className="mb-3 p-2 bg-athena-elevated border border-athena-border rounded-athena-sm">
+      <div className="flex items-center gap-3 text-[10px] font-mono">
+        {/* Coverage bar */}
+        <div className="flex items-center gap-1.5 min-w-[120px]">
+          <span className="text-athena-text-secondary">Coverage</span>
+          <div className="flex-1 h-1.5 bg-athena-border/30 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-athena-accent rounded-full transition-all"
+              style={{ width: `${coveragePct}%` }}
+            />
+          </div>
+          <span className="text-athena-text-primary font-bold">{coveragePct}%</span>
+        </div>
+
+        {/* Node stats */}
+        <div className="flex items-center gap-2 text-athena-text-secondary">
+          <span>
+            <span className="text-athena-success">{stats.exploredNodes}</span> explored
+          </span>
+          <span>
+            <span className="text-athena-accent">{stats.pendingNodes}</span> pending
+          </span>
+          <span>
+            <span className="text-athena-error">{stats.failedNodes}</span> failed
+          </span>
+          {stats.prunedNodes > 0 && (
+            <span>
+              <span className="text-athena-text-secondary">{stats.prunedNodes}</span> pruned
+            </span>
+          )}
+        </div>
+
+        {/* Unexplored count */}
+        {unexploredBranches.length > 0 && (
+          <span className="text-athena-warning">
+            {unexploredBranches.length} unexplored
+          </span>
+        )}
+      </div>
+
+      {/* Recommended path */}
+      {pathTechniques && (
+        <div className="mt-1.5 text-[10px] font-mono text-athena-text-secondary">
+          <span className="text-athena-accent">Recommended:</span>{" "}
+          <span className="text-athena-text-primary">{pathTechniques}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function AttackPathTimeline({ data, loading, graphData }: AttackPathTimelineProps) {
   const tNav = useTranslations("Navigator");
   const tHints = useTranslations("Hints");
   const tTactic = useTranslations("Tactic");
@@ -165,6 +231,11 @@ export function AttackPathTimeline({ data, loading }: AttackPathTimelineProps) {
       <SectionHeader className="mb-3" title={tHints("attackPath")}>
         {tNav("attackPath")}
       </SectionHeader>
+
+      {/* Attack graph summary panel */}
+      {graphData && graphData.nodes.length > 0 && (
+        <AttackGraphSummaryPanel graphData={graphData} />
+      )}
 
       {/* Horizontal scroll container */}
       <div className="overflow-x-auto">

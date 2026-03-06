@@ -1,0 +1,19 @@
+[project]
+name = "athena-tool-api-fuzzer"
+version = "0.1.0"
+description = "Athena MCP tool server: API security testing (schema detection, endpoint fuzzing, auth bypass)"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp>=1.6.0",
+    "httpx>=0.27",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.23.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

@@ -115,6 +115,30 @@ services:
       - "127.0.0.1:58095:8080"
     restart: unless-stopped
 
+  mcp-web-scanner:
+    build: { context: ./tools/web-scanner }
+    profiles: [mcp]
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--port", "8080"]
+    environment:
+      - NUCLEI_TEMPLATES_DIR=/opt/nuclei-templates
+      - SCAN_RATE_LIMIT=100
+      - SCAN_TIMEOUT_SEC=300
+    ports:
+      - "127.0.0.1:58096:8080"
+    restart: unless-stopped
+
+  mcp-api-fuzzer:
+    build: { context: ./tools/api-fuzzer }
+    profiles: [mcp]
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--port", "8080"]
+    environment:
+      - FUZZ_RATE_LIMIT=50
+      - FUZZ_TIMEOUT_SEC=180
+      - MAX_ENDPOINTS=500
+    ports:
+      - "127.0.0.1:58097:8080"
+    restart: unless-stopped
+
 volumes:
   backend-data:
     driver: local

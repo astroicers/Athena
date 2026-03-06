@@ -3,7 +3,10 @@
     "nmap-scanner": {
       "transport": "stdio",
       "command": "python",
-      "args": ["-m", "server"],
+      "args": [
+        "-m",
+        "server"
+      ],
       "env": {},
       "http_url": "http://mcp-nmap:8080/mcp",
       "enabled": true,
@@ -13,7 +16,10 @@
     "osint-recon": {
       "transport": "stdio",
       "command": "python",
-      "args": ["-m", "server"],
+      "args": [
+        "-m",
+        "server"
+      ],
       "env": {},
       "http_url": "http://mcp-osint:8080/mcp",
       "enabled": true,
@@ -23,7 +29,10 @@
     "vuln-lookup": {
       "transport": "stdio",
       "command": "python",
-      "args": ["-m", "server"],
+      "args": [
+        "-m",
+        "server"
+      ],
       "env": {},
       "http_url": "http://mcp-vuln:8080/mcp",
       "enabled": true,
@@ -33,7 +42,10 @@
     "credential-checker": {
       "transport": "stdio",
       "command": "python",
-      "args": ["-m", "server"],
+      "args": [
+        "-m",
+        "server"
+      ],
       "env": {},
       "http_url": "http://mcp-credential-checker:8080/mcp",
       "enabled": true,
@@ -43,12 +55,41 @@
     "attack-executor": {
       "transport": "stdio",
       "command": "python",
-      "args": ["-m", "server"],
+      "args": [
+        "-m",
+        "server"
+      ],
       "env": {},
       "http_url": "http://mcp-attack-executor:8080/mcp",
       "enabled": true,
       "description": "Post-compromise SSH/WinRM technique execution",
       "tool_prefix": "attack"
+    },
+    "web-scanner": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "server"
+      ],
+      "env": {},
+      "http_url": "http://mcp-web-scanner:8080/mcp",
+      "enabled": true,
+      "description": "Web vulnerability scanning (httpx + Nuclei) and HTTP reconnaissance",
+      "tool_prefix": "web"
+    },
+    "api-fuzzer": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "server"
+      ],
+      "env": {},
+      "http_url": "http://mcp-api-fuzzer:8080/mcp",
+      "enabled": true,
+      "description": "API endpoint discovery, schema detection, and authentication bypass testing",
+      "tool_prefix": "api"
     }
   }
 }

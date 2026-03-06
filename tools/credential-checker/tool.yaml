@@ -1,0 +1,19 @@
+# Athena MCP Tool Metadata
+tool_id: "credential-checker"
+name: "Credential Checker"
+description: "SSH, RDP, and WinRM credential testing"
+category: "credential_access"
+risk_level: "high"
+mitre_techniques: ["T1110", "T1110.001"]
+output_traits: ["credential.ssh", "credential.rdp", "credential.winrm"]
+
+mcp:
+  transport: "stdio"
+  command: "python"
+  args: ["-m", "server"]
+  http_url: "http://mcp-credential-checker:8080/mcp"
+  tool_prefix: "cred"
+
+docker:
+  port: 58094
+  environment: {}

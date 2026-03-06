@@ -253,7 +253,7 @@ export default function PlannerPage() {
   }
 
   async function handleReconScan(targetId: string) {
-    setScanState({ targetId, phase: null, step: 0, totalSteps: 6 });
+    setScanState({ targetId, phase: null, step: 0, totalSteps: 0 });
     try {
       await api.post<ReconScanQueued>(
         `/operations/${DEFAULT_OP_ID}/recon/scan`,

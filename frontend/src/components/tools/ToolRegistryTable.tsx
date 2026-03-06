@@ -15,7 +15,7 @@ import { useTranslations } from "next-intl";
 import { Toggle } from "@/components/atoms/Toggle";
 import { Badge } from "@/components/atoms/Badge";
 import { Button } from "@/components/atoms/Button";
-import { StatusDot } from "@/components/atoms/StatusDot";
+
 import type { ToolRegistryEntry } from "@/types/tool";
 
 const RISK_VARIANT: Record<string, "success" | "warning" | "error" | "info"> = {
@@ -36,7 +36,7 @@ function getContainerStatus(
   tool: ToolRegistryEntry,
   containerStatuses: Record<string, boolean>,
 ): "online" | "offline" | "none" {
-  const server = tool.configJson?.mcp_server as string | undefined;
+  const server = (tool.configJson?.mcpServer ?? tool.configJson?.mcp_server) as string | undefined;
   if (!server) return "none";
   return containerStatuses[server] ? "online" : "offline";
 }
@@ -79,19 +79,19 @@ export function ToolRegistryTable({
             <th className="px-3 py-2 text-left text-athena-text-secondary font-medium uppercase tracking-wider">
               {t("colName")}
             </th>
-            <th className="px-3 py-2 text-left text-athena-text-secondary font-medium uppercase tracking-wider">
+            <th className="px-3 py-2 text-center text-athena-text-secondary font-medium uppercase tracking-wider w-28">
               {t("colCategory")}
             </th>
-            <th className="px-3 py-2 text-left text-athena-text-secondary font-medium uppercase tracking-wider">
+            <th className="px-3 py-2 text-center text-athena-text-secondary font-medium uppercase tracking-wider w-20">
               {t("colStatus")}
             </th>
-            <th className="px-3 py-2 text-left text-athena-text-secondary font-medium uppercase tracking-wider">
+            <th className="px-3 py-2 text-center text-athena-text-secondary font-medium uppercase tracking-wider w-20">
               {t("colRisk")}
             </th>
-            <th className="px-3 py-2 text-left text-athena-text-secondary font-medium uppercase tracking-wider">
+            <th className="px-3 py-2 text-left text-athena-text-secondary font-medium uppercase tracking-wider w-40">
               {t("colMitre")}
             </th>
-            <th className="px-3 py-2 text-left text-athena-text-secondary font-medium uppercase tracking-wider">
+            <th className="px-3 py-2 text-center text-athena-text-secondary font-medium uppercase tracking-wider w-24">
               {t("colContainer")}
             </th>
           </tr>
@@ -131,12 +131,12 @@ export function ToolRegistryTable({
                 </td>
 
                 {/* Category */}
-                <td className="px-3 py-2">
+                <td className="px-3 py-2 text-center w-28">
                   <Badge variant="info">{tCategory(tool.category as any)}</Badge>
                 </td>
 
                 {/* Status toggle */}
-                <td className="px-3 py-2">
+                <td className="px-3 py-2 text-center w-20">
                   <Toggle
                     checked={tool.enabled}
                     onChange={(checked) =>
@@ -147,7 +147,7 @@ export function ToolRegistryTable({
                 </td>
 
                 {/* Risk */}
-                <td className="px-3 py-2">
+                <td className="px-3 py-2 text-center w-20">
                   <Badge
                     variant={RISK_VARIANT[tool.riskLevel] || "info"}
                   >
@@ -156,7 +156,7 @@ export function ToolRegistryTable({
                 </td>
 
                 {/* MITRE technique IDs */}
-                <td className="px-3 py-2">
+                <td className="px-3 py-2 w-40">
                   {tool.mitreTechniques.length > 0 ? (
                     <div className="flex flex-wrap gap-1">
                       {tool.mitreTechniques.map((tid) => (
@@ -174,27 +174,25 @@ export function ToolRegistryTable({
                 </td>
 
                 {/* Container status */}
-                <td className="px-3 py-2">
-                  <div className="flex items-center gap-1.5">
-                    {status === "online" && (
-                      <>
-                        <StatusDot status="operational" pulse />
-                        <span className="text-[10px] text-athena-success">{t("containerOnline")}</span>
-                      </>
-                    )}
-                    {status === "offline" && (
-                      <>
-                        <StatusDot status="degraded" />
-                        <span className="text-[10px] text-athena-error">{t("containerOffline")}</span>
-                      </>
-                    )}
-                    {status === "none" && (
-                      <>
-                        <StatusDot status="offline" />
-                        <span className="text-[10px] text-athena-text-secondary">{t("containerNA")}</span>
-                      </>
-                    )}
-                  </div>
+                <td className="px-3 py-2 text-center w-24">
+                  {status === "online" && (
+                    <Badge variant="success">
+                      <span className="relative inline-flex h-2 w-2 mr-1.5">
+                        <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping bg-athena-success" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-athena-success" />
+                      </span>
+                      {t("containerOnline")}
+                    </Badge>
+                  )}
+                  {status === "offline" && (
+                    <Badge variant="error">
+                      <span className="inline-flex h-2 w-2 mr-1.5 rounded-full bg-athena-error" />
+                      {t("containerOffline")}
+                    </Badge>
+                  )}
+                  {status === "none" && (
+                    <span className="text-[10px] text-athena-text-secondary">{t("containerNA")}</span>
+                  )}
                 </td>
               </tr>
             );

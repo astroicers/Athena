@@ -82,7 +82,7 @@ async def test_ssh_mock_writes_credential_fact():
     insert_calls = [
         (sql, params)
         for sql, params in captured_calls
-        if "INSERT INTO facts" in sql
+        if "INSERT" in sql and "facts" in sql
     ]
     assert len(insert_calls) >= 1, "Expected at least one INSERT INTO facts call"
 

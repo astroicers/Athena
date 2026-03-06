@@ -1,0 +1,19 @@
+# Athena MCP Tool Metadata
+tool_id: "osint-recon"
+name: "OSINT Recon"
+description: "OSINT subdomain enumeration and DNS resolution"
+category: "reconnaissance"
+risk_level: "low"
+mitre_techniques: ["T1595.002", "T1596"]
+output_traits: ["network.subdomain", "network.host.ip"]
+
+mcp:
+  transport: "stdio"
+  command: "python"
+  args: ["-m", "server"]
+  http_url: "http://mcp-osint:8080/mcp"
+  tool_prefix: "osint"
+
+docker:
+  port: 58092
+  environment: {}

@@ -2,14 +2,17 @@
 
 ## Quick Start
 
+### 1. Scaffold (already done if you see this file)
+
 ```bash
-pip install -e .
-python -m server
+make new-tool NAME={{TOOL_NAME}}
 ```
 
-## Output Convention
+### 2. Implement tool logic
 
-Tools must return JSON with Athena-compatible facts:
+Edit `server.py` — replace `example_scan` with your tool function(s).
+
+**Output convention:** Return JSON string with Athena-compatible facts:
 
 ```json
 {
@@ -17,12 +20,41 @@ Tools must return JSON with Athena-compatible facts:
     {"trait": "network.host.ip", "value": "10.0.1.5"},
     {"trait": "host.os", "value": "Linux"}
   ],
-  "raw_output": "..."
+  "raw_output": "Human-readable scan output..."
 }
 ```
 
-## Adding to Athena
+### 3. Fill in metadata
 
-1. Add entry to `mcp_servers.json` at the project root
-2. Register in `tool_registry` via `POST /api/tools` with `config_json.mcp_server`
-3. Set `MCP_ENABLED=true` in `.env`
+Edit `tool.yaml` — set description, category, mitre_techniques, output_traits.
+
+### 4. Test locally
+
+```bash
+make dev-tool NAME={{TOOL_NAME}}           # stdio mode
+make dev-tool-http NAME={{TOOL_NAME}}      # HTTP mode (port 8090)
+```
+
+### 5. Build & Deploy
+
+```bash
+make build-mcp
+docker compose --profile mcp up -d
+```
+
+MCPClientManager will auto-discover tools and sync to tool_registry DB.
+
+## Dependencies
+
+Add Python dependencies to `pyproject.toml` under `[project] dependencies`.
+
+If system packages are needed (e.g. nmap), add them to `Dockerfile`:
+
+```dockerfile
+FROM athena-mcp-base:latest
+RUN apt-get update && apt-get install -y --no-install-recommends <package> && rm -rf /var/lib/apt/lists/*
+COPY pyproject.toml .
+RUN pip install --no-cache-dir .
+COPY . .
+CMD ["python", "-m", "server"]
+```

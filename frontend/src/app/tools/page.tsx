@@ -16,14 +16,13 @@ import { useTools } from "@/hooks/useTools";
 import { useMCPServers } from "@/hooks/useMCPServers";
 import { Button } from "@/components/atoms/Button";
 import { ToolRegistryTable } from "@/components/tools/ToolRegistryTable";
-import { AddToolModal } from "@/components/tools/AddToolModal";
+import { OnboardingGuide } from "@/components/tools/OnboardingGuide";
 import { SectionHeader } from "@/components/atoms/SectionHeader";
 import { PageLoading } from "@/components/ui/PageLoading";
-import type { ToolRegistryCreate } from "@/types/tool";
 
 export default function ToolsPage() {
   const t = useTranslations("Tools");
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   const {
     tools,
@@ -31,7 +30,6 @@ export default function ToolsPage() {
     fetchTools,
     toggleEnabled,
     deleteTool,
-    createTool,
   } = useTools();
 
   const { servers } = useMCPServers();
@@ -41,12 +39,6 @@ export default function ToolsPage() {
     for (const srv of servers) map[srv.name] = srv.connected;
     return map;
   }, [servers]);
-
-  async function handleCreateTool(data: ToolRegistryCreate) {
-    await createTool(data);
-    setShowAddModal(false);
-    fetchTools();
-  }
 
   if (loading) return <PageLoading />;
 
@@ -58,9 +50,9 @@ export default function ToolsPage() {
           <Button
             variant="primary"
             size="sm"
-            onClick={() => setShowAddModal(true)}
+            onClick={() => setShowGuide(true)}
           >
-            {t("addTool")}
+            {t("howToAdd")}
           </Button>
         }
       >
@@ -75,11 +67,10 @@ export default function ToolsPage() {
         containerStatuses={containerStatuses}
       />
 
-      {/* Add Tool Modal */}
-      <AddToolModal
-        isOpen={showAddModal}
-        onSubmit={handleCreateTool}
-        onCancel={() => setShowAddModal(false)}
+      {/* Onboarding Guide */}
+      <OnboardingGuide
+        isOpen={showGuide}
+        onClose={() => setShowGuide(false)}
       />
     </div>
   );

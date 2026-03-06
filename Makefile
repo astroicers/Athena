@@ -18,7 +18,7 @@ VERSION  ?= latest
         guardrail-log guardrail-reset \
         c2-engine-init c2-engine-up c2-engine-down c2-engine-logs c2-engine-status c2-engine-backup \
         real-mode mock-mode \
-        new-tool
+        new-tool dev-tool dev-tool-http
 
 #---------------------------------------------------------------------------
 # Help
@@ -409,16 +409,16 @@ mock-mode:  ## .env 切為 mock 模式（MOCK_*=true）
 # MCP Tool Scaffolding
 #---------------------------------------------------------------------------
 
-new-tool:  ## 建立新的 MCP tool server scaffold（用法: make new-tool NAME=my-scanner）
+new-tool:  ## 建立新的 MCP tool server（用法: make new-tool NAME=my-scanner）— 自動 scaffold + 註冊
 	@if [ -z "$(NAME)" ]; then echo "Usage: make new-tool NAME=my-scanner"; exit 1; fi
-	@mkdir -p tools/$(NAME)
-	@cp tools/_template/pyproject.toml tools/$(NAME)/pyproject.toml
-	@cp tools/_template/Dockerfile tools/$(NAME)/Dockerfile
-	@cp tools/_template/server.py tools/$(NAME)/server.py
-	@cp tools/_template/README.md tools/$(NAME)/README.md
-	@sed -i "s/{{TOOL_NAME}}/$(NAME)/g" tools/$(NAME)/pyproject.toml tools/$(NAME)/Dockerfile tools/$(NAME)/server.py tools/$(NAME)/README.md
-	@echo "✅ MCP tool scaffold created: tools/$(NAME)/"
-	@echo "   Next steps:"
-	@echo "   1. Edit tools/$(NAME)/server.py — add your tool logic"
-	@echo "   2. Add server entry to mcp_servers.json"
-	@echo "   3. Register in tool_registry via POST /api/tools"
+	@python3 scripts/scaffold_tool.py $(NAME)
+
+dev-tool:  ## 本地 stdio 模式啟動 MCP tool（用法: make dev-tool NAME=my-scanner）
+	@if [ -z "$(NAME)" ]; then echo "Usage: make dev-tool NAME=my-scanner"; exit 1; fi
+	@if [ ! -d "tools/$(NAME)" ]; then echo "❌ tools/$(NAME)/ not found"; exit 1; fi
+	cd tools/$(NAME) && pip install -q -e . 2>/dev/null; python -m server
+
+dev-tool-http:  ## 本地 HTTP 模式啟動 MCP tool（用法: make dev-tool-http NAME=my-scanner [PORT=8090]）
+	@if [ -z "$(NAME)" ]; then echo "Usage: make dev-tool-http NAME=my-scanner"; exit 1; fi
+	@if [ ! -d "tools/$(NAME)" ]; then echo "❌ tools/$(NAME)/ not found"; exit 1; fi
+	cd tools/$(NAME) && pip install -q -e . 2>/dev/null; python -m server --transport streamable-http --port $(or $(PORT),8090)

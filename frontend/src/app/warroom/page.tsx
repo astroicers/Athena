@@ -277,13 +277,7 @@ export default function WarRoomPage() {
   return (
     <div className="-m-4 h-[calc(100vh-48px)] flex flex-col overflow-hidden">
       {/* Tactical Dashboard */}
-      <TacticalDashboard
-        c5isrDomains={c5isrDomains}
-        currentOodaPhase={oodaPhase}
-        oodaIterationCount={operation?.oodaIterationCount ?? 0}
-        onDirectiveSubmit={handleDirectiveSubmit}
-        onOodaTrigger={handleOodaTrigger}
-      />
+      <TacticalDashboard c5isrDomains={c5isrDomains} />
 
       {/* Main area: Topology + Side Panel */}
       <div className="flex-1 flex min-h-0">
@@ -304,7 +298,7 @@ export default function WarRoomPage() {
           {/* Side Panel Toggle */}
           <button
             onClick={() => setSidePanelOpen((v) => !v)}
-            className="absolute top-2 right-24 z-10 px-2 py-1 rounded border border-athena-border bg-athena-surface hover:bg-athena-elevated text-[10px] font-mono text-athena-text-secondary hover:text-athena-text transition-colors"
+            className="absolute top-2 right-[72px] z-10 px-2 py-1 rounded border border-athena-border bg-athena-surface hover:bg-athena-elevated text-[10px] font-mono text-athena-text-secondary hover:text-athena-text transition-colors"
             title={t("sidePanel")}
           >
             {sidePanelOpen ? "▶" : "◀"} {t("sidePanel")}

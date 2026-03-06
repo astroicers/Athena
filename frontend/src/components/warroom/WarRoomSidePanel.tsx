@@ -88,7 +88,7 @@ export function WarRoomSidePanel({
       <div className="flex-1 overflow-y-auto min-h-0">
         <AccordionSection
           id="aiDecision"
-          title="AI Decision"
+          title={t("sidePanel.aiDecision")}
           summary={`${activeTechniqueName || "—"} • ${activeConfidence ? Math.round(activeConfidence * 100) + "%" : "—"}`}
           isOpen={openSection === "aiDecision"}
           onToggle={() => toggle("aiDecision")}
@@ -108,7 +108,7 @@ export function WarRoomSidePanel({
 
         <AccordionSection
           id="recommendation"
-          title="Recommendation"
+          title={t("sidePanel.recommendation")}
           summary={recommendation?.options?.[0]?.techniqueName || "—"}
           isOpen={openSection === "recommendation"}
           onToggle={() => toggle("recommendation")}
@@ -118,7 +118,7 @@ export function WarRoomSidePanel({
 
         <AccordionSection
           id="ooda"
-          title="OODA Timeline"
+          title={t("sidePanel.oodaTimeline")}
           summary={`Phase: ${currentOodaPhase || "idle"}`}
           isOpen={openSection === "ooda"}
           onToggle={() => toggle("ooda")}
@@ -128,15 +128,15 @@ export function WarRoomSidePanel({
 
         <AccordionSection
           id="agents"
-          title="Agents"
-          summary={`${activeAgentCount} active`}
+          title={t("sidePanel.agents")}
+          summary={`${activeAgentCount} ${t("sidePanel.active")}`}
           isOpen={openSection === "agents"}
           onToggle={() => toggle("agents")}
         >
           <div className="space-y-2">
             {agents.length === 0 ? (
               <span className="text-[10px] font-mono text-athena-text-secondary">
-                No agents
+                {t("sidePanel.noAgents")}
               </span>
             ) : (
               agents.map((a) => (
@@ -155,14 +155,14 @@ export function WarRoomSidePanel({
 
         <AccordionSection
           id="logs"
-          title="Logs"
+          title={t("sidePanel.logs")}
           summary={allLogs[allLogs.length - 1]?.message?.slice(0, 40) || "—"}
           isOpen={openSection === "logs"}
           onToggle={() => toggle("logs")}
         >
           {allLogs.length === 0 ? (
             <span className="text-[10px] font-mono text-athena-text-secondary">
-              Waiting for logs...
+              {t("sidePanel.waitingForLogs")}
             </span>
           ) : (
             <div className="space-y-0">

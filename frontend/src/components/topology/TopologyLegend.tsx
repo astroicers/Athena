@@ -101,26 +101,24 @@ export function TopologyLegend() {
 
           <div className="border-t border-athena-border/30" />
 
-          {/* Node Stats (Arc Bars) */}
+          {/* Status Badges */}
           <div>
             <div className="text-[9px] font-mono text-athena-text-secondary tracking-wider mb-1.5 uppercase">
-              {t("nodeStats")}
+              {t("statusBadges")}
             </div>
             {[
-              { key: "scans", color: "#4488ff" },
-              { key: "ports", color: "#eab308" },
-              { key: "facts", color: "#22c55e" },
-              { key: "credentials", color: "#ef4444" },
-            ].map(({ key, color }) => (
+              { key: "recon", color: "#4488ff", slot: "↖" },
+              { key: "compromised", color: "#ff4444", slot: "↗" },
+              { key: "privilege", color: "#eab308", slot: "↙" },
+              { key: "persistence", color: "#ffaa00", slot: "↘" },
+            ].map(({ key, color, slot }) => (
               <div key={key} className="flex items-center gap-2 mb-0.5">
-                <svg width="14" height="10" className="shrink-0" viewBox="0 0 14 10">
-                  <path
-                    d="M 2 8 A 6 6 0 0 1 12 8"
-                    fill="none"
-                    stroke={color}
-                    strokeWidth={2}
-                  />
-                </svg>
+                <span
+                  className="w-3 h-3 rounded-full shrink-0 flex items-center justify-center text-[7px] font-mono text-white border"
+                  style={{ background: color + "40", borderColor: color }}
+                >
+                  {slot}
+                </span>
                 <span className="text-[10px] font-mono text-athena-text">{t(key)}</span>
               </div>
             ))}

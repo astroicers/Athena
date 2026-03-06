@@ -32,11 +32,12 @@ const OFFSET_X = 20;
 const OFFSET_Y = -40;
 
 const CATEGORY_ORDER = ["credential", "host", "service", "network"];
+// Category colors mapped to design tokens (see globals.css --color-*)
 const CATEGORY_COLORS: Record<string, string> = {
-  credential: "#ef4444",
-  host: "#3b82f6",
-  service: "#22c55e",
-  network: "#eab308",
+  credential: "var(--color-error)",     // #ff4444
+  host: "var(--color-info)",            // #00d4ff
+  service: "var(--color-success)",      // #00ff88
+  network: "var(--color-warning)",      // #ffaa00
 };
 const CATEGORY_KEYS: Record<string, string> = {
   credential: "catCredential",
@@ -264,7 +265,7 @@ export function FloatingNodeCard({
               )}
               {!loadingFacts &&
                 groupedFacts.map(({ category, facts: catFacts }) => {
-                  const color = CATEGORY_COLORS[category] || "#9ca3af";
+                  const color = CATEGORY_COLORS[category] || "var(--color-text-secondary)";
                   const catKey = CATEGORY_KEYS[category] || "catOther";
                   const isExpanded = expandedCategories.has(category);
                   const displayFacts = isExpanded
@@ -452,7 +453,7 @@ export function FloatingNodeCard({
                   {onInitialAccess && (
                     <button
                       onClick={() => onInitialAccess(nodeId)}
-                      className="flex-1 px-2 py-1 text-[11px] font-mono font-bold text-red-400 bg-red-500/10 border border-red-500 rounded-athena-sm hover:bg-red-500/20 transition-colors"
+                      className="flex-1 px-2 py-1 text-[11px] font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500 rounded-athena-sm hover:bg-amber-500/20 transition-colors"
                     >
                       {t("initialAccess")}
                     </button>

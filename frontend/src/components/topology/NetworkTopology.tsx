@@ -111,6 +111,133 @@ function hexPath(ctx: CanvasRenderingContext2D, x: number, y: number, radius: nu
   ctx.closePath();
 }
 
+// ── Status badge drawing helpers ──
+
+const BADGE_OFFSETS = {
+  topLeft:     { dx: -1, dy: -1 },
+  topRight:    { dx:  1, dy: -1 },
+  bottomLeft:  { dx: -1, dy:  1 },
+  bottomRight: { dx:  1, dy:  1 },
+} as const;
+
+function drawBadgeCircle(
+  ctx: CanvasRenderingContext2D,
+  cx: number, cy: number, r: number, color: string,
+) {
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+  ctx.fillStyle = color + "40"; // 25% alpha
+  ctx.fill();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+}
+
+function drawReconBadge(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+  drawBadgeCircle(ctx, cx, cy, r, "#4488ff");
+  const s = r * 0.5;
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = 0.7;
+  // Lens
+  ctx.beginPath();
+  ctx.arc(cx - s * 0.15, cy - s * 0.15, s * 0.55, 0, 2 * Math.PI);
+  ctx.stroke();
+  // Handle
+  ctx.beginPath();
+  ctx.moveTo(cx + s * 0.25, cy + s * 0.25);
+  ctx.lineTo(cx + s * 0.7, cy + s * 0.7);
+  ctx.stroke();
+}
+
+function drawSkullBadge(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+  drawBadgeCircle(ctx, cx, cy, r, "#ff4444");
+  const s = r * 0.5;
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = 0.7;
+  // Cranium
+  ctx.beginPath();
+  ctx.arc(cx, cy - s * 0.15, s * 0.55, Math.PI, 0);
+  ctx.stroke();
+  // Eyes
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(cx - s * 0.3, cy - s * 0.15, s * 0.2, s * 0.2);
+  ctx.fillRect(cx + s * 0.1, cy - s * 0.15, s * 0.2, s * 0.2);
+  // Jaw
+  ctx.beginPath();
+  ctx.moveTo(cx - s * 0.35, cy + s * 0.2);
+  ctx.lineTo(cx + s * 0.35, cy + s * 0.2);
+  ctx.stroke();
+}
+
+function drawShieldBadge(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, level: string) {
+  const levelColor = level === "SYSTEM" ? "#ff4444"
+    : (level === "Admin" || level === "sudo" || level === "root") ? "#eab308"
+    : "#22c55e";
+  drawBadgeCircle(ctx, cx, cy, r, levelColor);
+  const s = r * 0.5;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - s * 0.6);
+  ctx.lineTo(cx - s * 0.5, cy - s * 0.25);
+  ctx.lineTo(cx - s * 0.5, cy + s * 0.15);
+  ctx.quadraticCurveTo(cx, cy + s * 0.65, cx, cy + s * 0.65);
+  ctx.quadraticCurveTo(cx, cy + s * 0.65, cx + s * 0.5, cy + s * 0.15);
+  ctx.lineTo(cx + s * 0.5, cy - s * 0.25);
+  ctx.closePath();
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = 0.7;
+  ctx.stroke();
+}
+
+function drawChainBadge(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+  drawBadgeCircle(ctx, cx, cy, r, "#ffaa00");
+  const s = r * 0.4;
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = 0.7;
+  ctx.beginPath();
+  ctx.ellipse(cx - s * 0.2, cy, s * 0.45, s * 0.3, 0, 0, 2 * Math.PI);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(cx + s * 0.2, cy, s * 0.45, s * 0.3, 0, 0, 2 * Math.PI);
+  ctx.stroke();
+}
+
+function drawStatusBadges(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, size: number,
+  node: Record<string, unknown>,
+) {
+  const r = Math.max(size * 0.35, 3);
+  const offset = size + r + 3; // clear kill-chain ring (size+2) + badge radius + gap
+
+  // Top-left: Recon complete
+  if ((node.scanCount as number) > 0) {
+    const bx = x + BADGE_OFFSETS.topLeft.dx * offset;
+    const by = y + BADGE_OFFSETS.topLeft.dy * offset;
+    drawReconBadge(ctx, bx, by, r);
+  }
+
+  // Top-right: Compromised
+  if (node.isCompromised) {
+    const bx = x + BADGE_OFFSETS.topRight.dx * offset;
+    const by = y + BADGE_OFFSETS.topRight.dy * offset;
+    drawSkullBadge(ctx, bx, by, r);
+  }
+
+  // Bottom-left: Privilege level
+  if (node.privilegeLevel) {
+    const bx = x + BADGE_OFFSETS.bottomLeft.dx * offset;
+    const by = y + BADGE_OFFSETS.bottomLeft.dy * offset;
+    drawShieldBadge(ctx, bx, by, r, node.privilegeLevel as string);
+  }
+
+  // Bottom-right: Persistence / lateral
+  if ((node.persistenceCount as number) > 0) {
+    const bx = x + BADGE_OFFSETS.bottomRight.dx * offset;
+    const by = y + BADGE_OFFSETS.bottomRight.dy * offset;
+    drawChainBadge(ctx, bx, by, r);
+  }
+}
+
 export const OODA_PHASE_COLORS: Record<string, string> = {
   observe: "#4488ff",
   orient: "#ffaa00",
@@ -232,6 +359,10 @@ export function NetworkTopology({
           color,
           nodeSize,
           killChainStage: nodeKillChainMap?.[n.id] ?? null,
+          // Status badge data
+          scanCount: (n.data?.scanCount as number) || 0,
+          privilegeLevel: (n.data?.privilegeLevel as string) || null,
+          persistenceCount: (n.data?.persistenceCount as number) || 0,
         };
       }),
       links: data.edges.map((e) => ({
@@ -340,59 +471,23 @@ export function NetworkTopology({
       ctx.globalAlpha = 1;
     }
 
-    // ── Gamification arc stat bars (host nodes only, zoom > 0.5) ──
-    if (!isC2 && globalScale > 0.5) {
-      const scanCount = (node.scanCount as number) || 0;
-      const portCount = (node.openPortCount as number) || 0;
-      const factCount = (node.factCount as number) || 0;
-      const credCount = (node.credentialCount as number) || 0;
-
-      const arcRadius = size + 6;
-      const arcWidth = 2;
-      const maxVal = 10;
-
-      const arcs: { count: number; color: string; startAngle: number }[] = [
-        { count: scanCount, color: "#4488ff", startAngle: -Math.PI / 2 },
-        { count: portCount, color: "#eab308", startAngle: 0 },
-        { count: factCount, color: "#22c55e", startAngle: Math.PI / 2 },
-        { count: credCount, color: "#ef4444", startAngle: Math.PI },
-      ];
-
-      for (const arc of arcs) {
-        if (arc.count <= 0) continue;
-        const fraction = Math.min(arc.count / maxVal, 1);
-        const sweep = fraction * (Math.PI / 2);
-        ctx.beginPath();
-        ctx.arc(x, y, arcRadius, arc.startAngle, arc.startAngle + sweep);
-        ctx.strokeStyle = arc.color;
-        ctx.lineWidth = arcWidth;
-        ctx.globalAlpha = 0.85;
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-
-        if (globalScale > 0.8) {
-          const midAngle = arc.startAngle + sweep / 2;
-          const lx = x + Math.cos(midAngle) * (arcRadius + 5);
-          const ly = y + Math.sin(midAngle) * (arcRadius + 5);
-          ctx.font = `bold ${Math.max(8 / globalScale, 4)}px monospace`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillStyle = arc.color;
-          ctx.globalAlpha = 0.9;
-          ctx.fillText(`${arc.count}`, lx, ly);
-          ctx.globalAlpha = 1;
-        }
-      }
+    // ── Status badges (4-corner) ──
+    if (!isC2 && globalScale > 0.4) {
+      drawStatusBadges(ctx, x, y, size, node);
     }
 
-    // Label
-    const fontSize = Math.max(11 / globalScale, 2.5);
-    ctx.font = `bold ${fontSize}px monospace`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "top";
-    ctx.fillStyle = "#ffffff";
-    ctx.fillText(label, x, y + size + 3);
-  }, [activeTargetId, oodaPhase]);
+    // Label — hide when FloatingNodeCard is open for this node
+    const isCardOpen = openNodeIds?.includes(node.id as string);
+    if (!isCardOpen) {
+      const fontSize = Math.max(11 / globalScale, 2.5);
+      ctx.font = `bold ${fontSize}px monospace`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillStyle = "#ffffff";
+      const badgeR = Math.max(size * 0.35, 3);
+      ctx.fillText(label, x, y + size + badgeR + 6);
+    }
+  }, [activeTargetId, oodaPhase, openNodeIds]);
 
   const handleEngineStop = useCallback(() => {
     if (!fitted.current && fgRef.current) {
@@ -506,7 +601,7 @@ export function NetworkTopology({
       <TopologyLegend />
       <button
         onClick={handleReset}
-        className="absolute top-2 right-2 z-10 px-2 py-1 rounded border border-athena-border bg-athena-surface hover:bg-athena-elevated text-[10px] font-mono text-athena-text-secondary hover:text-athena-text-primary transition-colors"
+        className="absolute top-2 right-2 z-10 px-2 py-1 rounded border border-athena-border bg-athena-surface hover:bg-athena-elevated text-[10px] font-mono text-athena-text-secondary hover:text-athena-text transition-colors"
         title={t("resetView")}
       >
         &#x25CE; {t("reset")}

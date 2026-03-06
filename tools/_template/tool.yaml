@@ -1,0 +1,24 @@
+# Athena MCP Tool Metadata
+# This file is the single source of truth for tool metadata.
+# scaffold_tool.py reads this to auto-register in mcp_servers.json and docker-compose.yml.
+
+tool_id: "{{TOOL_NAME}}"
+name: "{{TOOL_NAME}}"
+description: "TODO: describe what this tool does"
+category: "reconnaissance"         # reconnaissance | credential_access | execution | lateral_movement | collection
+risk_level: "low"                  # low | medium | high | critical
+mitre_techniques: []               # e.g. ["T1046", "T1595.002"]
+output_traits: []                  # e.g. ["network.host.ip", "service.open_port"]
+
+# MCP Server Config (auto-injected into mcp_servers.json)
+mcp:
+  transport: "stdio"
+  command: "python"
+  args: ["-m", "server"]
+  http_url: "http://mcp-{{TOOL_NAME}}:8080/mcp"
+  tool_prefix: "{{TOOL_NAME}}"
+
+# Docker Compose Config (auto-injected into docker-compose.yml)
+docker:
+  port: 0                          # 0 = auto-assign next available 5809x port
+  environment: {}                  # extra env vars, e.g. {NVD_API_KEY: "${NVD_API_KEY:-}"}

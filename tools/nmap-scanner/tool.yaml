@@ -1,0 +1,19 @@
+# Athena MCP Tool Metadata
+tool_id: "nmap-scanner"
+name: "Nmap Scanner"
+description: "Nmap port scanner and service detection"
+category: "reconnaissance"
+risk_level: "medium"
+mitre_techniques: ["T1046"]
+output_traits: ["service.open_port", "network.host.ip", "host.os"]
+
+mcp:
+  transport: "stdio"
+  command: "python"
+  args: ["-m", "server"]
+  http_url: "http://mcp-nmap:8080/mcp"
+  tool_prefix: "nmap"
+
+docker:
+  port: 58091
+  environment: {}

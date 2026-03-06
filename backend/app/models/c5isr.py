@@ -20,3 +20,7 @@ class C5ISRStatus(BaseModel):
     status: C5ISRDomainStatus
     health_pct: float                   # 0-100
     detail: str = ""
+    # Structured metrics for frontend tactical display
+    numerator: int | None = None        # e.g. alive_agents=2
+    denominator: int | None = None      # e.g. total_agents=3
+    metric_label: str = ""              # e.g. "agents alive"

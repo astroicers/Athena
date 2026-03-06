@@ -10,7 +10,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { useOperation } from "@/hooks/useOperation";
@@ -19,13 +19,9 @@ import { useLiveLog } from "@/hooks/useLiveLog";
 import { useOODA } from "@/hooks/useOODA";
 import { useExecutionUpdate } from "@/hooks/useExecutionUpdate";
 import { useToast } from "@/contexts/ToastContext";
-import { useStageCounts } from "@/hooks/useStageCounts";
 import { MonitorPageSkeleton } from "@/components/ui/Skeleton";
 import { NetworkTopology } from "@/components/topology/NetworkTopology";
-import { NodeDetailPanel } from "@/components/topology/NodeDetailPanel";
-import { SlidePanel } from "@/components/ui/SlidePanel";
-import { KillChainIndicator } from "@/components/mitre/KillChainIndicator";
-import { CollapsibleKPIRow } from "@/components/warroom/CollapsibleKPIRow";
+import { TacticalDashboard } from "@/components/warroom/TacticalDashboard";
 import { WarRoomSidePanel } from "@/components/warroom/WarRoomSidePanel";
 import type { TopologyData } from "@/types/api";
 import type { OrientRecommendation } from "@/types/recommendation";
@@ -33,6 +29,7 @@ import type { Agent } from "@/types/agent";
 import type { LogEntry } from "@/types/log";
 import type { TechniqueWithStatus } from "@/types/technique";
 import type { OODATimelineEntry } from "@/types/ooda";
+import type { C5ISRStatus } from "@/types/c5isr";
 import { KillChainStage } from "@/types/enums";
 
 const DEFAULT_OP_ID = "op-0001";
@@ -67,15 +64,23 @@ export default function WarRoomPage() {
   const [llmThinking, setLlmThinking] = useState(false);
   const [llmBackend, setLlmBackend] = useState<string | null>(null);
   const [llmLatencyMs, setLlmLatencyMs] = useState<number | null>(null);
-  const [c5isrDomains, setC5isrDomains] = useState<Array<{ domain: string; healthPct: number }>>([]);
+  const [c5isrDomains, setC5isrDomains] = useState<C5ISRStatus[]>([]);
   const [oodaTimeline, setOodaTimeline] = useState<OODATimelineEntry[]>([]);
 
   // War Room specific
-  const [kpiOpen, setKpiOpen] = useState(false);
-  const [sidePanelOpen, setSidePanelOpen] = useState(true);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [sidePanelOpen, setSidePanelOpen] = useState(false);
+  const [openNodeIds, setOpenNodeIds] = useState<string[]>([]);
 
-  const stageCounts = useStageCounts(techniques);
+  // ── Node click handler (toggle, max 6 open) ──
+  const handleNodeClick = useCallback((nodeId: string) => {
+    setOpenNodeIds((prev) =>
+      prev.includes(nodeId)
+        ? prev.filter((id) => id !== nodeId)
+        : prev.length >= 6
+          ? [...prev.slice(1), nodeId]
+          : [...prev, nodeId]
+    );
+  }, []);
 
   // ── Initial data fetch ──
   useEffect(() => {
@@ -85,7 +90,7 @@ export default function WarRoomPage() {
       api.get<{ items: LogEntry[] }>(`/operations/${DEFAULT_OP_ID}/logs?page_size=50`).then((r) => setInitialLogs(r.items || [])),
       api.get<OrientRecommendation>(`/operations/${DEFAULT_OP_ID}/recommendations/latest`).then(setRecommendation),
       api.get<TechniqueWithStatus[]>(`/operations/${DEFAULT_OP_ID}/techniques`).then(setTechniques),
-      api.get<Array<{ domain: string; healthPct: number; status: string; detail: string }>>(`/operations/${DEFAULT_OP_ID}/c5isr`).then(setC5isrDomains).catch(() => {}),
+      api.get<C5ISRStatus[]>(`/operations/${DEFAULT_OP_ID}/c5isr`).then(setC5isrDomains).catch(() => {}),
       api.get<OODATimelineEntry[]>(`/operations/${DEFAULT_OP_ID}/ooda/timeline`).then(setOodaTimeline).catch(() => {}),
     ]).catch(() => addToast(tErrors("failedLoadWarRoom"), "error"))
       .finally(() => setIsLoading(false));
@@ -167,10 +172,22 @@ export default function WarRoomPage() {
   useEffect(() => {
     const unsub = ws.subscribe("c5isr.update", (raw: unknown) => {
       const data = raw as Record<string, unknown>;
-      const domains = data.domains as Array<{ domain: string; healthPct: number }> | undefined;
+      const domains = data.domains as C5ISRStatus[] | undefined;
       if (domains) setC5isrDomains(domains);
     });
     return unsub;
+  }, [ws]);
+
+  // recon/initial_access completion → refresh topology
+  useEffect(() => {
+    const refreshTopo = () => {
+      api.get<TopologyData>(`/operations/${DEFAULT_OP_ID}/topology`)
+        .then(setTopology)
+        .catch(() => {});
+    };
+    const unsub1 = ws.subscribe("recon.completed", refreshTopo);
+    const unsub2 = ws.subscribe("initial_access.completed", refreshTopo);
+    return () => { unsub1(); unsub2(); };
   }, [ws]);
 
   // ooda.phase → refresh timeline
@@ -227,19 +244,45 @@ export default function WarRoomPage() {
     addToast(t("directiveSent"), "success");
   }
 
+  async function handleOodaTrigger() {
+    await api.post(`/operations/${DEFAULT_OP_ID}/ooda/trigger`);
+    addToast(t("oodaStarted"), "info");
+  }
+
+  async function handleReconScan(targetId: string) {
+    try {
+      await api.post(`/operations/${DEFAULT_OP_ID}/recon/scan`, {
+        target_id: targetId,
+        enable_initial_access: false,
+      });
+      addToast(t("reconStarted"), "info");
+    } catch {
+      addToast(tErrors("failedRecon"), "error");
+    }
+  }
+
+  async function handleInitialAccess(targetId: string) {
+    try {
+      await api.post(`/operations/${DEFAULT_OP_ID}/recon/initial-access`, {
+        target_id: targetId,
+      });
+      addToast(t("initialAccessStarted"), "info");
+    } catch {
+      addToast(tErrors("failedInitialAccess"), "error");
+    }
+  }
+
   if (isLoading) return <MonitorPageSkeleton />;
 
   return (
     <div className="-m-4 h-[calc(100vh-48px)] flex flex-col overflow-hidden">
-      {/* Collapsible KPI Row */}
-      <CollapsibleKPIRow
-        activeAgents={operation?.activeAgents ?? 0}
-        successRate={operation?.successRate ?? 0}
-        techniquesExecuted={techniques.filter((t) => t.latestStatus && t.latestStatus !== "untested").length}
-        techniquesTotal={techniques.length}
-        threatLevel={operation?.threatLevel ?? 0}
-        isOpen={kpiOpen}
-        onToggle={() => setKpiOpen((v) => !v)}
+      {/* Tactical Dashboard */}
+      <TacticalDashboard
+        c5isrDomains={c5isrDomains}
+        currentOodaPhase={oodaPhase}
+        oodaIterationCount={operation?.oodaIterationCount ?? 0}
+        onDirectiveSubmit={handleDirectiveSubmit}
+        onOodaTrigger={handleOodaTrigger}
       />
 
       {/* Main area: Topology + Side Panel */}
@@ -251,12 +294,17 @@ export default function WarRoomPage() {
             nodeKillChainMap={nodeKillChainMap}
             nodeSizeMultiplier={1.5}
             height="auto"
-            onNodeClick={setSelectedNodeId}
+            onNodeClick={handleNodeClick}
+            openNodeIds={openNodeIds}
+            operationId={DEFAULT_OP_ID}
+            onCloseNode={(id) => setOpenNodeIds((prev) => prev.filter((n) => n !== id))}
+            onReconScan={handleReconScan}
+            onInitialAccess={handleInitialAccess}
           />
           {/* Side Panel Toggle */}
           <button
             onClick={() => setSidePanelOpen((v) => !v)}
-            className="absolute top-2 right-2 z-10 px-2 py-1 rounded border border-athena-border bg-athena-surface/80 hover:bg-athena-surface text-[10px] font-mono text-athena-text-secondary hover:text-athena-text transition-colors backdrop-blur-sm"
+            className="absolute top-2 right-24 z-10 px-2 py-1 rounded border border-athena-border bg-athena-surface hover:bg-athena-elevated text-[10px] font-mono text-athena-text-secondary hover:text-athena-text transition-colors"
             title={t("sidePanel")}
           >
             {sidePanelOpen ? "▶" : "◀"} {t("sidePanel")}
@@ -265,7 +313,7 @@ export default function WarRoomPage() {
 
         {/* Side Panel */}
         {sidePanelOpen && (
-          <div className="w-80 shrink-0 border-l border-athena-border">
+          <div className="w-96 shrink-0 border-l border-athena-border">
             <WarRoomSidePanel
               activeTechniqueId={executionUpdate?.techniqueId ?? null}
               activeEngine={executionUpdate?.engine ?? null}
@@ -280,37 +328,14 @@ export default function WarRoomPage() {
               oodaTimeline={oodaTimeline}
               currentOodaPhase={oodaPhase}
               agents={agents}
-              c5isrDomains={c5isrDomains as any}
-              threatLevel={operation?.threatLevel ?? 0}
-              techniques={techniques}
-              executionUpdate={executionUpdate}
               allLogs={allLogs}
               operationId={DEFAULT_OP_ID}
               onDirectiveSubmit={handleDirectiveSubmit}
+              onOodaTrigger={handleOodaTrigger}
             />
           </div>
         )}
       </div>
-
-      {/* Kill Chain Bar — fixed at bottom */}
-      <div className="h-10 shrink-0 border-t border-athena-border">
-        <KillChainIndicator stageCounts={stageCounts} />
-      </div>
-
-      {/* Node Detail Slide Panel */}
-      <SlidePanel
-        open={selectedNodeId !== null}
-        onClose={() => setSelectedNodeId(null)}
-        title={t("nodeDetails")}
-        width="sm"
-      >
-        <NodeDetailPanel
-          nodeId={selectedNodeId}
-          topologyData={topology}
-          nodeKillChainMap={nodeKillChainMap}
-          operationId={DEFAULT_OP_ID}
-        />
-      </SlidePanel>
     </div>
   );
 }

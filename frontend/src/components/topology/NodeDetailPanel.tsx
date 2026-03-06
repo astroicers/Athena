@@ -22,7 +22,7 @@ interface FactRow {
   trait: string;
   value: string;
   category: string;
-  source_target_id: string | null;
+  sourceTargetId: string | null;
 }
 
 const KC_STAGES: KillChainStage[] = [
@@ -62,7 +62,7 @@ export function NodeDetailPanel({
     api
       .get<FactRow[]>(`/operations/${operationId}/facts`)
       .then((all) => {
-        setFacts(all.filter((f) => f.source_target_id === nodeId));
+        setFacts(all.filter((f) => f.sourceTargetId === nodeId));
       })
       .catch(() => setFacts([]))
       .finally(() => setLoadingFacts(false));
@@ -80,9 +80,10 @@ export function NodeDetailPanel({
 
   const isCompromised = !!node.data?.isCompromised;
   const role = (node.data?.role as string) || "host";
-  const ip = (node.data?.ip_address as string) || "—";
-  const os = (node.data?.os as string) || "—";
-  const priv = (node.data?.privilege_level as string) || null;
+  const ip = (node.data?.ipAddress as string) || "—";
+  const osFact = facts.find((f) => f.trait === "host.os");
+  const os = (node.data?.os as string) || osFact?.value || "—";
+  const priv = (node.data?.privilegeLevel as string) || null;
   const kcStage = nodeKillChainMap[nodeId] ?? null;
   const kcIndex = kcStage ? KC_STAGES.indexOf(kcStage) : -1;
 
@@ -176,8 +177,8 @@ export function NodeDetailPanel({
         <div className="space-y-1">
           {facts.map((f) => (
             <div key={f.id} className="text-[10px] font-mono space-y-0.5">
-              <span className="text-athena-accent/80">{f.trait}</span>
-              <div className="text-athena-text-primary break-all pl-2 opacity-80">
+              <span className="text-athena-accent">{f.trait}</span>
+              <div className="text-athena-text-primary break-all pl-2">
                 {f.value.length > 60 ? f.value.slice(0, 60) + "…" : f.value}
               </div>
             </div>

@@ -25,6 +25,7 @@ router = APIRouter()
 
 
 def _row_to_c5isr(row: aiosqlite.Row) -> C5ISRStatus:
+    keys = row.keys()
     return C5ISRStatus(
         id=row["id"],
         operation_id=row["operation_id"],
@@ -32,6 +33,9 @@ def _row_to_c5isr(row: aiosqlite.Row) -> C5ISRStatus:
         status=row["status"],
         health_pct=row["health_pct"],
         detail=row["detail"],
+        numerator=row["numerator"] if "numerator" in keys else None,
+        denominator=row["denominator"] if "denominator" in keys else None,
+        metric_label=row["metric_label"] if "metric_label" in keys else "",
     )
 
 

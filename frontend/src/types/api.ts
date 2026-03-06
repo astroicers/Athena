@@ -46,3 +46,20 @@ export interface WebSocketEvent {
   data: unknown;
   timestamp: string;
 }
+
+export interface NodeSummaryContent {
+  attackSurface: string;
+  credentialChain: string;
+  lateralMovement: string;
+  persistence: string;
+  riskAssessment: string;
+  recommendedNext: string;
+}
+
+export interface NodeSummary {
+  summary: NodeSummaryContent;
+  factCount: number;
+  cached: boolean;
+  generatedAt: string;
+  model: string;
+}

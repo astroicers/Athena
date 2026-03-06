@@ -11,16 +11,13 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { AIDecisionPanel } from "@/components/topology/AIDecisionPanel";
 import { RecommendationPanel } from "@/components/ooda/RecommendationPanel";
 import { OODATimeline } from "@/components/ooda/OODATimeline";
 import { AgentBeacon } from "@/components/data/AgentBeacon";
-import { C5ISRStatusBoard } from "@/components/c5isr/C5ISRStatusBoard";
-import { ThreatLevelGauge } from "@/components/topology/ThreatLevelGauge";
-import { AttackSituationDiagram } from "@/components/situation/AttackSituationDiagram";
 import { LogEntryRow } from "@/components/data/LogEntryRow";
-import { VirtualList } from "@/components/ui/VirtualList";
 import { AccordionSection } from "./AccordionSection";
 import { LLMDirectiveInput } from "./LLMDirectiveInput";
 import type { OODAPhase, AgentStatus, KillChainStage } from "@/types/enums";
@@ -28,9 +25,6 @@ import type { OrientRecommendation } from "@/types/recommendation";
 import type { OODATimelineEntry } from "@/types/ooda";
 import type { Agent } from "@/types/agent";
 import type { LogEntry } from "@/types/log";
-import type { TechniqueWithStatus } from "@/types/technique";
-import type { C5ISRStatus } from "@/types/c5isr";
-import type { ExecutionUpdate } from "@/hooks/useExecutionUpdate";
 
 interface WarRoomSidePanelProps {
   // AI Decision
@@ -50,17 +44,12 @@ interface WarRoomSidePanelProps {
   currentOodaPhase: OODAPhase | null;
   // Agents
   agents: Agent[];
-  // C5ISR
-  c5isrDomains: C5ISRStatus[];
-  threatLevel: number;
-  // Situation
-  techniques: TechniqueWithStatus[];
-  executionUpdate: ExecutionUpdate | null;
   // Logs
   allLogs: LogEntry[];
   // Directive
   operationId: string;
   onDirectiveSubmit: (directive: string) => Promise<void>;
+  onOodaTrigger: () => Promise<void>;
 }
 
 export function WarRoomSidePanel({
@@ -77,13 +66,10 @@ export function WarRoomSidePanel({
   oodaTimeline,
   currentOodaPhase,
   agents,
-  c5isrDomains,
-  threatLevel,
-  techniques,
-  executionUpdate,
   allLogs,
   operationId,
   onDirectiveSubmit,
+  onOodaTrigger,
 }: WarRoomSidePanelProps) {
   const t = useTranslations("WarRoom");
   const [openSection, setOpenSection] = useState<string | null>("aiDecision");
@@ -94,10 +80,6 @@ export function WarRoomSidePanel({
 
   const activeAgentCount = agents.filter(
     (a) => a.status === "alive"
-  ).length;
-
-  const successCount = techniques.filter(
-    (tech) => tech.latestStatus === "success" || tech.latestStatus === "partial"
   ).length;
 
   return (
@@ -172,32 +154,6 @@ export function WarRoomSidePanel({
         </AccordionSection>
 
         <AccordionSection
-          id="c5isr"
-          title="C5ISR"
-          summary={c5isrDomains.map((d) => `${d.domain[0].toUpperCase()}:${d.healthPct}%`).join(" ")}
-          isOpen={openSection === "c5isr"}
-          onToggle={() => toggle("c5isr")}
-        >
-          <ThreatLevelGauge level={threatLevel} />
-          <C5ISRStatusBoard domains={c5isrDomains} />
-        </AccordionSection>
-
-        <AccordionSection
-          id="situation"
-          title="Situation"
-          summary={`${successCount} success`}
-          isOpen={openSection === "situation"}
-          onToggle={() => toggle("situation")}
-        >
-          <AttackSituationDiagram
-            techniques={techniques}
-            oodaPhase={currentOodaPhase}
-            executionUpdate={executionUpdate}
-            c5isrDomains={c5isrDomains as Array<{ domain: string; healthPct: number }>}
-          />
-        </AccordionSection>
-
-        <AccordionSection
           id="logs"
           title="Logs"
           summary={allLogs[allLogs.length - 1]?.message?.slice(0, 40) || "—"}
@@ -209,13 +165,19 @@ export function WarRoomSidePanel({
               Waiting for logs...
             </span>
           ) : (
-            <VirtualList
-              items={allLogs}
-              rowHeight={28}
-              height={200}
-              className="bg-athena-bg border border-athena-border rounded-athena-sm"
-              renderRow={(entry) => <LogEntryRow key={entry.id} entry={entry} />}
-            />
+            <div className="space-y-0">
+              <div className="bg-athena-bg border border-athena-border rounded-athena-sm overflow-hidden">
+                {allLogs.slice(-5).map((entry) => (
+                  <LogEntryRow key={entry.id} entry={entry} />
+                ))}
+              </div>
+              <Link
+                href="/planner"
+                className="block text-center text-[10px] font-mono text-athena-accent hover:underline mt-1.5 py-0.5"
+              >
+                {t("viewFullLogs")} →
+              </Link>
+            </div>
           )}
         </AccordionSection>
       </div>
@@ -226,6 +188,7 @@ export function WarRoomSidePanel({
           operationId={operationId}
           currentOodaPhase={currentOodaPhase}
           onSubmit={onDirectiveSubmit}
+          onOodaTrigger={onOodaTrigger}
         />
       </div>
     </div>

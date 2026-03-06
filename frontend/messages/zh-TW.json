@@ -41,7 +41,16 @@
     "domainComms": "通訊",
     "domainComputers": "資訊",
     "domainCyber": "網路",
-    "domainIsr": "情監偵"
+    "domainIsr": "情監偵",
+    "tacticalCommand": "決策節奏",
+    "tacticalControl": "植入存活",
+    "tacticalComms": "C2 通道",
+    "tacticalComputers": "目標攻陷",
+    "tacticalCyber": "攻擊成功",
+    "tacticalIsr": "情報品質",
+    "iterLabel": "次迭代",
+    "channelUp": "在線",
+    "channelDown": "離線"
   },
   "Navigator": {
     "attackPath": "攻擊路徑時間軸",
@@ -388,7 +397,30 @@
     "lastDirective": "上次指令：",
     "failedDirective": "傳送指令失敗",
     "failedLoadWarRoom": "載入作戰室資料失敗",
-    "nodeDetails": "節點詳情"
+    "nodeDetails": "節點詳情",
+    "oodaStarted": "OODA 循環已啟動",
+    "oodaTrigger": "啟動 OODA",
+    "oodaTriggerHint": "儲存指令並啟動 OODA 循環",
+    "viewFullLogs": "查看完整日誌",
+    "reconStarted": "偵察掃描已啟動",
+    "initialAccessStarted": "初始入場已啟動",
+    "battleRhythm": "作戰節奏"
+  },
+  "Legend": {
+    "title": "圖例",
+    "nodeStatus": "節點狀態",
+    "connections": "連線類型",
+    "nodeStats": "節點屬性",
+    "session": "活躍連線",
+    "attacking": "攻擊中",
+    "scanning": "掃描中",
+    "idle": "閒置目標",
+    "c2Server": "C2 伺服器",
+    "lateral": "橫向移動",
+    "scans": "掃描次數",
+    "ports": "開放埠數",
+    "facts": "情報數量",
+    "credentials": "憑證數量"
   },
   "Topology": {
     "noData": "無拓撲資料",
@@ -406,7 +438,33 @@
     "killChain": "殺傷鏈",
     "noAttackStage": "尚無攻擊階段紀錄",
     "collectedFacts": "已收集事實",
-    "noFacts": "尚無事實資料"
+    "noFacts": "尚無事實資料",
+    "addTargetsToBegin": "新增目標以啟動拓撲",
+    "zoomIn": "放大",
+    "zoomOut": "縮小",
+    "lockZoom": "鎖定縮放",
+    "unlockZoom": "解鎖縮放",
+    "tabFacts": "情報",
+    "tabAI": "AI 摘要",
+    "tabBasic": "基本",
+    "aiAnalyzing": "AI 正在分析此節點...",
+    "aiError": "AI 摘要產生失敗",
+    "aiRetry": "重新產生",
+    "aiCached": "已快取",
+    "attackSurface": "攻擊面",
+    "credentialChain": "憑證鏈",
+    "lateralMovement": "橫向移動",
+    "persistenceOpp": "持久化",
+    "riskAssessment": "風險評估",
+    "recommendedNext": "建議下一步",
+    "catCredential": "憑證",
+    "catHost": "主機",
+    "catService": "服務",
+    "catNetwork": "網路",
+    "catOther": "其他",
+    "moreItems": "+{count} 項",
+    "reconScan": "偵察掃描",
+    "initialAccess": "初始入場"
   },
   "Situation": {
     "title": "攻擊態勢圖",
@@ -438,6 +496,9 @@
     "failedRefreshTechniques": "重新整理技術失敗",
     "failedSetActive": "設定攻擊目標失敗",
     "failedDeleteTarget": "刪除目標失敗",
-    "failedBatchImport": "批次匯入失敗"
+    "failedBatchImport": "批次匯入失敗",
+    "failedRecon": "偵察掃描啟動失敗",
+    "failedInitialAccess": "初始入場啟動失敗",
+    "failedLoadWarRoom": "載入作戰室資料失敗"
   }
 }

@@ -18,20 +18,24 @@ interface LLMDirectiveInputProps {
   operationId: string;
   currentOodaPhase: OODAPhase | null;
   onSubmit: (directive: string) => Promise<void>;
+  onOodaTrigger: () => Promise<void>;
 }
 
 export function LLMDirectiveInput({
   currentOodaPhase,
   onSubmit,
+  onOodaTrigger,
 }: LLMDirectiveInputProps) {
   const t = useTranslations("WarRoom");
   const [directive, setDirective] = useState("");
   const [lastDirective, setLastDirective] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [triggering, setTriggering] = useState(false);
 
-  // Highlight when cycle is idle (between cycles)
   const isCycleIdle = currentOodaPhase === null;
 
+  // Save directive only (Enter key or small send button)
   async function handleSubmit() {
     const trimmed = directive.trim();
     if (!trimmed || sending) return;
@@ -40,22 +44,37 @@ export function LLMDirectiveInput({
       await onSubmit(trimmed);
       setLastDirective(trimmed);
       setDirective("");
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 2000);
     } finally {
       setSending(false);
     }
   }
 
+  // Save directive (if any) + trigger OODA cycle
+  async function handleOodaTrigger() {
+    if (triggering) return;
+    setTriggering(true);
+    try {
+      const trimmed = directive.trim();
+      if (trimmed) {
+        await onSubmit(trimmed);
+        setLastDirective(trimmed);
+        setDirective("");
+      }
+      await onOodaTrigger();
+    } finally {
+      setTriggering(false);
+    }
+  }
+
   return (
-    <div className="px-3 py-2 space-y-1">
-      {lastDirective && (
-        <div className="text-[10px] font-mono text-athena-text-secondary/60 truncate">
-          {t("lastDirective")}: {lastDirective}
-        </div>
-      )}
+    <div className="px-3 py-2 space-y-1.5">
+      {/* Directive textarea + save button */}
       <div
         className={`flex gap-2 items-end border rounded-athena-sm p-1.5 transition-colors ${
           isCycleIdle
-            ? "border-athena-accent animate-pulse"
+            ? "border-athena-accent/60"
             : "border-athena-border"
         }`}
       >
@@ -75,9 +94,33 @@ export function LLMDirectiveInput({
         <button
           onClick={handleSubmit}
           disabled={!directive.trim() || sending}
-          className="shrink-0 px-3 py-1 text-[10px] font-mono uppercase tracking-wider bg-athena-accent/20 text-athena-accent border border-athena-accent/50 rounded-athena-sm hover:bg-athena-accent/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          title={t("directiveSend")}
+          className={`shrink-0 px-2 py-1 text-[10px] font-mono border rounded-athena-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+            showSuccess
+              ? "bg-athena-success/20 text-athena-success border-athena-success/50"
+              : "bg-athena-accent/10 text-athena-accent border-athena-accent/30 hover:bg-athena-accent/20"
+          }`}
         >
-          {t("directiveSend")}
+          {showSuccess ? "✓" : t("directiveSend")}
+        </button>
+      </div>
+
+      {/* Last directive + OODA trigger */}
+      <div className="flex items-center justify-between gap-2">
+        {lastDirective ? (
+          <div className="text-[10px] font-mono text-athena-text-secondary/60 truncate min-w-0">
+            {t("lastDirective")} {lastDirective}
+          </div>
+        ) : (
+          <div />
+        )}
+        <button
+          onClick={handleOodaTrigger}
+          disabled={triggering}
+          title={t("oodaTriggerHint")}
+          className="shrink-0 flex items-center gap-1 px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-athena-accent bg-athena-accent/10 border border-athena-accent/40 rounded-athena-sm hover:bg-athena-accent/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          ▶ {t("oodaTrigger")}
         </button>
       </div>
     </div>

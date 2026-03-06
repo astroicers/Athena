@@ -199,6 +199,9 @@ _CREATE_TABLES: list[str] = [
         status TEXT NOT NULL,
         health_pct REAL DEFAULT 100.0,
         detail TEXT DEFAULT '',
+        numerator INTEGER,
+        denominator INTEGER,
+        metric_label TEXT DEFAULT '',
         updated_at TEXT DEFAULT (datetime('now')),
         UNIQUE(operation_id, domain)
     );
@@ -756,6 +759,36 @@ async def init_db() -> None:
                     "WHERE tool_id = ? AND (config_json IS NULL OR config_json = '{}')",
                     (f'{{"mcp_server":"{srv}"}}', tid),
                 )
+            await db.commit()
+        except Exception:
+            pass
+        # Migration: deduplicate facts — same (operation_id, trait, value) must be unique
+        try:
+            await db.execute("""
+                DELETE FROM facts WHERE id NOT IN (
+                    SELECT MIN(id) FROM facts GROUP BY operation_id, trait, value
+                )
+            """)
+            await db.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_facts_dedup "
+                "ON facts(operation_id, trait, value)"
+            )
+            await db.commit()
+        except Exception:
+            pass  # index already exists or table was freshly created
+        # Migration: add structured metric fields to c5isr_statuses
+        try:
+            await db.execute("ALTER TABLE c5isr_statuses ADD COLUMN numerator INTEGER")
+            await db.commit()
+        except Exception:
+            pass
+        try:
+            await db.execute("ALTER TABLE c5isr_statuses ADD COLUMN denominator INTEGER")
+            await db.commit()
+        except Exception:
+            pass
+        try:
+            await db.execute("ALTER TABLE c5isr_statuses ADD COLUMN metric_label TEXT DEFAULT ''")
             await db.commit()
         except Exception:
             pass

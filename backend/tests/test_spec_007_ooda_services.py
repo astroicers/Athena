@@ -336,9 +336,10 @@ async def test_orient_prompt_no_playbooks_shows_placeholder(seeded_db):
 
 
 async def test_orient_call_claude_sends_system_param(seeded_db):
-    """_call_claude() sends system parameter to Anthropic SDK."""
-    ws = _make_ws()
-    orient = OrientEngine(ws)
+    """LLMClient._call_claude() sends system parameter to Anthropic SDK."""
+    from app.services.llm_client import LLMClient
+
+    client = LLMClient()
 
     captured_kwargs = {}
 
@@ -350,12 +351,12 @@ async def test_orient_call_claude_sends_system_param(seeded_db):
         mock_msg.content = [mock_block]
         return mock_msg
 
-    mock_client = MagicMock()
-    mock_client.messages = MagicMock()
-    mock_client.messages.create = mock_create
-    orient._anthropic_client = mock_client
+    mock_anthropic = MagicMock()
+    mock_anthropic.messages = MagicMock()
+    mock_anthropic.messages.create = mock_create
+    client._anthropic_client = mock_anthropic
 
-    await orient._call_claude("Test system prompt", "Test user prompt")
+    await client._call_claude("Test system prompt", "Test user prompt", "claude-sonnet-4-20250514", 4000, 0.7, 60.0)
 
     assert "system" in captured_kwargs
     assert captured_kwargs["system"] == "Test system prompt"
@@ -429,13 +430,28 @@ async def test_c5isr_health_to_status_critical():
 
 
 async def test_c5isr_update_creates_six_domains(seeded_db):
-    """update() → produces 6 C5ISR domain records."""
+    """update() → produces 6 C5ISR domain records with structured metrics."""
     ws = _make_ws()
     mapper = C5ISRMapper(ws)
     results = await mapper.update(seeded_db, "test-op-1")
     assert len(results) == 6
     domains = {r["domain"] for r in results}
     assert domains == {"command", "control", "comms", "computers", "cyber", "isr"}
+    # Verify structured fields exist in all domains
+    for r in results:
+        assert "numerator" in r
+        assert "denominator" in r
+        assert "metric_label" in r
+        assert isinstance(r["metric_label"], str)
+        assert len(r["metric_label"]) > 0
+    # Verify computers is from red team perspective (pwned, not secure)
+    computers = next(r for r in results if r["domain"] == "computers")
+    assert "pwned" in computers["detail"]
+    assert computers["metric_label"] == "targets pwned"
+    # Verify control has numerator/denominator
+    control = next(r for r in results if r["domain"] == "control")
+    assert control["numerator"] is not None
+    assert control["denominator"] is not None
 
 
 # ===================================================================

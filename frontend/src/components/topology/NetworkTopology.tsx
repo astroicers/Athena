@@ -14,27 +14,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { TopologyData } from "@/types/api";
 import { KillChainStage } from "@/types/enums";
+import { TopologyLegend } from "./TopologyLegend";
+import { FloatingCardLayer } from "./FloatingCardLayer";
+import { PHASE_COLORS, KILL_CHAIN_COLORS } from "./topologyColors";
 
-// ── Phase-aware colour palette ──
-const PHASE_COLORS: Record<string, string> = {
-  session:   "#ff4444",   // red — active session
-  attacking: "#ff8800",   // orange — technique executing
-  scanning:  "#4488ff",   // blue — recon running
-  attempted: "#00ff8866", // faded green — tried but no session
-  idle:      "#00ff88",   // green — untouched target
-  c2:        "#4488ff",   // blue — Athena C2 node
-  lateral:   "#ffaa00",   // gold — lateral movement path
-};
-
-export const KILL_CHAIN_COLORS: Record<KillChainStage, string> = {
-  [KillChainStage.RECON]:     "#4488ff",
-  [KillChainStage.WEAPONIZE]: "#8855ff",
-  [KillChainStage.DELIVER]:   "#aa44ff",
-  [KillChainStage.EXPLOIT]:   "#ff8800",
-  [KillChainStage.INSTALL]:   "#ffaa00",
-  [KillChainStage.C2]:        "#ff4444",
-  [KillChainStage.ACTION]:    "#ff0040",
-};
+export { PHASE_COLORS, KILL_CHAIN_COLORS };
 
 const GRAPH_HEIGHT = 420;
 
@@ -127,7 +111,7 @@ function hexPath(ctx: CanvasRenderingContext2D, x: number, y: number, radius: nu
   ctx.closePath();
 }
 
-const OODA_PHASE_COLORS: Record<string, string> = {
+export const OODA_PHASE_COLORS: Record<string, string> = {
   observe: "#4488ff",
   orient: "#ffaa00",
   decide: "#00ff88",
@@ -143,6 +127,14 @@ interface NetworkTopologyProps {
   activeTargetId?: string;
   oodaPhase?: string | null;
   height?: number | "auto";
+  graphRef?: React.MutableRefObject<any>;
+  onZoomChange?: () => void;
+  onEngineRunningChange?: (running: boolean) => void;
+  openNodeIds?: string[];
+  operationId?: string;
+  onCloseNode?: (nodeId: string) => void;
+  onReconScan?: (targetId: string) => void;
+  onInitialAccess?: (targetId: string) => void;
 }
 
 export function NetworkTopology({
@@ -154,6 +146,14 @@ export function NetworkTopology({
   activeTargetId,
   oodaPhase,
   height = GRAPH_HEIGHT,
+  graphRef,
+  onZoomChange,
+  onEngineRunningChange,
+  openNodeIds,
+  operationId,
+  onCloseNode,
+  onReconScan,
+  onInitialAccess,
 }: NetworkTopologyProps) {
   const t = useTranslations("Topology");
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -165,6 +165,9 @@ export function NetworkTopology({
   const [containerWidth, setContainerWidth] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
   const fitted = useRef(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [zoomLocked, setZoomLocked] = useState(false);
+  const [viewTick, setViewTick] = useState(0);
 
   useEffect(() => {
     setMounted(true);
@@ -189,6 +192,7 @@ export function NetworkTopology({
 
   useEffect(() => {
     if (!data || data.nodes.length === 0 || !ForceGraph2DComp) return;
+    onEngineRunningChange?.(true);
     fitted.current = false;
     const timers = [500, 1200, 2500].map((ms) =>
       setTimeout(() => {
@@ -196,6 +200,7 @@ export function NetworkTopology({
       }, ms),
     );
     return () => timers.forEach(clearTimeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, ForceGraph2DComp]);
 
   const graphData = useMemo(() => {
@@ -203,7 +208,7 @@ export function NetworkTopology({
     const m = nodeSizeMultiplier;
     return {
       nodes: data.nodes.map((n) => {
-        const phase = (n.data?.attack_phase as string) || "idle";
+        const phase = (n.data?.attackPhase as string) || "idle";
         const isC2 = n.type === "c2";
         const role = (n.data?.role as string) || "host";
         let color: string;
@@ -335,6 +340,51 @@ export function NetworkTopology({
       ctx.globalAlpha = 1;
     }
 
+    // ── Gamification arc stat bars (host nodes only, zoom > 0.5) ──
+    if (!isC2 && globalScale > 0.5) {
+      const scanCount = (node.scanCount as number) || 0;
+      const portCount = (node.openPortCount as number) || 0;
+      const factCount = (node.factCount as number) || 0;
+      const credCount = (node.credentialCount as number) || 0;
+
+      const arcRadius = size + 6;
+      const arcWidth = 2;
+      const maxVal = 10;
+
+      const arcs: { count: number; color: string; startAngle: number }[] = [
+        { count: scanCount, color: "#4488ff", startAngle: -Math.PI / 2 },
+        { count: portCount, color: "#eab308", startAngle: 0 },
+        { count: factCount, color: "#22c55e", startAngle: Math.PI / 2 },
+        { count: credCount, color: "#ef4444", startAngle: Math.PI },
+      ];
+
+      for (const arc of arcs) {
+        if (arc.count <= 0) continue;
+        const fraction = Math.min(arc.count / maxVal, 1);
+        const sweep = fraction * (Math.PI / 2);
+        ctx.beginPath();
+        ctx.arc(x, y, arcRadius, arc.startAngle, arc.startAngle + sweep);
+        ctx.strokeStyle = arc.color;
+        ctx.lineWidth = arcWidth;
+        ctx.globalAlpha = 0.85;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+
+        if (globalScale > 0.8) {
+          const midAngle = arc.startAngle + sweep / 2;
+          const lx = x + Math.cos(midAngle) * (arcRadius + 5);
+          const ly = y + Math.sin(midAngle) * (arcRadius + 5);
+          ctx.font = `bold ${Math.max(8 / globalScale, 4)}px monospace`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillStyle = arc.color;
+          ctx.globalAlpha = 0.9;
+          ctx.fillText(`${arc.count}`, lx, ly);
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
+
     // Label
     const fontSize = Math.max(11 / globalScale, 2.5);
     ctx.font = `bold ${fontSize}px monospace`;
@@ -349,6 +399,9 @@ export function NetworkTopology({
       fitted.current = true;
       try { fgRef.current.zoomToFit(400, 30); } catch { /* ignore */ }
     }
+    onEngineRunningChange?.(false);
+    onZoomChange?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleReset = useCallback(() => {
@@ -423,6 +476,17 @@ export function NetworkTopology({
     );
   }
 
+  if (data.nodes.length <= 1) {
+    return (
+      <div ref={wrapperRef} className={`bg-athena-bg border border-athena-border rounded-athena-md flex flex-col items-center justify-center gap-3 ${wrapperClass}`} style={wrapperStyle}>
+        <span className="text-athena-accent text-3xl">&#x25CE;</span>
+        <span className="text-xs font-mono text-athena-text-secondary">
+          {t("addTargetsToBegin")}
+        </span>
+      </div>
+    );
+  }
+
   if (!mounted || !ForceGraph2DComp || containerWidth === 0) {
     return (
       <div ref={wrapperRef} className={`bg-athena-bg rounded-athena-md border border-athena-border flex items-center justify-center ${wrapperClass}`} style={wrapperStyle}>
@@ -439,15 +503,16 @@ export function NetworkTopology({
       className={`bg-athena-bg rounded-athena-md overflow-hidden border border-athena-border relative ${wrapperClass}`}
       style={wrapperStyle}
     >
+      <TopologyLegend />
       <button
         onClick={handleReset}
-        className="absolute top-2 right-2 z-10 px-2 py-1 rounded border border-athena-border bg-athena-surface/80 hover:bg-athena-surface text-[10px] font-mono text-athena-text-secondary hover:text-athena-text-primary transition-colors backdrop-blur-sm"
+        className="absolute top-2 right-2 z-10 px-2 py-1 rounded border border-athena-border bg-athena-surface hover:bg-athena-elevated text-[10px] font-mono text-athena-text-secondary hover:text-athena-text-primary transition-colors"
         title={t("resetView")}
       >
         &#x25CE; {t("reset")}
       </button>
       <ForceGraph2DComp
-        ref={(el: unknown) => { fgRef.current = el; }}
+        ref={(el: unknown) => { fgRef.current = el; if (graphRef) graphRef.current = el; }}
         graphData={graphData}
         nodeCanvasObject={handleNodeCanvasObject}
         nodePointerAreaPaint={(node: Record<string, unknown>, color: string, ctx: CanvasRenderingContext2D) => {
@@ -476,7 +541,84 @@ export function NetworkTopology({
         cooldownTicks={200}
         cooldownTime={5000}
         onEngineStop={handleEngineStop}
+        onZoom={(transform: { k: number }) => { setZoomLevel(transform.k); setViewTick((v) => v + 1); onZoomChange?.(); }}
+        enableZoomInteraction={!zoomLocked}
+        enablePanInteraction={!zoomLocked}
       />
+      {openNodeIds && openNodeIds.length > 0 && operationId && onCloseNode && (
+        <FloatingCardLayer
+          openNodeIds={openNodeIds}
+          fgRef={fgRef}
+          graphData={graphData}
+          topologyData={data}
+          nodeKillChainMap={nodeKillChainMap ?? {}}
+          operationId={operationId}
+          containerWidth={containerWidth}
+          containerHeight={containerHeight}
+          onCloseNode={onCloseNode}
+          viewTick={viewTick}
+          onReconScan={onReconScan}
+          onInitialAccess={onInitialAccess}
+        />
+      )}
+      {/* Zoom Toolbar */}
+      <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1 bg-athena-surface border border-athena-border rounded px-1.5 py-1">
+        <button
+          onClick={() => {
+            const s = Math.max(0.1, zoomLevel * 0.8);
+            fgRef.current?.zoom(s, 300);
+          }}
+          className="w-6 h-6 flex items-center justify-center rounded hover:bg-athena-elevated text-athena-text-secondary hover:text-athena-text text-sm font-mono transition-colors"
+          title={t("zoomOut")}
+        >
+          &minus;
+        </button>
+        <input
+          type="number"
+          value={Math.round(zoomLevel * 100)}
+          onChange={(e) => {
+            const v = Number(e.target.value);
+            if (v > 0 && v <= 500) fgRef.current?.zoom(v / 100, 300);
+          }}
+          className="w-12 h-6 text-center text-[10px] font-mono text-athena-text bg-transparent border border-athena-border rounded appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          min={10}
+          max={500}
+          step={10}
+        />
+        <span className="text-[10px] font-mono text-athena-text-secondary">%</span>
+        <button
+          onClick={() => {
+            const s = Math.min(5, zoomLevel * 1.25);
+            fgRef.current?.zoom(s, 300);
+          }}
+          className="w-6 h-6 flex items-center justify-center rounded hover:bg-athena-elevated text-athena-text-secondary hover:text-athena-text text-sm font-mono transition-colors"
+          title={t("zoomIn")}
+        >
+          +
+        </button>
+        <div className="w-px h-4 bg-athena-border mx-0.5" />
+        <button
+          onClick={() => setZoomLocked((v) => !v)}
+          className={`w-6 h-6 flex items-center justify-center rounded text-[10px] font-mono transition-colors ${
+            zoomLocked
+              ? "bg-athena-accent/20 text-athena-accent"
+              : "hover:bg-athena-elevated text-athena-text-secondary hover:text-athena-text"
+          }`}
+          title={zoomLocked ? t("unlockZoom") : t("lockZoom")}
+        >
+          {zoomLocked ? (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          ) : (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+            </svg>
+          )}
+        </button>
+      </div>
     </div>
   );
 }

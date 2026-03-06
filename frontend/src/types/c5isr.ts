@@ -17,4 +17,8 @@ export interface C5ISRStatus {
   status: C5ISRDomainStatus;
   healthPct: number;
   detail: string;
+  // Structured metrics for tactical display
+  numerator: number | null;
+  denominator: number | null;
+  metricLabel: string;
 }

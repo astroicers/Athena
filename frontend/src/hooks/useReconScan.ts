@@ -93,7 +93,7 @@ export function useReconScan(
             targetId: (res.target_id as string) ?? (res.targetId as string) ?? "",
             phase: null,
             step: 0,
-            totalSteps: 6,
+            totalSteps: 0,
           };
           setCachedScanState(hydrated);
         }
@@ -114,7 +114,7 @@ export function useReconScan(
           targetId: (data.target_id as string) ?? "",
           phase: null,
           step: 0,
-          totalSteps: 6,
+          totalSteps: 0,
         };
         setCachedScanState(next);
       }),

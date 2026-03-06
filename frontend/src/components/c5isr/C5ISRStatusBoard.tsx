@@ -37,7 +37,7 @@ export function C5ISRStatusBoard({ domains }: C5ISRStatusBoardProps) {
       <SectionHeader className="mb-3">
         {t("domainStatus")}
       </SectionHeader>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         {domains.map((d) => (
           <DomainCard key={d.id} domain={d} />
         ))}

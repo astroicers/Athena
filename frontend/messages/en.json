@@ -41,7 +41,16 @@
     "domainComms": "COMMS",
     "domainComputers": "COMPUTERS",
     "domainCyber": "CYBER",
-    "domainIsr": "ISR"
+    "domainIsr": "ISR",
+    "tacticalCommand": "Decision Tempo",
+    "tacticalControl": "Implant Survival",
+    "tacticalComms": "C2 Channel",
+    "tacticalComputers": "Targets Pwned",
+    "tacticalCyber": "Attack Success",
+    "tacticalIsr": "Intel Quality",
+    "iterLabel": "iter",
+    "channelUp": "UP",
+    "channelDown": "DOWN"
   },
   "Navigator": {
     "attackPath": "Attack Path Timeline",
@@ -388,7 +397,30 @@
     "lastDirective": "Last directive:",
     "failedDirective": "Failed to send directive",
     "failedLoadWarRoom": "Failed to load War Room data",
-    "nodeDetails": "Node Details"
+    "nodeDetails": "Node Details",
+    "oodaStarted": "OODA cycle started",
+    "oodaTrigger": "Start OODA",
+    "oodaTriggerHint": "Saves directive and starts OODA cycle",
+    "viewFullLogs": "View full logs",
+    "reconStarted": "Recon scan started",
+    "initialAccessStarted": "Initial access started",
+    "battleRhythm": "BATTLE RHYTHM"
+  },
+  "Legend": {
+    "title": "LEGEND",
+    "nodeStatus": "NODE STATUS",
+    "connections": "CONNECTIONS",
+    "nodeStats": "NODE STATS",
+    "session": "Active Session",
+    "attacking": "Attacking",
+    "scanning": "Scanning",
+    "idle": "Idle Target",
+    "c2Server": "C2 Server",
+    "lateral": "Lateral Move",
+    "scans": "Scan Count",
+    "ports": "Open Ports",
+    "facts": "Intel Facts",
+    "credentials": "Credentials"
   },
   "Topology": {
     "noData": "No topology data available",
@@ -406,7 +438,33 @@
     "killChain": "KILL CHAIN",
     "noAttackStage": "No attack stage recorded",
     "collectedFacts": "COLLECTED FACTS",
-    "noFacts": "No facts collected"
+    "noFacts": "No facts collected",
+    "addTargetsToBegin": "Add targets to start topology",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "lockZoom": "Lock zoom",
+    "unlockZoom": "Unlock zoom",
+    "tabFacts": "INTEL",
+    "tabAI": "AI SUMMARY",
+    "tabBasic": "BASIC",
+    "aiAnalyzing": "AI is analyzing this node...",
+    "aiError": "AI summary generation failed",
+    "aiRetry": "Regenerate",
+    "aiCached": "Cached",
+    "attackSurface": "Attack Surface",
+    "credentialChain": "Credential Chain",
+    "lateralMovement": "Lateral Movement",
+    "persistenceOpp": "Persistence",
+    "riskAssessment": "Risk Assessment",
+    "recommendedNext": "Recommended Next",
+    "catCredential": "Credential",
+    "catHost": "Host",
+    "catService": "Service",
+    "catNetwork": "Network",
+    "catOther": "Other",
+    "moreItems": "+{count} more",
+    "reconScan": "Recon Scan",
+    "initialAccess": "Initial Access"
   },
   "Situation": {
     "title": "Attack Situation Diagram",
@@ -438,6 +496,9 @@
     "failedRefreshTechniques": "Failed to refresh techniques",
     "failedSetActive": "Failed to set active target",
     "failedDeleteTarget": "Failed to delete target",
-    "failedBatchImport": "Failed to batch import targets"
+    "failedBatchImport": "Failed to batch import targets",
+    "failedRecon": "Failed to start recon scan",
+    "failedInitialAccess": "Failed to start initial access",
+    "failedLoadWarRoom": "Failed to load War Room data"
   }
 }

@@ -62,17 +62,17 @@ class C5ISRMapper:
         # Comms: simplified — assume operational at 60% baseline for POC
         comms_health = 60.0
 
-        # Computers: non-compromised targets — for red team, health drops as we compromise more
+        # Computers: red team perspective — targets pwned (high = good)
         cursor = await db.execute(
             "SELECT COUNT(*) as total, "
-            "SUM(CASE WHEN is_compromised = 0 THEN 1 ELSE 0 END) as secure "
+            "SUM(CASE WHEN is_compromised = 1 THEN 1 ELSE 0 END) as compromised "
             "FROM targets WHERE operation_id = ?",
             (operation_id,),
         )
         target_row = await cursor.fetchone()
         total_targets = target_row["total"] or 0
-        secure_targets = target_row["secure"] or 0
-        computers_health = (secure_targets / total_targets * 100) if total_targets > 0 else 0.0
+        compromised_targets = target_row["compromised"] or 0
+        computers_health = (compromised_targets / total_targets * 100) if total_targets > 0 else 0.0
 
         # Cyber: success rate
         cursor = await db.execute(
@@ -96,16 +96,22 @@ class C5ISRMapper:
         isr_health = (rec_row["confidence"] * 100) if rec_row else 0.0
 
         domain_values = [
-            (C5ISRDomain.COMMAND, command_health, "OODA cycle active"),
-            (C5ISRDomain.CONTROL, control_health, f"{alive_agents}/{total_agents} agents alive"),
-            (C5ISRDomain.COMMS, comms_health, "WebSocket channel active"),
-            (C5ISRDomain.COMPUTERS, computers_health, f"{secure_targets}/{total_targets} targets secure"),
-            (C5ISRDomain.CYBER, cyber_health, f"{success_exec}/{total_exec} executions successful"),
-            (C5ISRDomain.ISR, isr_health, "PentestGPT intelligence confidence"),
+            (C5ISRDomain.COMMAND, command_health, "OODA cycle active",
+             ooda_count, None, "OODA iterations"),
+            (C5ISRDomain.CONTROL, control_health, f"{alive_agents}/{total_agents} agents alive",
+             alive_agents, total_agents, "agents alive"),
+            (C5ISRDomain.COMMS, comms_health, "WebSocket channel active",
+             None, None, "C2 channel"),
+            (C5ISRDomain.COMPUTERS, computers_health, f"{compromised_targets}/{total_targets} targets pwned",
+             compromised_targets, total_targets, "targets pwned"),
+            (C5ISRDomain.CYBER, cyber_health, f"{success_exec}/{total_exec} attacks succeeded",
+             success_exec, total_exec, "attacks succeeded"),
+            (C5ISRDomain.ISR, isr_health, "Intel confidence",
+             int(round(isr_health)), 100, "confidence"),
         ]
 
         now = datetime.now(timezone.utc).isoformat()
-        for domain, health, detail in domain_values:
+        for domain, health, detail, numerator, denominator, metric_label in domain_values:
             status = self._health_to_status(health)
             # Upsert
             cursor = await db.execute(
@@ -116,24 +122,30 @@ class C5ISRMapper:
             if existing:
                 await db.execute(
                     "UPDATE c5isr_statuses SET status = ?, health_pct = ?, "
-                    "detail = ?, updated_at = ? WHERE id = ?",
-                    (status.value, round(health, 1), detail, now, existing["id"]),
+                    "detail = ?, numerator = ?, denominator = ?, metric_label = ?, "
+                    "updated_at = ? WHERE id = ?",
+                    (status.value, round(health, 1), detail,
+                     numerator, denominator, metric_label, now, existing["id"]),
                 )
                 row_id = existing["id"]
             else:
                 row_id = str(uuid.uuid4())
                 await db.execute(
                     "INSERT INTO c5isr_statuses "
-                    "(id, operation_id, domain, status, health_pct, detail, updated_at) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    "(id, operation_id, domain, status, health_pct, detail, "
+                    "numerator, denominator, metric_label, updated_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     (row_id, operation_id, domain.value, status.value,
-                     round(health, 1), detail, now),
+                     round(health, 1), detail, numerator, denominator,
+                     metric_label, now),
                 )
 
             result = {
                 "id": row_id, "operation_id": operation_id,
                 "domain": domain.value, "status": status.value,
                 "health_pct": round(health, 1), "detail": detail,
+                "numerator": numerator, "denominator": denominator,
+                "metric_label": metric_label,
             }
             results.append(result)
 

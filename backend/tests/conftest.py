@@ -85,14 +85,14 @@ _SEED_STATEMENTS: list[str] = [
             'TA0006', 'medium');
     """,
     """
-    INSERT INTO c5isr_statuses (id, operation_id, domain, status, health_pct)
+    INSERT INTO c5isr_statuses (id, operation_id, domain, status, health_pct, numerator, denominator, metric_label)
     VALUES
-        ('c5-cmd',   'test-op-1', 'command',   'operational', 95.0),
-        ('c5-ctrl',  'test-op-1', 'control',   'active',      88.0),
-        ('c5-comms', 'test-op-1', 'comms',     'nominal',     78.0),
-        ('c5-comp',  'test-op-1', 'computers', 'engaged',     70.0),
-        ('c5-cyber', 'test-op-1', 'cyber',     'scanning',    55.0),
-        ('c5-isr',   'test-op-1', 'isr',       'degraded',    40.0);
+        ('c5-cmd',   'test-op-1', 'command',   'operational', 95.0, 3,    NULL, 'OODA iterations'),
+        ('c5-ctrl',  'test-op-1', 'control',   'active',      88.0, 1,    1,    'agents alive'),
+        ('c5-comms', 'test-op-1', 'comms',     'nominal',     78.0, NULL, NULL, 'C2 channel'),
+        ('c5-comp',  'test-op-1', 'computers', 'engaged',     70.0, 3,    5,    'targets pwned'),
+        ('c5-cyber', 'test-op-1', 'cyber',     'scanning',    55.0, 4,    6,    'attacks succeeded'),
+        ('c5-isr',   'test-op-1', 'isr',       'degraded',    40.0, 40,   100,  'confidence');
     """,
 ]
 

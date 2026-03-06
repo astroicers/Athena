@@ -295,3 +295,103 @@ class AttackPathResponse(BaseModel):
     entries: list[AttackPathEntry]
     highest_tactic_idx: int          # 0-13, index of furthest reached tactic
     tactic_coverage: dict[str, int]  # tactic_id → success count
+
+
+# ---------------------------------------------------------------------------
+# Node Summary (per-node AI tactical intelligence)
+# ---------------------------------------------------------------------------
+
+class NodeSummaryContent(BaseModel):
+    attack_surface: str
+    credential_chain: str
+    lateral_movement: str
+    persistence: str
+    risk_assessment: str
+    recommended_next: str
+
+
+class NodeSummaryResponse(BaseModel):
+    summary: NodeSummaryContent
+    fact_count: int
+    cached: bool
+    generated_at: str
+    model: str
+
+
+# ---------------------------------------------------------------------------
+# Attack Graph (SPEC-031)
+# ---------------------------------------------------------------------------
+
+class AttackGraphNode(BaseModel):
+    node_id: str
+    target_id: str
+    technique_id: str
+    tactic_id: str
+    status: str
+    confidence: float
+    risk_level: str
+    information_gain: float
+    effort: int
+    prerequisites: list[str]
+    satisfied_prerequisites: list[str]
+    source: str
+    execution_id: str | None
+    depth: int
+
+
+class AttackGraphEdge(BaseModel):
+    edge_id: str
+    source: str
+    target: str
+    weight: float
+    relationship: str
+    required_facts: list[str]
+    source_type: str
+
+
+class AttackGraphStats(BaseModel):
+    total_nodes: int
+    explored_nodes: int
+    pending_nodes: int
+    failed_nodes: int
+    pruned_nodes: int
+    total_edges: int
+    path_count: int
+    max_depth: int
+
+
+class AttackGraphResponse(BaseModel):
+    graph_id: str
+    operation_id: str
+    nodes: list[AttackGraphNode]
+    edges: list[AttackGraphEdge]
+    recommended_path: list[str]
+    explored_paths: list[list[str]]
+    unexplored_branches: list[str]
+    coverage_score: float
+    updated_at: str
+    stats: AttackGraphStats
+
+
+# ---------------------------------------------------------------------------
+# AgentSwarm (SPEC-030)
+# ---------------------------------------------------------------------------
+
+class SwarmTaskSchema(BaseModel):
+    task_id: str
+    technique_id: str
+    target_id: str
+    engine: str
+    status: str
+    error: str | None = None
+    started_at: str | None = None
+    completed_at: str | None = None
+
+
+class SwarmBatchResponse(BaseModel):
+    ooda_iteration_id: str
+    total: int
+    completed: int
+    failed: int
+    timed_out: int
+    tasks: list[SwarmTaskSchema]

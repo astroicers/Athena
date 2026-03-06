@@ -10,6 +10,7 @@
 
 """Target and topology endpoints."""
 
+import json
 import uuid
 from datetime import datetime, timezone
 
@@ -21,6 +22,7 @@ from app.database import get_db
 from app.models import Target
 from app.models.api_schemas import (
     BatchImportResult,
+    NodeSummaryResponse,
     TargetBatchCreate,
     TargetCreate,
     TargetSetActive,
@@ -29,6 +31,7 @@ from app.models.api_schemas import (
     TopologyNode,
 )
 from app.routers._deps import ensure_operation
+from app.services.node_summarizer import get_node_summary
 
 router = APIRouter()
 
@@ -231,6 +234,27 @@ async def delete_target(
     return Response(status_code=204)
 
 
+@router.get(
+    "/operations/{operation_id}/targets/{target_id}/summary",
+    response_model=NodeSummaryResponse,
+)
+
+
+async def get_target_summary(
+    operation_id: str,
+    target_id: str,
+    force_refresh: bool = False,
+    db: aiosqlite.Connection = Depends(get_db),
+):
+    """Generate AI tactical intelligence summary for a target node."""
+    await ensure_operation(db, operation_id)
+
+    result = await get_node_summary(db, operation_id, target_id, force_refresh)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Target not found")
+    return result
+
+
 @router.get("/operations/{operation_id}/topology", response_model=TopologyData)
 
 
@@ -282,7 +306,7 @@ async def get_topology(
             )
         )
 
-    # ── Compute attack_phase per target and build Athena→host edges ──
+    # ── Compute attack_phase + per-node stats and build Athena→host edges ──
     edges: list[TopologyEdge] = []
 
     for tid in target_ids:
@@ -310,6 +334,50 @@ async def get_topology(
         )
         scan_row = await cur.fetchone()
 
+        # Per-node gamification stats
+        stats_cur = await db.execute(
+            """
+            SELECT
+                (SELECT COUNT(*) FROM recon_scans
+                 WHERE target_id = ? AND operation_id = ?) AS scan_count,
+                (SELECT COUNT(*) FROM facts
+                 WHERE source_target_id = ? AND operation_id = ?) AS fact_count,
+                (SELECT COUNT(*) FROM facts
+                 WHERE source_target_id = ? AND operation_id = ?
+                   AND trait LIKE 'credential.%') AS credential_count
+            """,
+            (tid, operation_id, tid, operation_id, tid, operation_id),
+        )
+        stats_row = await stats_cur.fetchone()
+        scan_count = stats_row["scan_count"] if stats_row else 0
+        fact_count = stats_row["fact_count"] if stats_row else 0
+        credential_count = stats_row["credential_count"] if stats_row else 0
+
+        # Open port count from latest completed scan
+        port_cur = await db.execute(
+            "SELECT open_ports FROM recon_scans "
+            "WHERE target_id = ? AND operation_id = ? AND status = 'completed' "
+            "ORDER BY completed_at DESC LIMIT 1",
+            (tid, operation_id),
+        )
+        port_row = await port_cur.fetchone()
+        open_port_count = 0
+        if port_row and port_row["open_ports"]:
+            try:
+                open_port_count = len(json.loads(port_row["open_ports"]))
+            except (ValueError, TypeError):
+                pass
+
+        # Persistence fact count
+        persist_cur = await db.execute(
+            "SELECT COUNT(*) AS cnt FROM facts "
+            "WHERE source_target_id = ? AND operation_id = ? "
+            "AND trait = 'host.persistence'",
+            (tid, operation_id),
+        )
+        persist_row = await persist_cur.fetchone()
+        persistence_count = persist_row["cnt"] if persist_row else 0
+
         # Determine phase (priority: session > attacking > scanning > attempted > idle)
         phase = "idle"
         edge_label = None
@@ -328,10 +396,15 @@ async def get_topology(
             phase = "attempted"
             edge_label = "Attempted"
 
-        # Store phase in the host node data
+        # Store phase + stats in the host node data
         for n in nodes:
             if n.id == tid:
                 n.data["attack_phase"] = phase
+                n.data["scanCount"] = scan_count
+                n.data["factCount"] = fact_count
+                n.data["credentialCount"] = credential_count
+                n.data["openPortCount"] = open_port_count
+                n.data["persistenceCount"] = persistence_count
                 break
 
         # Build edge from Athena → host (only if not idle)

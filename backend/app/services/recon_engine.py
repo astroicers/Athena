@@ -10,6 +10,7 @@
 
 """ReconEngine — delegates nmap scans to MCP and writes results to the facts table."""
 
+import asyncio
 import logging
 import time
 import uuid
@@ -103,9 +104,15 @@ class ReconEngine:
                 "MCP is required for nmap scanning (MCP_ENABLED=false)"
             )
 
-        services, os_guess, raw_xml, scan_duration = await self._scan_via_mcp(
-            ip_address
-        )
+        try:
+            services, os_guess, raw_xml, scan_duration = await asyncio.wait_for(
+                self._scan_via_mcp(ip_address),
+                timeout=settings.NMAP_SCAN_TIMEOUT_SEC,
+            )
+        except asyncio.TimeoutError:
+            raise ConnectionError(
+                f"MCP nmap_scan timed out after {settings.NMAP_SCAN_TIMEOUT_SEC}s"
+            )
 
         # ------------------------------------------------------------------
         # Steps 5–7: Write facts and broadcast events
@@ -130,17 +137,65 @@ class ReconEngine:
         # ------------------------------------------------------------------
         # Step 8: CVE enrichment (graceful fallback — never breaks recon)
         # ------------------------------------------------------------------
+        vuln_findings: list = []
         if settings.VULN_LOOKUP_ENABLED and services:
             try:
                 from app.services.vuln_lookup import VulnLookupService
-                await VulnLookupService().enrich_services(
+                vuln_findings = await VulnLookupService().enrich_services(
                     db=db,
                     services=services,
                     operation_id=operation_id,
                     target_id=target_id,
-                )
+                ) or []
             except Exception:
                 logger.warning("CVE enrichment failed, continuing without vulnerability data")
+
+        # ------------------------------------------------------------------
+        # Step 8b: Web reconnaissance (graceful fallback — never breaks recon)
+        # ------------------------------------------------------------------
+        http_services = [
+            s for s in services
+            if s.service in ("http", "https", "http-proxy", "http-alt")
+        ]
+        if http_services and settings.MCP_ENABLED:
+            try:
+                from app.services.mcp_client_manager import get_mcp_manager
+                manager = get_mcp_manager()
+                if manager and manager.is_connected("web-scanner"):
+                    http_ports = [s.port for s in http_services]
+                    probe_result = await manager.call_tool(
+                        "web-scanner", "web_http_probe",
+                        {"target": ip_address, "ports": http_ports},
+                    )
+                    await self._write_web_facts(
+                        db=db,
+                        operation_id=operation_id,
+                        target_id=target_id,
+                        probe_result=probe_result,
+                    )
+            except Exception:
+                logger.warning(
+                    "Web reconnaissance failed for %s, continuing without web data",
+                    ip_address,
+                )
+
+        # ------------------------------------------------------------------
+        # Step 8.5: Exploit validation (graceful fallback — never breaks recon)
+        # ------------------------------------------------------------------
+        if settings.EXPLOIT_VALIDATION_ENABLED and settings.VULN_LOOKUP_ENABLED:
+            try:
+                from app.services.exploit_validator import ExploitValidator
+                if vuln_findings:
+                    await ExploitValidator().validate(
+                        db=db,
+                        findings=vuln_findings,
+                        operation_id=operation_id,
+                        target_id=target_id,
+                    )
+            except Exception:
+                logger.warning(
+                    "Exploit validation failed, continuing without validation data"
+                )
 
         # ------------------------------------------------------------------
         # Step 9: Return result
@@ -247,6 +302,68 @@ class ReconEngine:
             raw_xml=None,
         )
 
+    async def _write_web_facts(
+        self,
+        db: aiosqlite.Connection,
+        operation_id: str,
+        target_id: str,
+        probe_result: dict,
+    ) -> int:
+        """Parse web probe MCP result and persist web facts. Returns count written."""
+        import json as _json
+
+        now = datetime.now(timezone.utc).isoformat()
+        facts_written = 0
+
+        text_parts = [
+            block.get("text", "")
+            for block in probe_result.get("content", [])
+            if isinstance(block, dict) and block.get("type") == "text"
+        ]
+        text = "\n".join(text_parts)
+
+        try:
+            data = _json.loads(text)
+        except _json.JSONDecodeError:
+            logger.warning("MCP web_http_probe returned non-JSON: %s", text[:200])
+            return 0
+
+        for fact in data.get("facts", []):
+            trait = fact.get("trait", "")
+            value = fact.get("value", "")
+            if not trait or not value:
+                continue
+
+            # Determine category from trait prefix
+            if trait.startswith("web.vuln"):
+                category = "vulnerability"
+            elif trait.startswith("web.http.waf"):
+                category = "defense"
+            else:
+                category = "web"
+
+            fact_id = str(uuid.uuid4())
+            await db.execute(
+                "INSERT OR IGNORE INTO facts "
+                "(id, trait, value, category, source_technique_id, "
+                "source_target_id, operation_id, score, collected_at) "
+                "VALUES (?, ?, ?, ?, NULL, ?, ?, 1, ?)",
+                (fact_id, trait, value, category, target_id, operation_id, now),
+            )
+            fact_payload = {
+                "id": fact_id,
+                "trait": trait,
+                "value": value,
+                "category": category,
+                "source_target_id": target_id,
+                "operation_id": operation_id,
+            }
+            await ws_manager.broadcast(operation_id, "fact.new", fact_payload)
+            facts_written += 1
+
+        await db.commit()
+        return facts_written
+
     async def _write_facts(
         self,
         db: aiosqlite.Connection,
@@ -264,12 +381,13 @@ class ReconEngine:
             nonlocal facts_written
             fact_id = str(uuid.uuid4())
             await db.execute(
-                "INSERT INTO facts "
+                "INSERT OR IGNORE INTO facts "
                 "(id, trait, value, category, source_technique_id, "
                 "source_target_id, operation_id, score, collected_at) "
                 "VALUES (?, ?, ?, ?, NULL, ?, ?, 1, ?)",
                 (fact_id, trait, value, category, target_id, operation_id, now),
             )
+            # Broadcast unconditionally — DB-level UNIQUE index handles dedup
             fact_payload = {
                 "id": fact_id,
                 "trait": trait,

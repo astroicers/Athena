@@ -41,6 +41,7 @@ _MOCK_SCAN_PHASES: list[tuple[str, float]] = [
     ("credential_test", 1.5),
     ("finalizing", 1.0),
 ]
+_REAL_SCAN_STEPS = 3  # nmap_scan, initial_access, finalizing
 class ReconScanRequest(BaseModel):
     target_id: str
     enable_initial_access: bool = True
@@ -122,7 +123,7 @@ async def _run_scan_background(
     """Background task: run nmap + initial access, broadcast WS events."""
     from app.ws_manager import ws_manager  # local import to avoid circular
 
-    total_mock_steps = len(_MOCK_SCAN_PHASES)
+    total_steps = len(_MOCK_SCAN_PHASES) if settings.MOCK_C2_ENGINE else _REAL_SCAN_STEPS
 
     async def _broadcast_phase(phase: str, step: int) -> None:
         await ws_manager.broadcast(
@@ -133,7 +134,7 @@ async def _run_scan_background(
                 "target_id": target_id,
                 "phase": phase,
                 "step": step,
-                "total_steps": total_mock_steps,
+                "total_steps": total_steps,
             },
         )
 
@@ -164,7 +165,7 @@ async def _run_scan_background(
                 await _broadcast_phase("credential_test", 5)
                 await asyncio.sleep(1.5)
             else:
-                await _broadcast_phase("initial_access", 3)
+                await _broadcast_phase("initial_access", 2)
 
             # Optional initial access — multi-protocol (SSH/RDP/WinRM)
             ia_result = InitialAccessResult(
@@ -213,7 +214,7 @@ async def _run_scan_background(
                 await _broadcast_phase("finalizing", 6)
                 await asyncio.sleep(1.0)
             else:
-                await _broadcast_phase("finalizing", 5)
+                await _broadcast_phase("finalizing", 3)
 
             # Update DB as completed
             open_ports_json = json.dumps([
@@ -392,6 +393,121 @@ async def get_latest_scan_by_target(
         return None
 
     return _build_scan_result(row)
+
+
+class InitialAccessRequest(BaseModel):
+    target_id: str
+    c2_host: str | None = None
+
+
+@router.post(
+    "/operations/{op_id}/recon/initial-access",
+    status_code=202,
+)
+async def run_initial_access(
+    op_id: str,
+    body: InitialAccessRequest,
+    db: aiosqlite.Connection = Depends(get_db),
+) -> dict:
+    """Run initial access on a target (requires a prior completed recon scan)."""
+    await ensure_operation(db, op_id)
+
+    # Validate target
+    cursor = await db.execute(
+        "SELECT id, ip_address FROM targets WHERE id = ? AND operation_id = ?",
+        (body.target_id, op_id),
+    )
+    target_row = await cursor.fetchone()
+    if target_row is None:
+        raise HTTPException(404, f"Target '{body.target_id}' not found in operation '{op_id}'")
+    ip_address: str = target_row["ip_address"]
+
+    # Require a completed scan with services
+    scan_cursor = await db.execute(
+        "SELECT open_ports FROM recon_scans "
+        "WHERE target_id = ? AND operation_id = ? AND status = 'completed' "
+        "ORDER BY completed_at DESC LIMIT 1",
+        (body.target_id, op_id),
+    )
+    scan_row = await scan_cursor.fetchone()
+    if scan_row is None:
+        raise HTTPException(400, "No completed recon scan found — run recon scan first")
+
+    services_json = json.loads(scan_row["open_ports"] or "[]")
+    if not services_json:
+        raise HTTPException(400, "Recon scan found no open ports — nothing to attack")
+
+    # Launch background task
+    _task = asyncio.create_task(
+        _run_initial_access_background(op_id, body.target_id, ip_address, services_json, body.c2_host)
+    )
+    if _task is not None:
+        _task.add_done_callback(
+            lambda t: logger.warning("Initial access task cancelled for target %s", body.target_id)
+            if t.cancelled() else None
+        )
+
+    return {"status": "queued", "target_id": body.target_id, "operation_id": op_id}
+
+
+async def _run_initial_access_background(
+    op_id: str,
+    target_id: str,
+    ip_address: str,
+    services: list[dict],
+    c2_host: str | None,
+) -> None:
+    """Background task: attempt initial access on a target using known services."""
+    from app.ws_manager import ws_manager
+
+    async with aiosqlite.connect(_DB_FILE) as db:
+        db.row_factory = aiosqlite.Row
+        try:
+            await ws_manager.broadcast(
+                op_id, "initial_access.started", {"target_id": target_id}
+            )
+
+            ia_engine = InitialAccessEngine()
+            ia_result = await ia_engine.try_initial_access(
+                db, op_id, target_id, ip_address, services,
+            )
+
+            # Bootstrap C2 agent for SSH success
+            if (
+                ia_result.success
+                and ia_result.method == "ssh_credential"
+                and not settings.MOCK_C2_ENGINE
+            ):
+                c2 = c2_host or settings.C2_AGENT_CALLBACK_URL or settings.C2_ENGINE_URL
+                cred_parts = (ia_result.credential or ":").split(":", 1)
+                cred_tuple = (cred_parts[0], cred_parts[1] if len(cred_parts) > 1 else "")
+                deployed = await ia_engine.bootstrap_c2_agent(ip_address, cred_tuple, c2)
+                ia_result = InitialAccessResult(
+                    success=ia_result.success,
+                    method=ia_result.method,
+                    credential=ia_result.credential,
+                    agent_deployed=deployed,
+                    error=ia_result.error,
+                )
+
+            await ws_manager.broadcast(
+                op_id,
+                "initial_access.completed",
+                {
+                    "target_id": target_id,
+                    "success": ia_result.success,
+                    "method": ia_result.method,
+                    "credential_found": ia_result.credential,
+                    "agent_deployed": ia_result.agent_deployed,
+                },
+            )
+        except Exception as exc:
+            logger.exception("Initial access for target %s failed: %s", target_id, exc)
+            await ws_manager.broadcast(
+                op_id,
+                "initial_access.failed",
+                {"target_id": target_id, "error": str(exc)},
+            )
 
 
 @router.get("/operations/{op_id}/recon/status")

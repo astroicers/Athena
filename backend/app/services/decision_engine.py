@@ -89,6 +89,39 @@ class DecisionEngine:
             target_row = await cursor.fetchone()
         target_id = target_row["id"] if target_row else None
 
+        # Semi-auto: apply risk threshold rules
+        tech_level = _RISK_ORDER.get(technique_risk, 1)
+        threshold_level = _RISK_ORDER.get(RiskLevel(risk_threshold), 1)
+
+        # Build parallel_tasks from all auto-approvable options (SPEC-030)
+        parallel_tasks: list[dict] = []
+        if automation_mode != AutomationMode.MANUAL and confidence >= 0.5:
+            for opt in options:
+                opt_risk = RiskLevel(opt.get("risk_level", "medium"))
+                opt_level = _RISK_ORDER.get(opt_risk, 1)
+                if opt_risk in (RiskLevel.CRITICAL, RiskLevel.HIGH):
+                    continue
+                if opt_level > threshold_level:
+                    continue
+                opt_target = opt.get("target_id") or target_id
+                if not opt_target:
+                    continue
+                parallel_tasks.append({
+                    "technique_id": opt.get("technique_id"),
+                    "target_id": opt_target,
+                    "engine": opt.get("recommended_engine", "ssh"),
+                    "risk_level": opt_risk.value,
+                })
+            # Deduplicate
+            seen: set[tuple[str, str]] = set()
+            deduped: list[dict] = []
+            for pt in parallel_tasks:
+                key = (pt["technique_id"], pt["target_id"])
+                if key not in seen:
+                    seen.add(key)
+                    deduped.append(pt)
+            parallel_tasks = deduped
+
         base = {
             "technique_id": rec_technique_id,
             "target_id": target_id,
@@ -104,6 +137,7 @@ class DecisionEngine:
                 "needs_confirmation": True,
                 "needs_manual": True,
                 "reason": "Manual mode — all decisions require commander approval",
+                "parallel_tasks": [],
             }
 
         # Low confidence → force manual
@@ -114,11 +148,8 @@ class DecisionEngine:
                 "needs_confirmation": True,
                 "needs_manual": False,
                 "reason": f"Low confidence ({confidence:.0%}) — requires manual review",
+                "parallel_tasks": [],
             }
-
-        # Semi-auto: apply risk threshold rules
-        tech_level = _RISK_ORDER.get(technique_risk, 1)
-        threshold_level = _RISK_ORDER.get(RiskLevel(risk_threshold), 1)
 
         # CRITICAL → always manual
         if technique_risk == RiskLevel.CRITICAL:
@@ -128,6 +159,7 @@ class DecisionEngine:
                 "needs_confirmation": True,
                 "needs_manual": True,
                 "reason": "Critical risk — requires manual authorization",
+                "parallel_tasks": [],
             }
 
         # HIGH → HexConfirmModal confirmation
@@ -138,6 +170,7 @@ class DecisionEngine:
                 "needs_confirmation": True,
                 "needs_manual": False,
                 "reason": "High risk — requires HexConfirmModal confirmation",
+                "parallel_tasks": [],
             }
 
         # Within threshold → auto-approve
@@ -148,6 +181,7 @@ class DecisionEngine:
                 "needs_confirmation": False,
                 "needs_manual": False,
                 "reason": f"Risk ({technique_risk.value}) within threshold ({risk_threshold})",
+                "parallel_tasks": parallel_tasks,
             }
 
         # Above threshold (e.g. MEDIUM when threshold is LOW) → needs commander approval
@@ -160,4 +194,5 @@ class DecisionEngine:
                 f"Risk ({technique_risk.value}) exceeds threshold ({risk_threshold})"
                 " — requires commander approval"
             ),
+            "parallel_tasks": [],
         }

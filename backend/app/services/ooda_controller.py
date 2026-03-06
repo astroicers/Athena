@@ -18,6 +18,7 @@ import aiosqlite
 
 from app.config import settings
 from app.models.enums import OODAPhase
+from app.services.agent_swarm import SwarmExecutor
 from app.services.c5isr_mapper import C5ISRMapper
 from app.services.decision_engine import DecisionEngine
 from app.services.engine_router import EngineRouter
@@ -43,6 +44,7 @@ class OODAController:
         engine_router: EngineRouter,
         c5isr_mapper: C5ISRMapper,
         ws_manager: WebSocketManager,
+        swarm_executor: SwarmExecutor | None = None,
     ):
         self._fact_collector = fact_collector
         self._orient = orient_engine
@@ -50,6 +52,7 @@ class OODAController:
         self._router = engine_router
         self._c5isr = c5isr_mapper
         self._ws = ws_manager
+        self._swarm = swarm_executor
 
     async def trigger_cycle(
         self, db: aiosqlite.Connection, operation_id: str
@@ -104,10 +107,19 @@ class OODAController:
         await self._write_log(db, operation_id, "info",
             f"OODA #{next_num} Observe: collected {len(new_facts)} new facts")
 
+        # ── 1.5. ATTACK GRAPH REBUILD ──
+        from app.services.attack_graph_engine import AttackGraphEngine
+        graph_engine = AttackGraphEngine(self._ws)
+        attack_graph = await graph_engine.rebuild(db, operation_id)
+        graph_summary = graph_engine.build_orient_summary(attack_graph)
+
         # ── 2. ORIENT ──
         await self._update_phase(db, operation_id, ooda_id, OODAPhase.ORIENT)
         logger.info("OODA[%s] Orient phase — calling PentestGPT", ooda_id[:8])
-        recommendation = await self._orient.analyze(db, operation_id, observe_summary)
+        recommendation = await self._orient.analyze(
+            db, operation_id, observe_summary,
+            attack_graph_summary=graph_summary,
+        )
         orient_summary = recommendation.get("situation_assessment", "")
         await db.execute(
             "UPDATE ooda_iterations SET orient_summary = ? WHERE id = ?",
@@ -139,7 +151,50 @@ class OODAController:
         execution_result = None
         act_summary = ""
 
-        if decision.get("auto_approved") and decision.get("technique_id") and decision.get("target_id"):
+        parallel_tasks = decision.get("parallel_tasks", [])
+
+        if self._swarm and parallel_tasks and len(parallel_tasks) > 1:
+            # ── SWARM PATH (SPEC-030) ──
+            logger.info("OODA[%s] Act phase — swarm executing %d parallel tasks", ooda_id[:8], len(parallel_tasks))
+            swarm_result = await self._swarm.execute_swarm(db, operation_id, ooda_id, parallel_tasks)
+            act_summary = swarm_result.act_summary
+
+            for st in swarm_result.tasks:
+                if st.status == "completed" and st.result and st.result.get("status") == "success":
+                    execution_result = st.result
+                    # Update target, agent, counters (same as single path success)
+                    if st.target_id:
+                        await db.execute(
+                            "UPDATE targets SET is_compromised = 1, privilege_level = 'User' "
+                            "WHERE id = ? AND operation_id = ?",
+                            (st.target_id, operation_id),
+                        )
+                    completed_at_now = datetime.now(timezone.utc).isoformat()
+                    await db.execute(
+                        "UPDATE agents SET status = 'alive', last_beacon = ? "
+                        "WHERE operation_id = ? AND status = 'pending' ORDER BY ROWID LIMIT 1",
+                        (completed_at_now, operation_id),
+                    )
+                    await db.execute(
+                        "UPDATE operations SET techniques_executed = techniques_executed + 1, "
+                        "active_agents = (SELECT COUNT(*) FROM agents WHERE operation_id = ? AND status = 'alive') "
+                        "WHERE id = ?",
+                        (operation_id, operation_id),
+                    )
+                    await db.commit()
+
+            if swarm_result.all_failed:
+                await self._write_log(db, operation_id, "error",
+                    f"OODA #{next_num} Act: all {swarm_result.total} swarm tasks failed")
+            elif swarm_result.partial_success:
+                await self._write_log(db, operation_id, "warning",
+                    f"OODA #{next_num} Act: {swarm_result.act_summary}")
+            else:
+                await self._write_log(db, operation_id, "success",
+                    f"OODA #{next_num} Act: {swarm_result.act_summary}")
+
+        elif decision.get("auto_approved") and decision.get("technique_id") and decision.get("target_id"):
+            # ── SINGLE PATH (existing, unchanged) ──
             logger.info("OODA[%s] Act phase — executing %s", ooda_id[:8], decision["technique_id"])
             execution_result = await self._router.execute(
                 db,
@@ -192,6 +247,7 @@ class OODAController:
                 await self._write_log(db, operation_id, "warning",
                     f"OODA #{next_num} Act: {decision['technique_id']} returned {execution_result.get('status', 'unknown')}")
         else:
+            # ── MANUAL APPROVAL (existing, unchanged) ──
             act_summary = f"Awaiting commander approval: {decision.get('reason', 'manual required')}"
             logger.info("OODA[%s] Act phase — needs approval: %s", ooda_id[:8], act_summary)
             await self._write_log(db, operation_id, "warning",
@@ -424,4 +480,6 @@ def build_ooda_controller() -> "OODAController":
 
     router_svc = EngineRouter(c2_engine, fc, ws_manager, mcp_engine=mcp_engine_client)
 
-    return OODAController(fc, orient, decision, router_svc, c5isr, ws_manager)
+    swarm = SwarmExecutor(engine_router=router_svc, ws_manager=ws_manager)
+
+    return OODAController(fc, orient, decision, router_svc, c5isr, ws_manager, swarm_executor=swarm)

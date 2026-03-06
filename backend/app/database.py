@@ -298,6 +298,63 @@ _CREATE_TABLES: list[str] = [
         updated_at TEXT DEFAULT (datetime('now'))
     );
     """,
+    # ── Attack Graph (SPEC-031) ──────────────────────────────────────
+    """
+    CREATE TABLE IF NOT EXISTS attack_graph_nodes (
+        id TEXT PRIMARY KEY,
+        operation_id TEXT REFERENCES operations(id) ON DELETE CASCADE,
+        target_id TEXT REFERENCES targets(id),
+        technique_id TEXT NOT NULL,
+        tactic_id TEXT NOT NULL,
+        status TEXT DEFAULT 'unreachable',
+        confidence REAL DEFAULT 0.0,
+        risk_level TEXT DEFAULT 'medium',
+        information_gain REAL DEFAULT 0.0,
+        effort INTEGER DEFAULT 1,
+        prerequisites TEXT DEFAULT '[]',
+        satisfied_prerequisites TEXT DEFAULT '[]',
+        source TEXT DEFAULT 'deterministic',
+        execution_id TEXT,
+        depth INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
+    );
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS attack_graph_edges (
+        id TEXT PRIMARY KEY,
+        operation_id TEXT REFERENCES operations(id) ON DELETE CASCADE,
+        source_node_id TEXT REFERENCES attack_graph_nodes(id) ON DELETE CASCADE,
+        target_node_id TEXT REFERENCES attack_graph_nodes(id) ON DELETE CASCADE,
+        weight REAL DEFAULT 0.0,
+        relationship TEXT DEFAULT 'enables',
+        required_facts TEXT DEFAULT '[]',
+        source_type TEXT DEFAULT 'deterministic',
+        created_at TEXT DEFAULT (datetime('now'))
+    );
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_agn_operation ON attack_graph_nodes(operation_id);",
+    "CREATE INDEX IF NOT EXISTS idx_agn_status ON attack_graph_nodes(operation_id, status);",
+    "CREATE INDEX IF NOT EXISTS idx_agn_technique ON attack_graph_nodes(operation_id, technique_id);",
+    "CREATE INDEX IF NOT EXISTS idx_age_operation ON attack_graph_edges(operation_id);",
+    "CREATE INDEX IF NOT EXISTS idx_age_source ON attack_graph_edges(source_node_id);",
+    "CREATE INDEX IF NOT EXISTS idx_age_target ON attack_graph_edges(target_node_id);",
+    # ── AgentSwarm (SPEC-030) ────────────────────────────────────────
+    """
+    CREATE TABLE IF NOT EXISTS swarm_tasks (
+        id TEXT PRIMARY KEY,
+        ooda_iteration_id TEXT REFERENCES ooda_iterations(id) ON DELETE CASCADE,
+        operation_id TEXT REFERENCES operations(id) ON DELETE CASCADE,
+        technique_id TEXT NOT NULL,
+        target_id TEXT REFERENCES targets(id) ON DELETE CASCADE,
+        engine TEXT DEFAULT 'ssh',
+        status TEXT DEFAULT 'pending',
+        error TEXT,
+        started_at TEXT,
+        completed_at TEXT,
+        created_at TEXT DEFAULT (datetime('now'))
+    );
+    """,
 ]
 
 # ---------------------------------------------------------------------------
@@ -664,6 +721,7 @@ async def init_db() -> None:
     async with aiosqlite.connect(str(db_path)) as db:
         await db.execute("PRAGMA foreign_keys = ON;")
         await db.execute("PRAGMA journal_mode = WAL;")
+        await db.execute("PRAGMA busy_timeout = 5000;")
         for ddl in _CREATE_TABLES:
             await db.execute(ddl)
         await _seed_technique_playbooks(db)
@@ -801,6 +859,7 @@ async def get_db() -> AsyncGenerator[aiosqlite.Connection, None]:
     db = await aiosqlite.connect(str(db_path))
     db.row_factory = aiosqlite.Row
     await db.execute("PRAGMA foreign_keys = ON;")
+    await db.execute("PRAGMA busy_timeout = 5000;")
     try:
         yield db
     finally:

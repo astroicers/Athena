@@ -102,15 +102,41 @@ _AUTH_FAILURE_KEYWORDS = [
 
 ## ✅ 驗收標準（Done When）
 
-- [ ] `_handle_access_lost()` 在 SSH 認證失敗時正確觸發
-- [ ] 觸發後 `targets.is_compromised` = 0, `access_status` = 'lost'
-- [ ] 觸發後 credential trait 改為 `credential.ssh.invalidated`
-- [ ] `_execute_via_mcp_executor` 不使用 invalidated credential
-- [ ] Orient prompt 顯示 `ACCESS_LOST` 狀態與警告
-- [ ] Attack Graph 將依賴 invalidated credential 的節點標記為 UNREACHABLE
-- [ ] 重新取得存取時 `access_status` 恢復為 'active'
-- [ ] `make test` 全數通過
-- [ ] 單元測試覆蓋所有邊界條件
+### Phase 1 — 被動偵測與 Access Lost（commit f6f7e7f）
+
+- [x] `_handle_access_lost()` 在 SSH 認證失敗時正確觸發
+- [x] 觸發後 `targets.is_compromised` = 0, `access_status` = 'lost'
+- [x] 觸發後 credential trait 改為 `credential.ssh.invalidated`
+- [x] `_execute_via_mcp_executor` 不使用 invalidated credential
+- [x] Orient prompt 顯示 `ACCESS_LOST` 狀態與警告
+- [x] Attack Graph 將依賴 invalidated credential 的節點標記為 UNREACHABLE
+- [x] 重新取得存取時 `access_status` 恢復為 'active'
+
+### Phase 2 — Metasploit Fallback Routing（commits 06e536f, e9f5325）
+
+- [x] engine_router 尊重 `engine="metasploit"` 指定，直接走 Metasploit 路由
+- [x] `_infer_exploitable_service()` 從 `service.open_port` banner 推斷可利用服務
+- [x] 無有效憑證時仍寫入 `technique_executions` 記錄（Orient 可見）
+- [x] ooda_controller swarm/single 成功路徑同步 `access_status='active'`
+- [x] 所有 `INSERT INTO facts` 改為 `INSERT OR IGNORE`（修復 IntegrityError 導致 swarm 失敗）
+- [x] Orient prompt 列出 `metasploit` engine 選項與 engine 選擇指南
+
+### Phase 3 — Metasploit Exploit 執行與 Terminal Fallback
+
+| Bug | 描述 | 修復 | Commit |
+|-----|------|------|--------|
+| Bug 12 | msfrpcd `-u` flag 設定 URI 而非 username | `-u` → `-U` (uppercase) | 853cab1 |
+| Bug 13 | `exploit_vsftpd` 傳不支援的 LHOST 選項 | 移除 LHOST（bind shell 不需要） | 144449c |
+| Bug 14 | `ShellSession.run_with_output()` API 不相容 | 改用 `shell.write/read` | 484797b |
+| Bug 15 | vsftpd 只開一個 session，後續 exploit 找不到「新」session | 新增 session reuse（同 target_host） | 637d5b6 |
+| Bug 16 | Metasploit 成功後未更新 target 為 Root | 寫入 `privilege_level='Root'` + `credential.root_shell` fact | 144449c |
+| Bug 17 | ooda_controller 成功路徑覆蓋 Root → User | SQL CASE WHEN 保留 Root | bd39b62 |
+| Bug 18 | Terminal WebSocket 僅支援 SSH | 新增 Metasploit shell session fallback | 1f0b58e |
+
+- [x] `make test` 全數通過（467 passed，5 pre-existing failures）
+- [x] 26/26 access recovery 測試通過
+- [x] 實際 Metasploitable2 測試：vsftpd exploit → root shell → `uid=0(root)`
+- [x] Terminal 可透過 Metasploit session 下指令
 
 ---
 
@@ -125,11 +151,16 @@ _AUTH_FAILURE_KEYWORDS = [
 
 ## 📎 參考資料（References）
 
-- 相關 ADR：ADR-033、ADR-003、ADR-004
+- 相關 ADR：ADR-033、ADR-003、ADR-004、ADR-019（Metasploit RPC）
 - 現有類似實作：`_mark_target_compromised()` in engine_router.py
 - 關鍵檔案：
-  - `backend/app/services/engine_router.py` — 主要修改
-  - `backend/app/services/orient_engine.py` — prompt 修改
+  - `backend/app/services/engine_router.py` — 路由邏輯、Metasploit fallback、banner inference
+  - `backend/app/services/orient_engine.py` — prompt 修改、engine 選項
   - `backend/app/services/attack_graph_engine.py` — fact 排除
-  - `backend/app/models/enums.py` — AccessStatus enum
+  - `backend/app/services/ooda_controller.py` — swarm 成功路徑 access_status / privilege_level
+  - `backend/app/services/fact_collector.py` — INSERT OR IGNORE
+  - `backend/app/clients/metasploit_client.py` — exploit 執行、session reuse
+  - `backend/app/routers/terminal.py` — Terminal WebSocket Metasploit fallback
   - `backend/app/database.py` — DB migration
+  - `docker-compose.yml` — msfrpcd flag 修正
+  - `backend/tests/test_access_recovery.py` — 26 個測試

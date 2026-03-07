@@ -166,7 +166,7 @@ Respond with ONLY valid JSON (no markdown, no extra text). The JSON must match t
       "technique_name": "Full MITRE Name",
       "reasoning": "why this technique NOW, citing prerequisites and intelligence",
       "risk_level": "low|medium|high|critical",
-      "recommended_engine": "ssh|c2|mcp",
+      "recommended_engine": "ssh|c2|mcp|metasploit",
       "confidence": 0.0-1.0,
       "prerequisites": ["list of prerequisites with verification status"]
     }
@@ -174,7 +174,15 @@ Respond with ONLY valid JSON (no markdown, no extra text). The JSON must match t
 }
 Provide exactly 3 options, ordered by confidence (highest first). \
 When credential facts are available (category=credential), prioritize techniques that leverage \
-those credentials for lateral movement before attempting new credential harvesting."""
+those credentials for lateral movement before attempting new credential harvesting.
+
+Engine selection guide:
+- "ssh": Execute commands via SSH on a compromised host (requires valid credential.ssh fact)
+- "mcp": Run MCP reconnaissance/enumeration tools (nmap, vuln-lookup, credential-checker)
+- "metasploit": Exploit vulnerable services (vsftpd backdoor, Samba RCE, etc.) — use when a known-exploitable service is detected in service.open_port facts and you need to gain initial/root access WITHOUT existing credentials
+- "c2": Use C2 agent for stealth operations
+
+IMPORTANT: When access is lost or no valid credentials exist, use "metasploit" engine to exploit vulnerable network services (e.g., vsftpd 2.3.4, Samba 3.X, UnrealIRCd) for direct root shell access."""
 
 # ---------------------------------------------------------------------------
 # User prompt template — dynamic context assembled per-call (8 sections)

@@ -24,6 +24,16 @@ from app.ws_manager import WebSocketManager
 
 logger = logging.getLogger(__name__)
 
+# Known vulnerable service banners → Metasploit service name (SPEC-037 Phase 2)
+_KNOWN_EXPLOITABLE_BANNERS: dict[str, str] = {
+    "vsftpd_2.3.4": "vsftpd",
+    "vsftpd 2.3.4": "vsftpd",
+    "unrealircd": "unrealircd",
+    "unreal_ircd": "unrealircd",
+    "samba 3.0": "samba",
+    "distccd": "distccd",
+}
+
 # Keywords indicating credential/access failure (SPEC-037)
 _AUTH_FAILURE_KEYWORDS = [
     "authentication failed",
@@ -98,9 +108,29 @@ class EngineRouter:
                 engine, operation_id, ooda_iteration_id,
             )
 
+        # ── Explicit Metasploit route: engine == "metasploit" (SPEC-037 P2) ──
+        if engine == "metasploit":
+            service = await self._has_exploitable_service(db, operation_id, target_id)
+            if not service:
+                service = await self._infer_exploitable_service(db, operation_id, target_id)
+            if service:
+                target_ip = await self._get_target_ip(db, target_id)
+                if target_ip:
+                    return await self._execute_metasploit(
+                        db, exec_id, now, technique_id, target_id, operation_id,
+                        ooda_iteration_id, service, target_ip, engine,
+                    )
+            logger.warning(
+                "engine=metasploit requested but no exploitable service found for %s — falling through",
+                target_id,
+            )
+
         # ── Metasploit route: exploit=true CVE fact → highest priority ────────
         # Check BEFORE other routing (ADR-019)
         service = await self._has_exploitable_service(db, operation_id, target_id)
+        if not service:
+            # SPEC-037 Phase 2: banner-based fallback for known vulnerable services
+            service = await self._infer_exploitable_service(db, operation_id, target_id)
         if service:
             target_ip = await self._get_target_ip(db, target_id)
             if target_ip is None:
@@ -168,9 +198,20 @@ class EngineRouter:
         cred_row = await cred_cursor.fetchone()
 
         if not cred_row:
+            # SPEC-037 Phase 2: record the failure so Orient sees why Act failed
+            error_msg = f"No valid credentials — all invalidated for target {target_id}"
             logger.warning(
                 "No credentials for target %s in operation %s", target_id, operation_id
             )
+            await db.execute(
+                "INSERT INTO technique_executions "
+                "(id, technique_id, target_id, operation_id, ooda_iteration_id, "
+                "engine, status, started_at, completed_at, error_message) "
+                "VALUES (?, ?, ?, ?, ?, ?, 'failed', ?, ?, ?)",
+                (exec_id, technique_id, target_id, operation_id,
+                 ooda_iteration_id, "mcp_ssh", now, now, error_msg),
+            )
+            await db.commit()
             return {
                 "execution_id": exec_id,
                 "technique_id": technique_id,
@@ -179,7 +220,7 @@ class EngineRouter:
                 "status": "failed",
                 "result_summary": None,
                 "facts_collected_count": 0,
-                "error": f"No credentials for target {target_id}",
+                "error": error_msg,
             }
 
         credential_string = cred_row["value"]
@@ -540,6 +581,31 @@ class EngineRouter:
             # format: CVE-xxx:service:product:cvss=N:exploit=true
             parts = row["value"].split(":")
             return parts[1] if len(parts) > 1 else None
+        return None
+
+    async def _infer_exploitable_service(
+        self, db: aiosqlite.Connection, operation_id: str, target_id: str
+    ) -> "str | None":
+        """Infer exploitable service from service.open_port facts (banner matching).
+
+        SPEC-037 Phase 2: fallback when no vuln.cve exploit=true fact exists.
+        """
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            "SELECT value FROM facts WHERE operation_id = ? AND source_target_id = ? "
+            "AND trait = 'service.open_port'",
+            (operation_id, target_id),
+        )
+        rows = await cursor.fetchall()
+        for row in rows:
+            val_lower = row["value"].lower()
+            for banner_key, service_name in _KNOWN_EXPLOITABLE_BANNERS.items():
+                if banner_key in val_lower:
+                    logger.info(
+                        "Inferred exploitable service '%s' from banner '%s' for target %s",
+                        service_name, row["value"], target_id,
+                    )
+                    return service_name
         return None
 
     async def _get_target_ip(

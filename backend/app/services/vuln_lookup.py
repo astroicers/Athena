@@ -385,7 +385,7 @@ class VulnLookupService:
         )
         try:
             await db.execute(
-                "INSERT INTO facts "
+                "INSERT OR IGNORE INTO facts "
                 "(id, trait, value, category, source_technique_id, "
                 "source_target_id, operation_id, score, collected_at) "
                 "VALUES (?, ?, ?, ?, NULL, ?, ?, 1, ?)",

@@ -244,3 +244,226 @@ def test_attack_graph_excludes_invalidated_facts():
     # but the invalidated one doesn't count
     # We verify indirectly: the graph should have been built with only valid facts
     assert len(graph.nodes) > 0
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: Banner-based Metasploit inference + routing fixes
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_infer_exploitable_service_vsftpd():
+    """_infer_exploitable_service matches vsftpd_2.3.4 banner."""
+    router = _make_router()
+    db = AsyncMock()
+    db.row_factory = None
+
+    cursor = AsyncMock()
+    cursor.fetchall = AsyncMock(return_value=[
+        {"value": "21/tcp/ftp/vsftpd_2.3.4"},
+    ])
+    db.execute = AsyncMock(return_value=cursor)
+
+    result = await router._infer_exploitable_service(db, "op-1", "tgt-1")
+    assert result == "vsftpd"
+
+
+@pytest.mark.asyncio
+async def test_infer_exploitable_service_samba():
+    """_infer_exploitable_service matches samba 3.0 banner."""
+    router = _make_router()
+    db = AsyncMock()
+    db.row_factory = None
+
+    cursor = AsyncMock()
+    cursor.fetchall = AsyncMock(return_value=[
+        {"value": "445/tcp/netbios-ssn/Samba 3.0.20-Debian"},
+    ])
+    db.execute = AsyncMock(return_value=cursor)
+
+    result = await router._infer_exploitable_service(db, "op-1", "tgt-1")
+    assert result == "samba"
+
+
+@pytest.mark.asyncio
+async def test_infer_exploitable_service_no_match():
+    """_infer_exploitable_service returns None for unrecognized banners."""
+    router = _make_router()
+    db = AsyncMock()
+    db.row_factory = None
+
+    cursor = AsyncMock()
+    cursor.fetchall = AsyncMock(return_value=[
+        {"value": "22/tcp/ssh/OpenSSH_4.7p1"},
+        {"value": "80/tcp/http/Apache_2.2.8"},
+    ])
+    db.execute = AsyncMock(return_value=cursor)
+
+    result = await router._infer_exploitable_service(db, "op-1", "tgt-1")
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_infer_exploitable_service_unrealircd():
+    """_infer_exploitable_service matches unrealircd banner."""
+    router = _make_router()
+    db = AsyncMock()
+    db.row_factory = None
+
+    cursor = AsyncMock()
+    cursor.fetchall = AsyncMock(return_value=[
+        {"value": "6667/tcp/irc/UnrealIRCd"},
+    ])
+    db.execute = AsyncMock(return_value=cursor)
+
+    result = await router._infer_exploitable_service(db, "op-1", "tgt-1")
+    assert result == "unrealircd"
+
+
+@pytest.mark.asyncio
+async def test_no_cred_early_return_writes_execution():
+    """No-credential early return should write technique_executions record."""
+    import aiosqlite
+
+    async with aiosqlite.connect(":memory:") as db:
+        db.row_factory = aiosqlite.Row
+        await db.executescript("""
+            CREATE TABLE techniques (id TEXT PRIMARY KEY, mitre_id TEXT, name TEXT,
+                tactic TEXT, tactic_id TEXT, kill_chain_stage TEXT, risk_level TEXT,
+                c2_ability_id TEXT);
+            CREATE TABLE technique_executions (id TEXT PRIMARY KEY, technique_id TEXT,
+                target_id TEXT, operation_id TEXT, ooda_iteration_id TEXT,
+                engine TEXT, status TEXT, started_at TEXT, completed_at TEXT,
+                result_summary TEXT, facts_collected_count INTEGER DEFAULT 0,
+                error_message TEXT);
+            CREATE TABLE facts (id TEXT PRIMARY KEY, operation_id TEXT,
+                source_target_id TEXT, category TEXT, trait TEXT, value TEXT,
+                score INTEGER DEFAULT 1, collected_at TEXT, source TEXT);
+            CREATE TABLE targets (id TEXT PRIMARY KEY, hostname TEXT,
+                ip_address TEXT, os TEXT, role TEXT, operation_id TEXT,
+                is_compromised INTEGER DEFAULT 0, privilege_level TEXT,
+                access_status TEXT DEFAULT 'unknown');
+            INSERT INTO techniques VALUES ('t1', 'T1059.004', 'Unix Shell',
+                'Execution', 'TA0002', 'execution', 'medium', 'T1059.004');
+            INSERT INTO targets VALUES ('tgt-1', 'test-host', '10.0.0.1', 'Linux',
+                'target', 'op-1', 0, NULL, 'lost');
+        """)
+        await db.commit()
+
+        router = _make_router()
+        result = await router._execute_via_mcp_executor(
+            db, "exec-1", "2026-01-01T00:00:00", "T1059.004",
+            "T1059.004", "tgt-1", "mcp_ssh", "op-1", "ooda-1",
+        )
+
+        assert result["status"] == "failed"
+        assert "invalidated" in result["error"]
+
+        # Verify technique_executions record was written
+        cursor = await db.execute(
+            "SELECT status, error_message FROM technique_executions WHERE id = 'exec-1'"
+        )
+        row = await cursor.fetchone()
+        assert row is not None, "technique_executions record was not written"
+        assert row["status"] == "failed"
+        assert "invalidated" in row["error_message"]
+
+
+@pytest.mark.asyncio
+async def test_metasploit_route_on_explicit_engine():
+    """engine='metasploit' with exploitable banner should route to Metasploit."""
+    import aiosqlite
+    from app.clients.mock_c2_client import MockC2Client
+
+    async with aiosqlite.connect(":memory:") as db:
+        db.row_factory = aiosqlite.Row
+        await db.executescript("""
+            CREATE TABLE techniques (id TEXT PRIMARY KEY, mitre_id TEXT, name TEXT,
+                tactic TEXT, tactic_id TEXT, kill_chain_stage TEXT, risk_level TEXT,
+                c2_ability_id TEXT);
+            CREATE TABLE technique_executions (id TEXT PRIMARY KEY, technique_id TEXT,
+                target_id TEXT, operation_id TEXT, ooda_iteration_id TEXT,
+                engine TEXT, status TEXT, started_at TEXT, completed_at TEXT,
+                result_summary TEXT, facts_collected_count INTEGER DEFAULT 0,
+                error_message TEXT);
+            CREATE TABLE facts (id TEXT PRIMARY KEY, operation_id TEXT,
+                source_target_id TEXT, category TEXT, trait TEXT, value TEXT,
+                score INTEGER DEFAULT 1, collected_at TEXT, source TEXT);
+            CREATE TABLE targets (id TEXT PRIMARY KEY, hostname TEXT,
+                ip_address TEXT, os TEXT, role TEXT, operation_id TEXT,
+                is_compromised INTEGER DEFAULT 0, privilege_level TEXT,
+                access_status TEXT DEFAULT 'unknown');
+            CREATE TABLE operations (id TEXT PRIMARY KEY, techniques_executed INTEGER DEFAULT 0);
+            INSERT INTO techniques VALUES ('t1', 'T1190', 'Exploit Public-Facing App',
+                'Initial Access', 'TA0001', 'initial_access', 'high', 'T1190');
+            INSERT INTO targets VALUES ('tgt-1', 'msf2', '192.168.0.23', 'Linux',
+                'target', 'op-1', 0, NULL, 'lost');
+            INSERT INTO operations VALUES ('op-1', 0);
+            INSERT INTO facts VALUES ('f1', 'op-1', 'tgt-1', 'service',
+                'service.open_port', '21/tcp/ftp/vsftpd_2.3.4', 1, '2026-01-01', 'nmap');
+        """)
+        await db.commit()
+
+        ws = MagicMock()
+        ws.broadcast = AsyncMock()
+        fc = MagicMock()
+        fc.collect_from_result = AsyncMock(return_value=[])
+        router = EngineRouter(MockC2Client(), fc, ws)
+
+        result = await router.execute(
+            db, technique_id="T1190", target_id="tgt-1",
+            engine="metasploit", operation_id="op-1",
+        )
+
+        # Should have routed through Metasploit (mock mode)
+        assert result.get("engine") in ("metasploit", "metasploit_mock")
+
+
+@pytest.mark.asyncio
+async def test_banner_fallback_auto_detects_vsftpd():
+    """Default routing auto-detects vsftpd from banner when no vuln.cve fact exists."""
+    import aiosqlite
+    from app.clients.mock_c2_client import MockC2Client
+
+    async with aiosqlite.connect(":memory:") as db:
+        db.row_factory = aiosqlite.Row
+        await db.executescript("""
+            CREATE TABLE techniques (id TEXT PRIMARY KEY, mitre_id TEXT, name TEXT,
+                tactic TEXT, tactic_id TEXT, kill_chain_stage TEXT, risk_level TEXT,
+                c2_ability_id TEXT);
+            CREATE TABLE technique_executions (id TEXT PRIMARY KEY, technique_id TEXT,
+                target_id TEXT, operation_id TEXT, ooda_iteration_id TEXT,
+                engine TEXT, status TEXT, started_at TEXT, completed_at TEXT,
+                result_summary TEXT, facts_collected_count INTEGER DEFAULT 0,
+                error_message TEXT);
+            CREATE TABLE facts (id TEXT PRIMARY KEY, operation_id TEXT,
+                source_target_id TEXT, category TEXT, trait TEXT, value TEXT,
+                score INTEGER DEFAULT 1, collected_at TEXT, source TEXT);
+            CREATE TABLE targets (id TEXT PRIMARY KEY, hostname TEXT,
+                ip_address TEXT, os TEXT, role TEXT, operation_id TEXT,
+                is_compromised INTEGER DEFAULT 0, privilege_level TEXT,
+                access_status TEXT DEFAULT 'unknown');
+            CREATE TABLE operations (id TEXT PRIMARY KEY, techniques_executed INTEGER DEFAULT 0);
+            INSERT INTO techniques VALUES ('t1', 'T1110.001', 'Brute Force',
+                'Credential Access', 'TA0006', 'credential_access', 'medium', 'T1110.001');
+            INSERT INTO targets VALUES ('tgt-1', 'msf2', '192.168.0.23', 'Linux',
+                'target', 'op-1', 0, NULL, 'unknown');
+            INSERT INTO operations VALUES ('op-1', 0);
+            INSERT INTO facts VALUES ('f1', 'op-1', 'tgt-1', 'service',
+                'service.open_port', '21/tcp/ftp/vsftpd_2.3.4', 1, '2026-01-01', 'nmap');
+        """)
+        await db.commit()
+
+        ws = MagicMock()
+        ws.broadcast = AsyncMock()
+        fc = MagicMock()
+        fc.collect_from_result = AsyncMock(return_value=[])
+        router = EngineRouter(MockC2Client(), fc, ws)
+
+        result = await router.execute(
+            db, technique_id="T1110.001", target_id="tgt-1",
+            engine="auto", operation_id="op-1",
+        )
+
+        # Should have been intercepted by banner-based Metasploit fallback
+        assert result.get("engine") in ("metasploit", "metasploit_mock")

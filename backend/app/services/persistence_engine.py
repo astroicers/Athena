@@ -88,7 +88,7 @@ class PersistenceEngine:
             for key, available in results.items():
                 if available:
                     await db.execute(
-                        "INSERT INTO facts "
+                        "INSERT OR IGNORE INTO facts "
                         "(id, operation_id, source_target_id, trait, value, category, score, collected_at) "
                         "VALUES (?, ?, ?, ?, ?, 'host', 1, ?)",
                         (str(uuid.uuid4()), operation_id, target_id, "host.persistence", key, now),

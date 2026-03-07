@@ -73,7 +73,7 @@ async def test_mock_mode_writes_facts():
 
         await OSINTEngine().discover(db, "op-001", "example.com")
 
-    insert_calls = [c for c in captured if "INSERT INTO facts" in str(c[0])]
+    insert_calls = [c for c in captured if "INTO facts" in str(c[0])]
     assert len(insert_calls) >= 1
 
     # All inserts should have osint category

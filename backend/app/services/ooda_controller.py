@@ -165,7 +165,8 @@ class OODAController:
                     # Update target, agent, counters (same as single path success)
                     if st.target_id:
                         await db.execute(
-                            "UPDATE targets SET is_compromised = 1, privilege_level = 'User' "
+                            "UPDATE targets SET is_compromised = 1, privilege_level = 'User', "
+                            "access_status = 'active' "
                             "WHERE id = ? AND operation_id = ?",
                             (st.target_id, operation_id),
                         )
@@ -218,7 +219,8 @@ class OODAController:
                 # Mark target as compromised
                 if decision.get("target_id"):
                     await db.execute(
-                        "UPDATE targets SET is_compromised = 1, privilege_level = 'User' "
+                        "UPDATE targets SET is_compromised = 1, privilege_level = 'User', "
+                        "access_status = 'active' "
                         "WHERE id = ? AND operation_id = ?",
                         (decision["target_id"], operation_id),
                     )

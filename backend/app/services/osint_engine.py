@@ -234,7 +234,7 @@ class OSINTEngine:
         fact_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
         await db.execute(
-            "INSERT INTO facts "
+            "INSERT OR IGNORE INTO facts "
             "(id, trait, value, category, source_technique_id, "
             "source_target_id, operation_id, score, collected_at) "
             "VALUES (?, ?, ?, ?, NULL, NULL, ?, 1, ?)",

@@ -94,7 +94,26 @@ class MetasploitRPCEngine:
             client = await asyncio.get_running_loop().run_in_executor(
                 None, self._connect
             )
-            # Capture pre-existing sessions to detect new ones
+
+            target_ip = options.get("RHOSTS", "")
+
+            # Reuse existing session for the same target (e.g. vsftpd backdoor
+            # only opens one session on port 6200).
+            for sid, info in client.sessions.list.items():
+                if info.get("target_host") == target_ip:
+                    logger.info("Reusing existing session %s for %s", sid, target_ip)
+                    shell = client.sessions.session(sid)
+                    shell.write("id\n")
+                    await asyncio.sleep(2)
+                    output = shell.read()
+                    return {
+                        "status": "success",
+                        "shell": sid,
+                        "output": output,
+                        "engine": "metasploit",
+                    }
+
+            # No existing session — launch exploit
             pre_sessions: set = set(client.sessions.list.keys())
 
             module_type = "exploit" if module_path.startswith("exploit") else "auxiliary"

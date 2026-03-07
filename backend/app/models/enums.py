@@ -126,6 +126,12 @@ class ToolKind(str, Enum):
     ENGINE = "engine"
 
 
+class AccessStatus(str, Enum):
+    ACTIVE = "active"
+    LOST = "lost"
+    UNKNOWN = "unknown"
+
+
 class ToolCategory(str, Enum):
     RECONNAISSANCE = "reconnaissance"
     ENUMERATION = "enumeration"

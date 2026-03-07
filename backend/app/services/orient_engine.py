@@ -368,6 +368,10 @@ class OrientEngine:
             trait = r["trait"]
             cat = r["category"].upper()
 
+            # SPEC-037: Exclude invalidated credentials from prompt
+            if ".invalidated" in trait:
+                continue
+
             # SPEC-028: Distinguish validated/rejected/uncertain CVEs
             if trait == "vuln.cve.rejected":
                 # Exclude rejected CVEs from the prompt entirely
@@ -453,20 +457,34 @@ class OrientEngine:
             f"- {r['technique_id']}: {r['error_message'] or 'failed'}" for r in failed
         ) or "None"
 
-        # Q4: Targets (enriched with os, network_segment)
+        # Q4: Targets (enriched with os, network_segment, access_status — SPEC-037)
         cursor = await db.execute(
             "SELECT hostname, ip_address, os, role, network_segment, "
-            "is_compromised, privilege_level "
+            "is_compromised, privilege_level, access_status "
             "FROM targets WHERE operation_id = ?", (operation_id,),
         )
         targets = await cursor.fetchall()
-        targets_str = "\n".join(
-            f"- {r['hostname']} ({r['ip_address']}) [{r['role']}] "
-            f"OS={r['os'] or 'unknown'} Net={r['network_segment'] or 'unknown'} "
-            f"{'COMPROMISED' if r['is_compromised'] else 'SECURE'} "
-            f"{r['privilege_level'] or ''}"
-            for r in targets
-        ) or "No targets"
+        target_lines = []
+        for r in targets:
+            access_status = r['access_status'] or 'unknown'
+            if access_status == 'lost':
+                status_str = f"ACCESS_LOST (was: {r['privilege_level'] or 'User'})"
+            elif r['is_compromised']:
+                status_str = f"COMPROMISED(ACTIVE) {r['privilege_level'] or ''}"
+            else:
+                status_str = "SECURE"
+            line = (
+                f"- {r['hostname']} ({r['ip_address']}) [{r['role']}] "
+                f"OS={r['os'] or 'unknown'} Net={r['network_segment'] or 'unknown'} "
+                f"{status_str}"
+            )
+            if access_status == 'lost':
+                line += (
+                    "\n  ⚠ WARNING: Access lost — credential invalidated. "
+                    "Prioritize re-entry via alternative services."
+                )
+            target_lines.append(line)
+        targets_str = "\n".join(target_lines) or "No targets"
 
         # Q5: Agents
         cursor = await db.execute(

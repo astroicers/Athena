@@ -521,7 +521,10 @@ class AttackGraphEngine:
             return graph
 
         # Build fact set and execution map
-        fact_traits: set[str] = {f["trait"] for f in facts}
+        # SPEC-037: exclude invalidated credentials so dependent nodes become UNREACHABLE
+        fact_traits: set[str] = {
+            f["trait"] for f in facts if ".invalidated" not in f["trait"]
+        }
         exec_map: dict[tuple[str, str], str] = {}  # (technique_id, target_id) -> status
         exec_id_map: dict[tuple[str, str], str] = {}  # -> execution_id
 

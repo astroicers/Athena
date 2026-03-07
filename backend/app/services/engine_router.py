@@ -24,6 +24,27 @@ from app.ws_manager import WebSocketManager
 
 logger = logging.getLogger(__name__)
 
+# Keywords indicating credential/access failure (SPEC-037)
+_AUTH_FAILURE_KEYWORDS = [
+    "authentication failed",
+    "permission denied",
+    "login incorrect",
+    "access denied",
+    "invalid credentials",
+    "connection refused",
+    "no route to host",
+    "connection timed out",
+    "host unreachable",
+]
+
+
+def _is_auth_failure(error: str | None) -> bool:
+    """Check if an error message indicates authentication or access failure."""
+    if not error:
+        return False
+    lower = error.lower()
+    return any(kw in lower for kw in _AUTH_FAILURE_KEYWORDS)
+
 
 class EngineRouter:
     """Act phase: route technique execution to the appropriate engine."""
@@ -131,10 +152,12 @@ class EngineRouter:
     ) -> dict:
         """MCP attack-executor path — route SSH/WinRM through the MCP server."""
         # Look up credential facts (priority: winrm > ssh_key > ssh)
+        # SPEC-037: exclude invalidated credentials
         cred_cursor = await db.execute(
             "SELECT trait, value FROM facts "
             "WHERE operation_id = ? AND source_target_id = ? "
             "AND trait IN ('credential.ssh', 'credential.ssh_key', 'credential.winrm') "
+            "AND trait NOT LIKE '%.invalidated' "
             "ORDER BY CASE trait "
             "  WHEN 'credential.winrm' THEN 0 "
             "  WHEN 'credential.ssh_key' THEN 1 "
@@ -254,7 +277,8 @@ class EngineRouter:
                 privilege = "sudo"
 
         await db.execute(
-            "UPDATE targets SET is_compromised = 1, privilege_level = ? WHERE id = ?",
+            "UPDATE targets SET is_compromised = 1, privilege_level = ?, "
+            "access_status = 'active' WHERE id = ?",
             (privilege, target_id),
         )
         await db.commit()
@@ -420,6 +444,10 @@ class EngineRouter:
             )
         await db.commit()
 
+        # SPEC-037: Detect auth failure → trigger access lost handling
+        if not result.success and _is_auth_failure(result.error):
+            await self._handle_access_lost(db, operation_id, target_id)
+
         # Extract facts from result
         if result.facts:
             await self._fact_collector.collect_from_result(
@@ -442,6 +470,55 @@ class EngineRouter:
             "facts_collected_count": facts_count,
             "error": result.error,
         }
+
+    # ── Access recovery (SPEC-037) ────────────────────────────────────────────
+
+    async def _handle_access_lost(
+        self, db: aiosqlite.Connection, operation_id: str, target_id: str,
+    ) -> None:
+        """Handle detected access loss: revoke compromised status, invalidate credentials."""
+        logger.warning(
+            "Access lost to target %s in operation %s — invalidating credentials",
+            target_id, operation_id,
+        )
+
+        # 1. Revoke target compromised status
+        await db.execute(
+            "UPDATE targets SET is_compromised = 0, access_status = 'lost', "
+            "privilege_level = NULL WHERE id = ? AND operation_id = ?",
+            (target_id, operation_id),
+        )
+
+        # 2. Invalidate credential facts (trait rename)
+        await db.execute(
+            "UPDATE facts SET trait = REPLACE(trait, 'credential.ssh', 'credential.ssh.invalidated') "
+            "WHERE operation_id = ? AND source_target_id = ? "
+            "AND trait = 'credential.ssh'",
+            (operation_id, target_id),
+        )
+        await db.execute(
+            "UPDATE facts SET trait = REPLACE(trait, 'credential.winrm', 'credential.winrm.invalidated') "
+            "WHERE operation_id = ? AND source_target_id = ? "
+            "AND trait = 'credential.winrm'",
+            (operation_id, target_id),
+        )
+
+        # 3. Insert access.lost fact
+        target_ip = await self._get_target_ip(db, target_id)
+        fact_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+        try:
+            await db.execute(
+                "INSERT INTO facts (id, trait, value, category, source_target_id, "
+                "operation_id, score, collected_at) "
+                "VALUES (?, 'access.lost', ?, 'host', ?, ?, 1, ?)",
+                (fact_id, f"ssh_auth_failed:{target_ip or target_id}",
+                 target_id, operation_id, now),
+            )
+        except Exception:
+            pass  # unique constraint — already recorded
+
+        await db.commit()
 
     # ── Metasploit helpers ────────────────────────────────────────────────────
 

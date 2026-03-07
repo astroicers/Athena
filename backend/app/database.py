@@ -10,6 +10,7 @@
 
 from collections.abc import AsyncGenerator
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 import aiosqlite
@@ -71,6 +72,7 @@ _CREATE_TABLES: list[str] = [
         is_compromised INTEGER DEFAULT 0,
         is_active INTEGER DEFAULT 0,
         privilege_level TEXT,
+        access_status TEXT DEFAULT 'unknown',
         operation_id TEXT REFERENCES operations(id) ON DELETE CASCADE,
         created_at TEXT DEFAULT (datetime('now')),
         UNIQUE(ip_address, operation_id)
@@ -231,6 +233,7 @@ _CREATE_TABLES: list[str] = [
         initial_access_method TEXT,
         credential_found TEXT,
         agent_deployed INTEGER DEFAULT 0,
+        facts_written INTEGER DEFAULT 0,
         started_at TEXT,
         completed_at TEXT
     );
@@ -303,7 +306,7 @@ _CREATE_TABLES: list[str] = [
     CREATE TABLE IF NOT EXISTS attack_graph_nodes (
         id TEXT PRIMARY KEY,
         operation_id TEXT REFERENCES operations(id) ON DELETE CASCADE,
-        target_id TEXT REFERENCES targets(id),
+        target_id TEXT REFERENCES targets(id) ON DELETE CASCADE,
         technique_id TEXT NOT NULL,
         tactic_id TEXT NOT NULL,
         status TEXT DEFAULT 'unreachable',
@@ -548,7 +551,7 @@ TOOL_REGISTRY_SEEDS = [
         "kind": "engine",
         "category": "execution",
         "description": "Execute techniques via direct SSH",
-        "mitre_techniques": "[]",
+        "mitre_techniques": '["T1021.004"]',
         "risk_level": "medium",
         "output_traits": "[]",
         "config_json": '{"mcp_server":"credential-checker"}',
@@ -559,7 +562,7 @@ TOOL_REGISTRY_SEEDS = [
         "kind": "engine",
         "category": "execution",
         "description": "Pooled SSH sessions for faster execution",
-        "mitre_techniques": "[]",
+        "mitre_techniques": '["T1021.004","T1059.004"]',
         "risk_level": "medium",
         "output_traits": "[]",
         "config_json": '{"mcp_server":"attack-executor"}',
@@ -570,7 +573,7 @@ TOOL_REGISTRY_SEEDS = [
         "kind": "engine",
         "category": "execution",
         "description": "Metasploit Framework RPC for exploit execution",
-        "mitre_techniques": "[]",
+        "mitre_techniques": '["T1203","T1059","T1210"]',
         "risk_level": "critical",
         "output_traits": "[]",
         "config_json": '{"mcp_server":"msf-rpc"}',
@@ -581,7 +584,7 @@ TOOL_REGISTRY_SEEDS = [
         "kind": "engine",
         "category": "execution",
         "description": "Windows Remote Management",
-        "mitre_techniques": "[]",
+        "mitre_techniques": '["T1021.006"]',
         "risk_level": "medium",
         "output_traits": "[]",
         "config_json": '{"mcp_server":"credential-checker"}',
@@ -639,6 +642,46 @@ async def _seed_tool_registry(db: aiosqlite.Connection) -> None:
                 seed["output_traits"],
                 seed.get("config_json", "{}"),
             ),
+        )
+
+
+_MCP_DISCOVERED_MITRE: dict[str, dict[str, Any]] = {
+    "osint-recon_dns_resolve":                    {"category": "reconnaissance",        "mitre": '["T1018","T1596.001"]'},
+    "vuln-lookup_banner_to_cpe":                  {"category": "vulnerability_scanning", "mitre": '["T1592.002"]'},
+    "credential-checker_rdp_credential_check":    {"category": "credential_access",     "mitre": '["T1110.001","T1021.001"]'},
+    "credential-checker_winrm_credential_check":  {"category": "credential_access",     "mitre": '["T1110.001","T1021.006"]'},
+    "attack-executor_execute_technique":          {"category": "execution",             "mitre": '["T1059.004"]'},
+    "attack-executor_close_sessions":             {"category": "execution",             "mitre": '["T1059.004"]'},
+    "web-scanner_web_http_probe":                 {"category": "reconnaissance",        "mitre": '["T1595.002"]'},
+    "web-scanner_web_vuln_scan":                  {"category": "vulnerability_scanning", "mitre": '["T1595.002","T1190"]'},
+    "web-scanner_web_dir_enum":                   {"category": "reconnaissance",        "mitre": '["T1595.003"]'},
+    "web-scanner_web_screenshot":                 {"category": "reconnaissance",        "mitre": '["T1592.004"]'},
+    "api-fuzzer_api_schema_detect":               {"category": "reconnaissance",        "mitre": '["T1595.002"]'},
+    "api-fuzzer_api_endpoint_enum":               {"category": "reconnaissance",        "mitre": '["T1595.002"]'},
+    "api-fuzzer_api_auth_test":                   {"category": "credential_access",     "mitre": '["T1110","T1550"]'},
+    "api-fuzzer_api_param_fuzz":                  {"category": "vulnerability_scanning", "mitre": '["T1190"]'},
+}
+
+
+async def _backfill_tool_mitre(db: aiosqlite.Connection) -> None:
+    """Backfill mitre_techniques for tools that were inserted with empty arrays."""
+    # Seed tools
+    for seed in TOOL_REGISTRY_SEEDS:
+        mitre = seed["mitre_techniques"]
+        if mitre and mitre != "[]":
+            await db.execute(
+                """UPDATE tool_registry
+                   SET mitre_techniques = ?, updated_at = datetime('now')
+                   WHERE tool_id = ? AND (mitre_techniques IS NULL OR mitre_techniques = '[]')""",
+                (mitre, seed["tool_id"]),
+            )
+    # MCP-discovered tools
+    for tool_id, meta in _MCP_DISCOVERED_MITRE.items():
+        await db.execute(
+            """UPDATE tool_registry
+               SET mitre_techniques = ?, category = ?, updated_at = datetime('now')
+               WHERE tool_id = ? AND (mitre_techniques IS NULL OR mitre_techniques = '[]')""",
+            (meta["mitre"], meta["category"], tool_id),
         )
 
 
@@ -727,6 +770,7 @@ async def init_db() -> None:
         await _seed_technique_playbooks(db)
         await _seed_techniques(db)
         await _seed_tool_registry(db)
+        await _backfill_tool_mitre(db)
         # Migration: add max_iterations column if not present
         try:
             await db.execute("ALTER TABLE operations ADD COLUMN max_iterations INTEGER DEFAULT 0")
@@ -774,6 +818,12 @@ async def init_db() -> None:
         # Migration: add ip_address column to recon_scans
         try:
             await db.execute("ALTER TABLE recon_scans ADD COLUMN ip_address TEXT")
+            await db.commit()
+        except Exception:
+            pass  # column already exists
+        # Migration: add facts_written column to recon_scans
+        try:
+            await db.execute("ALTER TABLE recon_scans ADD COLUMN facts_written INTEGER DEFAULT 0")
             await db.commit()
         except Exception:
             pass  # column already exists
@@ -834,6 +884,14 @@ async def init_db() -> None:
             await db.commit()
         except Exception:
             pass  # index already exists or table was freshly created
+        # Migration: add access_status column to targets (SPEC-037)
+        try:
+            await db.execute(
+                "ALTER TABLE targets ADD COLUMN access_status TEXT DEFAULT 'unknown'"
+            )
+            await db.commit()
+        except Exception:
+            pass  # column already exists
         # Migration: add structured metric fields to c5isr_statuses
         try:
             await db.execute("ALTER TABLE c5isr_statuses ADD COLUMN numerator INTEGER")

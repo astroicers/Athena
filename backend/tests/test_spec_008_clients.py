@@ -186,9 +186,10 @@ async def test_engine_router_mcp_ssh_route():
                 'Reconnaissance', 'TA0043', 'recon', 'low', 'T1592');
             CREATE TABLE targets (id TEXT PRIMARY KEY, hostname TEXT,
                 ip_address TEXT, os TEXT, role TEXT, operation_id TEXT,
-                is_compromised INTEGER DEFAULT 0, privilege_level TEXT);
+                is_compromised INTEGER DEFAULT 0, privilege_level TEXT,
+                access_status TEXT DEFAULT 'unknown');
             INSERT INTO targets VALUES ('tgt-1', 'test-host', '127.0.0.1', 'Linux',
-                'target', 'op-persist-test', 0, NULL);
+                'target', 'op-persist-test', 0, NULL, 'unknown');
             INSERT INTO operations VALUES ('op-persist-test', 0);
             INSERT INTO facts VALUES ('f1', 'op-persist-test', 'tgt-1', 'credential',
                 'credential.ssh', 'root:toor@127.0.0.1:22', 1, '2026-01-01', 'test');

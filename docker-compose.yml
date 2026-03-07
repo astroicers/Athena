@@ -17,6 +17,7 @@ services:
       - DATABASE_URL=sqlite:///app/data/athena.db
       - C2_ENGINE_URL=http://c2-engine:8888
       - C2_ENGINE_API_KEY=${C2_ENGINE_API_KEY:-ADMIN123456}
+      - MSF_RPC_HOST=msf-rpc
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8000/api/health"]
       interval: 30s
@@ -59,7 +60,7 @@ services:
     entrypoint: []
     command: >
       /usr/src/metasploit-framework/msfrpcd -P ${MSF_RPC_PASSWORD:-msf_password}
-      -u ${MSF_RPC_USER:-msf} -a 0.0.0.0 -p 55553 -S -f
+      -U ${MSF_RPC_USER:-msf} -a 0.0.0.0 -p 55553 -S -f
     restart: unless-stopped
 
   # MCP shared base image — build first with: make build-mcp-base
@@ -77,6 +78,8 @@ services:
     command: ["python", "-m", "server", "--transport", "streamable-http", "--port", "8080"]
     ports:
       - "127.0.0.1:58091:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
   mcp-osint:
@@ -103,6 +106,8 @@ services:
     command: ["python", "-m", "server", "--transport", "streamable-http", "--port", "8080"]
     ports:
       - "127.0.0.1:58094:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
   mcp-attack-executor:
@@ -113,6 +118,8 @@ services:
       - SESSION_IDLE_TIMEOUT_SEC=300
     ports:
       - "127.0.0.1:58095:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
   mcp-web-scanner:
@@ -125,6 +132,8 @@ services:
       - SCAN_TIMEOUT_SEC=300
     ports:
       - "127.0.0.1:58096:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
   mcp-api-fuzzer:
@@ -137,6 +146,8 @@ services:
       - MAX_ENDPOINTS=500
     ports:
       - "127.0.0.1:58097:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
 volumes:

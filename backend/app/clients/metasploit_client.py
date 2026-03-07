@@ -111,7 +111,10 @@ class MetasploitRPCEngine:
                 new_sessions = {k: v for k, v in sessions.items() if k not in pre_sessions}
                 if new_sessions:
                     sid = list(new_sessions.keys())[0]
-                    output = client.sessions.session(sid).run_with_output("id", timeout=5)
+                    shell = client.sessions.session(sid)
+                    shell.write("id\n")
+                    await asyncio.sleep(2)
+                    output = shell.read()
                     return {
                         "status": "success",
                         "shell": sid,

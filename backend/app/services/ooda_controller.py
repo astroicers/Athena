@@ -163,9 +163,11 @@ class OODAController:
                 if st.status == "completed" and st.result and st.result.get("status") == "success":
                     execution_result = st.result
                     # Update target, agent, counters (same as single path success)
+                    # Don't downgrade privilege_level if already Root
                     if st.target_id:
                         await db.execute(
-                            "UPDATE targets SET is_compromised = 1, privilege_level = 'User', "
+                            "UPDATE targets SET is_compromised = 1, "
+                            "privilege_level = CASE WHEN privilege_level = 'Root' THEN 'Root' ELSE 'User' END, "
                             "access_status = 'active' "
                             "WHERE id = ? AND operation_id = ?",
                             (st.target_id, operation_id),
@@ -216,10 +218,11 @@ class OODAController:
                     (execution_result["execution_id"], ooda_id),
                 )
             if execution_result and execution_result.get("status") == "success":
-                # Mark target as compromised
+                # Mark target as compromised (don't downgrade Root → User)
                 if decision.get("target_id"):
                     await db.execute(
-                        "UPDATE targets SET is_compromised = 1, privilege_level = 'User', "
+                        "UPDATE targets SET is_compromised = 1, "
+                        "privilege_level = CASE WHEN privilege_level = 'Root' THEN 'Root' ELSE 'User' END, "
                         "access_status = 'active' "
                         "WHERE id = ? AND operation_id = ?",
                         (decision["target_id"], operation_id),

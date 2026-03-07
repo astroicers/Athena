@@ -11,7 +11,7 @@
 """Tests for OODA Access Recovery & Credential Invalidation — SPEC-037."""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.services.engine_router import EngineRouter, _is_auth_failure
 
@@ -467,3 +467,88 @@ async def test_banner_fallback_auto_detects_vsftpd():
 
         # Should have been intercepted by banner-based Metasploit fallback
         assert result.get("engine") in ("metasploit", "metasploit_mock")
+
+
+@pytest.mark.asyncio
+async def test_exploit_vsftpd_no_lhost():
+    """exploit_vsftpd should NOT pass LHOST (bind shell, not reverse)."""
+    from unittest.mock import patch
+    from app.clients.metasploit_client import MetasploitRPCEngine
+
+    engine = MetasploitRPCEngine()
+
+    with patch.object(engine, "_run_exploit", new_callable=AsyncMock) as mock_run:
+        mock_run.return_value = {"status": "success", "output": "uid=0(root)", "engine": "metasploit"}
+        await engine.exploit_vsftpd("192.168.0.23")
+
+        mock_run.assert_called_once()
+        _, _, options = mock_run.call_args[0]
+        assert "RHOSTS" in options
+        assert "LHOST" not in options, "vsftpd bind shell must not pass LHOST"
+
+
+@pytest.mark.asyncio
+async def test_metasploit_success_updates_target():
+    """Metasploit success should set target compromised=Root and write root_shell fact."""
+    import aiosqlite
+    from app.clients.mock_c2_client import MockC2Client
+
+    async with aiosqlite.connect(":memory:") as db:
+        db.row_factory = aiosqlite.Row
+        await db.executescript("""
+            CREATE TABLE targets (
+                id TEXT, ip_address TEXT, operation_id TEXT,
+                is_compromised INTEGER DEFAULT 0, privilege_level TEXT,
+                access_status TEXT DEFAULT 'unknown'
+            );
+            CREATE TABLE technique_executions (
+                id TEXT, technique_id TEXT, target_id TEXT, operation_id TEXT,
+                ooda_iteration_id TEXT, engine TEXT, status TEXT,
+                started_at TEXT, completed_at TEXT, error_message TEXT,
+                result_summary TEXT, facts_collected_count INTEGER DEFAULT 0
+            );
+            CREATE TABLE operations (id TEXT, techniques_executed INTEGER DEFAULT 0);
+            CREATE TABLE facts (
+                id TEXT, operation_id TEXT, source_target_id TEXT, category TEXT,
+                trait TEXT, value TEXT, score REAL, collected_at TEXT, source TEXT,
+                UNIQUE(operation_id, trait, value)
+            );
+            INSERT INTO targets VALUES ('tgt-1', '192.168.0.23', 'op-1', 0, NULL, 'lost');
+            INSERT INTO operations VALUES ('op-1', 0);
+        """)
+        await db.commit()
+
+        ws = MagicMock()
+        ws.broadcast = AsyncMock()
+        fc = MagicMock()
+        fc.collect_from_result = AsyncMock(return_value=[])
+        router = EngineRouter(MockC2Client(), fc, ws)
+
+        # Mock MetasploitRPCEngine to return success
+        mock_msf_instance = MagicMock()
+        mock_msf_instance.get_exploit_for_service.return_value = AsyncMock(
+            return_value={"status": "success", "output": "uid=0(root)", "engine": "metasploit"}
+        )
+        mock_msf_cls = MagicMock(return_value=mock_msf_instance)
+
+        with patch("app.clients.metasploit_client.MetasploitRPCEngine", mock_msf_cls):
+            result = await router._execute_metasploit(
+                db, "exec-msf-1", "2026-01-01T00:00:00",
+                "T1190", "tgt-1", "op-1", "ooda-1",
+                "vsftpd", "192.168.0.23", "metasploit",
+            )
+
+        assert result["status"] == "success"
+
+        # Check target updated to Root
+        cursor = await db.execute("SELECT is_compromised, privilege_level, access_status FROM targets WHERE id = 'tgt-1'")
+        row = await cursor.fetchone()
+        assert row["is_compromised"] == 1
+        assert row["privilege_level"] == "Root"
+        assert row["access_status"] == "active"
+
+        # Check root_shell fact written
+        cursor = await db.execute("SELECT trait, value FROM facts WHERE trait = 'credential.root_shell'")
+        row = await cursor.fetchone()
+        assert row is not None, "credential.root_shell fact was not written"
+        assert "metasploit:vsftpd" in row["value"]

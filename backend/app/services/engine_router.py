@@ -681,7 +681,25 @@ class EngineRouter:
                 exec_id,
             ),
         )
+        facts_count = 0
         if status == "success":
+            # Mark target as compromised with root access
+            await db.execute(
+                "UPDATE targets SET is_compromised = 1, privilege_level = 'Root', "
+                "access_status = 'active' WHERE id = ? AND operation_id = ?",
+                (target_id, operation_id),
+            )
+            # Record root shell fact
+            shell_fact_id = str(uuid.uuid4())
+            completed_ts = datetime.now(timezone.utc).isoformat()
+            await db.execute(
+                "INSERT OR IGNORE INTO facts (id, trait, value, category, "
+                "source_target_id, operation_id, score, collected_at) "
+                "VALUES (?, 'credential.root_shell', ?, 'host', ?, ?, 1, ?)",
+                (shell_fact_id, f"metasploit:{service_name}:{output[:100]}",
+                 target_id, operation_id, completed_ts),
+            )
+            facts_count = 1
             await db.execute(
                 "UPDATE operations SET techniques_executed = techniques_executed + 1 "
                 "WHERE id = ?",
@@ -701,7 +719,7 @@ class EngineRouter:
             "engine": msf_engine_label,
             "status": status,
             "result_summary": output,
-            "facts_collected_count": 0,
+            "facts_collected_count": facts_count,
             "error": result_dict.get("reason"),
         }
 

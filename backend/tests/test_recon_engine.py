@@ -109,3 +109,88 @@ async def test_scan_target_not_found_raises():
 
         with pytest.raises(ValueError, match="tgt-missing"):
             await ReconEngine().scan(db, "op-001", "tgt-missing")
+
+
+# ---------------------------------------------------------------------------
+# SPEC-036: facts_written field in scan results
+# ---------------------------------------------------------------------------
+
+async def test_scan_result_includes_facts_written():
+    """SPEC-036: ReconResult from scan() contains a ``facts_written`` int field."""
+    row = make_ip_row("192.168.1.100")
+    db = make_mock_db(ip_row=row)
+
+    with patch("app.services.recon_engine.settings") as mock_settings, \
+         patch("app.services.recon_engine.ws_manager.broadcast", new=AsyncMock()):
+
+        mock_settings.MOCK_C2_ENGINE = True
+
+        result = await ReconEngine().scan(db, "op-001", "tgt-001")
+
+    assert hasattr(result, "facts_written"), "ReconResult must expose facts_written"
+    assert isinstance(result.facts_written, int)
+    assert result.facts_written > 0
+
+
+async def test_facts_written_default_zero():
+    """SPEC-036: a scan with zero services & no OS yields facts_written == 1.
+
+    Even with no services detected, ``_write_facts`` still writes the
+    ``network.host.ip`` fact, so the minimum is 1.  If the implementation
+    changes to truly produce 0 (e.g. no IP fact), adjust this assertion.
+    """
+    row = make_ip_row("10.0.0.1")
+    db = make_mock_db(ip_row=row)
+
+    # Patch _scan_via_mcp to return empty services, no OS, no XML
+    empty_mcp = AsyncMock(return_value=([], None, None, 0.01))
+
+    with patch("app.services.recon_engine.settings") as mock_settings, \
+         patch("app.services.recon_engine.ws_manager.broadcast", new=AsyncMock()), \
+         patch.object(ReconEngine, "_scan_via_mcp", empty_mcp):
+
+        mock_settings.MOCK_C2_ENGINE = False
+        mock_settings.MCP_ENABLED = True
+        mock_settings.NMAP_SCAN_TIMEOUT_SEC = 30
+        mock_settings.VULN_LOOKUP_ENABLED = False
+        mock_settings.EXPLOIT_VALIDATION_ENABLED = False
+
+        result = await ReconEngine().scan(db, "op-001", "tgt-001")
+
+    # Only the network.host.ip fact is written when services list is empty
+    assert result.facts_written == 1
+
+
+# ---------------------------------------------------------------------------
+# SPEC-036: empty nmap result produces warning log
+# ---------------------------------------------------------------------------
+
+async def test_empty_nmap_result_warning_log(caplog):
+    """SPEC-036: when MCP nmap returns 0 services a WARNING is logged."""
+    import logging
+
+    row = make_ip_row("10.0.0.1")
+    db = make_mock_db(ip_row=row)
+
+    # _scan_via_mcp returns empty services with some raw XML
+    empty_mcp = AsyncMock(return_value=([], None, "<nmap/>", 0.01))
+
+    with patch("app.services.recon_engine.settings") as mock_settings, \
+         patch("app.services.recon_engine.ws_manager.broadcast", new=AsyncMock()), \
+         patch.object(ReconEngine, "_scan_via_mcp", empty_mcp):
+
+        mock_settings.MOCK_C2_ENGINE = False
+        mock_settings.MCP_ENABLED = True
+        mock_settings.NMAP_SCAN_TIMEOUT_SEC = 30
+        mock_settings.VULN_LOOKUP_ENABLED = False
+        mock_settings.EXPLOIT_VALIDATION_ENABLED = False
+
+        with caplog.at_level(logging.WARNING, logger="app.services.recon_engine"):
+            result = await ReconEngine().scan(db, "op-001", "tgt-001")
+
+    assert result.services == []
+    # Verify the warning log was emitted
+    warning_msgs = [r.message for r in caplog.records if r.levelno >= logging.WARNING]
+    assert any("0 services" in msg for msg in warning_msgs), (
+        f"Expected a warning about 0 services; got: {warning_msgs}"
+    )

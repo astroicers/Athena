@@ -77,7 +77,7 @@ export function DataTable<T extends Record<string, unknown>>({
             {columns.map((col) => (
               <th
                 key={col.key}
-                className={`px-3 py-2 text-left text-athena-text-secondary font-medium uppercase tracking-wider ${
+                className={`px-4 py-3 text-left text-athena-text-secondary font-medium uppercase tracking-wider ${
                   col.sortable ? "cursor-pointer hover:text-athena-accent select-none" : ""
                 }`}
                 onClick={col.sortable ? () => handleSort(col.key) : undefined}
@@ -99,7 +99,7 @@ export function DataTable<T extends Record<string, unknown>>({
               className="border-b border-athena-border/50 hover:bg-athena-elevated/30"
             >
               {columns.map((col) => (
-                <td key={col.key} className="px-3 py-2 text-athena-text">
+                <td key={col.key} className="px-4 py-3 text-athena-text">
                   {col.render ? col.render(row) : String(row[col.key] ?? "")}
                 </td>
               ))}

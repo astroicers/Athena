@@ -104,7 +104,7 @@ export function MetricCard({
   return (
     <div className="bg-athena-surface border border-athena-border rounded-athena-md p-4 flex items-start justify-between gap-2">
       <div className="flex flex-col gap-1 flex-1">
-        <span className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider">
+        <span className="text-sm font-mono text-athena-text-secondary uppercase tracking-wider">
           {title}
         </span>
         <div className="flex items-center gap-2">
@@ -117,12 +117,12 @@ export function MetricCard({
           {trend && <TrendArrow trend={trend} />}
         </div>
         {trendLabel && (
-          <span className="text-[10px] font-mono text-athena-text-secondary">
+          <span className="text-sm font-mono text-athena-text-secondary">
             {trendLabel}
           </span>
         )}
         {subtitle && !trendLabel && (
-          <span className="text-[10px] font-mono text-athena-text-secondary">
+          <span className="text-sm font-mono text-athena-text-secondary">
             {subtitle}
           </span>
         )}

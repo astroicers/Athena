@@ -43,7 +43,7 @@ export function C5ISRFloatingPanel({ c5isrDomains, threatLevel }: C5ISRFloatingP
         onClick={() => setModalOpen(true)}
         className="absolute bottom-12 left-2 z-10 flex items-center gap-2 px-3 py-1.5 bg-athena-surface/90 backdrop-blur-sm border border-athena-border rounded-athena-sm hover:bg-athena-surface transition-colors cursor-pointer"
       >
-        <span className="text-[10px] font-mono text-athena-warning font-bold">
+        <span className="text-sm font-mono text-athena-warning font-bold">
           ⚠ {threatLevel.toFixed(1)}
         </span>
         <div className="flex items-center gap-1">
@@ -54,7 +54,7 @@ export function C5ISRFloatingPanel({ c5isrDomains, threatLevel }: C5ISRFloatingP
               d.healthPct >= 50 ? "text-athena-warning" :
               "text-athena-error";
             return (
-              <span key={d.domain} className={`text-[9px] font-mono ${color}`} title={`${d.domain}: ${d.healthPct}%`}>
+              <span key={d.domain} className={`text-xs font-mono ${color}`} title={`${d.domain}: ${d.healthPct}%`}>
                 {abbr}
               </span>
             );

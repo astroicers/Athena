@@ -87,24 +87,24 @@ export function TerminalPanel({
         {/* Title bar */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-athena-border bg-athena-surface rounded-t-athena-md shrink-0">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono text-athena-success">●</span>
+            <span className="text-sm font-mono text-athena-success">●</span>
             <span className="text-xs font-mono text-athena-text">
               {t("title")} {targetName} ({targetIp})
             </span>
             {!isConnected && (
-              <span className="text-[10px] font-mono text-athena-error">{tCommon("disconnected")}</span>
+              <span className="text-sm font-mono text-athena-error">{tCommon("disconnected")}</span>
             )}
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={clear}
-              className="text-[10px] font-mono text-athena-text-secondary hover:text-athena-accent px-1"
+              className="text-sm font-mono text-athena-text-secondary hover:text-athena-accent px-1"
             >
               {tCommon("clear")}
             </button>
             <button
               onClick={onClose}
-              className="text-[10px] font-mono text-athena-text-secondary hover:text-athena-error px-1"
+              className="text-sm font-mono text-athena-text-secondary hover:text-athena-error px-1"
             >
               ✕
             </button>
@@ -112,7 +112,7 @@ export function TerminalPanel({
         </div>
 
         {/* Terminal output */}
-        <div className="flex-1 overflow-y-auto p-3 font-mono text-xs leading-relaxed">
+        <div className="relative flex-1 overflow-y-auto p-3 font-mono text-xs leading-relaxed athena-scanline">
           {entries.map((entry, i) => (
             <div key={i}>
               {entry.type === "input" ? (
@@ -156,7 +156,7 @@ export function TerminalPanel({
           <button
             type="submit"
             disabled={!isConnected || !input.trim()}
-            className="text-[10px] font-mono text-athena-text-secondary hover:text-athena-accent disabled:opacity-30 px-1"
+            className="text-sm font-mono text-athena-text-secondary hover:text-athena-accent disabled:opacity-30 px-1"
           >
             {tCommon("send")}
           </button>

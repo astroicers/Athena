@@ -112,10 +112,10 @@ export function AttackSituationDiagram({
     <div className="bg-athena-surface border border-athena-border rounded-athena-md overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-athena-border">
-        <span className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider">
+        <span className="text-sm font-mono text-athena-text-secondary uppercase tracking-wider">
           {t("title")}
         </span>
-        <span className="text-[10px] font-mono text-athena-accent">
+        <span className="text-sm font-mono text-athena-accent">
           {t("progress", { value: Math.round(situation.overallProgress) })}
         </span>
       </div>

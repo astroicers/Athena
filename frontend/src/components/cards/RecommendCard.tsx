@@ -44,7 +44,7 @@ export function RecommendCard({ recommendation }: RecommendCardProps) {
   return (
     <div className="bg-athena-surface border border-athena-accent/30 rounded-athena-md p-4">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[10px] font-mono text-athena-accent uppercase tracking-wider">
+        <span className="text-sm font-mono text-athena-accent uppercase tracking-wider">
           {t("title")}
         </span>
         <span className="text-xs font-mono text-athena-accent font-bold">
@@ -76,7 +76,7 @@ export function RecommendCard({ recommendation }: RecommendCardProps) {
           </div>
         ))}
       </div>
-      <p className="text-[10px] font-mono text-athena-text-secondary mt-3">
+      <p className="text-sm font-mono text-athena-text-secondary mt-3">
         {recommendation.reasoningText}
       </p>
     </div>

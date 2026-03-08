@@ -24,16 +24,16 @@ function getHealthColor(pct: number): string {
 // ── MiniHexGauge ──
 
 function MiniHexGauge({ value, color }: { value: number; color: string }) {
-  const points = "14,1 25.5,8 25.5,24 14,31 2.5,24 2.5,8";
-  const perimeter = 86;
+  const points = "18,1 33,10 33,30 18,39 3,30 3,10";
+  const perimeter = 110;
   const filled = (Math.min(100, Math.max(0, value)) / 100) * perimeter;
   return (
-    <svg width="28" height="32" viewBox="0 0 28 32" className="shrink-0">
-      <polygon points={points} fill="none" stroke="#2a2a4a" strokeWidth="1.2" />
+    <svg width="36" height="40" viewBox="0 0 36 40" className="shrink-0">
+      <polygon points={points} fill="none" stroke="#3a3a5a" strokeWidth="1.2" />
       <polygon points={points} fill="none" stroke={color} strokeWidth="1.2"
         strokeDasharray={`${filled} ${perimeter - filled}`} strokeLinecap="round" />
-      <text x="14" y="17.5" textAnchor="middle" dominantBaseline="central"
-        fill={color} fontFamily="var(--font-mono)" fontSize="8" fontWeight="700">
+      <text x="18" y="21" textAnchor="middle" dominantBaseline="central"
+        fill={color} fontFamily="var(--font-mono)" fontSize="12" fontWeight="700">
         {Math.round(value)}
       </text>
     </svg>
@@ -83,22 +83,22 @@ function DomainCell({ domain }: { domain: C5ISRStatus }) {
   return (
     <div className="flex flex-col items-center justify-center gap-0.5 px-1 h-full">
       {/* 1. Domain code */}
-      <span className="text-[10px] font-mono font-bold text-athena-text-secondary uppercase tracking-wider">
+      <span className="text-xs font-mono font-bold text-athena-text-secondary uppercase tracking-wider">
         {CODE_MAP[domain.domain] ?? domain.domain}
       </span>
       {/* 2. HexGauge + tactical label */}
       <div className="flex items-center justify-center gap-1.5">
         <MiniHexGauge value={domain.healthPct} color={color} />
-        <span className="text-[10px] font-mono text-athena-text-secondary leading-tight">
+        <span className="text-xs font-mono text-athena-text-secondary leading-tight">
           {t(TACTICAL_KEY_MAP[domain.domain] as Parameters<typeof t>[0])}
         </span>
       </div>
       {/* 3. Primary metric */}
-      <span className="text-sm font-mono font-bold leading-none" style={{ color }}>
+      <span className={`text-sm font-mono font-bold leading-none athena-tabular-nums ${domain.healthPct > 80 ? "athena-glow-active" : domain.healthPct < 50 ? "athena-glow-alert" : ""}`} style={{ color }}>
         {primary}
       </span>
       {/* 4. Status badge */}
-      <span className="text-[9px] font-mono uppercase text-athena-text-secondary">
+      <span className="text-xs font-mono uppercase text-athena-text-secondary">
         {tStatus(domain.status as Parameters<typeof tStatus>[0])}
       </span>
     </div>
@@ -119,7 +119,7 @@ export function TacticalDashboard({ c5isrDomains }: TacticalDashboardProps) {
     .filter(Boolean) as C5ISRStatus[];
 
   return (
-    <div className="shrink-0 flex items-stretch border-b border-athena-border bg-athena-surface h-[96px]">
+    <div className="shrink-0 flex items-stretch border-b border-athena-border bg-athena-surface h-[140px]">
       <div className="flex-1 grid grid-cols-6 gap-1 items-stretch py-1 px-2">
         {sortedDomains.map((d) => (
           <DomainCell key={d.domain} domain={d} />

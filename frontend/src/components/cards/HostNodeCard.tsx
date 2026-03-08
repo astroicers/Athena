@@ -154,13 +154,13 @@ export function HostNodeCard({
                   {services.slice(0, 3).map((svc) => (
                     <span
                       key={svc.port}
-                      className="text-[10px] font-mono bg-athena-bg border border-athena-border/50 rounded px-1.5 py-0.5 text-athena-text-secondary"
+                      className="text-sm font-mono bg-athena-bg border border-athena-border/50 rounded px-1.5 py-0.5 text-athena-text-secondary"
                     >
                       {svc.port}/{svc.service}
                     </span>
                   ))}
                   {services.length > 3 && (
-                    <span className="text-[10px] font-mono text-athena-text-secondary">
+                    <span className="text-sm font-mono text-athena-text-secondary">
                       +{services.length - 3}
                     </span>
                   )}
@@ -173,14 +173,14 @@ export function HostNodeCard({
                 </div>
               )}
               {lastScanAt && (
-                <div className="text-[10px] font-mono text-athena-text-secondary/50 text-right">
+                <div className="text-sm font-mono text-athena-text-secondary text-right">
                   {lastScanAt.split("T")[1]?.slice(0, 8)}
                 </div>
               )}
               {onViewScanResult && (
                 <button
                   onClick={onViewScanResult}
-                  className="text-[10px] font-mono text-athena-accent hover:underline"
+                  className="text-sm font-mono text-athena-accent hover:underline"
                 >
                   {t("viewDetails")}
                 </button>
@@ -189,7 +189,7 @@ export function HostNodeCard({
           )}
           {isScanning && (
             <div className="mt-2 space-y-1">
-              <div className="flex items-center justify-between text-[10px] font-mono">
+              <div className="flex items-center justify-between text-sm font-mono">
                 <span className="text-[#00d4ff] animate-pulse">
                   {scanPhase
                     ? t(`phase_${scanPhase}` as Parameters<typeof t>[0])

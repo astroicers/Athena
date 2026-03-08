@@ -41,7 +41,7 @@ export function Sidebar() {
             <h1 className="text-lg font-mono font-bold text-athena-accent tracking-wider">
               {t("appName")}
             </h1>
-            <p className="text-[10px] font-mono text-athena-text-secondary mt-0.5">
+            <p className="text-sm font-mono text-athena-text-secondary mt-0.5">
               {t("subtitle")}
             </p>
           </div>
@@ -109,7 +109,7 @@ export function Sidebar() {
                 <span className="text-yellow-400 group-hover:scale-125 transition-transform">★</span>
                 astroicers/Athena
               </a>
-              <p className="text-athena-text-secondary/60 mt-1">⚖️ BSL-1.1</p>
+              <p className="text-athena-text-secondary mt-1">⚖️ BSL-1.1</p>
             </div>
             <LocaleSwitcher />
           </div>

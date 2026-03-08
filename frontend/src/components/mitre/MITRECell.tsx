@@ -17,7 +17,7 @@ const STATUS_COLORS: Record<string, string> = {
   [TechniqueStatus.RUNNING]: "bg-athena-accent/60 text-white animate-pulse",
   [TechniqueStatus.FAILED]: "bg-athena-error/80 text-white",
   [TechniqueStatus.QUEUED]: "bg-athena-text-secondary/30 text-athena-text-secondary",
-  [TechniqueStatus.UNTESTED]: "bg-athena-border/40 text-athena-text-secondary/60",
+  [TechniqueStatus.UNTESTED]: "bg-athena-border/40 text-athena-text-secondary",
   [TechniqueStatus.PARTIAL]: "bg-athena-warning/20 text-athena-warning border border-athena-warning/50",
 };
 
@@ -36,7 +36,7 @@ export function MITRECell({ mitreId, name, status, isSelected, onClick, compact 
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left p-1.5 rounded-athena-sm text-[10px] font-mono transition-all ${colorClass} ${
+      className={`w-full text-left p-1.5 rounded-athena-sm text-sm font-mono transition-all ${colorClass} ${
         isSelected ? "ring-1 ring-athena-accent" : ""
       } hover:brightness-110 cursor-pointer`}
     >

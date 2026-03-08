@@ -173,7 +173,7 @@ export function AddTargetModal({
     "w-full bg-athena-bg border border-athena-border rounded-athena-sm px-3 py-2 text-sm font-mono text-athena-text placeholder-athena-text-secondary/50 focus:outline-none focus:border-athena-accent";
 
   const labelStyles =
-    "block text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-1";
+    "block text-sm font-mono text-athena-text-secondary uppercase tracking-wider mb-1";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-athena-bg/80 backdrop-blur-sm">
@@ -307,7 +307,7 @@ export function AddTargetModal({
                     placeholder={t("batchPlaceholder")}
                     className={inputStyles + " resize-none"}
                   />
-                  <p className="text-[10px] font-mono text-athena-text-secondary mt-1">
+                  <p className="text-sm font-mono text-athena-text-secondary mt-1">
                     {t("batchHelp")}
                   </p>
                 </div>
@@ -387,7 +387,7 @@ export function AddTargetModal({
                     >
                       {entry.ipAddress}
                       {entry.hostname !== entry.ipAddress && (
-                        <span className="text-athena-text-secondary/60 ml-2">
+                        <span className="text-athena-text-secondary ml-2">
                           ({entry.hostname})
                         </span>
                       )}

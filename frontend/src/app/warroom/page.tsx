@@ -67,6 +67,9 @@ export default function WarRoomPage() {
   const [c5isrDomains, setC5isrDomains] = useState<C5ISRStatus[]>([]);
   const [oodaTimeline, setOodaTimeline] = useState<OODATimelineEntry[]>([]);
 
+  // SPEC-042: attack path from graph.updated WebSocket event
+  const [recommendedPath, setRecommendedPath] = useState<string[]>([]);
+
   // War Room specific
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [openNodeIds, setOpenNodeIds] = useState<string[]>([]);
@@ -200,6 +203,16 @@ export default function WarRoomPage() {
     return unsub;
   }, [ws]);
 
+  // SPEC-042: graph.updated → extract recommended_path for attack path highlighting
+  useEffect(() => {
+    const unsub = ws.subscribe("graph.updated", (raw: unknown) => {
+      const data = raw as Record<string, unknown>;
+      const path = data.recommended_path as string[] | undefined;
+      if (path) setRecommendedPath(path);
+    });
+    return unsub;
+  }, [ws]);
+
   // ── Computed ──
   const allLogs = [...initialLogs, ...liveLogs];
 
@@ -275,7 +288,7 @@ export default function WarRoomPage() {
   if (isLoading) return <MonitorPageSkeleton />;
 
   return (
-    <div className="-m-4 h-[calc(100vh-48px)] flex flex-col overflow-hidden">
+    <div className="-m-4 h-[calc(100vh-48px)] flex flex-col overflow-hidden athena-grid-bg">
       {/* Tactical Dashboard */}
       <TacticalDashboard c5isrDomains={c5isrDomains} />
 
@@ -294,14 +307,15 @@ export default function WarRoomPage() {
             onCloseNode={(id) => setOpenNodeIds((prev) => prev.filter((n) => n !== id))}
             onReconScan={handleReconScan}
             onInitialAccess={handleInitialAccess}
+            recommendedPath={recommendedPath}
           />
           {/* Side Panel Toggle */}
           <button
             onClick={() => setSidePanelOpen((v) => !v)}
-            className="absolute top-2 right-[72px] z-10 px-2 py-1 rounded border border-athena-border bg-athena-surface hover:bg-athena-elevated text-[10px] font-mono text-athena-text-secondary hover:text-athena-text transition-colors"
-            title={t("sidePanel")}
+            className="absolute top-2 right-[72px] z-10 px-2 py-1 rounded border border-athena-border bg-athena-surface hover:bg-athena-elevated text-xs font-mono text-athena-text-secondary hover:text-athena-text transition-colors"
+            title={t("sidePanel._title")}
           >
-            {sidePanelOpen ? "▶" : "◀"} {t("sidePanel")}
+            {sidePanelOpen ? "▶" : "◀"} {t("sidePanel._title")}
           </button>
         </div>
 

@@ -46,7 +46,7 @@ function OptionCard({ option, index }: { option: TacticalOption; index: number }
             {option.techniqueId}
           </span>
           {index === 0 && (
-            <span className="text-[10px] font-mono text-athena-accent bg-athena-accent/10 px-1.5 py-0.5 rounded">
+            <span className="text-sm font-mono text-athena-accent bg-athena-accent/10 px-1.5 py-0.5 rounded">
               {t("recommended")}
             </span>
           )}
@@ -55,13 +55,13 @@ function OptionCard({ option, index }: { option: TacticalOption; index: number }
           <Badge variant={RISK_VARIANT[option.riskLevel] || "info"}>
             {tRisk(option.riskLevel as any)}
           </Badge>
-          <span className="text-[10px] font-mono text-athena-text-secondary">
+          <span className="text-sm font-mono text-athena-text-secondary">
             {(option.confidence * 100).toFixed(0)}%
           </span>
         </div>
       </div>
       <p className="text-xs font-mono text-athena-text-secondary">{option.techniqueName}</p>
-      <p className="text-[10px] font-mono text-athena-text-secondary/70 mt-1">
+      <p className="text-sm font-mono text-athena-text-secondary mt-1">
         {t("engine", { name: option.recommendedEngine.toUpperCase() })}
       </p>
 
@@ -72,12 +72,12 @@ function OptionCard({ option, index }: { option: TacticalOption; index: number }
           </p>
           {option.prerequisites.length > 0 && (
             <div>
-              <span className="text-[10px] font-mono text-athena-text-secondary uppercase">
+              <span className="text-sm font-mono text-athena-text-secondary uppercase">
                 {t("prerequisites")}
               </span>
               <ul className="mt-1 space-y-0.5">
                 {option.prerequisites.map((p, i) => (
-                  <li key={i} className="text-[10px] font-mono text-athena-text-secondary/70">
+                  <li key={i} className="text-sm font-mono text-athena-text-secondary">
                     &bull; {p}
                   </li>
                 ))}
@@ -121,7 +121,7 @@ export function RecommendationPanel({
         title={tHints("recommendation")}
         trailing={
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono text-athena-text-secondary">
+            <span className="text-sm font-mono text-athena-text-secondary">
               {t("confidence", { value: (recommendation.confidence * 100).toFixed(0) })}
             </span>
             {isDecided && (
@@ -137,7 +137,7 @@ export function RecommendationPanel({
 
       {/* Situation Assessment */}
       <div className="bg-athena-bg border border-athena-border/50 rounded-athena-sm p-3 mb-3">
-        <span className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider">
+        <span className="text-sm font-mono text-athena-text-secondary uppercase tracking-wider">
           {t("situationAssessment")}
         </span>
         <p className="text-xs font-mono text-athena-text leading-relaxed mt-1">
@@ -147,7 +147,7 @@ export function RecommendationPanel({
 
       {/* Tactical Options */}
       <div className="space-y-2 mb-3">
-        <span className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider">
+        <span className="text-sm font-mono text-athena-text-secondary uppercase tracking-wider">
           {t("tacticalOptions", { count: recommendation.options.length })}
         </span>
         {recommendation.options.map((opt, i) => (

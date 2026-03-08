@@ -18,6 +18,8 @@
   "Nav": {
     "planner": "Mission Planner",
     "warRoom": "War Room",
+    "poc": "PoC Report",
+    "vulns": "Vulns",
     "tools": "Tool Registry"
   },
   "PageHeader": {},
@@ -45,12 +47,21 @@
     "tacticalCommand": "Decision Tempo",
     "tacticalControl": "Implant Survival",
     "tacticalComms": "C2 Channel",
-    "tacticalComputers": "Targets Pwned",
+    "tacticalComputers": "Targets Compromised",
     "tacticalCyber": "Attack Success",
     "tacticalIsr": "Intel Quality",
     "iterLabel": "iter",
     "channelUp": "UP",
-    "channelDown": "DOWN"
+    "channelDown": "DOWN",
+    "reportMetrics": "Metrics",
+    "reportMetricName": "Name",
+    "reportMetricValue": "Value",
+    "reportMetricWeight": "Weight",
+    "reportAssetRoster": "Asset Roster",
+    "reportTacticalAssessment": "Tactical Assessment",
+    "reportRiskVectors": "Risk Vectors",
+    "reportRecommendedActions": "Recommended Actions",
+    "reportCrossDomainImpacts": "Cross-Domain Impacts"
   },
   "Navigator": {
     "attackPath": "Attack Path Timeline",
@@ -71,7 +82,7 @@
     "oodaStarted": "OODA cycle started",
     "reportExported": "Report exported",
     "reconComplete": "Recon complete — {factsWritten} facts written",
-    "terminal": "▶ Terminal",
+    "terminal": "Terminal",
     "targetActivated": "Target set as active",
     "targetDeactivated": "Target deactivated",
     "targetDeleted": "{hostname} deleted",
@@ -233,7 +244,7 @@
     "secure": "SECURE",
     "reconScan": "RECON SCAN",
     "scanning": "SCANNING...",
-    "terminal": "▶ Terminal",
+    "terminal": "Terminal",
     "active": "ACTIVE",
     "deactivate": "DEACTIVATE",
     "setActive": "SET ACTIVE",
@@ -406,7 +417,17 @@
     "title": "War Room",
     "kpiCollapse": "Collapse",
     "kpiExpand": "Expand",
-    "sidePanel": "Side Panel",
+    "sidePanel": {
+      "_title": "Side Panel",
+      "aiDecision": "AI Decision",
+      "recommendation": "Recommendation",
+      "oodaTimeline": "OODA Timeline",
+      "agents": "Agents",
+      "logs": "Logs",
+      "active": "active",
+      "noAgents": "No agents",
+      "waitingForLogs": "Waiting for logs..."
+    },
     "directivePlaceholder": "Enter directive for next OODA cycle...",
     "directiveSend": "Send",
     "directiveSent": "Directive stored",
@@ -418,14 +439,6 @@
     "oodaTrigger": "Start OODA",
     "oodaTriggerHint": "Saves directive and starts OODA cycle",
     "viewFullLogs": "View full logs",
-    "sidePanel.aiDecision": "AI Decision",
-    "sidePanel.recommendation": "Recommendation",
-    "sidePanel.oodaTimeline": "OODA Timeline",
-    "sidePanel.agents": "Agents",
-    "sidePanel.logs": "Logs",
-    "sidePanel.active": "active",
-    "sidePanel.noAgents": "No agents",
-    "sidePanel.waitingForLogs": "Waiting for logs...",
     "reconStarted": "Recon scan started",
     "initialAccessStarted": "Initial access started",
     "battleRhythm": "BATTLE RHYTHM"
@@ -444,7 +457,8 @@
     "recon": "Recon Complete",
     "compromised": "Compromised",
     "privilege": "Privilege Level",
-    "persistence": "Persistence / Lateral"
+    "persistence": "Persistence / Lateral",
+    "attackPath": "Attack Path (Recommended)"
   },
   "Topology": {
     "noData": "No topology data available",
@@ -504,6 +518,55 @@
     "warn": "WARN",
     "err": "ERR",
     "confidence": "{value}% confidence"
+  },
+  "Poc": {
+    "title": "Proof of Concept Report",
+    "subtitle": "Operation {operationId}",
+    "export": "Export PDF",
+    "totalPocs": "Total PoCs",
+    "reproducible": "Reproducible",
+    "targets": "Targets",
+    "techniques": "Techniques",
+    "techniqueName": "Technique",
+    "commands": "Commands Executed",
+    "output": "Output",
+    "environment": "Environment",
+    "copy": "Copy",
+    "noRecords": "No PoC records available"
+  },
+  "Vulns": {
+    "title": "Vulnerability Dashboard",
+    "subtitle": "Operation {operationId}",
+    "total": "Total",
+    "severity": {
+      "critical": "CRITICAL",
+      "high": "HIGH",
+      "medium": "MEDIUM",
+      "low": "LOW",
+      "info": "INFO"
+    },
+    "status": {
+      "discovered": "Discovered",
+      "confirmed": "Confirmed",
+      "exploited": "Exploited",
+      "reported": "Reported",
+      "false_positive": "False Positive"
+    },
+    "columns": {
+      "cveId": "CVE-ID",
+      "target": "Target",
+      "severity": "Severity",
+      "cvss": "CVSS",
+      "status": "Status",
+      "discovered": "Discovered"
+    },
+    "noVulns": "No vulnerabilities found",
+    "detail": {
+      "title": "Vulnerability Detail",
+      "description": "Description",
+      "timeline": "Timeline",
+      "close": "Close"
+    }
   },
   "Errors": {
     "failedLoadC5isr": "Failed to load C5ISR data",

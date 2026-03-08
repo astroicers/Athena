@@ -65,7 +65,7 @@ function InlineDirective({
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder={t("directivePlaceholder")}
-        className="bg-transparent text-[10px] font-mono text-athena-text w-48 outline-none placeholder:text-athena-text-secondary/40"
+        className="bg-transparent text-sm font-mono text-athena-text w-48 outline-none placeholder:text-athena-text-secondary/40"
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.preventDefault();
@@ -76,7 +76,7 @@ function InlineDirective({
       <button
         onClick={handleSubmit}
         disabled={!value.trim() || sending}
-        className="text-[9px] font-mono uppercase tracking-wider text-athena-accent hover:text-athena-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
+        className="text-xs font-mono uppercase tracking-wider text-athena-accent hover:text-athena-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {t("directiveSend")}
       </button>
@@ -102,11 +102,11 @@ export function CollapsibleKPIRow({
       <div className="flex items-center gap-4 px-3 py-1 bg-athena-surface border-b border-athena-border shrink-0">
         <button
           onClick={onToggle}
-          className="text-[10px] font-mono text-athena-text-secondary hover:text-athena-text transition-colors"
+          className="text-sm font-mono text-athena-text-secondary hover:text-athena-text transition-colors"
         >
           ►
         </button>
-        <span className="text-[10px] font-mono text-athena-text-secondary">
+        <span className="text-sm font-mono text-athena-text-secondary">
           Agents: {activeAgents} | Success: {successRate}% | Executed: {techniquesExecuted}/{techniquesTotal} | Threat: {typeof threatLevel === "number" ? threatLevel.toFixed(1) : threatLevel}
         </span>
       </div>
@@ -118,7 +118,7 @@ export function CollapsibleKPIRow({
       <div className="flex items-center px-3 py-1 bg-athena-surface">
         <button
           onClick={onToggle}
-          className="text-[10px] font-mono text-athena-text-secondary hover:text-athena-text transition-colors"
+          className="text-sm font-mono text-athena-text-secondary hover:text-athena-text transition-colors"
         >
           ▼ {t("kpiCollapse")}
         </button>

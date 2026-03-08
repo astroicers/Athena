@@ -320,7 +320,7 @@ export default function PlannerPage() {
   if (isLoading) return <PlannerPageSkeleton />;
 
   return (
-    <div className="flex flex-col h-full space-y-3">
+    <div className="flex flex-col h-full space-y-3 athena-grid-bg">
       <TabBar tabs={PLANNER_TABS} activeTab={activeTab} onChange={setActiveTab} />
 
       {activeTab === "mission" && (
@@ -332,7 +332,7 @@ export default function PlannerPage() {
         </SectionHeader>
         <div className="flex items-center gap-2">
           {resetStatus === "done" && (
-            <span className="text-[10px] font-mono text-athena-success">{t("resetOk")}</span>
+            <span className="text-sm font-mono text-athena-success">{t("resetOk")}</span>
           )}
           <Tooltip text={tTips("reset")}>
             <Button
@@ -386,14 +386,14 @@ export default function PlannerPage() {
           </Tooltip>
         </div>
       </div>
-      <p className="text-[10px] font-mono text-athena-text-secondary/60 -mt-3 ml-1">{tHints("missionSteps")}</p>
+      <p className="text-sm font-mono text-athena-text-secondary -mt-3 ml-1">{tHints("missionSteps")}</p>
       <DataTable columns={STEP_COLUMNS} data={steps as StepRow[]} keyField="id" emptyMessage={t("noSteps")} />
 
       {/* OODA Timeline + Host Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
           <OODATimeline entries={timeline} />
-          <p className="text-[10px] font-mono text-athena-text-secondary/60 mt-1 ml-1">{tHints("oodaTimeline")}</p>
+          <p className="text-sm font-mono text-athena-text-secondary mt-1 ml-1">{tHints("oodaTimeline")}</p>
         </div>
         <div className="space-y-3">
           <SectionHeader
@@ -417,7 +417,7 @@ export default function PlannerPage() {
           >
             {t("targetHosts")}
           </SectionHeader>
-          <p className="text-[10px] font-mono text-athena-text-secondary/60 -mt-2 ml-1">{tHints("targetHosts")}</p>
+          <p className="text-sm font-mono text-athena-text-secondary -mt-2 ml-1">{tHints("targetHosts")}</p>
           {targets.length === 0 ? (
             <div className="border-2 border-dashed border-athena-border/50 rounded-athena-md p-4 text-center">
               <span className="text-xs font-mono text-athena-text-secondary whitespace-pre-line">{tEmpty("plannerGuide")}</span>
@@ -449,7 +449,7 @@ export default function PlannerPage() {
                 {tgt.isCompromised && (
                   <button
                     onClick={() => setTerminalTarget(tgt)}
-                    className="mt-1 w-full text-[10px] font-mono text-athena-success border border-athena-success/40 rounded-athena-sm py-1 hover:bg-athena-success/10 transition-colors uppercase tracking-wider"
+                    className="mt-1 w-full text-sm font-mono text-athena-success border border-athena-success/40 rounded-athena-sm py-1 hover:bg-athena-success/10 transition-colors uppercase tracking-wider"
                   >
                     {t("terminal")}
                   </button>
@@ -517,7 +517,7 @@ export default function PlannerPage() {
       <div className="flex-1 space-y-4 min-h-0 overflow-y-auto">
         {/* Attack Path Timeline */}
         <AttackPathTimeline data={attackPath} loading={false} />
-        <p className="text-[10px] font-mono text-athena-text-secondary/60 -mt-3 ml-1">{tHints("attackPath")}</p>
+        <p className="text-sm font-mono text-athena-text-secondary -mt-3 ml-1">{tHints("attackPath")}</p>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
           {/* ATT&CK Matrix */}
@@ -527,7 +527,7 @@ export default function PlannerPage() {
               trailing={
                 <button
                   onClick={() => setCompact(!compact)}
-                  className="text-[10px] font-mono text-athena-text-secondary hover:text-athena-accent transition-colors px-2 py-0.5 border border-athena-border rounded-athena-sm"
+                  className="text-sm font-mono text-athena-text-secondary hover:text-athena-accent transition-colors px-2 py-0.5 border border-athena-border rounded-athena-sm"
                 >
                   {compact ? t("expandView") : t("compactView")}
                 </button>
@@ -535,12 +535,12 @@ export default function PlannerPage() {
             >
               {t("mitreMatrix")}
             </SectionHeader>
-            <p className="text-[10px] font-mono text-athena-text-secondary/60 -mt-1 mb-2 ml-1">{tHints("mitreMatrix")}</p>
+            <p className="text-sm font-mono text-athena-text-secondary -mt-1 mb-2 ml-1">{tHints("mitreMatrix")}</p>
             <div className="bg-athena-surface border border-athena-border rounded-athena-md p-3 overflow-x-auto">
               <div className="flex gap-2 min-w-max">
                 {orderedTactics.map((tactic) => (
                   <div key={tactic} className={`${compact ? "w-20" : "w-28"} shrink-0`}>
-                    <div className="text-[10px] font-mono text-athena-accent font-bold uppercase mb-2 truncate">
+                    <div className="text-sm font-mono text-athena-accent font-bold uppercase mb-2 truncate">
                       {tacticLabel(tactic)}
                     </div>
                     <div className="space-y-1">

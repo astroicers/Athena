@@ -17,10 +17,10 @@
 
   /* -- Text Colors -- */
   --color-text-primary: #ffffff;
-  --color-text-secondary: #a0a0b0;
+  --color-text-secondary: #c0c0d0;
 
   /* -- Border -- */
-  --color-border: #2a2a4a;
+  --color-border: #3a3a5a;
 
   /* -- Status Colors -- */
   --color-success: #00ff88;
@@ -29,9 +29,38 @@
   --color-critical: #ff0040;
   --color-info: #00d4ff;
 
+  /* -- Text Colors (improved contrast) -- */
+  --color-text-tertiary: #8a8a9a;
+
+  /* -- Error text (higher contrast than --color-error) -- */
+  --color-error-text: #ff6666;
+
   /* -- Typography -- */
   --font-mono: "JetBrains Mono", "Fira Code", monospace;
   --font-sans: "Inter", system-ui, sans-serif;
+
+  /* -- Font Size Scale (Executive-Ready) -- */
+  --fs-floor: 12px;
+  --fs-caption: 12px;
+  --fs-body: 14px;
+  --fs-heading-card: 13px;
+  --fs-heading-section: 15px;
+  --fs-heading-page: 18px;
+  --fs-metric: 32px;
+  --fs-metric-label: 11px;
+
+  /* -- Spacing Scale -- */
+  --sp-badge-x: 12px;
+  --sp-badge-y: 5px;
+  --sp-cell: 14px;
+  --sp-card: 20px;
+
+  /* -- Red Team Aesthetic -- */
+  --color-grid-line: rgba(58, 58, 90, 0.25);
+  --color-scanline: rgba(0, 212, 255, 0.03);
+  --color-glow-green: rgba(0, 255, 136, 0.4);
+  --color-glow-red: rgba(255, 68, 68, 0.4);
+  --color-glow-cyan: rgba(0, 212, 255, 0.3);
 
   /* -- Border Radius -- */
   --radius-sm: 4px;
@@ -60,4 +89,49 @@ body {
 :focus-visible {
   outline: 1px solid var(--color-accent);
   outline-offset: 2px;
+}
+
+/* ============================================
+   Red Team Aesthetic Utilities
+   ============================================ */
+
+/* Tactical grid background */
+.athena-grid-bg {
+  background-image:
+    linear-gradient(var(--color-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-grid-line) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* CRT scanline overlay (terminal-style components only) */
+.athena-scanline {
+  position: relative;
+}
+.athena-scanline::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.15) 2px,
+    rgba(0, 0, 0, 0.15) 4px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Active status glow */
+.athena-glow-active {
+  text-shadow: 0 0 8px var(--color-glow-green);
+}
+
+.athena-glow-alert {
+  text-shadow: 0 0 8px var(--color-glow-red);
+}
+
+/* Tabular numbers for aligned metrics */
+.athena-tabular-nums {
+  font-variant-numeric: tabular-nums;
 }

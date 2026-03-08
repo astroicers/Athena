@@ -104,7 +104,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
         <form onSubmit={handleSubmit} className="space-y-3">
           {/* Tool ID */}
           <div>
-            <label className="block text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-1">
+            <label className="block text-sm font-mono text-athena-text-secondary uppercase tracking-wider mb-1">
               {t("toolId")} <span className="text-athena-error">*</span>
             </label>
             <input
@@ -118,7 +118,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
 
           {/* Name */}
           <div>
-            <label className="block text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-1">
+            <label className="block text-sm font-mono text-athena-text-secondary uppercase tracking-wider mb-1">
               {t("name")} <span className="text-athena-error">*</span>
             </label>
             <input
@@ -132,7 +132,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
 
           {/* Kind */}
           <div>
-            <label className="block text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-1">
+            <label className="block text-sm font-mono text-athena-text-secondary uppercase tracking-wider mb-1">
               {t("kind")}
             </label>
             <select
@@ -147,7 +147,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
 
           {/* Category */}
           <div>
-            <label className="block text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-1">
+            <label className="block text-sm font-mono text-athena-text-secondary uppercase tracking-wider mb-1">
               {t("category")}
             </label>
             <select
@@ -165,7 +165,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
 
           {/* Risk Level */}
           <div>
-            <label className="block text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-1">
+            <label className="block text-sm font-mono text-athena-text-secondary uppercase tracking-wider mb-1">
               {t("riskLevel")}
             </label>
             <select
@@ -183,7 +183,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
 
           {/* Description */}
           <div>
-            <label className="block text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-1">
+            <label className="block text-sm font-mono text-athena-text-secondary uppercase tracking-wider mb-1">
               {t("descriptionOptional")}
             </label>
             <textarea

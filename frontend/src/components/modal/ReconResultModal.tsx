@@ -84,7 +84,7 @@ export function ReconResultModal({
         {/* Open Ports */}
         {result.services && result.services.length > 0 && (
           <div className="border-t border-athena-border pt-3 mb-4">
-            <p className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-2">
+            <p className="text-sm font-mono text-athena-text-secondary uppercase tracking-wider mb-2">
               {t("openPorts")}
             </p>
             <div className="space-y-0.5 text-xs font-mono max-h-48 overflow-y-auto">
@@ -101,7 +101,7 @@ export function ReconResultModal({
 
         {/* Initial Access */}
         <div className="border-t border-athena-border pt-3 mb-4">
-          <p className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mb-2">
+          <p className="text-sm font-mono text-athena-text-secondary uppercase tracking-wider mb-2">
             {t("initialAccess")}
           </p>
           <div className="space-y-1 text-xs font-mono">

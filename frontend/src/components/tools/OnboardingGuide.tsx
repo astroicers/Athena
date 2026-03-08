@@ -48,10 +48,10 @@ export function OnboardingGuide({ isOpen, onClose }: OnboardingGuideProps) {
           {STEPS.map((step, i) => (
             <div key={step.titleKey}>
               <div className="flex items-center gap-2 mb-1.5">
-                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-athena-accent text-athena-bg text-[10px] font-bold">
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-athena-accent text-athena-bg text-sm font-bold">
                   {i + 1}
                 </span>
-                <span className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider font-medium">
+                <span className="text-sm font-mono text-athena-text-secondary uppercase tracking-wider font-medium">
                   {t(step.titleKey)}
                 </span>
               </div>

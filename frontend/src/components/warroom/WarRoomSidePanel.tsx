@@ -135,7 +135,7 @@ export function WarRoomSidePanel({
         >
           <div className="space-y-2">
             {agents.length === 0 ? (
-              <span className="text-[10px] font-mono text-athena-text-secondary">
+              <span className="text-sm font-mono text-athena-text-secondary">
                 {t("sidePanel.noAgents")}
               </span>
             ) : (
@@ -161,7 +161,7 @@ export function WarRoomSidePanel({
           onToggle={() => toggle("logs")}
         >
           {allLogs.length === 0 ? (
-            <span className="text-[10px] font-mono text-athena-text-secondary">
+            <span className="text-sm font-mono text-athena-text-secondary">
               {t("sidePanel.waitingForLogs")}
             </span>
           ) : (
@@ -173,7 +173,7 @@ export function WarRoomSidePanel({
               </div>
               <Link
                 href="/planner"
-                className="block text-center text-[10px] font-mono text-athena-accent hover:underline mt-1.5 py-0.5"
+                className="block text-center text-xs font-mono text-athena-accent hover:underline mt-1.5 py-0.5"
               >
                 {t("viewFullLogs")} →
               </Link>

@@ -95,7 +95,7 @@ export function NodeDetailPanel({
           {node.label}
         </span>
         <span
-          className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
+          className={`text-sm font-mono px-2 py-0.5 rounded border ${
             isCompromised
               ? "text-red-400 border-red-500/40 bg-red-500/10"
               : "text-green-400 border-green-500/40 bg-green-500/10"
@@ -113,7 +113,7 @@ export function NodeDetailPanel({
           [t("role"), role],
           ...(priv ? [[t("privilege"), priv]] : []),
         ].map(([label, value]) => (
-          <div key={label} className="flex gap-2 text-[11px] font-mono">
+          <div key={label} className="flex gap-2 text-xs font-mono">
             <span className="text-athena-text-secondary w-10 shrink-0">{label}</span>
             <span className="text-athena-text-primary break-all">{value}</span>
           </div>
@@ -122,7 +122,7 @@ export function NodeDetailPanel({
 
       {/* Kill Chain progress */}
       <div>
-        <div className="text-[10px] font-mono text-athena-text-secondary mb-2 tracking-wider">
+        <div className="text-sm font-mono text-athena-text-secondary mb-2 tracking-wider">
           {t("killChain")}
         </div>
         <div className="flex gap-0.5">
@@ -148,7 +148,7 @@ export function NodeDetailPanel({
                 />
                 {isCurrent && (
                   <span
-                    className="text-[10px] font-mono leading-none"
+                    className="text-sm font-mono leading-none"
                     style={{ color: KILL_CHAIN_COLORS[stage] }}
                   >
                     {tKC(stage as any)}
@@ -159,7 +159,7 @@ export function NodeDetailPanel({
           })}
         </div>
         {kcStage === null && (
-          <p className="text-[10px] font-mono text-athena-text-secondary mt-1">
+          <p className="text-sm font-mono text-athena-text-secondary mt-1">
             {t("noAttackStage")}
           </p>
         )}
@@ -167,16 +167,16 @@ export function NodeDetailPanel({
 
       {/* Collected Facts */}
       <div>
-        <div className="text-[10px] font-mono text-athena-text-secondary mb-2 tracking-wider">
+        <div className="text-sm font-mono text-athena-text-secondary mb-2 tracking-wider">
           {t("collectedFacts")} {loadingFacts && <span className="animate-pulse">…</span>}
           {!loadingFacts && <span className="ml-1 text-athena-accent">({facts.length})</span>}
         </div>
         {facts.length === 0 && !loadingFacts && (
-          <p className="text-[10px] font-mono text-athena-text-secondary">{t("noFacts")}</p>
+          <p className="text-sm font-mono text-athena-text-secondary">{t("noFacts")}</p>
         )}
         <div className="space-y-1">
           {facts.map((f) => (
-            <div key={f.id} className="text-[10px] font-mono space-y-0.5">
+            <div key={f.id} className="text-sm font-mono space-y-0.5">
               <span className="text-athena-accent">{f.trait}</span>
               <div className="text-athena-text-primary break-all pl-2">
                 {f.value.length > 60 ? f.value.slice(0, 60) + "…" : f.value}

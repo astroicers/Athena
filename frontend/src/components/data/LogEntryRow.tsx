@@ -32,9 +32,9 @@ export function LogEntryRow({ entry }: LogEntryRowProps) {
   const time = entry.timestamp.split("T")[1]?.slice(0, 8) || entry.timestamp;
 
   return (
-    <div className={`flex items-center gap-1.5 px-2 py-0.5 border-l-2 text-[11px] font-mono ${style}`}>
+    <div className={`flex items-center gap-1.5 px-2 py-0.5 border-l-2 text-xs font-mono ${style}`}>
       <span className="text-athena-text-secondary shrink-0 w-[4.5rem]">{time}</span>
-      <span className="shrink-0 text-[10px]">
+      <span className="shrink-0 text-sm">
         [{tSev(entry.severity as any)}]
       </span>
       <span className="text-athena-text flex-1 truncate">{entry.message}</span>

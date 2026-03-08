@@ -70,7 +70,7 @@ export function TechniqueCard({ technique, relatedTools }: TechniqueCardProps) {
           {technique.description}
         </p>
       )}
-      <div className="flex items-center gap-3 text-[10px] font-mono text-athena-text-secondary">
+      <div className="flex items-center gap-3 text-sm font-mono text-athena-text-secondary">
         <span>{t("tactic")} {technique.tactic}</span>
         <Badge variant={RISK_VARIANT[technique.riskLevel] || "info"}>
           {tRisk(technique.riskLevel as any)}
@@ -79,7 +79,7 @@ export function TechniqueCard({ technique, relatedTools }: TechniqueCardProps) {
 
       {relatedTools && relatedTools.length > 0 && (
         <div className="mt-3 pt-3 border-t border-athena-border">
-          <span className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider">
+          <span className="text-sm font-mono text-athena-text-secondary uppercase tracking-wider">
             {t("relatedTools")}
           </span>
           <div className="mt-1.5 space-y-1">

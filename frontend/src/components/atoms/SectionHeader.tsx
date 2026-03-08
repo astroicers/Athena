@@ -11,7 +11,7 @@
 "use client";
 
 interface SectionHeaderProps extends React.HTMLAttributes<HTMLElement> {
-  /** "page" = text-xs (12px), "card" = text-[11px] */
+  /** "page" = text-xs (12px), "card" = text-xs (12px) */
   level?: "page" | "card";
   /** The header text content */
   children: React.ReactNode;
@@ -29,7 +29,7 @@ export function SectionHeader({
   ...rest
 }: SectionHeaderProps) {
   const Tag = level === "page" ? "h2" : "h3";
-  const sizeClass = level === "page" ? "text-xs" : "text-[11px]";
+  const sizeClass = level === "page" ? "text-xs" : "text-xs";
 
   if (trailing) {
     return (

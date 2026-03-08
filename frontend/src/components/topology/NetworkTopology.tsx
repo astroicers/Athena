@@ -11,6 +11,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+// @ts-expect-error — d3-force-3d has no type declarations; it is a transitive dep of react-force-graph-2d
+import { forceCollide, forceX } from "d3-force-3d";
 import { useTranslations } from "next-intl";
 import type { TopologyData } from "@/types/api";
 import { KillChainStage } from "@/types/enums";
@@ -207,7 +209,7 @@ function drawStatusBadges(
   node: Record<string, unknown>,
 ) {
   const r = Math.max(size * 0.35, 3);
-  const offset = size + r + 3; // clear kill-chain ring (size+2) + badge radius + gap
+  const offset = r + Math.max(size * 0.5, 1); // SPEC-035: offset from centre to four corners
 
   // Top-left: Recon complete
   if ((node.scanCount as number) > 0) {
@@ -262,6 +264,8 @@ interface NetworkTopologyProps {
   onCloseNode?: (nodeId: string) => void;
   onReconScan?: (targetId: string) => void;
   onInitialAccess?: (targetId: string) => void;
+  /** SPEC-042: Attack graph recommended path — attack graph node ID array */
+  recommendedPath?: string[];
 }
 
 export function NetworkTopology({
@@ -281,6 +285,7 @@ export function NetworkTopology({
   onCloseNode,
   onReconScan,
   onInitialAccess,
+  recommendedPath,
 }: NetworkTopologyProps) {
   const t = useTranslations("Topology");
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -292,6 +297,8 @@ export function NetworkTopology({
   const [containerWidth, setContainerWidth] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
   const fitted = useRef(false);
+  // SPEC-042: pulse animation phase for attack path edges
+  const animPhase = useRef(0);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [zoomLocked, setZoomLocked] = useState(false);
   const [viewTick, setViewTick] = useState(0);
@@ -359,6 +366,8 @@ export function NetworkTopology({
           color,
           nodeSize,
           killChainStage: nodeKillChainMap?.[n.id] ?? null,
+          // SPEC-042: subnet grouping
+          networkSegment: (n.data?.network_segment as string) || null,
           // Status badge data
           scanCount: (n.data?.scanCount as number) || 0,
           privilegeLevel: (n.data?.privilegeLevel as string) || null,
@@ -374,12 +383,71 @@ export function NetworkTopology({
     };
   }, [data, nodeKillChainMap, nodeSizeMultiplier]);
 
+  // SPEC-042: pulse animation for attack path edges
+  useEffect(() => {
+    let raf: number;
+    const tick = () => {
+      animPhase.current = (Date.now() % 1500) / 1500; // 0 -> 1 cycle 1.5s
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  // SPEC-042: convert recommendedPath node IDs to topology edge pairs
+  const attackPathEdges = useMemo(() => {
+    if (!recommendedPath || recommendedPath.length < 2) return new Set<string>();
+    const edges = new Set<string>();
+    for (let i = 0; i < recommendedPath.length - 1; i++) {
+      const srcTargetId = recommendedPath[i].split("::")[1];
+      const tgtTargetId = recommendedPath[i + 1].split("::")[1];
+      if (srcTargetId && tgtTargetId && srcTargetId !== tgtTargetId) {
+        // Cross-target lateral movement edge
+        edges.add(`${srcTargetId}\u2192${tgtTargetId}`);
+      }
+    }
+    // Mark path-involved targets for C2->target edge highlighting
+    const pathTargetIds = new Set(
+      recommendedPath.map((nid) => nid.split("::")[1]).filter(Boolean)
+    );
+    pathTargetIds.forEach((tid) => edges.add(`athena-c2\u2192${tid}`));
+    return edges;
+  }, [recommendedPath]);
+
   useEffect(() => {
     const fg = fgRef.current;
     if (!fg) return;
     try {
       fg.d3Force("charge")?.strength(-400);
       fg.d3Force("link")?.distance(100);
+      // SPEC-042: collision detection to prevent node overlap
+      fg.d3Force("collide", forceCollide()
+        .radius((node: Record<string, unknown>) => ((node.nodeSize as number) || 8) + 5)
+        .strength(0.8)
+      );
+      // SPEC-042: subnet grouping via forceX
+      const segments = [...new Set(
+        graphData.nodes
+          .map((n) => (n as Record<string, unknown>).networkSegment as string | null)
+          .filter(Boolean)
+      )].sort() as string[];
+
+      if (segments.length > 1) {
+        const segmentIndex = new Map(segments.map((s, i) => [s, i]));
+        const centerOffset = ((segments.length - 1) * 200) / 2;
+        fg.d3Force("subnetX", forceX()
+          .x((node: Record<string, unknown>) => {
+            const seg = node.networkSegment as string | null;
+            if (!seg) return 0;
+            const idx = segmentIndex.get(seg) ?? 0;
+            return idx * 200 - centerOffset;
+          })
+          .strength(0.15)
+        );
+      } else {
+        // Remove subnetX force if only one or zero segments
+        fg.d3Force("subnetX", null);
+      }
     } catch { /* not ready */ }
   }, [graphData, ForceGraph2DComp]);
 
@@ -479,7 +547,7 @@ export function NetworkTopology({
     // Label — hide when FloatingNodeCard is open for this node
     const isCardOpen = openNodeIds?.includes(node.id as string);
     if (!isCardOpen) {
-      const fontSize = Math.max(11 / globalScale, 2.5);
+      const fontSize = Math.max(14 / globalScale, 3);
       ctx.font = `bold ${fontSize}px monospace`;
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
@@ -511,8 +579,22 @@ export function NetworkTopology({
     onNodeHover?.(node ? (node.id as string) : null);
   }, [onNodeHover]);
 
+  // SPEC-042: helper to check if a link is on the attack path
+  const isAttackPathLink = useCallback((link: Record<string, unknown>) => {
+    if (attackPathEdges.size === 0) return false;
+    const src = typeof link.source === "object"
+      ? (link.source as Record<string, unknown>).id as string
+      : link.source as string;
+    const tgt = typeof link.target === "object"
+      ? (link.target as Record<string, unknown>).id as string
+      : link.target as string;
+    return attackPathEdges.has(`${src}\u2192${tgt}`) || attackPathEdges.has(`${tgt}\u2192${src}`);
+  }, [attackPathEdges]);
+
   // Edge colour based on phase
   const getLinkColor = useCallback((link: Record<string, unknown>) => {
+    // SPEC-042: attack path edges are red
+    if (isAttackPathLink(link)) return "#ff2222";
     const phase = (link.phase as string) || "idle";
     if (phase === "session") return "rgba(255, 68, 68, 0.7)";
     if (phase === "attacking") return "rgba(255, 136, 0, 0.7)";
@@ -520,16 +602,21 @@ export function NetworkTopology({
     if (phase === "lateral") return "rgba(255, 170, 0, 0.7)";
     if (phase === "attempted") return "rgba(255, 255, 255, 0.15)";
     return "rgba(0, 255, 136, 0.3)";
-  }, []);
+  }, [isAttackPathLink]);
 
   // Edge width based on phase
   const getLinkWidth = useCallback((link: Record<string, unknown>) => {
+    // SPEC-042: attack path edges pulse between 1.8-3px
+    if (isAttackPathLink(link)) {
+      const pulse = 0.6 + 0.4 * Math.sin(animPhase.current * Math.PI * 2);
+      return 3 * pulse;
+    }
     const phase = (link.phase as string) || "idle";
     if (phase === "session") return 2.5;
     if (phase === "attacking" || phase === "scanning") return 2;
     if (phase === "lateral") return 2;
     return 0.8;
-  }, []);
+  }, [isAttackPathLink]);
 
   // Dashed lines for scanning/attacking
   const getLinkDash = useCallback((link: Record<string, unknown>) => {
@@ -541,20 +628,24 @@ export function NetworkTopology({
 
   // Particles only for active states
   const getLinkParticles = useCallback((link: Record<string, unknown>) => {
+    // SPEC-042: attack path edges get 4 particles
+    if (isAttackPathLink(link)) return 4;
     const phase = (link.phase as string) || "idle";
     if (phase === "session" || phase === "attacking" || phase === "scanning") return 3;
     if (phase === "lateral") return 2;
     return 0;
-  }, []);
+  }, [isAttackPathLink]);
 
   const getLinkParticleColor = useCallback((link: Record<string, unknown>) => {
+    // SPEC-042: attack path particle color
+    if (isAttackPathLink(link)) return "#ff2222";
     const phase = (link.phase as string) || "idle";
     if (phase === "session") return "#ff4444";
     if (phase === "attacking") return "#ff8800";
     if (phase === "scanning") return "#4488ff";
     if (phase === "lateral") return "#ffaa00";
     return "#00ff88";
-  }, []);
+  }, [isAttackPathLink]);
 
   const isAutoHeight = height === "auto";
   const effectiveHeight = isAutoHeight ? (containerHeight || GRAPH_HEIGHT) : height;
@@ -601,7 +692,7 @@ export function NetworkTopology({
       <TopologyLegend />
       <button
         onClick={handleReset}
-        className="absolute top-2 right-2 z-10 px-2 py-1 rounded border border-athena-border bg-athena-surface hover:bg-athena-elevated text-[10px] font-mono text-athena-text-secondary hover:text-athena-text transition-colors"
+        className="absolute top-2 right-2 z-10 px-2 py-1 rounded border border-athena-border bg-athena-surface hover:bg-athena-elevated text-sm font-mono text-athena-text-secondary hover:text-athena-text transition-colors"
         title={t("resetView")}
       >
         &#x25CE; {t("reset")}
@@ -623,18 +714,57 @@ export function NetworkTopology({
         linkWidth={getLinkWidth}
         linkLineDash={getLinkDash}
         linkDirectionalParticles={getLinkParticles}
-        linkDirectionalParticleSpeed={0.005}
+        linkDirectionalParticleSpeed={(link: Record<string, unknown>) => isAttackPathLink(link) ? 0.008 : 0.005}
         linkDirectionalParticleWidth={3}
         linkDirectionalParticleColor={getLinkParticleColor}
         linkCurvature={0.2}
+        onRenderFramePost={(ctx: CanvasRenderingContext2D) => {
+          // SPEC-042: draw subnet bounding boxes
+          const segGroups = new Map<string, { xs: number[]; ys: number[]; sizes: number[] }>();
+          for (const node of graphData.nodes) {
+            const seg = (node as Record<string, unknown>).networkSegment as string | null;
+            if (!seg) continue;
+            const x = (node as Record<string, unknown>).x as number | undefined;
+            const y = (node as Record<string, unknown>).y as number | undefined;
+            const size = (node as Record<string, unknown>).nodeSize as number || 8;
+            if (x == null || y == null) continue;
+            if (!segGroups.has(seg)) segGroups.set(seg, { xs: [], ys: [], sizes: [] });
+            const g = segGroups.get(seg)!;
+            g.xs.push(x);
+            g.ys.push(y);
+            g.sizes.push(size);
+          }
+          if (segGroups.size <= 1) return; // no boxes for single subnet
+          const pad = 30;
+          ctx.save();
+          for (const [seg, g] of segGroups) {
+            const maxR = Math.max(...g.sizes);
+            const minX = Math.min(...g.xs) - maxR - pad;
+            const minY = Math.min(...g.ys) - maxR - pad;
+            const maxX = Math.max(...g.xs) + maxR + pad;
+            const maxY = Math.max(...g.ys) + maxR + pad;
+            ctx.strokeStyle = "rgba(255,255,255,0.15)";
+            ctx.lineWidth = 1;
+            ctx.setLineDash([6, 4]);
+            ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
+            ctx.setLineDash([]);
+            // Subnet label
+            ctx.font = "13px monospace";
+            ctx.fillStyle = "rgba(255,255,255,0.55)";
+            ctx.textAlign = "left";
+            ctx.textBaseline = "top";
+            ctx.fillText(seg, minX + 4, minY + 4);
+          }
+          ctx.restore();
+        }}
         backgroundColor="#0a0a1a"
         width={containerWidth}
         height={effectiveHeight}
-        d3AlphaDecay={0.03}
-        d3VelocityDecay={0.3}
+        d3AlphaDecay={0.08}
+        d3VelocityDecay={0.5}
         warmupTicks={100}
         cooldownTicks={200}
-        cooldownTime={5000}
+        cooldownTime={3000}
         onEngineStop={handleEngineStop}
         onZoom={(transform: { k: number }) => { setZoomLevel(transform.k); setViewTick((v) => v + 1); onZoomChange?.(); }}
         enableZoomInteraction={!zoomLocked}
@@ -675,12 +805,12 @@ export function NetworkTopology({
             const v = Number(e.target.value);
             if (v > 0 && v <= 500) fgRef.current?.zoom(v / 100, 300);
           }}
-          className="w-12 h-6 text-center text-[10px] font-mono text-athena-text bg-transparent border border-athena-border rounded appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          className="w-12 h-6 text-center text-sm font-mono text-athena-text bg-transparent border border-athena-border rounded appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           min={10}
           max={500}
           step={10}
         />
-        <span className="text-[10px] font-mono text-athena-text-secondary">%</span>
+        <span className="text-sm font-mono text-athena-text-secondary">%</span>
         <button
           onClick={() => {
             const s = Math.min(5, zoomLevel * 1.25);
@@ -694,7 +824,7 @@ export function NetworkTopology({
         <div className="w-px h-4 bg-athena-border mx-0.5" />
         <button
           onClick={() => setZoomLocked((v) => !v)}
-          className={`w-6 h-6 flex items-center justify-center rounded text-[10px] font-mono transition-colors ${
+          className={`w-6 h-6 flex items-center justify-center rounded text-sm font-mono transition-colors ${
             zoomLocked
               ? "bg-athena-accent/20 text-athena-accent"
               : "hover:bg-athena-elevated text-athena-text-secondary hover:text-athena-text"

@@ -112,7 +112,7 @@ export function ToolRegistryTable({
                         {tool.name}
                       </span>
                       {tool.description && (
-                        <p className="text-[10px] text-athena-text-secondary mt-0.5 truncate max-w-[200px]">
+                        <p className="text-sm text-athena-text-secondary mt-0.5 truncate max-w-[200px]">
                           {tool.description}
                         </p>
                       )}
@@ -162,7 +162,7 @@ export function ToolRegistryTable({
                       {tool.mitreTechniques.map((tid) => (
                         <span
                           key={tid}
-                          className="text-[10px] font-mono text-athena-accent bg-athena-accent/10 px-1.5 py-0.5 rounded"
+                          className="text-sm font-mono text-athena-accent bg-athena-accent/10 px-1.5 py-0.5 rounded"
                         >
                           {tid}
                         </span>
@@ -177,21 +177,24 @@ export function ToolRegistryTable({
                 <td className="px-3 py-2 text-center w-24">
                   {status === "online" && (
                     <Badge variant="success">
-                      <span className="relative inline-flex h-2 w-2 mr-1.5">
-                        <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping bg-athena-success" />
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-athena-success" />
+                      <span className="relative inline-flex h-2.5 w-2.5 mr-1.5">
+                        <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping bg-[#00ff88]" />
+                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#00ff88]" />
                       </span>
                       {t("containerOnline")}
                     </Badge>
                   )}
                   {status === "offline" && (
                     <Badge variant="error">
-                      <span className="inline-flex h-2 w-2 mr-1.5 rounded-full bg-athena-error" />
+                      <span className="relative inline-flex h-2.5 w-2.5 mr-1.5">
+                        <span className="absolute inline-flex h-full w-full rounded-full opacity-50 animate-pulse bg-[#ff4444]" />
+                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#ff4444]" />
+                      </span>
                       {t("containerOffline")}
                     </Badge>
                   )}
                   {status === "none" && (
-                    <span className="text-[10px] text-athena-text-secondary">{t("containerNA")}</span>
+                    <span className="text-sm text-athena-text-secondary">{t("containerNA")}</span>
                   )}
                 </td>
               </tr>

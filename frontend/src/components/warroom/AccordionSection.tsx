@@ -33,7 +33,7 @@ export function AccordionSection({
         className="w-full flex items-center justify-between px-3 py-2 hover:bg-athena-border/20 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono text-athena-text-secondary">
+          <span className="text-sm font-mono text-athena-text-secondary">
             {isOpen ? "▼" : "►"}
           </span>
           <span className="text-xs font-mono font-bold text-athena-text">
@@ -41,7 +41,7 @@ export function AccordionSection({
           </span>
         </div>
         {!isOpen && (
-          <span className="text-[10px] font-mono text-athena-text-secondary truncate max-w-[160px]">
+          <span className="text-sm font-mono text-athena-text-secondary truncate max-w-[160px]">
             {summary}
           </span>
         )}

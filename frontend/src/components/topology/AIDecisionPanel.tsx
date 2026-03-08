@@ -60,12 +60,12 @@ export function AIDecisionPanel({
           {t("title")}
         </SectionHeader>
       </div>
-      <p className="text-[10px] font-mono text-athena-text-secondary/60 mb-2">{tHints("aiDecision")}</p>
+      <p className="text-sm font-mono text-athena-text-secondary mb-2">{tHints("aiDecision")}</p>
 
       {/* Empty state */}
       {!activeTechniqueId ? (
         <div className="py-2 text-center">
-          <span className="text-[10px] font-mono text-athena-text-secondary/50">
+          <span className="text-sm font-mono text-athena-text-secondary">
             {t("noActiveTechnique")}
           </span>
         </div>
@@ -81,7 +81,7 @@ export function AIDecisionPanel({
             </span>
             {activeKillChainStage && (
               <span
-                className="text-[10px] font-mono px-1 py-0.5 rounded border"
+                className="text-sm font-mono px-1 py-0.5 rounded border"
                 style={{
                   color: stageColor ?? undefined,
                   borderColor: stageColor ?? undefined,
@@ -94,7 +94,7 @@ export function AIDecisionPanel({
 
           {/* Technique name */}
           {activeTechniqueName && (
-            <div className="text-[10px] font-mono text-athena-text-secondary truncate">
+            <div className="text-sm font-mono text-athena-text-secondary truncate">
               {activeTechniqueName}
             </div>
           )}
@@ -103,13 +103,13 @@ export function AIDecisionPanel({
           <div className="flex items-center justify-between gap-2 mt-1">
             <div className="flex items-center gap-2">
               {activeEngine && (
-                <span className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider">
+                <span className="text-sm font-mono text-athena-text-secondary uppercase tracking-wider">
                   {activeEngine.toUpperCase()}
                 </span>
               )}
               {activeStatus && (
                 <span
-                  className={`text-[10px] font-mono uppercase ${
+                  className={`text-sm font-mono uppercase ${
                     activeStatus === "running"
                       ? "text-athena-warning animate-pulse"
                       : activeStatus === "success"
@@ -124,7 +124,7 @@ export function AIDecisionPanel({
               )}
             </div>
             {activeConfidence !== null && (
-              <span className="text-[10px] font-mono font-bold text-athena-accent">
+              <span className="text-sm font-mono font-bold text-athena-accent">
                 {Math.round(activeConfidence * 100)}%
               </span>
             )}
@@ -133,21 +133,21 @@ export function AIDecisionPanel({
           {/* LLM Status row — visible during orient phase */}
           {(llmThinking || llmLatencyMs != null) && (
             <div className="flex items-center justify-between mt-1 pt-1 border-t border-athena-border/50">
-              <span className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider">
+              <span className="text-sm font-mono text-athena-text-secondary uppercase tracking-wider">
                 {t("llm")}
               </span>
               <div className="flex items-center gap-2">
                 {llmThinking ? (
-                  <span className="text-[10px] font-mono text-athena-warning animate-pulse">
+                  <span className="text-sm font-mono text-athena-warning animate-pulse">
                     {t("analyzing")}
                   </span>
                 ) : llmLatencyMs != null ? (
-                  <span className="text-[10px] font-mono text-athena-success">
+                  <span className="text-sm font-mono text-athena-success">
                     {llmLatencyMs}ms
                   </span>
                 ) : null}
                 {llmBackend && (
-                  <span className="text-[10px] font-mono text-athena-text-secondary/60 uppercase">
+                  <span className="text-sm font-mono text-athena-text-secondary uppercase">
                     {llmBackend === "api_key" ? "API" : llmBackend === "oauth" ? "OAUTH" : llmBackend}
                   </span>
                 )}

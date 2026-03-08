@@ -70,7 +70,7 @@ function MiniHexGauge({ value, color }: { value: number; color: string }) {
         dominantBaseline="central"
         fill={color}
         fontFamily="var(--font-mono)"
-        fontSize="8"
+        fontSize="12"
         fontWeight="700"
       >
         {value}
@@ -84,7 +84,7 @@ export function C5ISRMiniBar({ health }: C5ISRMiniBarProps) {
 
   return (
     <div className="flex items-center justify-center gap-3 py-2.5 px-4">
-      <span className="text-[10px] font-mono text-athena-text-secondary uppercase tracking-wider mr-1">
+      <span className="text-sm font-mono text-athena-text-secondary uppercase tracking-wider mr-1">
         C5ISR
       </span>
       {domains.map((domain) => {
@@ -98,11 +98,11 @@ export function C5ISRMiniBar({ health }: C5ISRMiniBarProps) {
             key={domain}
             className="flex flex-col items-center gap-0.5"
           >
-            <span className="text-[9px] font-mono text-athena-text-secondary font-bold tracking-wider">
+            <span className="text-xs font-mono text-athena-text-secondary font-bold tracking-wider">
               {label}
             </span>
             <MiniHexGauge value={pct} color={color} />
-            <span className={`text-[9px] font-mono font-bold ${textClass}`}>
+            <span className={`text-xs font-mono font-bold ${textClass}`}>
               {pct}%
             </span>
           </div>

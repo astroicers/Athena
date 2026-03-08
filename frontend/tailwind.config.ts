@@ -12,6 +12,7 @@ const config: Config = {
         "athena-accent-hover": "var(--color-accent-hover)",
         "athena-text": "var(--color-text-primary)",
         "athena-text-secondary": "var(--color-text-secondary)",
+        "athena-text-tertiary": "var(--color-text-tertiary)",
         "athena-border": "var(--color-border)",
         "athena-success": "var(--color-success)",
         "athena-warning": "var(--color-warning)",

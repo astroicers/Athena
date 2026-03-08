@@ -95,7 +95,7 @@ export function LLMDirectiveInput({
           onClick={handleSubmit}
           disabled={!directive.trim() || sending}
           title={t("directiveSend")}
-          className={`shrink-0 px-2 py-1 text-[10px] font-mono border rounded-athena-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+          className={`shrink-0 px-2 py-1 text-sm font-mono border rounded-athena-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
             showSuccess
               ? "bg-athena-success/20 text-athena-success border-athena-success/50"
               : "bg-athena-accent/10 text-athena-accent border-athena-accent/30 hover:bg-athena-accent/20"
@@ -108,7 +108,7 @@ export function LLMDirectiveInput({
       {/* Last directive + OODA trigger */}
       <div className="flex items-center justify-between gap-2">
         {lastDirective ? (
-          <div className="text-[10px] font-mono text-athena-text-secondary/60 truncate min-w-0">
+          <div className="text-sm font-mono text-athena-text-secondary truncate min-w-0">
             {t("lastDirective")} {lastDirective}
           </div>
         ) : (
@@ -118,7 +118,7 @@ export function LLMDirectiveInput({
           onClick={handleOodaTrigger}
           disabled={triggering}
           title={t("oodaTriggerHint")}
-          className="shrink-0 flex items-center gap-1 px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-athena-accent bg-athena-accent/10 border border-athena-accent/40 rounded-athena-sm hover:bg-athena-accent/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="shrink-0 flex items-center gap-1 px-3 py-1 text-sm font-mono font-bold uppercase tracking-wider text-athena-accent bg-athena-accent/10 border border-athena-accent/40 rounded-athena-sm hover:bg-athena-accent/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           ▶ {t("oodaTrigger")}
         </button>

@@ -211,7 +211,7 @@ export function FloatingNodeCard({
           </span>
           <div className="flex items-center gap-1.5 shrink-0">
             <span
-              className={`text-[11px] font-mono px-1 py-0.5 rounded border ${
+              className={`text-xs font-mono px-1 py-0.5 rounded border ${
                 isCompromised
                   ? "text-red-400 border-red-500/40 bg-red-500/10"
                   : "text-green-400 border-green-500/40 bg-green-500/10"
@@ -287,7 +287,7 @@ export function FloatingNodeCard({
                         <span className="text-[12px] font-mono text-athena-accent">
                           {t(catKey)}
                         </span>
-                        <span className="text-[11px] font-mono text-athena-text-secondary">
+                        <span className="text-xs font-mono text-athena-text-secondary">
                           ({catFacts.length})
                         </span>
                       </div>
@@ -296,7 +296,7 @@ export function FloatingNodeCard({
                           key={f.id}
                           className="text-[12px] font-mono mb-1 pl-3"
                         >
-                          <div className="text-athena-text-secondary text-[11px]">
+                          <div className="text-athena-text-secondary text-xs">
                             {f.trait}
                           </div>
                           <div className="text-athena-text-primary break-all">
@@ -307,7 +307,7 @@ export function FloatingNodeCard({
                       {hasMore && (
                         <button
                           onClick={() => toggleCategory(category)}
-                          className="text-[11px] font-mono text-athena-accent hover:underline pl-3"
+                          className="text-xs font-mono text-athena-accent hover:underline pl-3"
                         >
                           {isExpanded
                             ? "▲"
@@ -342,7 +342,7 @@ export function FloatingNodeCard({
                   </p>
                   <button
                     onClick={() => loadSummary(true)}
-                    className="text-[11px] font-mono text-athena-accent hover:underline"
+                    className="text-xs font-mono text-athena-accent hover:underline"
                   >
                     {t("aiRetry")}
                   </button>
@@ -375,11 +375,11 @@ export function FloatingNodeCard({
                   <div className="flex items-center justify-between border-t border-athena-border/30 pt-1 mt-1">
                     <button
                       onClick={() => loadSummary(true)}
-                      className="text-[11px] font-mono text-athena-accent hover:underline"
+                      className="text-xs font-mono text-athena-accent hover:underline"
                     >
                       ↻ {t("aiRetry")}
                     </button>
-                    <div className="flex items-center gap-2 text-[11px] font-mono text-athena-text-secondary">
+                    <div className="flex items-center gap-2 text-xs font-mono text-athena-text-secondary">
                       <span>{summary.model}</span>
                       {summary.cached && (
                         <span className="text-green-400">{t("aiCached")}</span>
@@ -445,7 +445,7 @@ export function FloatingNodeCard({
                   {onReconScan && (
                     <button
                       onClick={() => onReconScan(nodeId)}
-                      className="flex-1 px-2 py-1 text-[11px] font-mono font-bold text-athena-accent bg-athena-accent/10 border border-athena-accent rounded-athena-sm hover:bg-athena-accent/20 transition-colors"
+                      className="flex-1 px-2 py-1 text-xs font-mono font-bold text-athena-accent bg-athena-accent/10 border border-athena-accent rounded-athena-sm hover:bg-athena-accent/20 transition-colors"
                     >
                       {t("reconScan")}
                     </button>
@@ -453,7 +453,7 @@ export function FloatingNodeCard({
                   {onInitialAccess && (
                     <button
                       onClick={() => onInitialAccess(nodeId)}
-                      className="flex-1 px-2 py-1 text-[11px] font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500 rounded-athena-sm hover:bg-amber-500/20 transition-colors"
+                      className="flex-1 px-2 py-1 text-xs font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500 rounded-athena-sm hover:bg-amber-500/20 transition-colors"
                     >
                       {t("initialAccess")}
                     </button>

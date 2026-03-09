@@ -10,7 +10,11 @@ import logging
 from typing import Any
 
 import httpx
-import yaml
+
+try:
+    import yaml
+except ImportError:  # pyyaml not installed — YAML specs unsupported
+    yaml = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -136,9 +140,12 @@ def parse_openapi_spec(spec_text: str, content_type: str = "") -> list[str]:
     try:
         data = json.loads(spec_text)
     except (json.JSONDecodeError, ValueError):
-        try:
-            data = yaml.safe_load(spec_text)
-        except yaml.YAMLError:
+        if yaml is not None:
+            try:
+                data = yaml.safe_load(spec_text)
+            except yaml.YAMLError:
+                return []
+        else:
             return []
 
     if not isinstance(data, dict):

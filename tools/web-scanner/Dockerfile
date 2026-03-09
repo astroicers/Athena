@@ -5,18 +5,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 
 # httpx-toolkit
-RUN wget -qO /tmp/httpx.zip \
-    "https://github.com/projectdiscovery/httpx/releases/latest/download/httpx_$(uname -s)_$(uname -m).zip" && \
-    unzip /tmp/httpx.zip -d /usr/local/bin/ && \
+RUN HTTPX_URL=$(wget -qO- "https://api.github.com/repos/projectdiscovery/httpx/releases/latest" \
+      | grep -oP '"browser_download_url":\s*"\K[^"]*linux_amd64\.zip') && \
+    wget -qO /tmp/httpx.zip "$HTTPX_URL" && \
+    unzip -o /tmp/httpx.zip -d /tmp/httpx-extract && \
+    mv /tmp/httpx-extract/httpx /usr/local/bin/httpx && \
     chmod +x /usr/local/bin/httpx && \
-    rm -f /tmp/httpx.zip
+    rm -rf /tmp/httpx.zip /tmp/httpx-extract
 
 # nuclei
-RUN wget -qO /tmp/nuclei.zip \
-    "https://github.com/projectdiscovery/nuclei/releases/latest/download/nuclei_$(uname -s)_$(uname -m).zip" && \
-    unzip /tmp/nuclei.zip -d /usr/local/bin/ && \
+RUN NUCLEI_URL=$(wget -qO- "https://api.github.com/repos/projectdiscovery/nuclei/releases/latest" \
+      | grep -oP '"browser_download_url":\s*"\K[^"]*linux_amd64\.zip') && \
+    wget -qO /tmp/nuclei.zip "$NUCLEI_URL" && \
+    unzip -o /tmp/nuclei.zip -d /tmp/nuclei-extract && \
+    mv /tmp/nuclei-extract/nuclei /usr/local/bin/nuclei && \
     chmod +x /usr/local/bin/nuclei && \
-    rm -f /tmp/nuclei.zip
+    rm -rf /tmp/nuclei.zip /tmp/nuclei-extract
 
 # nuclei templates
 RUN nuclei -update-templates -ud /opt/nuclei-templates
@@ -26,9 +30,9 @@ RUN mkdir -p /opt/wordlists && \
     wget -qO /opt/wordlists/common.txt \
       "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/common.txt" && \
     wget -qO /opt/wordlists/small.txt \
-      "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/directory-list-2.3-small.txt" && \
+      "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/DirBuster-2007_directory-list-2.3-small.txt" && \
     wget -qO /opt/wordlists/large.txt \
-      "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/directory-list-2.3-medium.txt"
+      "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/DirBuster-2007_directory-list-2.3-medium.txt"
 
 COPY pyproject.toml .
 RUN pip install --no-cache-dir .

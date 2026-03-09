@@ -15,5 +15,8 @@ dev = [
     "pytest-asyncio>=0.23.0",
 ]
 
+[tool.setuptools]
+py-modules = ["server"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

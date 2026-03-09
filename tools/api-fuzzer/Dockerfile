@@ -4,9 +4,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget unzip && \
     rm -rf /var/lib/apt/lists/*
 
-RUN wget -qO /tmp/ffuf.tar.gz \
-    "https://github.com/ffuf/ffuf/releases/latest/download/ffuf_$(uname -s)_$(uname -m).tar.gz" && \
-    tar -xzf /tmp/ffuf.tar.gz -C /usr/local/bin/ ffuf && \
+RUN FFUF_URL=$(wget -qO- "https://api.github.com/repos/ffuf/ffuf/releases/latest" \
+      | grep -oP '"browser_download_url":\s*"\K[^"]*linux_amd64\.tar\.gz') && \
+    wget -qO /tmp/ffuf.tar.gz "$FFUF_URL" && \
+    tar -xzf /tmp/ffuf.tar.gz -C /usr/local/bin/ && \
     chmod +x /usr/local/bin/ffuf && \
     rm -f /tmp/ffuf.tar.gz
 

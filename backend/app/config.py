@@ -66,7 +66,7 @@ class Settings(BaseSettings):
     MCP_TRANSPORT_MODE: str = "auto"  # "stdio" | "http" | "auto"
     CLAUDE_MODEL_OPUS: str = "claude-opus-4-6"
     CLAUDE_MODEL_SONNET: str = "claude-sonnet-4-20250514"
-    CLAUDE_MODEL_HAIKU: str = "claude-haiku-35-20241022"
+    CLAUDE_MODEL_HAIKU: str = "claude-haiku-4-5-20251001"
     NODE_SUMMARY_MODEL: str = "claude-sonnet-4-20250514"  # DEPRECATED: use TASK_MODEL_MAP["node_summary"]
     NMAP_SCAN_TIMEOUT_SEC: int = 60
     # Exploit validation (SPEC-028)

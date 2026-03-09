@@ -6,6 +6,6 @@ guardrail: disabled
 hitl: minimal
 name: Athena
 autonomous: enabled
-design: disabled
+design: enabled
 coding_style: disabled
 openapi: disabled

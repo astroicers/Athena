@@ -15,6 +15,8 @@ import logging
 import aiosqlite
 
 from app.models.enums import AutomationMode, RiskLevel
+from app.services.kill_chain_enforcer import KillChainEnforcer
+from app.services.validation_engine import ValidationEngine
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +31,10 @@ _RISK_ORDER = {
 
 class DecisionEngine:
     """Decide phase: apply ADR-004 risk threshold rules to PentestGPT recommendation."""
+
+    def __init__(self):
+        self._enforcer = KillChainEnforcer()
+        self._validation_engine = ValidationEngine()
 
     async def evaluate(
         self, db: aiosqlite.Connection, operation_id: str, recommendation: dict
@@ -58,7 +64,7 @@ class DecisionEngine:
         # Get recommended technique's risk level
         rec_technique_id = recommendation.get("recommended_technique_id", "")
         options = recommendation.get("options", [])
-        confidence = recommendation.get("confidence", 0.0)
+        raw_confidence = recommendation.get("confidence", 0.0)
 
         # Find the recommended option
         selected_option = None
@@ -88,6 +94,33 @@ class DecisionEngine:
             )
             target_row = await cursor.fetchone()
         target_id = target_row["id"] if target_row else None
+
+        # ── SPEC-044: Dynamic Validation before composite confidence ─────
+        validation_result = await self._validation_engine.validate(
+            db, recommendation, operation_id,
+        )
+        original_confidence = raw_confidence
+        raw_confidence = max(
+            0.0, min(1.0, raw_confidence + validation_result.delta),
+        )
+        recommendation["confidence"] = raw_confidence
+        if validation_result.outcome != "skipped":
+            logger.info(
+                "SPEC-044 validation: outcome=%s, delta=%.2f, "
+                "confidence %.2f->%.2f, checks=%s",
+                validation_result.outcome, validation_result.delta,
+                original_confidence, raw_confidence,
+                validation_result.checks,
+            )
+
+        # ── Composite confidence (SPEC-040) ──────────────────────────────
+        tactic_id = await self._resolve_tactic_id(
+            db, operation_id, rec_technique_id, target_id
+        )
+        composite, confidence_breakdown = await self._compute_composite_confidence(
+            db, operation_id, rec_technique_id, target_id, raw_confidence, tactic_id
+        )
+        confidence = composite
 
         # Semi-auto: apply risk threshold rules
         tech_level = _RISK_ORDER.get(technique_risk, 1)
@@ -127,6 +160,13 @@ class DecisionEngine:
             "target_id": target_id,
             "engine": engine,
             "risk_level": technique_risk.value,
+            "composite_confidence": composite,
+            "confidence_breakdown": confidence_breakdown,
+            "validation_result": {
+                "outcome": validation_result.outcome,
+                "checks": validation_result.checks,
+                "delta": validation_result.delta,
+            },
         }
 
         # MANUAL mode → always require human approval
@@ -196,3 +236,144 @@ class DecisionEngine:
             ),
             "parallel_tasks": [],
         }
+
+    # ── Composite confidence helpers (SPEC-040) ─────────────────────────────
+
+    async def _compute_composite_confidence(
+        self,
+        db: aiosqlite.Connection,
+        operation_id: str,
+        technique_id: str,
+        target_id: str | None,
+        raw_confidence: float,
+        tactic_id: str | None,
+    ) -> tuple[float, dict]:
+        """Four-source composite confidence + Kill Chain penalty."""
+        raw_confidence = max(0.0, min(1.0, raw_confidence))
+
+        hist_rate = await self._get_historical_success_rate(db, technique_id)
+        graph_conf = await self._get_graph_node_confidence(
+            db, operation_id, technique_id, target_id
+        )
+        target_score = await self._get_target_state_score(db, target_id)
+
+        kc_result = await self._enforcer.evaluate_skip(
+            db, operation_id, tactic_id, target_id
+        )
+
+        composite = (
+            0.30 * raw_confidence
+            + 0.30 * hist_rate
+            + 0.25 * graph_conf
+            + 0.15 * target_score
+            - kc_result.penalty
+        )
+        composite = max(0.0, min(1.0, composite))
+
+        breakdown = {
+            "llm": raw_confidence,
+            "historical": hist_rate,
+            "graph": graph_conf,
+            "target_state": target_score,
+            "kc_penalty": kc_result.penalty,
+        }
+        return composite, breakdown
+
+    async def _get_historical_success_rate(
+        self, db: aiosqlite.Connection, technique_id: str
+    ) -> float:
+        """Query success rate from technique_executions for the given technique."""
+        cursor = await db.execute(
+            "SELECT COUNT(*) as total, "
+            "SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as successes "
+            "FROM technique_executions WHERE technique_id = ?",
+            (technique_id,),
+        )
+        row = await cursor.fetchone()
+        total = row["total"] if isinstance(row, dict) else row[0]
+        successes = row["successes"] if isinstance(row, dict) else row[1]
+        if not total:
+            return 0.5  # No history -> neutral
+        return (successes or 0) / total
+
+    async def _get_graph_node_confidence(
+        self, db: aiosqlite.Connection,
+        operation_id: str, technique_id: str, target_id: str | None,
+    ) -> float:
+        """Read node confidence from attack_graph_nodes."""
+        if not target_id:
+            return 0.5
+        cursor = await db.execute(
+            "SELECT confidence FROM attack_graph_nodes "
+            "WHERE operation_id = ? AND technique_id = ? AND target_id = ? "
+            "ORDER BY updated_at DESC LIMIT 1",
+            (operation_id, technique_id, target_id),
+        )
+        row = await cursor.fetchone()
+        if not row:
+            return 0.5
+        return row["confidence"] if isinstance(row, dict) else row[0]
+
+    async def _get_target_state_score(
+        self, db: aiosqlite.Connection, target_id: str | None,
+    ) -> float:
+        """Compute target state score from targets + facts tables."""
+        if not target_id:
+            return 0.5
+        cursor = await db.execute(
+            "SELECT is_compromised, privilege_level, access_status "
+            "FROM targets WHERE id = ?",
+            (target_id,),
+        )
+        row = await cursor.fetchone()
+        if not row:
+            return 0.5
+
+        is_compromised = row["is_compromised"] if isinstance(row, dict) else row[0]
+        privilege = (
+            (row["privilege_level"] if isinstance(row, dict) else row[1]) or ""
+        )
+        access_status = (
+            (row["access_status"] if isinstance(row, dict) else row[2]) or ""
+        )
+
+        score = 0.5
+        if is_compromised:
+            score += 0.2
+        if privilege.lower() in ("root", "system", "administrator"):
+            score += 0.15
+        if access_status == "lost":
+            score -= 0.1
+
+        # EDR detection from facts table
+        edr_cursor = await db.execute(
+            "SELECT COUNT(*) FROM facts "
+            "WHERE source_target_id = ? AND trait IN ('host.edr', 'host.av')",
+            (target_id,),
+        )
+        edr_row = await edr_cursor.fetchone()
+        edr_count = edr_row[0] if edr_row else 0
+        if edr_count > 0:
+            score -= 0.2
+
+        return max(0.0, min(1.0, score))
+
+    async def _resolve_tactic_id(
+        self, db: aiosqlite.Connection,
+        operation_id: str, technique_id: str, target_id: str | None,
+    ) -> str | None:
+        """Resolve tactic_id from attack_graph_nodes, falling back to _RULE_BY_TECHNIQUE."""
+        if target_id:
+            cursor = await db.execute(
+                "SELECT tactic_id FROM attack_graph_nodes "
+                "WHERE operation_id = ? AND technique_id = ? AND target_id = ? "
+                "LIMIT 1",
+                (operation_id, technique_id, target_id),
+            )
+            row = await cursor.fetchone()
+            if row:
+                return row["tactic_id"] if isinstance(row, dict) else row[0]
+        # Fallback to static rule table
+        from app.services.attack_graph_engine import _RULE_BY_TECHNIQUE  # noqa: PLC0415
+        rule = _RULE_BY_TECHNIQUE.get(technique_id)
+        return rule.tactic_id if rule else None

@@ -56,6 +56,29 @@ def _is_auth_failure(error: str | None) -> bool:
     return any(kw in lower for kw in _AUTH_FAILURE_KEYWORDS)
 
 
+# ── Engine fallback chain (SPEC-040) ─────────────────────────────────────
+
+_FALLBACK_CHAIN: dict[str, list[str]] = {
+    "mcp_ssh":    ["metasploit", "c2"],
+    "metasploit": ["mcp_ssh", "c2"],
+    "c2":         ["mcp_ssh"],
+}
+
+_TERMINAL_ERRORS: list[str] = [
+    "scope violation",
+    "platform mismatch",
+    "blocked by rules of engagement",
+]
+
+
+def _is_terminal_error(error: str | None) -> bool:
+    """Check if an error is terminal (should NOT trigger fallback)."""
+    if not error:
+        return False
+    lower = error.lower()
+    return any(te in lower for te in _TERMINAL_ERRORS)
+
+
 class EngineRouter:
     """Act phase: route technique execution to the appropriate engine."""
 
@@ -76,13 +99,84 @@ class EngineRouter:
         self, db: aiosqlite.Connection, technique_id: str, target_id: str,
         engine: str, operation_id: str, ooda_iteration_id: str | None = None,
     ) -> dict:
+        """Execute with automatic engine fallback (SPEC-040).
+
+        1. Try primary engine via _execute_single()
+        2. On success or terminal error -> return directly
+        3. On non-terminal failure -> try fallback engines from _FALLBACK_CHAIN
+        4. Broadcast execution.fallback WebSocket event for each attempt
         """
-        Execute a technique via the selected engine:
-        1. Create TechniqueExecution record (status=running)
-        2. Call C2EngineClient / DirectSSHEngine
-        3. Update status (success/failed)
-        4. Extract facts from result
-        5. Push WebSocket execution.update event
+        fallback_history: list[dict] = []
+
+        # Try primary engine
+        result = await self._execute_single(
+            db, technique_id, target_id, engine, operation_id, ooda_iteration_id,
+        )
+
+        # Success or terminal error -> return directly
+        if result.get("status") == "success" or _is_terminal_error(result.get("error")):
+            result["fallback_history"] = fallback_history
+            result["final_engine"] = result.get("engine", engine)
+            return result
+
+        # Record primary engine failure
+        fallback_history.append({
+            "engine": engine,
+            "error": result.get("error"),
+        })
+
+        # Try fallback engines in order
+        fallback_engines = _FALLBACK_CHAIN.get(engine, [])
+        for attempt, fallback_engine in enumerate(fallback_engines, start=1):
+            # Broadcast fallback event
+            await self._ws.broadcast(operation_id, "execution.fallback", {
+                "execution_id": result.get("execution_id"),
+                "technique_id": technique_id,
+                "failed_engine": fallback_history[-1]["engine"],
+                "fallback_engine": fallback_engine,
+                "failed_error": fallback_history[-1]["error"],
+                "attempt": attempt,
+                "max_attempts": len(fallback_engines),
+            })
+
+            logger.info(
+                "Fallback attempt %d/%d: %s -> %s for technique %s",
+                attempt, len(fallback_engines),
+                fallback_history[-1]["engine"],
+                fallback_engine, technique_id,
+            )
+
+            result = await self._execute_single(
+                db, technique_id, target_id, fallback_engine,
+                operation_id, ooda_iteration_id,
+            )
+
+            if result.get("status") == "success" or _is_terminal_error(
+                result.get("error")
+            ):
+                result["fallback_history"] = fallback_history
+                result["final_engine"] = result.get("engine", fallback_engine)
+                return result
+
+            # Record fallback failure
+            fallback_history.append({
+                "engine": fallback_engine,
+                "error": result.get("error"),
+            })
+
+        # All engines failed
+        result["fallback_history"] = fallback_history
+        result["final_engine"] = result.get(
+            "engine",
+            fallback_engines[-1] if fallback_engines else engine,
+        )
+        return result
+
+    async def _execute_single(
+        self, db: aiosqlite.Connection, technique_id: str, target_id: str,
+        engine: str, operation_id: str, ooda_iteration_id: str | None = None,
+    ) -> dict:
+        """Execute a technique via a single engine (no fallback).
 
         Routing (controlled by settings.EXECUTION_ENGINE):
         - "mcp_ssh" : Use MCP attack-executor for SSH/WinRM execution (default)
@@ -483,6 +577,10 @@ class EngineRouter:
                 "WHERE id = ?",
                 (operation_id,),
             )
+            # SPEC-043: Record PoC reproduction steps on success
+            await self._record_poc(
+                db, technique_id, target_id, operation_id, result, engine,
+            )
         await db.commit()
 
         # SPEC-037: Detect auth failure → trigger access lost handling
@@ -511,6 +609,86 @@ class EngineRouter:
             "facts_collected_count": facts_count,
             "error": result.error,
         }
+
+    # ── PoC auto-generation (SPEC-043) ──────────────────────────────────────
+
+    async def _record_poc(
+        self,
+        db: aiosqlite.Connection,
+        technique_id: str,
+        target_id: str,
+        operation_id: str,
+        result: ExecutionResult,
+        engine: str,
+    ) -> None:
+        """Record PoC reproduction steps after successful technique execution."""
+        try:
+            await self._record_poc_inner(
+                db, technique_id, target_id, operation_id, result, engine
+            )
+        except Exception:
+            pass  # PoC recording is best-effort; never block execution flow
+
+    async def _record_poc_inner(
+        self,
+        db: aiosqlite.Connection,
+        technique_id: str,
+        target_id: str,
+        operation_id: str,
+        result: ExecutionResult,
+        engine: str,
+    ) -> None:
+        from app.models.poc_record import PoCRecord  # noqa: PLC0415
+
+        target_ip = await self._get_target_ip(db, target_id) or target_id
+
+        # Infer environment info
+        tgt_cursor = await db.execute(
+            "SELECT os, privilege_level FROM targets WHERE id = ?",
+            (target_id,),
+        )
+        tgt_row = await tgt_cursor.fetchone()
+        env = {
+            "os": (tgt_row["os"] if tgt_row and isinstance(tgt_row, dict) else
+                   tgt_row[0] if tgt_row else "unknown"),
+            "privilege_level": (tgt_row["privilege_level"] if tgt_row and isinstance(tgt_row, dict) else
+                               tgt_row[1] if tgt_row else "unknown"),
+            "engine": engine,
+        }
+
+        # Infer commands_executed from result
+        commands: list[str] = []
+        if hasattr(result, "commands") and result.commands:
+            commands = result.commands
+        elif result.output:
+            for line in (result.output or "").split("\n"):
+                stripped = line.strip()
+                if stripped.startswith(("$ ", "# ", ">>> ")):
+                    commands.append(stripped.lstrip("$# >").strip())
+        if not commands:
+            commands = [f"(executed via {engine})"]
+
+        poc = PoCRecord(
+            technique_id=technique_id,
+            target_ip=target_ip,
+            commands_executed=commands,
+            input_params={"engine": engine},
+            output_snippet=(result.output or "")[:1000],
+            environment=env,
+            reproducible=bool(result.output),
+        )
+
+        fact_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+        await db.execute(
+            "INSERT OR IGNORE INTO facts "
+            "(id, trait, value, category, source_technique_id, "
+            "source_target_id, operation_id, score, collected_at) "
+            "VALUES (?, ?, ?, 'poc', ?, ?, ?, 1, ?)",
+            (fact_id, f"poc.{technique_id}", poc.to_json(),
+             technique_id, target_id, operation_id, now),
+        )
+        await db.commit()
 
     # ── Access recovery (SPEC-037) ────────────────────────────────────────────
 
@@ -559,6 +737,162 @@ class EngineRouter:
         except Exception:
             pass  # unique constraint — already recorded
 
+        await db.commit()
+
+        # SPEC-041: Three-phase access recovery
+        await self._recovery_phase1_rescan(db, operation_id, target_id, target_ip)
+        await self._recovery_phase2_alt_protocol(db, operation_id, target_id, target_ip)
+        await self._recovery_phase3_pivot(db, operation_id, target_id, target_ip)
+
+    # ── Access recovery phases (SPEC-041 Part B) ─────────────────────────────
+
+    async def _recovery_phase1_rescan(
+        self,
+        db: aiosqlite.Connection,
+        operation_id: str,
+        target_id: str,
+        target_ip: str | None,
+    ) -> None:
+        """Phase 1: Collect known open ports for Orient to evaluate re-entry."""
+        if not target_ip:
+            return
+        cursor = await db.execute(
+            "SELECT value FROM facts "
+            "WHERE operation_id = ? AND source_target_id = ? "
+            "AND trait = 'service.open_port'",
+            (operation_id, target_id),
+        )
+        rows = await cursor.fetchall()
+        if not rows:
+            return
+        ports = []
+        for row in rows:
+            val = row["value"] if isinstance(row, dict) else row[0]
+            port_part = val.split("/")[0] if "/" in val else val.split(":")[0]
+            if port_part.isdigit():
+                ports.append(port_part)
+        if not ports:
+            return
+        fact_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+        try:
+            await db.execute(
+                "INSERT OR IGNORE INTO facts "
+                "(id, trait, value, category, source_target_id, operation_id, score, collected_at) "
+                "VALUES (?, 'access.recovery_candidate', ?, 'host', ?, ?, 1, ?)",
+                (fact_id, f"rescan:{target_ip}:ports={','.join(ports)}", target_id, operation_id, now),
+            )
+            await db.commit()
+        except Exception:
+            logger.debug("recovery_candidate fact already exists for %s", target_id)
+
+    async def _recovery_phase2_alt_protocol(
+        self,
+        db: aiosqlite.Connection,
+        operation_id: str,
+        target_id: str,
+        target_ip: str | None,
+    ) -> None:
+        """Phase 2: Check for alternative access protocols when SSH fails."""
+        if not target_ip:
+            return
+        _ALT_CHECKS: list[tuple[str, str, str]] = [
+            ("5985", "winrm", "5985"),
+            ("445", "smb", "445"),
+            ("5986", "winrm_ssl", "5986"),
+        ]
+        cursor = await db.execute(
+            "SELECT value FROM facts "
+            "WHERE operation_id = ? AND source_target_id = ? "
+            "AND trait = 'service.open_port'",
+            (operation_id, target_id),
+        )
+        port_rows = await cursor.fetchall()
+        port_values = [(r["value"] if isinstance(r, dict) else r[0]) for r in port_rows]
+        now = datetime.now(timezone.utc).isoformat()
+        for search_pattern, protocol, default_port in _ALT_CHECKS:
+            for pv in port_values:
+                if search_pattern in pv.split("/")[0]:
+                    fact_id = str(uuid.uuid4())
+                    try:
+                        await db.execute(
+                            "INSERT OR IGNORE INTO facts "
+                            "(id, trait, value, category, source_target_id, "
+                            "operation_id, score, collected_at) "
+                            "VALUES (?, 'access.alternative_available', ?, 'host', ?, ?, 1, ?)",
+                            (fact_id, f"{protocol}:{target_ip}:{default_port}", target_id, operation_id, now),
+                        )
+                    except Exception:
+                        pass
+                    break
+        key_cursor = await db.execute(
+            "SELECT value FROM facts "
+            "WHERE operation_id = ? AND source_target_id = ? "
+            "AND trait = 'credential.ssh_key'",
+            (operation_id, target_id),
+        )
+        key_row = await key_cursor.fetchone()
+        if key_row:
+            fact_id = str(uuid.uuid4())
+            try:
+                await db.execute(
+                    "INSERT OR IGNORE INTO facts "
+                    "(id, trait, value, category, source_target_id, "
+                    "operation_id, score, collected_at) "
+                    "VALUES (?, 'access.alternative_available', ?, 'host', ?, ?, 1, ?)",
+                    (fact_id, f"ssh_key:{target_ip}:22", target_id, operation_id, now),
+                )
+            except Exception:
+                pass
+        await db.commit()
+
+    async def _recovery_phase3_pivot(
+        self,
+        db: aiosqlite.Connection,
+        operation_id: str,
+        target_id: str,
+        target_ip: str | None,
+    ) -> None:
+        """Phase 3: Find compromised hosts that could pivot to the lost target."""
+        if not target_ip:
+            return
+        cursor = await db.execute(
+            "SELECT id, ip_address, privilege_level FROM targets "
+            "WHERE operation_id = ? AND is_compromised = 1 "
+            "AND access_status = 'active' AND id != ?",
+            (operation_id, target_id),
+        )
+        pivot_hosts = await cursor.fetchall()
+        if not pivot_hosts:
+            return
+        now = datetime.now(timezone.utc).isoformat()
+        for host in pivot_hosts:
+            host_id = host["id"] if isinstance(host, dict) else host[0]
+            host_ip = host["ip_address"] if isinstance(host, dict) else host[1]
+            host_priv = host["privilege_level"] if isinstance(host, dict) else host[2]
+            if not host_ip:
+                continue
+            if host_priv and host_priv.lower() in ("root", "sudo", "system", "administrator"):
+                svc_cursor = await db.execute(
+                    "SELECT value FROM facts "
+                    "WHERE operation_id = ? AND source_target_id = ? "
+                    "AND trait = 'credential.root_shell'",
+                    (operation_id, host_id),
+                )
+                shell_row = await svc_cursor.fetchone()
+                via = "root_shell" if shell_row else "elevated_privilege"
+                fact_id = str(uuid.uuid4())
+                try:
+                    await db.execute(
+                        "INSERT OR IGNORE INTO facts "
+                        "(id, trait, value, category, source_target_id, "
+                        "operation_id, score, collected_at) "
+                        "VALUES (?, 'access.pivot_candidate', ?, 'host', ?, ?, 1, ?)",
+                        (fact_id, f"pivot:{host_ip}->{target_ip}:via={via}",
+                         target_id, operation_id, now),
+                    )
+                except Exception:
+                    pass
         await db.commit()
 
     # ── Metasploit helpers ────────────────────────────────────────────────────
@@ -704,6 +1038,27 @@ class EngineRouter:
                 "UPDATE operations SET techniques_executed = techniques_executed + 1 "
                 "WHERE id = ?",
                 (operation_id,),
+            )
+            # SPEC-043: Record PoC for Metasploit success
+            from app.models.poc_record import PoCRecord  # noqa: PLC0415
+            poc = PoCRecord(
+                technique_id=technique_id,
+                target_ip=target_ip,
+                commands_executed=[f"metasploit:{service_name}"],
+                input_params={"service": service_name, "engine": "metasploit"},
+                output_snippet=(output or "")[:1000],
+                environment={"engine": "metasploit", "service": service_name},
+                reproducible=True,
+            )
+            poc_fact_id = str(uuid.uuid4())
+            await db.execute(
+                "INSERT OR IGNORE INTO facts "
+                "(id, trait, value, category, source_technique_id, "
+                "source_target_id, operation_id, score, collected_at) "
+                "VALUES (?, ?, ?, 'poc', ?, ?, ?, 1, ?)",
+                (poc_fact_id, f"poc.{technique_id}", poc.to_json(),
+                 technique_id, target_id, operation_id,
+                 datetime.now(timezone.utc).isoformat()),
             )
         await db.commit()
 

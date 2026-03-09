@@ -908,6 +908,34 @@ async def init_db() -> None:
             await db.commit()
         except Exception:
             pass
+        # Migration: create vulnerabilities table (SPEC-044)
+        for ddl in [
+            """CREATE TABLE IF NOT EXISTS vulnerabilities (
+                id TEXT PRIMARY KEY,
+                operation_id TEXT NOT NULL REFERENCES operations(id) ON DELETE CASCADE,
+                cve_id TEXT NOT NULL,
+                target_id TEXT REFERENCES targets(id) ON DELETE CASCADE,
+                severity TEXT NOT NULL DEFAULT 'info',
+                status TEXT NOT NULL DEFAULT 'discovered',
+                cvss_score REAL DEFAULT 0.0,
+                description TEXT,
+                source_fact_id TEXT REFERENCES facts(id) ON DELETE SET NULL,
+                discovered_at TEXT DEFAULT (datetime('now')),
+                confirmed_at TEXT,
+                exploited_at TEXT,
+                reported_at TEXT,
+                UNIQUE(operation_id, cve_id, target_id)
+            )""",
+            "CREATE INDEX IF NOT EXISTS idx_vuln_operation ON vulnerabilities(operation_id)",
+            "CREATE INDEX IF NOT EXISTS idx_vuln_status ON vulnerabilities(operation_id, status)",
+            "CREATE INDEX IF NOT EXISTS idx_vuln_cve ON vulnerabilities(cve_id)",
+            "CREATE INDEX IF NOT EXISTS idx_vuln_severity ON vulnerabilities(operation_id, severity)",
+        ]:
+            try:
+                await db.execute(ddl)
+                await db.commit()
+            except Exception:
+                pass
         await db.commit()
 
 

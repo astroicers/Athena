@@ -88,6 +88,7 @@ class FactCategory(str, Enum):
     SERVICE = "service"
     VULNERABILITY = "vulnerability"
     FILE = "file"
+    POC = "poc"
 
 
 class LogSeverity(str, Enum):

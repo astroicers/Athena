@@ -41,6 +41,7 @@ from app.routers import (
     missions,
     ooda,
     operations,
+    poc,
     recon,
     recommendations,
     reports,
@@ -48,6 +49,7 @@ from app.routers import (
     techniques,
     terminal,
     tools,
+    vulnerabilities,
     ws,
 )
 from app.routers.playbooks import router as playbooks_router
@@ -128,6 +130,8 @@ app.include_router(recon.router, prefix="/api", tags=["Recon"])
 app.include_router(engagements.router, prefix="/api", tags=["Engagements"])
 app.include_router(tools.router, prefix="/api", tags=["Tools"])
 app.include_router(attack_graph.router, prefix="/api", tags=["AttackGraph"])
+app.include_router(vulnerabilities.router, tags=["Vulnerabilities"])
+app.include_router(poc.router, tags=["PoC"])
 
 app.include_router(playbooks_router)
 

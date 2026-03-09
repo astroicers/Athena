@@ -299,6 +299,7 @@ async def get_topology(
                     "ip_address": ip,
                     "os": t["os"],
                     "role": t["role"],
+                    "network_segment": t["network_segment"],  # SPEC-042
                     "is_compromised": bool(t["is_compromised"]),
                     "is_active": bool(t["is_active"]),
                     "privilege_level": t["privilege_level"],

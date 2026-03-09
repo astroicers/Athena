@@ -10,6 +10,7 @@
 
 """Health check endpoint."""
 
+import asyncio
 import logging
 
 import aiosqlite
@@ -45,9 +46,10 @@ async def health_check(db: aiosqlite.Connection = Depends(get_db)):
         try:
             from app.clients.c2_client import C2EngineClient
             client = C2EngineClient(settings.C2_ENGINE_URL, settings.C2_ENGINE_API_KEY)
-            c2_engine_status = "connected" if await client.is_available() else "unreachable"
+            available = await asyncio.wait_for(client.is_available(), timeout=2.0)
+            c2_engine_status = "connected" if available else "unreachable"
             await client.aclose()
-        except Exception:
+        except (Exception, asyncio.TimeoutError):
             c2_engine_status = "unreachable"
 
     # LLM status: mock > claude (api_key) > claude (oauth) > openai > unavailable
@@ -83,7 +85,7 @@ async def health_check(db: aiosqlite.Connection = Depends(get_db)):
             try:
                 import socket
                 s = socket.create_connection(
-                    (settings.MSF_RPC_HOST, settings.MSF_RPC_PORT), timeout=2,
+                    (settings.MSF_RPC_HOST, settings.MSF_RPC_PORT), timeout=1,
                 )
                 s.close()
                 msf_connected = True

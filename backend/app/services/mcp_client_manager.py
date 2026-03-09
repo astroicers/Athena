@@ -122,6 +122,33 @@ class MCPToolInfo:
 
 
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Default MITRE ATT&CK + category metadata for auto-discovered MCP tools
+# ---------------------------------------------------------------------------
+
+_MCP_TOOL_METADATA: dict[str, dict[str, Any]] = {
+    # osint-recon
+    "osint-recon_dns_resolve":                    {"category": "reconnaissance",        "mitre": ["T1018", "T1596.001"]},
+    # vuln-lookup
+    "vuln-lookup_banner_to_cpe":                  {"category": "vulnerability_scanning", "mitre": ["T1592.002"]},
+    # credential-checker
+    "credential-checker_rdp_credential_check":    {"category": "credential_access",     "mitre": ["T1110.001", "T1021.001"]},
+    "credential-checker_winrm_credential_check":  {"category": "credential_access",     "mitre": ["T1110.001", "T1021.006"]},
+    # attack-executor
+    "attack-executor_execute_technique":          {"category": "execution",             "mitre": ["T1059.004"]},
+    "attack-executor_close_sessions":             {"category": "execution",             "mitre": ["T1059.004"]},
+    # web-scanner
+    "web-scanner_web_http_probe":                 {"category": "reconnaissance",        "mitre": ["T1595.002"]},
+    "web-scanner_web_vuln_scan":                  {"category": "vulnerability_scanning", "mitre": ["T1595.002", "T1190"]},
+    "web-scanner_web_dir_enum":                   {"category": "reconnaissance",        "mitre": ["T1595.003"]},
+    "web-scanner_web_screenshot":                 {"category": "reconnaissance",        "mitre": ["T1592.004"]},
+    # api-fuzzer
+    "api-fuzzer_api_schema_detect":               {"category": "reconnaissance",        "mitre": ["T1595.002"]},
+    "api-fuzzer_api_endpoint_enum":               {"category": "reconnaissance",        "mitre": ["T1595.002"]},
+    "api-fuzzer_api_auth_test":                   {"category": "credential_access",     "mitre": ["T1110", "T1550"]},
+    "api-fuzzer_api_param_fuzz":                  {"category": "vulnerability_scanning", "mitre": ["T1190"]},
+}
+
 # Manager
 # ---------------------------------------------------------------------------
 
@@ -533,7 +560,8 @@ class MCPClientManager:
 
                     # Check if seed/user entry already covers this MCP tool
                     cursor = await db.execute(
-                        """SELECT id, source, enabled FROM tool_registry
+                        """SELECT id, source, enabled, mitre_techniques, category
+                           FROM tool_registry
                            WHERE config_json LIKE ? AND config_json LIKE ?""",
                         (
                             f'%"mcp_server":"{server_name}"%',
@@ -543,26 +571,50 @@ class MCPClientManager:
                     existing = await cursor.fetchone()
 
                     if existing:
+                        tool_id = f"{server_name}_{tool_info.tool_name}"
+                        meta = _MCP_TOOL_METADATA.get(tool_id, {})
+                        updates: list[str] = []
+                        params: list[str] = []
                         # Re-enable if disabled
                         if not existing["enabled"]:
+                            updates.append("enabled = 1")
+                        # Backfill MITRE techniques if empty
+                        cur_mitre = existing["mitre_techniques"] or "[]"
+                        if meta.get("mitre") and cur_mitre == "[]":
+                            updates.append("mitre_techniques = ?")
+                            params.append(json.dumps(meta["mitre"]))
+                        # Backfill category if still default
+                        if meta.get("category") and existing["category"] == "reconnaissance" and meta["category"] != "reconnaissance":
+                            updates.append("category = ?")
+                            params.append(meta["category"])
+                        if updates:
+                            updates.append("updated_at = datetime('now')")
+                            params.append(existing["id"])
                             await db.execute(
-                                "UPDATE tool_registry SET enabled = 1, updated_at = datetime('now') WHERE id = ?",
-                                (existing["id"],),
+                                f"UPDATE tool_registry SET {', '.join(updates)} WHERE id = ?",
+                                params,
                             )
                     else:
                         # Insert new mcp_discovery entry
                         tool_id = f"{server_name}_{tool_info.tool_name}"
+                        meta = _MCP_TOOL_METADATA.get(tool_id, {})
+                        category = meta.get("category", "reconnaissance")
+                        mitre = json.dumps(meta.get("mitre", []))
                         await db.execute(
                             """INSERT OR IGNORE INTO tool_registry
                                (id, tool_id, name, description, kind, category,
-                                enabled, source, config_json, created_at, updated_at)
-                               VALUES (?, ?, ?, ?, 'tool', 'reconnaissance',
-                                       1, 'mcp_discovery', ?, datetime('now'), datetime('now'))""",
+                                mitre_techniques, enabled, source, config_json,
+                                created_at, updated_at)
+                               VALUES (?, ?, ?, ?, 'tool', ?,
+                                       ?, 1, 'mcp_discovery', ?,
+                                       datetime('now'), datetime('now'))""",
                             (
                                 str(uuid.uuid4()),
                                 tool_id,
                                 tool_info.tool_name,
                                 tool_info.description,
+                                category,
+                                mitre,
                                 mcp_config,
                             ),
                         )

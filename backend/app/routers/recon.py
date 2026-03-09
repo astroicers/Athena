@@ -236,6 +236,7 @@ async def _run_scan_background(
                     initial_access_method = ?,
                     credential_found      = ?,
                     agent_deployed        = ?,
+                    facts_written         = ?,
                     completed_at          = ?
                 WHERE id = ?
                 """,
@@ -245,6 +246,7 @@ async def _run_scan_background(
                     ia_result.method,
                     ia_result.credential,
                     1 if ia_result.agent_deployed else 0,
+                    recon_result.facts_written,
                     completed_at,
                     scan_id,
                 ),
@@ -317,7 +319,7 @@ def _build_scan_result(row: aiosqlite.Row) -> ReconScanResult:
         os_guess=row["os_guess"],
         services_found=len(open_ports),
         services=services,
-        facts_written=0,
+        facts_written=row["facts_written"] or 0,
         initial_access=InitialAccessResult(
             success=bool(row["credential_found"]),
             method=row["initial_access_method"] or "none",
@@ -333,7 +335,7 @@ _SCAN_SELECT = """
     SELECT s.id, s.operation_id, s.target_id, s.status,
            s.open_ports, s.os_guess,
            s.initial_access_method, s.credential_found,
-           s.agent_deployed, s.started_at, s.completed_at,
+           s.agent_deployed, s.facts_written, s.started_at, s.completed_at,
            t.ip_address
     FROM recon_scans s
     JOIN targets t ON t.id = s.target_id

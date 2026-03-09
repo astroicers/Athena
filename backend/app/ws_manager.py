@@ -28,6 +28,8 @@ class WebSocketManager:
     def __init__(self):
         # operation_id -> set of active WebSocket connections
         self._connections: dict[str, set[WebSocket]] = {}
+        self._broadcast_total: int = 0
+        self._broadcast_success: int = 0
 
     async def connect(self, operation_id: str, ws: WebSocket):
         await ws.accept()
@@ -41,6 +43,10 @@ class WebSocketManager:
             if not self._connections[operation_id]:
                 del self._connections[operation_id]
 
+    def active_connection_count(self) -> int:
+        """Return total active WebSocket connections across all operations."""
+        return sum(len(conns) for conns in self._connections.values())
+
     async def broadcast(self, operation_id: str, event: str, data: dict):
         """
         Broadcast an event to all connections for an operation.
@@ -49,17 +55,22 @@ class WebSocketManager:
             log.new, agent.beacon, execution.update, ooda.phase,
             c5isr.update, fact.new, recommendation
         """
+        self._broadcast_total += 1
         message = json.dumps({
             "event": event,
             "data": data,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         })
         connections = self._connections.get(operation_id, set()).copy()
+        any_success = False
         for ws in connections:
             try:
                 await ws.send_text(message)
+                any_success = True
             except Exception:
                 self.disconnect(operation_id, ws)
+        if any_success:
+            self._broadcast_success += 1
 
     async def broadcast_global(self, event: str, data: dict):
         """Broadcast an event to ALL active connections across all operations."""

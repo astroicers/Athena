@@ -454,7 +454,12 @@ class TestDecisionEngineParallelTasks:
     """Test that DecisionEngine.evaluate() produces parallel_tasks."""
 
     async def _setup_db(self):
-        """Setup DB with operation and targets."""
+        """Setup DB with operation, targets, and completed Kill Chain stages.
+
+        SPEC-040: Composite confidence includes Kill Chain penalty.  Seed
+        prior-stage execution data so the penalty does not push confidence
+        below the 0.5 gate for these parallel-task tests.
+        """
         db = await _make_in_memory_db()
         await db.execute(
             "INSERT INTO operations (id, code, name, codename, strategic_intent, "
@@ -464,6 +469,17 @@ class TestDecisionEngineParallelTasks:
         await db.execute(
             "INSERT INTO targets (id, hostname, ip_address, os, role, operation_id, is_active) "
             "VALUES ('tgt-1', 'host1', '10.0.0.1', 'Linux', 'server', 'op-1', 1)"
+        )
+        # Seed completed Kill Chain stages (TA0043 Recon, TA0001 Initial Access)
+        await db.execute(
+            "INSERT INTO attack_graph_nodes (id, operation_id, target_id, technique_id, tactic_id, status, confidence) "
+            "VALUES ('agn-1', 'op-1', 'tgt-1', 'T1595.001', 'TA0043', 'explored', 0.9), "
+            "       ('agn-2', 'op-1', 'tgt-1', 'T1190', 'TA0001', 'explored', 0.8)"
+        )
+        await db.execute(
+            "INSERT INTO technique_executions (id, technique_id, target_id, operation_id, engine, status, started_at, completed_at) "
+            "VALUES ('te-1', 'T1595.001', 'tgt-1', 'op-1', 'mcp_ssh', 'success', datetime('now'), datetime('now')), "
+            "       ('te-2', 'T1190', 'tgt-1', 'op-1', 'mcp_ssh', 'success', datetime('now'), datetime('now'))"
         )
         await db.commit()
         return db

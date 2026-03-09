@@ -94,6 +94,26 @@ _SEED_STATEMENTS: list[str] = [
         ('c5-cyber', 'test-op-1', 'cyber',     'scanning',    55.0, 4,    6,    'attacks succeeded'),
         ('c5-isr',   'test-op-1', 'isr',       'degraded',    40.0, 40,   100,  'confidence');
     """,
+    # SPEC-040: Seed completed Kill Chain stages so composite confidence
+    # doesn't penalise test recommendations for T1003.001 (TA0006).
+    # Attack graph nodes + successful technique_executions for prior stages.
+    """
+    INSERT INTO attack_graph_nodes (id, operation_id, target_id, technique_id, tactic_id, status, confidence)
+    VALUES
+        ('agn-seed-1', 'test-op-1', 'test-target-1', 'T1595.001', 'TA0043', 'explored', 0.9),
+        ('agn-seed-2', 'test-op-1', 'test-target-1', 'T1190',     'TA0001', 'explored', 0.8),
+        ('agn-seed-3', 'test-op-1', 'test-target-1', 'T1059.001', 'TA0002', 'explored', 0.85),
+        ('agn-seed-4', 'test-op-1', 'test-target-1', 'T1548.002', 'TA0004', 'explored', 0.75),
+        ('agn-seed-5', 'test-op-1', 'test-target-1', 'T1003.001', 'TA0006', 'pending',  0.7);
+    """,
+    """
+    INSERT INTO technique_executions (id, technique_id, target_id, operation_id, engine, status, started_at, completed_at)
+    VALUES
+        ('te-seed-1', 'T1595.001', 'test-target-1', 'test-op-1', 'mcp_ssh', 'success', datetime('now','-4 hours'), datetime('now','-4 hours')),
+        ('te-seed-2', 'T1190',     'test-target-1', 'test-op-1', 'mcp_ssh', 'success', datetime('now','-3 hours'), datetime('now','-3 hours')),
+        ('te-seed-3', 'T1059.001', 'test-target-1', 'test-op-1', 'mcp_ssh', 'success', datetime('now','-2 hours'), datetime('now','-2 hours')),
+        ('te-seed-4', 'T1548.002', 'test-target-1', 'test-op-1', 'mcp_ssh', 'success', datetime('now','-1 hours'), datetime('now','-1 hours'));
+    """,
 ]
 
 
@@ -157,4 +177,7 @@ def mock_ws_manager():
     """
     manager = MagicMock()
     manager.broadcast = AsyncMock()
+    manager.active_connection_count = MagicMock(return_value=0)
+    manager._broadcast_total = 0
+    manager._broadcast_success = 0
     return manager

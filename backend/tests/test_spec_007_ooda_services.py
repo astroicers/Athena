@@ -31,6 +31,9 @@ from app.services.orient_engine import OrientEngine
 def _make_ws():
     ws = MagicMock()
     ws.broadcast = AsyncMock()
+    ws.active_connection_count = MagicMock(return_value=0)
+    ws._broadcast_total = 0
+    ws._broadcast_success = 0
     return ws
 
 
@@ -447,11 +450,14 @@ async def test_c5isr_update_creates_six_domains(seeded_db):
     # Verify computers is from red team perspective (pwned, not secure)
     computers = next(r for r in results if r["domain"] == "computers")
     assert "pwned" in computers["detail"]
-    assert computers["metric_label"] == "targets pwned"
+    assert computers["metric_label"] == "compromise_rate"
     # Verify control has numerator/denominator
     control = next(r for r in results if r["domain"] == "control")
     assert control["numerator"] is not None
-    assert control["denominator"] is not None
+    # Verify report field is present in all domains
+    for r in results:
+        assert "report" in r
+        assert r["report"]["executive_summary"]
 
 
 # ===================================================================

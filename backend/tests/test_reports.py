@@ -37,9 +37,9 @@ async def test_report_seeded_data_counts(client):
     assert len(data["targets"]) == 1
     assert len(data["agents"]) == 1
     assert len(data["c5isr"]) == 6
-    # These tables have no seed data
+    # These tables have minimal seed data (SPEC-040 added Kill Chain seeds)
     assert len(data["ooda_timeline"]) == 0
-    assert len(data["executions"]) == 0
+    assert len(data["executions"]) == 4  # SPEC-040: seeded Kill Chain executions
     assert len(data["facts"]) == 0
     assert len(data["recommendations"]) == 0
     assert len(data["logs"]) == 0

@@ -21,6 +21,7 @@ Supported:
 """
 import asyncio
 import logging
+import time
 from typing import Any, Callable
 
 from app.config import settings
@@ -60,6 +61,74 @@ class MetasploitRPCEngine:
             username=settings.MSF_RPC_USER,
             ssl=settings.MSF_RPC_SSL,
         )
+
+    async def _read_shell_output(
+        self,
+        shell: Any,
+        *,
+        start_interval: float = 0.3,
+        backoff_factor: float = 2.0,
+        max_interval: float = 5.0,
+        timeout: float = 15.0,
+    ) -> str:
+        """Read shell output with exponential backoff polling."""
+        accumulated = ""
+        interval = start_interval
+        consecutive_empty = 0
+        has_output = False
+        deadline = time.monotonic() + timeout
+
+        while time.monotonic() < deadline:
+            await asyncio.sleep(interval)
+            chunk = await asyncio.get_running_loop().run_in_executor(
+                None, shell.read
+            )
+            if chunk:
+                accumulated += chunk
+                has_output = True
+                consecutive_empty = 0
+                interval = start_interval
+                stripped = accumulated.rstrip()
+                if stripped and stripped[-1] in ('$', '#', '>'):
+                    logger.debug("Prompt detected, output complete (%d chars)", len(accumulated))
+                    break
+            else:
+                consecutive_empty += 1
+                if has_output and consecutive_empty >= 2:
+                    logger.debug("2 consecutive empty reads after output, done (%d chars)", len(accumulated))
+                    break
+                interval = min(interval * backoff_factor, max_interval)
+
+        if time.monotonic() >= deadline:
+            logger.warning("Shell read timed out after %.1fs (%d chars accumulated)", timeout, len(accumulated))
+
+        return accumulated
+
+    async def _check_session_health(
+        self,
+        client: Any,
+        session_id: str,
+    ) -> bool:
+        """Verify session is alive before executing commands."""
+        try:
+            sessions = await asyncio.get_running_loop().run_in_executor(
+                None, lambda: client.sessions.list
+            )
+        except Exception:
+            logger.warning("Failed to query Metasploit sessions list")
+            return False
+
+        if session_id not in sessions:
+            logger.warning("Session %s not found in sessions list", session_id)
+            return False
+
+        session_info = sessions[session_id]
+        session_type = session_info.get("type", "")
+        if session_type not in ("shell", "meterpreter"):
+            logger.warning("Session %s has unexpected type '%s'", session_id, session_type)
+            return False
+
+        return True
 
     def get_exploit_for_service(self, service_name: str) -> Callable | None:
         """Map service name to exploit method (case-insensitive substring match)."""
@@ -102,10 +171,12 @@ class MetasploitRPCEngine:
             for sid, info in client.sessions.list.items():
                 if info.get("target_host") == target_ip:
                     logger.info("Reusing existing session %s for %s", sid, target_ip)
+                    if not await self._check_session_health(client, sid):
+                        logger.warning("Session %s is unhealthy, skipping reuse", sid)
+                        continue
                     shell = client.sessions.session(sid)
                     shell.write("id\n")
-                    await asyncio.sleep(2)
-                    output = shell.read()
+                    output = await self._read_shell_output(shell)
                     return {
                         "status": "success",
                         "shell": sid,
@@ -132,8 +203,7 @@ class MetasploitRPCEngine:
                     sid = list(new_sessions.keys())[0]
                     shell = client.sessions.session(sid)
                     shell.write("id\n")
-                    await asyncio.sleep(2)
-                    output = shell.read()
+                    output = await self._read_shell_output(shell)
                     return {
                         "status": "success",
                         "shell": sid,

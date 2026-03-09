@@ -114,6 +114,13 @@ class ReconEngine:
                 f"MCP nmap_scan timed out after {settings.NMAP_SCAN_TIMEOUT_SEC}s"
             )
 
+        if not services:
+            logger.warning(
+                "nmap scan returned 0 services for %s — raw response: %s",
+                ip_address,
+                (raw_xml or "N/A")[:500],
+            )
+
         # ------------------------------------------------------------------
         # Steps 5–7: Write facts and broadcast events
         # ------------------------------------------------------------------

@@ -338,6 +338,7 @@ async def test_no_cred_early_return_writes_execution():
                 error_message TEXT);
             CREATE TABLE facts (id TEXT PRIMARY KEY, operation_id TEXT,
                 source_target_id TEXT, category TEXT, trait TEXT, value TEXT,
+                source_technique_id TEXT,
                 score INTEGER DEFAULT 1, collected_at TEXT, source TEXT);
             CREATE TABLE targets (id TEXT PRIMARY KEY, hostname TEXT,
                 ip_address TEXT, os TEXT, role TEXT, operation_id TEXT,
@@ -388,6 +389,7 @@ async def test_metasploit_route_on_explicit_engine():
                 error_message TEXT);
             CREATE TABLE facts (id TEXT PRIMARY KEY, operation_id TEXT,
                 source_target_id TEXT, category TEXT, trait TEXT, value TEXT,
+                source_technique_id TEXT,
                 score INTEGER DEFAULT 1, collected_at TEXT, source TEXT);
             CREATE TABLE targets (id TEXT PRIMARY KEY, hostname TEXT,
                 ip_address TEXT, os TEXT, role TEXT, operation_id TEXT,
@@ -400,7 +402,7 @@ async def test_metasploit_route_on_explicit_engine():
                 'target', 'op-1', 0, NULL, 'lost');
             INSERT INTO operations VALUES ('op-1', 0);
             INSERT INTO facts VALUES ('f1', 'op-1', 'tgt-1', 'service',
-                'service.open_port', '21/tcp/ftp/vsftpd_2.3.4', 1, '2026-01-01', 'nmap');
+                'service.open_port', '21/tcp/ftp/vsftpd_2.3.4', NULL, 1, '2026-01-01', 'nmap');
         """)
         await db.commit()
 
@@ -438,6 +440,7 @@ async def test_banner_fallback_auto_detects_vsftpd():
                 error_message TEXT);
             CREATE TABLE facts (id TEXT PRIMARY KEY, operation_id TEXT,
                 source_target_id TEXT, category TEXT, trait TEXT, value TEXT,
+                source_technique_id TEXT,
                 score INTEGER DEFAULT 1, collected_at TEXT, source TEXT);
             CREATE TABLE targets (id TEXT PRIMARY KEY, hostname TEXT,
                 ip_address TEXT, os TEXT, role TEXT, operation_id TEXT,
@@ -450,7 +453,7 @@ async def test_banner_fallback_auto_detects_vsftpd():
                 'target', 'op-1', 0, NULL, 'unknown');
             INSERT INTO operations VALUES ('op-1', 0);
             INSERT INTO facts VALUES ('f1', 'op-1', 'tgt-1', 'service',
-                'service.open_port', '21/tcp/ftp/vsftpd_2.3.4', 1, '2026-01-01', 'nmap');
+                'service.open_port', '21/tcp/ftp/vsftpd_2.3.4', NULL, 1, '2026-01-01', 'nmap');
         """)
         await db.commit()
 
@@ -510,7 +513,8 @@ async def test_metasploit_success_updates_target():
             CREATE TABLE operations (id TEXT, techniques_executed INTEGER DEFAULT 0);
             CREATE TABLE facts (
                 id TEXT, operation_id TEXT, source_target_id TEXT, category TEXT,
-                trait TEXT, value TEXT, score REAL, collected_at TEXT, source TEXT,
+                trait TEXT, value TEXT, source_technique_id TEXT,
+                score REAL, collected_at TEXT, source TEXT,
                 UNIQUE(operation_id, trait, value)
             );
             INSERT INTO targets VALUES ('tgt-1', '192.168.0.23', 'op-1', 0, NULL, 'lost');

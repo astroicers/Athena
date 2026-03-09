@@ -10,13 +10,17 @@
 
 """Observe phase — extract and store facts from execution results."""
 
+import re as _re
 import uuid
 from datetime import datetime, timezone
 
 import aiosqlite
 
 from app.models.enums import FactCategory
+from app.services.vulnerability_manager import VulnerabilityManager
 from app.ws_manager import WebSocketManager
+
+_vuln_mgr = VulnerabilityManager()
 
 
 class FactCollector:
@@ -80,6 +84,19 @@ class FactCollector:
             await self._ws.broadcast(operation_id, "fact.new", fact)
 
         await db.commit()
+
+        # --- SPEC-044: Auto-populate vulnerabilities from vuln.cve facts ---
+        for fact in new_facts:
+            if fact["trait"].startswith("vuln.cve") or fact["trait"].startswith("vulnerability.cve"):
+                cve_match = _re.match(r"(CVE-\d{4}-\d+)", fact["value"])
+                if cve_match and fact.get("source_target_id"):
+                    await _vuln_mgr.upsert_from_fact(
+                        db, operation_id,
+                        fact_id=fact["id"],
+                        cve_id=cve_match.group(1),
+                        target_id=fact["source_target_id"],
+                    )
+
         return new_facts
 
     async def collect_from_result(
@@ -119,6 +136,18 @@ class FactCollector:
 
         for fact in new_facts:
             await self._ws.broadcast(operation_id, "fact.new", fact)
+
+        # --- SPEC-044: Auto-populate vulnerabilities from vuln.cve facts ---
+        for fact in new_facts:
+            if fact["trait"].startswith("vuln.cve") or fact["trait"].startswith("vulnerability.cve"):
+                cve_match = _re.match(r"(CVE-\d{4}-\d+)", fact["value"])
+                if cve_match:
+                    await _vuln_mgr.upsert_from_fact(
+                        db, operation_id,
+                        fact_id=fact["id"],
+                        cve_id=cve_match.group(1),
+                        target_id=target_id,
+                    )
 
         return new_facts
 

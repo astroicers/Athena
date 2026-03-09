@@ -376,6 +376,10 @@ class OrientEngine:
             trait = r["trait"]
             cat = r["category"].upper()
 
+            # SPEC-043: Exclude PoC records from Orient prompt
+            if trait.startswith("poc."):
+                continue
+
             # SPEC-037: Exclude invalidated credentials from prompt
             if ".invalidated" in trait:
                 continue
@@ -712,6 +716,28 @@ class OrientEngine:
             mcp_tools_summary=mcp_tools_summary,
             attack_graph_summary=attack_graph_summary or "Not available.",
         )
+
+        # --- Section 8.5: Security Skills injection (SPEC-043 A3) ---
+        from app.services.skill_loader import load_skills
+
+        last_rec_technique = None
+        if prev_assessments:
+            last_rec_technique = prev_assessments[0]["recommended_technique_id"]
+
+        skill_tactic_id = None
+        if last_rec_technique:
+            tac_cursor = await db.execute(
+                "SELECT tactic_id FROM techniques WHERE mitre_id = ? LIMIT 1",
+                (last_rec_technique,),
+            )
+            tac_row = await tac_cursor.fetchone()
+            skill_tactic_id = tac_row["tactic_id"] if tac_row else None
+
+        skills_section = load_skills(
+            last_rec_technique or "", skill_tactic_id
+        )
+        if skills_section:
+            user_prompt += f"\n\n{skills_section}"
 
         # --- Section 9: Operator directive (if any) ---
         directive_cursor = await db.execute(

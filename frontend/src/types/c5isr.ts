@@ -10,6 +10,33 @@
 
 import { C5ISRDomain, C5ISRDomainStatus } from "./enums";
 
+export interface DomainMetric {
+  name: string;
+  value: number;
+  weight: number;
+  numerator: number | null;
+  denominator: number | null;
+}
+
+export type RiskSeverity = "CRIT" | "WARN" | "INFO";
+
+export interface RiskVector {
+  severity: RiskSeverity;
+  message: string;
+}
+
+export interface DomainReport {
+  executive_summary: string;
+  health_pct: number;
+  status: string;
+  metrics: DomainMetric[];
+  asset_roster: Array<Record<string, unknown>>;
+  tactical_assessment: string;
+  risk_vectors: RiskVector[];
+  recommended_actions: string[];
+  cross_domain_impacts: string[];
+}
+
 export interface C5ISRStatus {
   id: string;
   operationId: string;
@@ -21,4 +48,5 @@ export interface C5ISRStatus {
   numerator: number | null;
   denominator: number | null;
   metricLabel: string;
+  report: DomainReport | null;
 }

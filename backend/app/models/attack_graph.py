@@ -8,11 +8,13 @@
 #
 # For commercial licensing, contact: [TODO: contact email]
 
-"""Attack graph domain models — SPEC-031."""
+"""Attack graph domain models — SPEC-031, SPEC-039."""
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
+from typing import Literal, Optional
+
+from pydantic import BaseModel, Field
 
 
 class NodeStatus(str, Enum):
@@ -43,6 +45,34 @@ class TechniqueRule:
     effort: int
     enables: list[str]
     alternatives: list[str]
+    platforms: list[str] = field(default_factory=lambda: ["linux", "windows"])
+    description: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Pydantic schemas for YAML validation — SPEC-039
+# ---------------------------------------------------------------------------
+
+class TechniqueRuleSchema(BaseModel):
+    """Pydantic schema for YAML rule validation."""
+    technique_id: str = Field(..., pattern=r"^T\d{4}(\.\d{3})?$")
+    tactic_id: str = Field(..., pattern=r"^TA\d{4}$")
+    required_facts: list[str]
+    produced_facts: list[str] = Field(..., min_length=1)
+    risk_level: Literal["low", "medium", "high", "critical"]
+    base_confidence: float = Field(..., ge=0.0, le=1.0)
+    information_gain: float = Field(..., ge=0.0, le=1.0)
+    effort: int = Field(..., ge=1, le=5)
+    enables: list[str]
+    alternatives: list[str]
+    platforms: list[Literal["linux", "windows"]] = Field(..., min_length=1)
+    description: str = Field(..., min_length=1, max_length=500)
+
+
+class TechniqueRulesFile(BaseModel):
+    """Top-level YAML file schema."""
+    version: Literal["1.0"]
+    rules: list[TechniqueRuleSchema] = Field(..., min_length=1)
 
 
 @dataclass

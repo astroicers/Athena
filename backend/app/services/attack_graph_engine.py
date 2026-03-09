@@ -20,11 +20,15 @@ No external dependencies (no networkx). Uses stdlib: heapq, collections, uuid.
 import heapq
 import json
 import logging
+import os
+import time
 import uuid
 from collections import defaultdict
 from datetime import datetime, timezone
+from pathlib import Path
 
 import aiosqlite
+import yaml
 
 from app.models.attack_graph import (
     AttackEdge,
@@ -33,104 +37,110 @@ from app.models.attack_graph import (
     EdgeRelationship,
     NodeStatus,
     TechniqueRule,
+    TechniqueRulesFile,
 )
 from app.ws_manager import WebSocketManager
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Prerequisite Rule Registry — deterministic attack technique rules
+# YAML-based rule loading — SPEC-039
 # ---------------------------------------------------------------------------
 
-_PREREQUISITE_RULES: list[TechniqueRule] = [
-    TechniqueRule(
-        technique_id="T1595.001", tactic_id="TA0043",
-        required_facts=[], produced_facts=["network.host.ip", "service.open_port"],
-        risk_level="low", base_confidence=0.95, information_gain=0.9, effort=1,
-        enables=["T1595.002", "T1190", "T1110.001"], alternatives=[],
-    ),
-    TechniqueRule(
-        technique_id="T1595.002", tactic_id="TA0043",
-        required_facts=["network.host.ip"], produced_facts=["vuln.cve"],
-        risk_level="low", base_confidence=0.85, information_gain=0.8, effort=1,
-        enables=["T1190"], alternatives=[],
-    ),
-    TechniqueRule(
-        technique_id="T1190", tactic_id="TA0001",
-        required_facts=["service.open_port"], produced_facts=["service.web"],
-        risk_level="medium", base_confidence=0.6, information_gain=0.7, effort=2,
-        enables=["T1059.004"], alternatives=["T1110.001"],
-    ),
-    TechniqueRule(
-        technique_id="T1110.001", tactic_id="TA0001",
-        required_facts=["service.open_port"], produced_facts=["credential.ssh"],
-        risk_level="medium", base_confidence=0.7, information_gain=0.6, effort=1,
-        enables=["T1059.004", "T1078.001"], alternatives=["T1190"],
-    ),
-    TechniqueRule(
-        technique_id="T1059.004", tactic_id="TA0002",
-        required_facts=["credential.ssh"],
-        produced_facts=["host.os", "host.user", "host.process"],
-        risk_level="medium", base_confidence=0.85, information_gain=0.5, effort=1,
-        enables=["T1003.001", "T1087", "T1083", "T1046"], alternatives=[],
-    ),
-    TechniqueRule(
-        technique_id="T1003.001", tactic_id="TA0006",
-        required_facts=["credential.ssh", "host.user"],
-        produced_facts=["credential.hash"],
-        risk_level="high", base_confidence=0.75, information_gain=0.9, effort=1,
-        enables=["T1021.004", "T1558.003"], alternatives=["T1003.003"],
-    ),
-    TechniqueRule(
-        technique_id="T1087", tactic_id="TA0007",
-        required_facts=["credential.ssh"], produced_facts=["host.user"],
-        risk_level="low", base_confidence=0.9, information_gain=0.4, effort=1,
-        enables=["T1078.001"], alternatives=[],
-    ),
-    TechniqueRule(
-        technique_id="T1083", tactic_id="TA0007",
-        required_facts=["credential.ssh"], produced_facts=["host.file"],
-        risk_level="low", base_confidence=0.9, information_gain=0.3, effort=1,
-        enables=[], alternatives=[],
-    ),
-    TechniqueRule(
-        technique_id="T1046", tactic_id="TA0007",
-        required_facts=["credential.ssh"], produced_facts=["service.open_port"],
-        risk_level="low", base_confidence=0.9, information_gain=0.5, effort=1,
-        enables=["T1021.004"], alternatives=[],
-    ),
-    TechniqueRule(
-        technique_id="T1021.004", tactic_id="TA0008",
-        required_facts=["credential.ssh", "network.host.ip"],
-        produced_facts=["host.session"],
-        risk_level="medium", base_confidence=0.65, information_gain=0.8, effort=2,
-        enables=["T1059.004"], alternatives=["T1021.001"],
-    ),
-    TechniqueRule(
-        technique_id="T1053.003", tactic_id="TA0003",
-        required_facts=["credential.ssh", "host.os"],
-        produced_facts=["host.persistence"],
-        risk_level="medium", base_confidence=0.7, information_gain=0.2, effort=1,
-        enables=[], alternatives=["T1543.002"],
-    ),
-    TechniqueRule(
-        technique_id="T1560.001", tactic_id="TA0009",
-        required_facts=["credential.ssh", "host.file"],
-        produced_facts=["host.file"],
-        risk_level="medium", base_confidence=0.8, information_gain=0.3, effort=1,
-        enables=["T1105"], alternatives=[],
-    ),
-    TechniqueRule(
-        technique_id="T1105", tactic_id="TA0011",
-        required_facts=["credential.ssh", "host.binary"],
-        produced_facts=["host.binary"],
-        risk_level="medium", base_confidence=0.75, information_gain=0.2, effort=1,
-        enables=[], alternatives=[],
-    ),
-]
+_DEFAULT_RULES_PATH = Path(__file__).parent.parent / "data" / "technique_rules.yaml"
 
-# Lookup maps for O(1) access
+
+def _load_rules(path: Path | None = None) -> list[TechniqueRule]:
+    """Load technique rules from YAML file with Pydantic validation.
+
+    Args:
+        path: YAML file path. Defaults to backend/app/data/technique_rules.yaml.
+              Can be overridden via TECHNIQUE_RULES_PATH env var.
+
+    Returns:
+        List of validated TechniqueRule objects.
+
+    Raises:
+        FileNotFoundError: YAML file does not exist.
+        ValueError: YAML content fails Pydantic validation.
+    """
+    if path is None:
+        env_path = os.environ.get("TECHNIQUE_RULES_PATH")
+        path = Path(env_path) if env_path else _DEFAULT_RULES_PATH
+
+    start = time.perf_counter()
+
+    with open(path, "r", encoding="utf-8") as f:
+        raw = yaml.safe_load(f)
+
+    # Pydantic validation
+    validated = TechniqueRulesFile(**raw)
+
+    rules = []
+    seen_ids: set[str] = set()
+    for r in validated.rules:
+        if r.technique_id in seen_ids:
+            logger.warning(
+                "Duplicate technique_id %s in rules file; later entry overwrites.",
+                r.technique_id,
+            )
+        seen_ids.add(r.technique_id)
+        rules.append(TechniqueRule(
+            technique_id=r.technique_id,
+            tactic_id=r.tactic_id,
+            required_facts=r.required_facts,
+            produced_facts=r.produced_facts,
+            risk_level=r.risk_level,
+            base_confidence=r.base_confidence,
+            information_gain=r.information_gain,
+            effort=r.effort,
+            enables=r.enables,
+            alternatives=r.alternatives,
+            platforms=r.platforms,
+            description=r.description,
+        ))
+
+    # Warn about enables references to non-existent technique_ids
+    all_ids = {r.technique_id for r in rules}
+    for r in rules:
+        for enabled in r.enables:
+            if enabled not in all_ids:
+                logger.warning(
+                    "Rule %s enables non-existent technique %s",
+                    r.technique_id, enabled,
+                )
+
+    elapsed_ms = (time.perf_counter() - start) * 1000
+    logger.info("Loaded %d technique rules from %s in %.1fms", len(rules), path, elapsed_ms)
+
+    return rules
+
+
+def reload_rules(path: Path | None = None) -> None:
+    """Hot-reload rules without restart. Thread-safe via module-level replacement."""
+    global _PREREQUISITE_RULES, _RULE_BY_TECHNIQUE
+    new_rules = _load_rules(path)
+    new_lookup = {r.technique_id: r for r in new_rules}
+    # Atomic swap
+    _PREREQUISITE_RULES = new_rules
+    _RULE_BY_TECHNIQUE = new_lookup
+    logger.info("Hot-reloaded %d technique rules", len(new_rules))
+
+
+# Module-level initialization
+_PREREQUISITE_RULES: list[TechniqueRule] = _load_rules()
 _RULE_BY_TECHNIQUE: dict[str, TechniqueRule] = {r.technique_id: r for r in _PREREQUISITE_RULES}
+
+# ---------------------------------------------------------------------------
+# Cost map for risk levels — SPEC-039
+# ---------------------------------------------------------------------------
+
+RISK_COST_MAP: dict[str, float] = {
+    "low": 0.1,
+    "medium": 0.3,
+    "high": 0.6,
+    "critical": 1.0,
+}
 
 # Kill-chain tactic order for depth calculation
 _TACTIC_ORDER = [
@@ -200,6 +210,7 @@ class AttackGraphEngine:
                     "pending_nodes": pending,
                     "coverage_score": graph.coverage_score,
                 },
+                "recommended_path": graph.recommended_path,  # SPEC-042
                 "updated_at": graph.updated_at,
             })
         except Exception:
@@ -295,15 +306,34 @@ class AttackGraphEngine:
         return "\n".join(lines)
 
     @staticmethod
+    def compute_edge_cost(target_node: AttackNode) -> float:
+        """Direct cost formula -- lower value = better path.
+
+        cost = 0.35*(1-confidence) + 0.25*(1-information_gain)
+             + 0.25*risk_cost + 0.15*effort_norm
+
+        Designed for Dijkstra shortest-path: semantically intuitive,
+        no desirability-inversion needed.
+        """
+        risk_cost = RISK_COST_MAP.get(target_node.risk_level, 0.3)
+        effort_norm = min(target_node.effort / 5.0, 1.0)
+        return (
+            0.35 * (1.0 - target_node.confidence)
+            + 0.25 * (1.0 - target_node.information_gain)
+            + 0.25 * risk_cost
+            + 0.15 * effort_norm
+        )
+
+    # Keep backward-compatible alias for existing callers
+    @staticmethod
     def compute_edge_weight(
         target_node: AttackNode,
         alpha: float = 0.5,
         beta: float = 0.3,
         gamma: float = 0.2,
     ) -> float:
-        """Compute edge weight: W = alpha*C + beta*IG + gamma*(1 - E_norm)."""
-        e_norm = min(target_node.effort / 5.0, 1.0)
-        return alpha * target_node.confidence + beta * target_node.information_gain + gamma * (1.0 - e_norm)
+        """DEPRECATED: Use compute_edge_cost(). Kept for backward compatibility."""
+        return AttackGraphEngine.compute_edge_cost(target_node)
 
     def compute_recommended_path(self, graph: AttackGraph) -> list[str]:
         """Dijkstra shortest path from entry nodes to highest-IG PENDING node."""
@@ -339,7 +369,7 @@ class AttackGraphEngine:
             if target_node.status in (NodeStatus.FAILED, NodeStatus.PRUNED):
                 cost = float("inf")
             else:
-                cost = 1.0 - edge.weight
+                cost = edge.weight  # weight IS cost (SPEC-039)
             adj[edge.source].append((edge.target, cost))
 
         # Dijkstra
@@ -439,12 +469,21 @@ class AttackGraphEngine:
     def prune_dead_branches(self, graph: AttackGraph) -> int:
         """When technique fails, prune siblings (same tactic+target, shared prereqs) and downstream.
 
+        SPEC-039: Siblings listed in the failed node's `alternatives` are protected
+        from pruning (they represent different attack vectors).
+
         Returns the number of pruned nodes.
         """
         pruned_count = 0
         failed_nodes = [n for n in graph.nodes.values() if n.status == NodeStatus.FAILED]
 
         for failed in failed_nodes:
+            # Get the failed node's rule to find its alternatives list
+            failed_rule = _RULE_BY_TECHNIQUE.get(failed.technique_id)
+            protected_techniques: set[str] = set()
+            if failed_rule:
+                protected_techniques = set(failed_rule.alternatives)
+
             # Find siblings: same tactic_id, same target_id, not the failed node itself
             siblings = [
                 n for n in graph.nodes.values()
@@ -456,6 +495,15 @@ class AttackGraphEngine:
 
             # Prune siblings that share at least one prerequisite with the failed node
             for sibling in siblings:
+                # Protect alternative techniques from pruning
+                if sibling.technique_id in protected_techniques:
+                    logger.debug(
+                        "Protecting alternative technique %s from pruning "
+                        "(alternative of failed %s)",
+                        sibling.technique_id, failed.technique_id,
+                    )
+                    continue
+
                 shared_prereqs = set(sibling.prerequisites) & set(failed.prerequisites)
                 if shared_prereqs:
                     sibling.status = NodeStatus.PRUNED
@@ -468,34 +516,56 @@ class AttackGraphEngine:
     def _propagate_prune(self, graph: AttackGraph) -> int:
         """Mark downstream nodes as PRUNED if all incoming edges are from PRUNED/FAILED.
 
+        SPEC-039: Also checks ALTERNATIVE incoming edges. If at least one
+        alive alternative source exists, the node is protected from pruning.
+
         Returns the number of additionally pruned nodes.
         """
         count = 0
         changed = True
         while changed:
             changed = False
-            # Build incoming edge map (non-ALTERNATIVE)
-            incoming: dict[str, list[str]] = defaultdict(list)
+            # Build incoming edge maps: normal and alternative
+            incoming_normal: dict[str, list[str]] = defaultdict(list)
+            incoming_alt: dict[str, list[str]] = defaultdict(list)
             for edge in graph.edges:
-                if edge.relationship != EdgeRelationship.ALTERNATIVE:
-                    incoming[edge.target].append(edge.source)
+                if edge.relationship == EdgeRelationship.ALTERNATIVE:
+                    incoming_alt[edge.target].append(edge.source)
+                else:
+                    incoming_normal[edge.target].append(edge.source)
 
             for nid, node in graph.nodes.items():
                 if node.status in (NodeStatus.PRUNED, NodeStatus.FAILED, NodeStatus.EXPLORED):
                     continue
-                sources = incoming.get(nid, [])
-                if not sources:
+                normal_sources = incoming_normal.get(nid, [])
+                if not normal_sources:
                     continue
-                # If ALL incoming sources are PRUNED or FAILED → prune this node
-                all_dead = all(
+
+                # Check if ALL normal incoming sources are PRUNED or FAILED
+                all_normal_dead = all(
                     graph.nodes[s].status in (NodeStatus.PRUNED, NodeStatus.FAILED)
-                    for s in sources
+                    for s in normal_sources
                     if s in graph.nodes
                 )
-                if all_dead and sources:
-                    node.status = NodeStatus.PRUNED
-                    count += 1
-                    changed = True
+
+                if not all_normal_dead:
+                    continue
+
+                # Check if any alive alternative incoming source exists
+                alt_sources = incoming_alt.get(nid, [])
+                has_alive_alt = any(
+                    graph.nodes[s].status not in (NodeStatus.PRUNED, NodeStatus.FAILED)
+                    for s in alt_sources
+                    if s in graph.nodes
+                )
+
+                if has_alive_alt:
+                    # At least one alternative path is alive, do not prune
+                    continue
+
+                node.status = NodeStatus.PRUNED
+                count += 1
+                changed = True
         return count
 
     # ------------------------------------------------------------------
@@ -647,7 +717,7 @@ class AttackGraphEngine:
                     target_nid = self._make_node_id(enabled_tech, target_id)
                     if target_nid in graph.nodes:
                         target_node = graph.nodes[target_nid]
-                        weight = self.compute_edge_weight(target_node)
+                        weight = self.compute_edge_cost(target_node)
                         edge = AttackEdge(
                             edge_id=self._make_edge_id(source_nid, target_nid, "enables"),
                             source=source_nid,
@@ -665,7 +735,7 @@ class AttackGraphEngine:
                     alt_nid = self._make_node_id(alt_tech, target_id)
                     if alt_nid in graph.nodes:
                         alt_node = graph.nodes[alt_nid]
-                        weight = self.compute_edge_weight(alt_node)
+                        weight = self.compute_edge_cost(alt_node)
                         edge = AttackEdge(
                             edge_id=self._make_edge_id(source_nid, alt_nid, "alternative"),
                             source=source_nid,
@@ -685,7 +755,7 @@ class AttackGraphEngine:
                                 lateral_nid = self._make_node_id(rule.technique_id, other_tid)
                                 if lateral_nid in graph.nodes:
                                     lateral_node = graph.nodes[lateral_nid]
-                                    weight = self.compute_edge_weight(lateral_node)
+                                    weight = self.compute_edge_cost(lateral_node)
                                     edge = AttackEdge(
                                         edge_id=self._make_edge_id(
                                             source_nid, lateral_nid, "lateral"

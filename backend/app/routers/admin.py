@@ -22,6 +22,14 @@ from app.ws_manager import ws_manager
 router = APIRouter()
 
 
+@router.post("/admin/rules/reload", tags=["admin"])
+async def reload_technique_rules():
+    """Hot-reload technique rules from YAML without restart."""
+    from app.services.attack_graph_engine import reload_rules
+    reload_rules()
+    return {"status": "ok", "message": "Rules reloaded"}
+
+
 @router.post("/operations/{operation_id}/reset", status_code=204)
 
 
@@ -55,6 +63,20 @@ async def reset_operation(
     )
     await db.execute(
         "DELETE FROM ooda_iterations WHERE operation_id = ?", (operation_id,)
+    )
+
+    # ── DELETE graph / swarm / directives (FK-safe: before targets) ─────
+    await db.execute(
+        "DELETE FROM attack_graph_edges WHERE operation_id = ?", (operation_id,)
+    )
+    await db.execute(
+        "DELETE FROM attack_graph_nodes WHERE operation_id = ?", (operation_id,)
+    )
+    await db.execute(
+        "DELETE FROM swarm_tasks WHERE operation_id = ?", (operation_id,)
+    )
+    await db.execute(
+        "DELETE FROM ooda_directives WHERE operation_id = ?", (operation_id,)
     )
 
     # ── DELETE operational data (FK-safe order) ──────────────────────────

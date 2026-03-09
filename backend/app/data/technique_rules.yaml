@@ -1,0 +1,1104 @@
+version: "1.0"
+rules:
+  # =========================================================================
+  # TA0043 — Reconnaissance (2 rules)
+  # =========================================================================
+  - technique_id: "T1595.001"
+    tactic_id: "TA0043"
+    required_facts: []
+    produced_facts:
+      - "network.host.ip"
+      - "service.open_port"
+    risk_level: "low"
+    base_confidence: 0.95
+    information_gain: 0.9
+    effort: 1
+    enables:
+      - "T1595.002"
+      - "T1190"
+      - "T1110.001"
+    alternatives: []
+    platforms:
+      - "linux"
+      - "windows"
+    description: "Active Scanning: Scanning IP Blocks"
+
+  - technique_id: "T1595.002"
+    tactic_id: "TA0043"
+    required_facts:
+      - "network.host.ip"
+    produced_facts:
+      - "vuln.cve"
+    risk_level: "low"
+    base_confidence: 0.85
+    information_gain: 0.8
+    effort: 1
+    enables:
+      - "T1190"
+    alternatives: []
+    platforms:
+      - "linux"
+      - "windows"
+    description: "Active Scanning: Vulnerability Scanning"
+
+  # =========================================================================
+  # TA0001 — Initial Access (3 rules)
+  # =========================================================================
+  - technique_id: "T1190"
+    tactic_id: "TA0001"
+    required_facts:
+      - "service.open_port"
+    produced_facts:
+      - "service.web"
+    risk_level: "medium"
+    base_confidence: 0.6
+    information_gain: 0.7
+    effort: 2
+    enables:
+      - "T1059.004"
+    alternatives:
+      - "T1110.001"
+    platforms:
+      - "linux"
+      - "windows"
+    description: "Exploit Public-Facing Application"
+
+  - technique_id: "T1110.001"
+    tactic_id: "TA0001"
+    required_facts:
+      - "service.open_port"
+    produced_facts:
+      - "credential.ssh"
+    risk_level: "medium"
+    base_confidence: 0.7
+    information_gain: 0.6
+    effort: 1
+    enables:
+      - "T1059.004"
+      - "T1078.001"
+    alternatives:
+      - "T1190"
+    platforms:
+      - "linux"
+      - "windows"
+    description: "Brute Force: Password Guessing"
+
+  - technique_id: "T1133"
+    tactic_id: "TA0001"
+    required_facts:
+      - "service.open_port"
+      - "credential.ssh"
+    produced_facts:
+      - "host.session"
+    risk_level: "medium"
+    base_confidence: 0.75
+    information_gain: 0.65
+    effort: 1
+    enables:
+      - "T1059.004"
+    alternatives:
+      - "T1190"
+      - "T1110.001"
+    platforms:
+      - "linux"
+      - "windows"
+    description: "External Remote Services"
+
+  # =========================================================================
+  # TA0002 — Execution (2 rules)
+  # =========================================================================
+  - technique_id: "T1059.004"
+    tactic_id: "TA0002"
+    required_facts:
+      - "credential.ssh"
+    produced_facts:
+      - "host.os"
+      - "host.user"
+      - "host.process"
+    risk_level: "medium"
+    base_confidence: 0.85
+    information_gain: 0.5
+    effort: 1
+    enables:
+      - "T1003.001"
+      - "T1087"
+      - "T1083"
+      - "T1046"
+    alternatives: []
+    platforms:
+      - "linux"
+    description: "Command and Scripting Interpreter: Unix Shell"
+
+  - technique_id: "T1059.001"
+    tactic_id: "TA0002"
+    required_facts:
+      - "credential.domain_user"
+      - "host.session"
+    produced_facts:
+      - "host.os"
+      - "host.user"
+      - "host.process"
+    risk_level: "medium"
+    base_confidence: 0.85
+    information_gain: 0.5
+    effort: 1
+    enables:
+      - "T1059.003"
+    alternatives:
+      - "T1059.003"
+    platforms:
+      - "windows"
+    description: "Command and Scripting Interpreter: PowerShell"
+
+  # =========================================================================
+  # TA0003 — Persistence (6 rules)
+  # =========================================================================
+  - technique_id: "T1053.003"
+    tactic_id: "TA0003"
+    required_facts:
+      - "credential.ssh"
+      - "host.os"
+    produced_facts:
+      - "host.persistence"
+    risk_level: "medium"
+    base_confidence: 0.7
+    information_gain: 0.2
+    effort: 1
+    enables: []
+    alternatives:
+      - "T1543.002"
+    platforms:
+      - "linux"
+    description: "Scheduled Task/Job: Cron"
+
+  - technique_id: "T1547.001"
+    tactic_id: "TA0003"
+    required_facts:
+      - "credential.domain_user"
+      - "host.session"
+    produced_facts:
+      - "host.persistence"
+    risk_level: "low"
+    base_confidence: 0.85
+    information_gain: 0.2
+    effort: 1
+    enables: []
+    alternatives:
+      - "T1053.005"
+    platforms:
+      - "windows"
+    description: "Boot or Logon Autostart Execution: Registry Run Keys"
+
+  - technique_id: "T1053.005"
+    tactic_id: "TA0003"
+    required_facts:
+      - "credential.domain_user"
+      - "host.session"
+    produced_facts:
+      - "host.persistence"
+    risk_level: "medium"
+    base_confidence: 0.8
+    information_gain: 0.25
+    effort: 1
+    enables: []
+    alternatives:
+      - "T1547.001"
+    platforms:
+      - "windows"
+    description: "Scheduled Task/Job: Scheduled Task"
+
+  - technique_id: "T1543.003"
+    tactic_id: "TA0003"
+    required_facts:
+      - "credential.domain_admin"
+      - "host.session"
+    produced_facts:
+      - "host.persistence"
+    risk_level: "high"
+    base_confidence: 0.8
+    information_gain: 0.3
+    effort: 2
+    enables: []
+    alternatives:
+      - "T1053.005"
+    platforms:
+      - "windows"
+    description: "Create or Modify System Process: Windows Service"
+
+  - technique_id: "T1098.004"
+    tactic_id: "TA0003"
+    required_facts:
+      - "credential.root_shell"
+    produced_facts:
+      - "host.persistence"
+    risk_level: "low"
+    base_confidence: 0.9
+    information_gain: 0.2
+    effort: 1
+    enables: []
+    alternatives:
+      - "T1053.003"
+    platforms:
+      - "linux"
+    description: "Account Manipulation: SSH Authorized Keys"
+
+  - technique_id: "T1136.001"
+    tactic_id: "TA0003"
+    required_facts:
+      - "credential.root_shell"
+    produced_facts:
+      - "host.persistence"
+      - "host.user"
+    risk_level: "medium"
+    base_confidence: 0.85
+    information_gain: 0.25
+    effort: 1
+    enables: []
+    alternatives:
+      - "T1098.004"
+    platforms:
+      - "linux"
+      - "windows"
+    description: "Create Account: Local Account"
+
+  # =========================================================================
+  # TA0004 — Privilege Escalation (7 rules)
+  # =========================================================================
+  - technique_id: "T1548.002"
+    tactic_id: "TA0004"
+    required_facts:
+      - "credential.domain_user"
+      - "host.os"
+    produced_facts:
+      - "host.elevated_session"
+    risk_level: "medium"
+    base_confidence: 0.65
+    information_gain: 0.7
+    effort: 2
+    enables:
+      - "T1059.001"
+      - "T1543.003"
+    alternatives:
+      - "T1068"
+    platforms:
+      - "windows"
+    description: "Abuse Elevation Control Mechanism: Bypass User Account Control"
+
+  - technique_id: "T1548.001"
+    tactic_id: "TA0004"
+    required_facts:
+      - "credential.ssh"
+      - "host.os"
+    produced_facts:
+      - "credential.root_shell"
+    risk_level: "medium"
+    base_confidence: 0.55
+    information_gain: 0.8
+    effort: 2
+    enables:
+      - "T1059.004"
+    alternatives:
+      - "T1548.003"
+      - "T1068"
+    platforms:
+      - "linux"
+    description: "Abuse Elevation Control Mechanism: Setuid and Setgid"
+
+  - technique_id: "T1548.003"
+    tactic_id: "TA0004"
+    required_facts:
+      - "credential.ssh"
+      - "host.user"
+    produced_facts:
+      - "credential.root_shell"
+    risk_level: "medium"
+    base_confidence: 0.6
+    information_gain: 0.8
+    effort: 2
+    enables:
+      - "T1059.004"
+    alternatives:
+      - "T1548.001"
+      - "T1068"
+    platforms:
+      - "linux"
+    description: "Abuse Elevation Control Mechanism: Sudo and Sudo Caching"
+
+  - technique_id: "T1068"
+    tactic_id: "TA0004"
+    required_facts:
+      - "credential.ssh"
+      - "host.os"
+      - "vuln.cve"
+    produced_facts:
+      - "credential.root_shell"
+    risk_level: "high"
+    base_confidence: 0.5
+    information_gain: 0.9
+    effort: 3
+    enables:
+      - "T1059.004"
+    alternatives:
+      - "T1548.001"
+      - "T1548.003"
+    platforms:
+      - "linux"
+      - "windows"
+    description: "Exploitation for Privilege Escalation"
+
+  - technique_id: "T1574.006"
+    tactic_id: "TA0004"
+    required_facts:
+      - "credential.ssh"
+      - "host.os"
+    produced_facts:
+      - "credential.root_shell"
+    risk_level: "high"
+    base_confidence: 0.45
+    information_gain: 0.75
+    effort: 3
+    enables:
+      - "T1059.004"
+    alternatives:
+      - "T1548.001"
+    platforms:
+      - "linux"
+    description: "Hijack Execution Flow: Dynamic Linker Hijacking (LD_PRELOAD)"
+
+  - technique_id: "T1574.001"
+    tactic_id: "TA0004"
+    required_facts:
+      - "credential.ssh"
+      - "host.os"
+    produced_facts:
+      - "credential.root_shell"
+    risk_level: "high"
+    base_confidence: 0.45
+    information_gain: 0.7
+    effort: 3
+    enables:
+      - "T1059.004"
+    alternatives:
+      - "T1574.006"
+    platforms:
+      - "linux"
+    description: "Hijack Execution Flow: DLL Search Order Hijacking / Shared Library Injection"
+
+  - technique_id: "T1611"
+    tactic_id: "TA0004"
+    required_facts:
+      - "credential.ssh"
+      - "host.container"
+    produced_facts:
+      - "credential.root_shell"
+    risk_level: "critical"
+    base_confidence: 0.4
+    information_gain: 0.9
+    effort: 4
+    enables:
+      - "T1059.004"
+    alternatives:
+      - "T1068"
+    platforms:
+      - "linux"
+    description: "Escape to Host (Container Escape)"
+
+  # =========================================================================
+  # TA0005 — Defense Evasion (2 rules)
+  # =========================================================================
+  - technique_id: "T1070.001"
+    tactic_id: "TA0005"
+    required_facts:
+      - "credential.domain_admin"
+      - "host.session"
+    produced_facts:
+      - "host.evasion"
+    risk_level: "medium"
+    base_confidence: 0.8
+    information_gain: 0.1
+    effort: 1
+    enables: []
+    alternatives:
+      - "T1070.002"
+    platforms:
+      - "windows"
+    description: "Indicator Removal: Clear Windows Event Logs"
+
+  - technique_id: "T1070.002"
+    tactic_id: "TA0005"
+    required_facts:
+      - "credential.root_shell"
+    produced_facts:
+      - "host.evasion"
+    risk_level: "medium"
+    base_confidence: 0.8
+    information_gain: 0.1
+    effort: 1
+    enables: []
+    alternatives:
+      - "T1070.001"
+    platforms:
+      - "linux"
+    description: "Indicator Removal: Clear Linux or Mac System Logs"
+
+  # =========================================================================
+  # TA0006 — Credential Access (6 rules)
+  # =========================================================================
+  - technique_id: "T1003.001"
+    tactic_id: "TA0006"
+    required_facts:
+      - "credential.ssh"
+      - "host.user"
+    produced_facts:
+      - "credential.hash"
+    risk_level: "high"
+    base_confidence: 0.75
+    information_gain: 0.9
+    effort: 1
+    enables:
+      - "T1021.004"
+      - "T1558.003"
+    alternatives:
+      - "T1003.003"
+    platforms:
+      - "windows"
+    description: "OS Credential Dumping: LSASS Memory"
+
+  - technique_id: "T1558.003"
+    tactic_id: "TA0006"
+    required_facts:
+      - "credential.domain_user"
+      - "host.ad_domain"
+    produced_facts:
+      - "credential.service_hash"
+    risk_level: "medium"
+    base_confidence: 0.8
+    information_gain: 0.85
+    effort: 2
+    enables:
+      - "T1550.002"
+      - "T1003.006"
+    alternatives:
+      - "T1003.001"
+    platforms:
+      - "windows"
+    description: "Steal or Forge Kerberos Tickets: Kerberoasting"
+
+  - technique_id: "T1003.006"
+    tactic_id: "TA0006"
+    required_facts:
+      - "credential.domain_admin"
+      - "host.ad_domain"
+    produced_facts:
+      - "credential.ntds_hash"
+    risk_level: "critical"
+    base_confidence: 0.9
+    information_gain: 0.95
+    effort: 2
+    enables:
+      - "T1550.002"
+      - "T1550.003"
+      - "T1558.001"
+    alternatives:
+      - "T1003.003"
+    platforms:
+      - "windows"
+    description: "OS Credential Dumping: DCSync"
+
+  - technique_id: "T1003.003"
+    tactic_id: "TA0006"
+    required_facts:
+      - "credential.domain_admin"
+      - "host.ad_domain"
+    produced_facts:
+      - "credential.ntds_hash"
+    risk_level: "critical"
+    base_confidence: 0.85
+    information_gain: 0.9
+    effort: 3
+    enables:
+      - "T1550.002"
+      - "T1550.003"
+    alternatives:
+      - "T1003.006"
+    platforms:
+      - "windows"
+    description: "OS Credential Dumping: NTDS"
+
+  - technique_id: "T1558.001"
+    tactic_id: "TA0006"
+    required_facts:
+      - "credential.krbtgt_hash"
+      - "host.ad_domain"
+    produced_facts:
+      - "credential.kerberos_ticket"
+    risk_level: "critical"
+    base_confidence: 0.95
+    information_gain: 0.95
+    effort: 3
+    enables:
+      - "T1550.003"
+    alternatives:
+      - "T1558.002"
+    platforms:
+      - "windows"
+    description: "Steal or Forge Kerberos Tickets: Golden Ticket"
+
+  - technique_id: "T1558.002"
+    tactic_id: "TA0006"
+    required_facts:
+      - "credential.service_hash"
+      - "host.ad_domain"
+    produced_facts:
+      - "credential.kerberos_ticket"
+    risk_level: "high"
+    base_confidence: 0.85
+    information_gain: 0.8
+    effort: 2
+    enables:
+      - "T1550.003"
+    alternatives:
+      - "T1558.001"
+    platforms:
+      - "windows"
+    description: "Steal or Forge Kerberos Tickets: Silver Ticket"
+
+  # =========================================================================
+  # TA0007 — Discovery (10 rules)
+  # =========================================================================
+  - technique_id: "T1087"
+    tactic_id: "TA0007"
+    required_facts:
+      - "credential.ssh"
+    produced_facts:
+      - "host.user"
+    risk_level: "low"
+    base_confidence: 0.9
+    information_gain: 0.4
+    effort: 1
+    enables:
+      - "T1078.001"
+    alternatives: []
+    platforms:
+      - "linux"
+      - "windows"
+    description: "Account Discovery"
+
+  - technique_id: "T1083"
+    tactic_id: "TA0007"
+    required_facts:
+      - "credential.ssh"
+    produced_facts:
+      - "host.file"
+    risk_level: "low"
+    base_confidence: 0.9
+    information_gain: 0.3
+    effort: 1
+    enables: []
+    alternatives: []
+    platforms:
+      - "linux"
+      - "windows"
+    description: "File and Directory Discovery"
+
+  - technique_id: "T1046"
+    tactic_id: "TA0007"
+    required_facts:
+      - "credential.ssh"
+    produced_facts:
+      - "service.open_port"
+    risk_level: "low"
+    base_confidence: 0.9
+    information_gain: 0.5
+    effort: 1
+    enables:
+      - "T1021.004"
+    alternatives: []
+    platforms:
+      - "linux"
+      - "windows"
+    description: "Network Service Discovery"
+
+  - technique_id: "T1087.001"
+    tactic_id: "TA0007"
+    required_facts:
+      - "credential.ssh"
+    produced_facts:
+      - "host.user"
+    risk_level: "low"
+    base_confidence: 0.9
+    information_gain: 0.4
+    effort: 1
+    enables:
+      - "T1078.001"
+    alternatives:
+      - "T1087.002"
+    platforms:
+      - "linux"
+      - "windows"
+    description: "Account Discovery: Local Account"
+
+  - technique_id: "T1087.002"
+    tactic_id: "TA0007"
+    required_facts:
+      - "credential.domain_user"
+      - "host.ad_domain"
+    produced_facts:
+      - "host.user"
+      - "host.ad_users"
+    risk_level: "low"
+    base_confidence: 0.9
+    information_gain: 0.55
+    effort: 1
+    enables:
+      - "T1558.003"
+    alternatives:
+      - "T1087.001"
+    platforms:
+      - "windows"
+    description: "Account Discovery: Domain Account"
+
+  - technique_id: "T1069.001"
+    tactic_id: "TA0007"
+    required_facts:
+      - "credential.ssh"
+    produced_facts:
+      - "host.groups"
+    risk_level: "low"
+    base_confidence: 0.9
+    information_gain: 0.35
+    effort: 1
+    enables:
+      - "T1548.001"
+      - "T1548.003"
+    alternatives:
+      - "T1069.002"
+    platforms:
+      - "linux"
+      - "windows"
+    description: "Permission Groups Discovery: Local Groups"
+
+  - technique_id: "T1135"
+    tactic_id: "TA0007"
+    required_facts:
+      - "credential.domain_user"
+      - "network.host.ip"
+    produced_facts:
+      - "host.file"
+      - "network.share"
+    risk_level: "low"
+    base_confidence: 0.85
+    information_gain: 0.5
+    effort: 1
+    enables:
+      - "T1021.002"
+    alternatives: []
+    platforms:
+      - "windows"
+    description: "Network Share Discovery"
+
+  - technique_id: "T1018"
+    tactic_id: "TA0007"
+    required_facts:
+      - "credential.ssh"
+      - "network.host.ip"
+    produced_facts:
+      - "network.host.ip"
+    risk_level: "low"
+    base_confidence: 0.9
+    information_gain: 0.6
+    effort: 1
+    enables:
+      - "T1021.004"
+      - "T1021.001"
+    alternatives: []
+    platforms:
+      - "linux"
+      - "windows"
+    description: "Remote System Discovery"
+
+  - technique_id: "T1082"
+    tactic_id: "TA0007"
+    required_facts:
+      - "credential.ssh"
+    produced_facts:
+      - "host.os"
+      - "host.arch"
+    risk_level: "low"
+    base_confidence: 0.95
+    information_gain: 0.45
+    effort: 1
+    enables:
+      - "T1068"
+    alternatives: []
+    platforms:
+      - "linux"
+      - "windows"
+    description: "System Information Discovery"
+
+  - technique_id: "T1057"
+    tactic_id: "TA0007"
+    required_facts:
+      - "credential.ssh"
+    produced_facts:
+      - "host.process"
+    risk_level: "low"
+    base_confidence: 0.9
+    information_gain: 0.35
+    effort: 1
+    enables: []
+    alternatives: []
+    platforms:
+      - "linux"
+      - "windows"
+    description: "Process Discovery"
+
+  # =========================================================================
+  # TA0008 — Lateral Movement (7 rules)
+  # =========================================================================
+  - technique_id: "T1021.004"
+    tactic_id: "TA0008"
+    required_facts:
+      - "credential.ssh"
+      - "network.host.ip"
+    produced_facts:
+      - "host.session"
+    risk_level: "medium"
+    base_confidence: 0.65
+    information_gain: 0.8
+    effort: 2
+    enables:
+      - "T1059.004"
+    alternatives:
+      - "T1021.001"
+    platforms:
+      - "linux"
+    description: "Remote Services: SSH"
+
+  - technique_id: "T1021.001"
+    tactic_id: "TA0008"
+    required_facts:
+      - "credential.domain_user"
+      - "network.host.ip"
+    produced_facts:
+      - "host.session"
+    risk_level: "medium"
+    base_confidence: 0.7
+    information_gain: 0.65
+    effort: 2
+    enables:
+      - "T1059.001"
+    alternatives:
+      - "T1021.002"
+      - "T1021.006"
+    platforms:
+      - "windows"
+    description: "Remote Services: Remote Desktop Protocol"
+
+  - technique_id: "T1021.002"
+    tactic_id: "TA0008"
+    required_facts:
+      - "credential.domain_user"
+      - "network.host.ip"
+    produced_facts:
+      - "host.session"
+      - "host.file"
+    risk_level: "medium"
+    base_confidence: 0.75
+    information_gain: 0.7
+    effort: 2
+    enables:
+      - "T1059.001"
+    alternatives:
+      - "T1021.001"
+      - "T1021.006"
+    platforms:
+      - "windows"
+    description: "Remote Services: SMB/Windows Admin Shares"
+
+  - technique_id: "T1021.006"
+    tactic_id: "TA0008"
+    required_facts:
+      - "credential.domain_user"
+      - "network.host.ip"
+    produced_facts:
+      - "host.session"
+    risk_level: "medium"
+    base_confidence: 0.7
+    information_gain: 0.65
+    effort: 2
+    enables:
+      - "T1059.001"
+    alternatives:
+      - "T1021.001"
+      - "T1021.002"
+    platforms:
+      - "windows"
+    description: "Remote Services: Windows Remote Management"
+
+  - technique_id: "T1021.003"
+    tactic_id: "TA0008"
+    required_facts:
+      - "credential.domain_admin"
+      - "network.host.ip"
+    produced_facts:
+      - "host.session"
+    risk_level: "high"
+    base_confidence: 0.6
+    information_gain: 0.6
+    effort: 3
+    enables:
+      - "T1059.001"
+    alternatives:
+      - "T1021.002"
+    platforms:
+      - "windows"
+    description: "Remote Services: Distributed Component Object Model"
+
+  - technique_id: "T1550.002"
+    tactic_id: "TA0008"
+    required_facts:
+      - "credential.hash"
+      - "network.host.ip"
+    produced_facts:
+      - "host.session"
+    risk_level: "high"
+    base_confidence: 0.75
+    information_gain: 0.75
+    effort: 2
+    enables:
+      - "T1059.001"
+    alternatives:
+      - "T1550.003"
+    platforms:
+      - "windows"
+    description: "Use Alternate Authentication Material: Pass the Hash"
+
+  - technique_id: "T1550.003"
+    tactic_id: "TA0008"
+    required_facts:
+      - "credential.kerberos_ticket"
+      - "network.host.ip"
+    produced_facts:
+      - "host.session"
+    risk_level: "high"
+    base_confidence: 0.7
+    information_gain: 0.7
+    effort: 2
+    enables:
+      - "T1059.001"
+    alternatives:
+      - "T1550.002"
+    platforms:
+      - "windows"
+    description: "Use Alternate Authentication Material: Pass the Ticket"
+
+  # =========================================================================
+  # TA0009 — Collection (2 rules)
+  # =========================================================================
+  - technique_id: "T1560.001"
+    tactic_id: "TA0009"
+    required_facts:
+      - "credential.ssh"
+      - "host.file"
+    produced_facts:
+      - "host.file"
+    risk_level: "medium"
+    base_confidence: 0.8
+    information_gain: 0.3
+    effort: 1
+    enables:
+      - "T1105"
+    alternatives: []
+    platforms:
+      - "linux"
+      - "windows"
+    description: "Archive Collected Data: Archive via Utility"
+
+  - technique_id: "T1074.001"
+    tactic_id: "TA0009"
+    required_facts:
+      - "credential.ssh"
+      - "host.file"
+    produced_facts:
+      - "host.staged_data"
+    risk_level: "low"
+    base_confidence: 0.85
+    information_gain: 0.2
+    effort: 1
+    enables:
+      - "T1048.001"
+      - "T1048.002"
+    alternatives: []
+    platforms:
+      - "linux"
+      - "windows"
+    description: "Data Staged: Local Data Staging"
+
+  # =========================================================================
+  # TA0011 — Command and Control (1 rule)
+  # =========================================================================
+  - technique_id: "T1105"
+    tactic_id: "TA0011"
+    required_facts:
+      - "credential.ssh"
+      - "host.binary"
+    produced_facts:
+      - "host.binary"
+    risk_level: "medium"
+    base_confidence: 0.75
+    information_gain: 0.2
+    effort: 1
+    enables: []
+    alternatives: []
+    platforms:
+      - "linux"
+      - "windows"
+    description: "Ingress Tool Transfer"
+
+  # =========================================================================
+  # TA0010 — Exfiltration (2 rules)
+  # =========================================================================
+  - technique_id: "T1048.001"
+    tactic_id: "TA0010"
+    required_facts:
+      - "credential.ssh"
+      - "host.file"
+    produced_facts:
+      - "exfil.data"
+    risk_level: "high"
+    base_confidence: 0.7
+    information_gain: 0.3
+    effort: 2
+    enables: []
+    alternatives:
+      - "T1048.002"
+    platforms:
+      - "linux"
+      - "windows"
+    description: "Exfiltration Over Alternative Protocol: Exfiltration Over Symmetric Encrypted Non-C2 Protocol"
+
+  - technique_id: "T1048.002"
+    tactic_id: "TA0010"
+    required_facts:
+      - "credential.ssh"
+      - "host.file"
+    produced_facts:
+      - "exfil.data"
+    risk_level: "medium"
+    base_confidence: 0.75
+    information_gain: 0.3
+    effort: 2
+    enables: []
+    alternatives:
+      - "T1048.001"
+    platforms:
+      - "linux"
+      - "windows"
+    description: "Exfiltration Over Alternative Protocol: Exfiltration Over Asymmetric Encrypted Non-C2 Protocol"
+
+  # =========================================================================
+  # TA0040 — Impact (2 rules)
+  # =========================================================================
+  - technique_id: "T1489"
+    tactic_id: "TA0040"
+    required_facts:
+      - "credential.root_shell"
+    produced_facts:
+      - "impact.service_disruption"
+    risk_level: "critical"
+    base_confidence: 0.85
+    information_gain: 0.1
+    effort: 1
+    enables: []
+    alternatives:
+      - "T1486"
+    platforms:
+      - "linux"
+      - "windows"
+    description: "Service Stop"
+
+  - technique_id: "T1486"
+    tactic_id: "TA0040"
+    required_facts:
+      - "credential.root_shell"
+      - "host.file"
+    produced_facts:
+      - "impact.ransomware"
+    risk_level: "critical"
+    base_confidence: 0.8
+    information_gain: 0.1
+    effort: 3
+    enables: []
+    alternatives:
+      - "T1489"
+    platforms:
+      - "linux"
+      - "windows"
+    description: "Data Encrypted for Impact"
+
+  # =========================================================================
+  # TA0006 — Credential Access (supplement)
+  # =========================================================================
+  - technique_id: "T1078.001"
+    tactic_id: "TA0006"
+    required_facts:
+      - "service.open_port"
+    produced_facts:
+      - "credential.ssh"
+    risk_level: "low"
+    base_confidence: 0.4
+    information_gain: 0.6
+    effort: 1
+    enables:
+      - "T1059.004"
+    alternatives:
+      - "T1110.001"
+    platforms:
+      - "linux"
+      - "windows"
+    description: "Valid Accounts: Default Accounts"
+
+  # =========================================================================
+  # TA0003 — Persistence (Linux supplement)
+  # =========================================================================
+  - technique_id: "T1543.002"
+    tactic_id: "TA0003"
+    required_facts:
+      - "credential.root_shell"
+      - "host.os"
+    produced_facts:
+      - "host.persistence"
+    risk_level: "medium"
+    base_confidence: 0.8
+    information_gain: 0.25
+    effort: 1
+    enables: []
+    alternatives:
+      - "T1053.003"
+    platforms:
+      - "linux"
+    description: "Create or Modify System Process: Systemd Service"
+
+  # =========================================================================
+  # TA0007 — Discovery (supplement)
+  # =========================================================================
+  - technique_id: "T1069.002"
+    tactic_id: "TA0007"
+    required_facts:
+      - "credential.domain_user"
+      - "host.ad_domain"
+    produced_facts:
+      - "host.groups"
+      - "host.ad_groups"
+    risk_level: "low"
+    base_confidence: 0.9
+    information_gain: 0.5
+    effort: 1
+    enables:
+      - "T1558.003"
+    alternatives:
+      - "T1069.001"
+    platforms:
+      - "windows"
+    description: "Permission Groups Discovery: Domain Groups"

@@ -60,33 +60,33 @@ async def _seed_operation(db, *, ooda_count=0, max_iter=20):
     await db.execute(
         "INSERT INTO operations (id, code, name, codename, strategic_intent, "
         "status, current_ooda_phase, ooda_iteration_count, max_iterations) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (OP_ID, "OP-DR-001", "DomainReportTest", "PHANTOM-DR", "intent",
-         "active", "observe", ooda_count, max_iter),
+        "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+        OP_ID, "OP-DR-001", "DomainReportTest", "PHANTOM-DR", "intent",
+        "active", "observe", ooda_count, max_iter,
     )
-    await db.commit()
 
 
 async def _insert_recommendation(db, *, accepted=None, confidence=0.8,
                                  created_at=None):
     rid = str(uuid.uuid4())
-    ts = created_at or datetime.now(timezone.utc).isoformat()
+    ts = created_at or datetime.now(timezone.utc)
+    accepted_bool = bool(accepted) if accepted is not None else None
     await db.execute(
         "INSERT INTO recommendations (id, operation_id, situation_assessment, "
         "recommended_technique_id, confidence, options, reasoning_text, "
-        "accepted, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (rid, OP_ID, "assess", "T1003.001", confidence, "[]", "reason",
-         accepted, ts),
+        "accepted, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+        rid, OP_ID, "assess", "T1003.001", confidence, "[]", "reason",
+        accepted_bool, ts,
     )
 
 
 async def _insert_directive(db, *, consumed=False):
     did = str(uuid.uuid4())
-    consumed_at = datetime.now(timezone.utc).isoformat() if consumed else None
+    consumed_at = datetime.now(timezone.utc) if consumed else None
     await db.execute(
         "INSERT INTO ooda_directives (id, operation_id, directive, consumed_at) "
-        "VALUES (?, ?, ?, ?)",
-        (did, OP_ID, "test directive", consumed_at),
+        "VALUES ($1, $2, $3, $4)",
+        did, OP_ID, "test directive", consumed_at,
     )
 
 
@@ -95,8 +95,8 @@ async def _insert_agent(db, *, status="alive", last_beacon=None):
     paw = f"paw-{aid[:8]}"
     await db.execute(
         "INSERT INTO agents (id, paw, status, last_beacon, operation_id) "
-        "VALUES (?, ?, ?, ?, ?)",
-        (aid, paw, status, last_beacon, OP_ID),
+        "VALUES ($1, $2, $3, $4, $5)",
+        aid, paw, status, last_beacon, OP_ID,
     )
 
 
@@ -106,9 +106,9 @@ async def _insert_target(db, *, compromised=False, privilege="User",
     await db.execute(
         "INSERT INTO targets (id, hostname, ip_address, role, is_compromised, "
         "privilege_level, access_status, operation_id) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        (tid, f"host-{tid[:6]}", f"10.0.0.{hash(tid) % 255}", "target",
-         1 if compromised else 0, privilege, access_status, OP_ID),
+        "VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+        tid, f"host-{tid[:6]}", f"10.0.0.{hash(tid) % 255}", "target",
+        compromised, privilege, access_status, OP_ID,
     )
     return tid
 
@@ -117,30 +117,32 @@ async def _insert_technique(db, *, mitre_id="T1003.001",
                             tactic="Credential Access", kill_chain="exploit"):
     """Insert or ignore a technique row."""
     await db.execute(
-        "INSERT OR IGNORE INTO techniques (id, mitre_id, name, tactic, tactic_id, "
-        "kill_chain_stage) VALUES (?, ?, ?, ?, ?, ?)",
-        (f"tech-{mitre_id}", mitre_id, f"Tech {mitre_id}", tactic,
-         "TA0006", kill_chain),
+        "INSERT INTO techniques (id, mitre_id, name, tactic, tactic_id, "
+        "kill_chain_stage) VALUES ($1, $2, $3, $4, $5, $6) "
+        "ON CONFLICT DO NOTHING",
+        f"tech-{mitre_id}", mitre_id, f"Tech {mitre_id}", tactic,
+        "TA0006", kill_chain,
     )
 
 
 async def _insert_execution(db, *, technique_id="T1003.001", status="success",
                             created_at=None):
     eid = str(uuid.uuid4())
-    ts = created_at or datetime.now(timezone.utc).isoformat()
+    ts = created_at or datetime.now(timezone.utc)
     await db.execute(
         "INSERT INTO technique_executions (id, technique_id, operation_id, "
-        "status, created_at) VALUES (?, ?, ?, ?, ?)",
-        (eid, technique_id, OP_ID, status, ts),
+        "status, created_at) VALUES ($1, $2, $3, $4, $5)",
+        eid, technique_id, OP_ID, status, ts,
     )
 
 
 async def _insert_fact(db, *, category="host", trait="os.version"):
     fid = str(uuid.uuid4())
+    # Use unique value per fact to avoid idx_facts_dedup constraint
     await db.execute(
         "INSERT INTO facts (id, trait, value, category, operation_id) "
-        "VALUES (?, ?, ?, ?, ?)",
-        (fid, trait, "value", category, OP_ID),
+        "VALUES ($1, $2, $3, $4, $5)",
+        fid, trait, f"value-{fid[:8]}", category, OP_ID,
     )
 
 
@@ -148,8 +150,8 @@ async def _insert_attack_graph_node(db, *, status="unreachable"):
     nid = str(uuid.uuid4())
     await db.execute(
         "INSERT INTO attack_graph_nodes (id, operation_id, technique_id, "
-        "tactic_id, status) VALUES (?, ?, ?, ?, ?)",
-        (nid, OP_ID, "T1003.001", "TA0006", status),
+        "tactic_id, status) VALUES ($1, $2, $3, $4, $5)",
+        nid, OP_ID, "T1003.001", "TA0006", status,
     )
 
 
@@ -157,8 +159,8 @@ async def _insert_tool(db, *, enabled=True):
     tid = str(uuid.uuid4())
     await db.execute(
         "INSERT INTO tool_registry (id, tool_id, name, kind, enabled) "
-        "VALUES (?, ?, ?, ?, ?)",
-        (tid, f"tool-{tid[:6]}", f"Tool {tid[:6]}", "tool", 1 if enabled else 0),
+        "VALUES ($1, $2, $3, $4, $5)",
+        tid, f"tool-{tid[:6]}", f"Tool {tid[:6]}", "tool", enabled,
     )
 
 
@@ -267,7 +269,6 @@ class TestBuildCommandReportNormal:
         await _insert_recommendation(tmp_db, accepted=0)
         await _insert_directive(tmp_db, consumed=True)
         await _insert_directive(tmp_db, consumed=False)
-        await tmp_db.commit()
 
         mapper = C5ISRMapper(_mock_ws())
         report = await mapper._build_command_report(tmp_db, OP_ID)
@@ -308,7 +309,6 @@ class TestBuildCommandReportEmpty:
     async def test_build_command_report_empty(self, tmp_db):
         """Empty data (no recs, no directives) still returns valid report."""
         await _seed_operation(tmp_db, ooda_count=0, max_iter=20)
-        await tmp_db.commit()
 
         mapper = C5ISRMapper(_mock_ws())
         report = await mapper._build_command_report(tmp_db, OP_ID)
@@ -333,7 +333,6 @@ class TestCommandNoAutoInflate:
     async def test_command_no_auto_inflate(self, tmp_db):
         """Command domain health_pct <= 50 without real recommendations."""
         await _seed_operation(tmp_db, ooda_count=0, max_iter=20)
-        await tmp_db.commit()
 
         mapper = C5ISRMapper(_mock_ws())
         report = await mapper._build_command_report(tmp_db, OP_ID)
@@ -354,7 +353,6 @@ class TestCommandNoAutoInflate:
         # meaning ar stays at baseline 50, which alone limits inflation.
         # The test verifies the acceptance_rate baseline is 50, not 100.
         await _seed_operation(tmp_db, ooda_count=20, max_iter=20)
-        await tmp_db.commit()
 
         mapper = C5ISRMapper(_mock_ws())
         report = await mapper._build_command_report(tmp_db, OP_ID)
@@ -374,13 +372,12 @@ class TestBuildControlReportNormal:
     async def test_build_control_report_normal(self, tmp_db):
         """Normal agents + targets returns complete DomainReport."""
         await _seed_operation(tmp_db)
-        beacon_time = datetime.now(timezone.utc).isoformat()
+        beacon_time = datetime.now(timezone.utc)
         await _insert_agent(tmp_db, status="alive", last_beacon=beacon_time)
         await _insert_agent(tmp_db, status="alive", last_beacon=beacon_time)
         await _insert_agent(tmp_db, status="dead")
         await _insert_target(tmp_db, access_status="active")
         await _insert_target(tmp_db, access_status="lost")
-        await tmp_db.commit()
 
         mapper = C5ISRMapper(_mock_ws())
         report = await mapper._build_control_report(tmp_db, OP_ID)
@@ -411,7 +408,6 @@ class TestBuildControlReportNormal:
     async def test_build_control_report_empty(self, tmp_db):
         """No agents, no targets -> all metrics 0, CRIT risk."""
         await _seed_operation(tmp_db)
-        await tmp_db.commit()
 
         mapper = C5ISRMapper(_mock_ws())
         report = await mapper._build_control_report(tmp_db, OP_ID)
@@ -442,7 +438,6 @@ class TestHealthPctWeightedFormula:
         await _insert_directive(tmp_db, consumed=True)
         await _insert_directive(tmp_db, consumed=True)
         await _insert_directive(tmp_db, consumed=False)
-        await tmp_db.commit()
 
         mapper = C5ISRMapper(_mock_ws())
         report = await mapper._build_command_report(tmp_db, OP_ID)
@@ -454,10 +449,9 @@ class TestHealthPctWeightedFormula:
     async def test_health_pct_weighted_formula_control(self, tmp_db):
         """Control domain health_pct matches weighted sum within 0.1."""
         await _seed_operation(tmp_db)
-        beacon = datetime.now(timezone.utc).isoformat()
+        beacon = datetime.now(timezone.utc)
         await _insert_agent(tmp_db, status="alive", last_beacon=beacon)
         await _insert_target(tmp_db, access_status="active")
-        await tmp_db.commit()
 
         mapper = C5ISRMapper(_mock_ws())
         report = await mapper._build_control_report(tmp_db, OP_ID)
@@ -471,7 +465,6 @@ class TestHealthPctWeightedFormula:
         await _seed_operation(tmp_db)
         await _insert_tool(tmp_db, enabled=True)
         await _insert_tool(tmp_db, enabled=False)
-        await tmp_db.commit()
 
         ws = _mock_ws(connection_count=1, broadcast_total=5, broadcast_success=4)
         mapper = C5ISRMapper(ws)
@@ -488,7 +481,6 @@ class TestHealthPctWeightedFormula:
         await _insert_target(tmp_db, compromised=False)
         await _insert_technique(tmp_db, kill_chain="exploit")
         await _insert_execution(tmp_db, status="success")
-        await tmp_db.commit()
 
         mapper = C5ISRMapper(_mock_ws())
         report = await mapper._build_computers_report(tmp_db, OP_ID)
@@ -504,7 +496,6 @@ class TestHealthPctWeightedFormula:
                                 tactic="Reconnaissance")
         await _insert_execution(tmp_db, technique_id="T1595", status="success")
         await _insert_execution(tmp_db, technique_id="T1595", status="failed")
-        await tmp_db.commit()
 
         mapper = C5ISRMapper(_mock_ws())
         report = await mapper._build_cyber_report(tmp_db, OP_ID)
@@ -521,7 +512,6 @@ class TestHealthPctWeightedFormula:
         await _insert_fact(tmp_db, category="credential")
         await _insert_attack_graph_node(tmp_db, status="reachable")
         await _insert_attack_graph_node(tmp_db, status="unreachable")
-        await tmp_db.commit()
 
         mapper = C5ISRMapper(_mock_ws())
         report = await mapper._build_isr_report(tmp_db, OP_ID)

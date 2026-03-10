@@ -14,7 +14,7 @@ import json
 import uuid
 from datetime import datetime, timezone
 
-import aiosqlite
+import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.database import get_db
@@ -25,11 +25,12 @@ from app.models.api_schemas import (
     OperationUpdate,
 )
 from app.models.recommendation import TacticalOption
+from app.services.mission_profile_loader import get_all_profiles, get_profile
 
 router = APIRouter()
 
 
-def _row_to_operation(row: aiosqlite.Row) -> Operation:
+def _row_to_operation(row: asyncpg.Record) -> Operation:
     """Convert a DB row to an Operation model."""
     return Operation(
         id=row["id"],
@@ -48,6 +49,7 @@ def _row_to_operation(row: aiosqlite.Row) -> Operation:
         data_exfiltrated_bytes=row["data_exfiltrated_bytes"],
         automation_mode=row["automation_mode"],
         risk_threshold=row["risk_threshold"],
+        mission_profile=row.get("mission_profile", "SP") or "SP",
         operator_id=row["operator_id"],
         created_at=row["created_at"],
         updated_at=row["updated_at"],
@@ -57,9 +59,8 @@ def _row_to_operation(row: aiosqlite.Row) -> Operation:
 @router.get("/operations", response_model=list[Operation])
 
 
-async def list_operations(db: aiosqlite.Connection = Depends(get_db)):
-    cursor = await db.execute("SELECT * FROM operations ORDER BY created_at DESC")
-    rows = await cursor.fetchall()
+async def list_operations(db: asyncpg.Connection = Depends(get_db)):
+    rows = await db.fetch("SELECT * FROM operations ORDER BY created_at DESC")
     return [_row_to_operation(r) for r in rows]
 
 
@@ -68,21 +69,20 @@ async def list_operations(db: aiosqlite.Connection = Depends(get_db)):
 
 async def create_operation(
     body: OperationCreate,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     op_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(timezone.utc)
     await db.execute(
         "INSERT INTO operations "
-        "(id, code, name, codename, strategic_intent, status, "
+        "(id, code, name, codename, strategic_intent, mission_profile, status, "
         "current_ooda_phase, created_at, updated_at) "
-        "VALUES (?, ?, ?, ?, ?, 'planning', 'observe', ?, ?)",
-        (op_id, body.code, body.name, body.codename, body.strategic_intent, now, now),
+        "VALUES ($1, $2, $3, $4, $5, $6, 'planning', 'observe', $7, $8)",
+        op_id, body.code, body.name, body.codename, body.strategic_intent,
+        body.mission_profile.value, now, now,
     )
-    await db.commit()
 
-    cursor = await db.execute("SELECT * FROM operations WHERE id = ?", (op_id,))
-    row = await cursor.fetchone()
+    row = await db.fetchrow("SELECT * FROM operations WHERE id = $1", op_id)
     return _row_to_operation(row)
 
 
@@ -91,10 +91,9 @@ async def create_operation(
 
 async def get_operation(
     operation_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
-    cursor = await db.execute("SELECT * FROM operations WHERE id = ?", (operation_id,))
-    row = await cursor.fetchone()
+    row = await db.fetchrow("SELECT * FROM operations WHERE id = $1", operation_id)
     if not row:
         raise HTTPException(status_code=404, detail="Operation not found")
     return _row_to_operation(row)
@@ -106,35 +105,32 @@ async def get_operation(
 async def update_operation(
     operation_id: str,
     body: OperationUpdate,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     # Verify existence
-    cursor = await db.execute("SELECT id FROM operations WHERE id = ?", (operation_id,))
-    if not await cursor.fetchone():
+    row = await db.fetchrow("SELECT id FROM operations WHERE id = $1", operation_id)
+    if not row:
         raise HTTPException(status_code=404, detail="Operation not found")
 
     updates = body.model_dump(exclude_none=True)
     if not updates:
         # Nothing to update, just return current
-        cursor = await db.execute("SELECT * FROM operations WHERE id = ?", (operation_id,))
-        row = await cursor.fetchone()
+        row = await db.fetchrow("SELECT * FROM operations WHERE id = $1", operation_id)
         return _row_to_operation(row)
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(timezone.utc)
     updates["updated_at"] = now
 
-    set_clause = ", ".join(f"{k} = ?" for k in updates)
+    set_clause = ", ".join(f"{k} = ${i+1}" for i, k in enumerate(updates))
     values = [v.value if hasattr(v, "value") else v for v in updates.values()]
     values.append(operation_id)
 
     await db.execute(
-        f"UPDATE operations SET {set_clause} WHERE id = ?",
-        values,
+        f"UPDATE operations SET {set_clause} WHERE id = ${len(values)}",
+        *values,
     )
-    await db.commit()
 
-    cursor = await db.execute("SELECT * FROM operations WHERE id = ?", (operation_id,))
-    row = await cursor.fetchone()
+    row = await db.fetchrow("SELECT * FROM operations WHERE id = $1", operation_id)
     return _row_to_operation(row)
 
 
@@ -143,21 +139,19 @@ async def update_operation(
 
 async def get_operation_summary(
     operation_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
 
     # Operation
-    cursor = await db.execute("SELECT * FROM operations WHERE id = ?", (operation_id,))
-    op_row = await cursor.fetchone()
+    op_row = await db.fetchrow("SELECT * FROM operations WHERE id = $1", operation_id)
     if not op_row:
         raise HTTPException(status_code=404, detail="Operation not found")
     operation = _row_to_operation(op_row)
 
     # C5ISR statuses
-    cursor = await db.execute(
-        "SELECT * FROM c5isr_statuses WHERE operation_id = ?", (operation_id,)
+    c5_rows = await db.fetch(
+        "SELECT * FROM c5isr_statuses WHERE operation_id = $1", operation_id
     )
-    c5_rows = await cursor.fetchall()
     c5isr = [
         C5ISRStatus(
             id=r["id"],
@@ -171,12 +165,11 @@ async def get_operation_summary(
     ]
 
     # Latest recommendation
-    cursor = await db.execute(
-        "SELECT * FROM recommendations WHERE operation_id = ? "
+    rec_row = await db.fetchrow(
+        "SELECT * FROM recommendations WHERE operation_id = $1 "
         "ORDER BY created_at DESC LIMIT 1",
-        (operation_id,),
+        operation_id,
     )
-    rec_row = await cursor.fetchone()
     latest_rec = None
     if rec_row:
         options_raw = json.loads(rec_row["options"]) if rec_row["options"] else []
@@ -198,3 +191,20 @@ async def get_operation_summary(
         c5isr=c5isr,
         latest_recommendation=latest_rec,
     )
+
+
+@router.get("/mission-profiles")
+
+
+async def list_mission_profiles():
+    """Return all available mission profile definitions (SR/CO/SP/FA)."""
+    return get_all_profiles()
+
+
+@router.get("/mission-profiles/{code}")
+
+
+async def get_mission_profile(code: str):
+    """Return a single mission profile by code."""
+    profile = get_profile(code)
+    return {"code": code, **profile}

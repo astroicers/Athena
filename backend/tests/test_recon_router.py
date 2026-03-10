@@ -8,7 +8,7 @@
 #
 # For commercial licensing, contact: [TODO: contact email]
 
-"""Router tests for POST /operations/{op_id}/recon/scan — async 202 pattern."""
+"""Router tests for POST /operations/{op_id}/recon/scan -- async 202 pattern."""
 
 from unittest.mock import AsyncMock, patch
 
@@ -16,7 +16,7 @@ import pytest
 
 
 # ---------------------------------------------------------------------------
-# POST /operations/{op_id}/recon/scan → 202 Accepted (async / queued)
+# POST /operations/{op_id}/recon/scan -> 202 Accepted (async / queued)
 # ---------------------------------------------------------------------------
 
 async def test_recon_scan_returns_202_queued(client):
@@ -69,11 +69,9 @@ async def test_recon_scan_inserts_queued_row(client, seeded_db):
     assert resp.status_code == 202
     scan_id = resp.json()["scan_id"]
 
-    seeded_db.row_factory = __import__("aiosqlite").Row
-    cursor = await seeded_db.execute(
-        "SELECT status FROM recon_scans WHERE id = ?", (scan_id,)
+    row = await seeded_db.fetchrow(
+        "SELECT status FROM recon_scans WHERE id = $1", scan_id
     )
-    row = await cursor.fetchone()
     assert row is not None
     # Row may have been updated to 'running'/'completed' by background if it ran,
     # but since create_task is mocked, it should remain 'queued'.
@@ -81,7 +79,7 @@ async def test_recon_scan_inserts_queued_row(client, seeded_db):
 
 
 async def test_recon_scan_target_not_found_returns_404(client):
-    """POST recon/scan with unknown target_id → 404, no background task."""
+    """POST recon/scan with unknown target_id -> 404, no background task."""
     with patch("app.routers.recon.asyncio.create_task") as mock_create_task:
         mock_create_task.return_value = None
 
@@ -95,7 +93,7 @@ async def test_recon_scan_target_not_found_returns_404(client):
 
 
 async def test_recon_scan_op_not_found_returns_404(client):
-    """POST recon/scan with unknown op_id → 404."""
+    """POST recon/scan with unknown op_id -> 404."""
     resp = await client.post(
         "/api/operations/nonexistent-op/recon/scan",
         json={"target_id": "test-target-1", "enable_initial_access": False},
@@ -109,14 +107,10 @@ async def test_recon_scan_op_not_found_returns_404(client):
 
 async def test_run_scan_background_marks_completed(tmp_db):
     """_run_scan_background happy path: DB row ends as 'completed'."""
-    import aiosqlite
-    from app.database import _CREATE_TABLES
     from app.models.recon import ReconResult, ServiceInfo
     from app.routers.recon import _run_scan_background, ReconScanRequest
 
     # Seed minimal data into tmp_db
-    for ddl in _CREATE_TABLES:
-        await tmp_db.execute(ddl)
     await tmp_db.execute(
         "INSERT INTO operations (id, code, name, codename, strategic_intent) "
         "VALUES ('op-bg-1', 'OP-BG', 'BG Test', 'BG', 'test')"
@@ -129,7 +123,6 @@ async def test_run_scan_background_marks_completed(tmp_db):
         "INSERT INTO recon_scans (id, operation_id, target_id, status, started_at) "
         "VALUES ('scan-bg-1', 'op-bg-1', 'tgt-bg-1', 'queued', '2026-01-01T00:00:00')"
     )
-    await tmp_db.commit()
 
     mock_recon_result = ReconResult(
         target_id="tgt-bg-1",
@@ -149,19 +142,17 @@ async def test_run_scan_background_marks_completed(tmp_db):
         enable_initial_access=False,
     )
 
-    db_path = ":memory:"  # we patch connect to return tmp_db
+    # Patch db_manager.connection() to yield our tmp_db
+    mock_ctx = AsyncMock()
+    mock_ctx.__aenter__ = AsyncMock(return_value=tmp_db)
+    mock_ctx.__aexit__ = AsyncMock(return_value=False)
 
-    # ws_manager is imported inside _run_scan_background via local import,
-    # so we must patch it on the app.ws_manager module.
-    with patch("app.routers.recon._DB_FILE", db_path), \
-         patch("aiosqlite.connect") as mock_connect, \
+    with patch("app.routers.recon.db_manager") as mock_db_mgr, \
          patch("app.routers.recon.ReconEngine") as MockReconEngine, \
          patch("app.routers.recon.asyncio.sleep", new_callable=AsyncMock), \
          patch("app.ws_manager.ws_manager") as mock_ws:
 
-        # Make aiosqlite.connect return tmp_db as an async context manager
-        mock_connect.return_value.__aenter__ = AsyncMock(return_value=tmp_db)
-        mock_connect.return_value.__aexit__ = AsyncMock(return_value=False)
+        mock_db_mgr.connection.return_value = mock_ctx
 
         MockReconEngine.return_value.scan = AsyncMock(return_value=mock_recon_result)
         mock_ws.broadcast = AsyncMock()
@@ -170,11 +161,9 @@ async def test_run_scan_background_marks_completed(tmp_db):
             "scan-bg-1", "op-bg-1", "tgt-bg-1", "10.0.0.99", body
         )
 
-    tmp_db.row_factory = aiosqlite.Row
-    cursor = await tmp_db.execute(
+    row = await tmp_db.fetchrow(
         "SELECT status FROM recon_scans WHERE id = 'scan-bg-1'"
     )
-    row = await cursor.fetchone()
     assert row is not None
     assert row["status"] == "completed"
 
@@ -185,12 +174,8 @@ async def test_run_scan_background_marks_completed(tmp_db):
 
 async def test_run_scan_background_marks_failed_on_exception(tmp_db):
     """_run_scan_background: DB row ends as 'failed' when ReconEngine raises."""
-    import aiosqlite
-    from app.database import _CREATE_TABLES
     from app.routers.recon import _run_scan_background, ReconScanRequest
 
-    for ddl in _CREATE_TABLES:
-        await tmp_db.execute(ddl)
     await tmp_db.execute(
         "INSERT INTO operations (id, code, name, codename, strategic_intent) "
         "VALUES ('op-bg-2', 'OP-BG2', 'BG Test 2', 'BG2', 'test')"
@@ -203,23 +188,22 @@ async def test_run_scan_background_marks_failed_on_exception(tmp_db):
         "INSERT INTO recon_scans (id, operation_id, target_id, status, started_at) "
         "VALUES ('scan-bg-2', 'op-bg-2', 'tgt-bg-2', 'queued', '2026-01-01T00:00:00')"
     )
-    await tmp_db.commit()
 
     body = ReconScanRequest(
         target_id="tgt-bg-2",
         enable_initial_access=False,
     )
 
-    # ws_manager is imported inside _run_scan_background via local import,
-    # so we must patch it on the app.ws_manager module.
-    with patch("app.routers.recon._DB_FILE", ":memory:"), \
-         patch("aiosqlite.connect") as mock_connect, \
+    mock_ctx = AsyncMock()
+    mock_ctx.__aenter__ = AsyncMock(return_value=tmp_db)
+    mock_ctx.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("app.routers.recon.db_manager") as mock_db_mgr, \
          patch("app.routers.recon.ReconEngine") as MockReconEngine, \
          patch("app.routers.recon.asyncio.sleep", new_callable=AsyncMock), \
          patch("app.ws_manager.ws_manager") as mock_ws:
 
-        mock_connect.return_value.__aenter__ = AsyncMock(return_value=tmp_db)
-        mock_connect.return_value.__aexit__ = AsyncMock(return_value=False)
+        mock_db_mgr.connection.return_value = mock_ctx
 
         MockReconEngine.return_value.scan = AsyncMock(
             side_effect=RuntimeError("nmap timeout")
@@ -230,11 +214,9 @@ async def test_run_scan_background_marks_failed_on_exception(tmp_db):
             "scan-bg-2", "op-bg-2", "tgt-bg-2", "10.0.0.98", body
         )
 
-    tmp_db.row_factory = aiosqlite.Row
-    cursor = await tmp_db.execute(
+    row = await tmp_db.fetchrow(
         "SELECT status FROM recon_scans WHERE id = 'scan-bg-2'"
     )
-    row = await cursor.fetchone()
     assert row is not None
     assert row["status"] == "failed"
 
@@ -244,7 +226,7 @@ async def test_run_scan_background_marks_failed_on_exception(tmp_db):
 
 
 # ---------------------------------------------------------------------------
-# POST /operations/{op_id}/osint/discover → 202 Accepted (async / queued)
+# POST /operations/{op_id}/osint/discover -> 202 Accepted (async / queued)
 # ---------------------------------------------------------------------------
 
 async def test_osint_discover_returns_202_queued(client):
@@ -279,7 +261,7 @@ async def test_osint_discover_enqueues_background_task(client):
 
 
 async def test_osint_discover_op_not_found_returns_404(client):
-    """POST osint/discover with unknown op_id → 404, no background task."""
+    """POST osint/discover with unknown op_id -> 404, no background task."""
     with patch("app.routers.recon.asyncio.create_task") as mock_create_task:
         mock_create_task.return_value = None
 
@@ -298,18 +280,13 @@ async def test_osint_discover_op_not_found_returns_404(client):
 
 async def test_run_osint_background_broadcasts_completed(tmp_db):
     """_run_osint_background happy path: broadcasts osint.completed."""
-    import aiosqlite
-    from app.database import _CREATE_TABLES
     from app.models.osint import OSINTResult
     from app.routers.recon import _run_osint_background
 
-    for ddl in _CREATE_TABLES:
-        await tmp_db.execute(ddl)
     await tmp_db.execute(
         "INSERT INTO operations (id, code, name, codename, strategic_intent) "
         "VALUES ('op-osint-1', 'OP-OSINT', 'OSINT Test', 'OSINT', 'test')"
     )
-    await tmp_db.commit()
 
     mock_result = OSINTResult(
         domain="example.com",
@@ -323,13 +300,16 @@ async def test_run_osint_background_broadcasts_completed(tmp_db):
         subdomains=[],
     )
 
-    with patch("app.routers.recon._DB_FILE", ":memory:"), \
-         patch("aiosqlite.connect") as mock_connect, \
+    mock_ctx = AsyncMock()
+    mock_ctx.__aenter__ = AsyncMock(return_value=tmp_db)
+    mock_ctx.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("app.routers.recon.db_manager") as mock_db_mgr, \
          patch("app.routers.recon.OSINTEngine") as MockOSINTEngine, \
          patch("app.ws_manager.ws_manager") as mock_ws:
 
-        mock_connect.return_value.__aenter__ = AsyncMock(return_value=tmp_db)
-        mock_connect.return_value.__aexit__ = AsyncMock(return_value=False)
+        mock_db_mgr.connection.return_value = mock_ctx
+
         MockOSINTEngine.return_value.discover = AsyncMock(return_value=mock_result)
         mock_ws.broadcast = AsyncMock()
 
@@ -347,25 +327,23 @@ async def test_run_osint_background_broadcasts_completed(tmp_db):
 
 async def test_run_osint_background_broadcasts_failed_on_exception(tmp_db):
     """_run_osint_background: broadcasts osint.failed when discover() raises."""
-    import aiosqlite
-    from app.database import _CREATE_TABLES
     from app.routers.recon import _run_osint_background
 
-    for ddl in _CREATE_TABLES:
-        await tmp_db.execute(ddl)
     await tmp_db.execute(
         "INSERT INTO operations (id, code, name, codename, strategic_intent) "
         "VALUES ('op-osint-2', 'OP-OSINT2', 'OSINT Test 2', 'OSINT2', 'test')"
     )
-    await tmp_db.commit()
 
-    with patch("app.routers.recon._DB_FILE", ":memory:"), \
-         patch("aiosqlite.connect") as mock_connect, \
+    mock_ctx = AsyncMock()
+    mock_ctx.__aenter__ = AsyncMock(return_value=tmp_db)
+    mock_ctx.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("app.routers.recon.db_manager") as mock_db_mgr, \
          patch("app.routers.recon.OSINTEngine") as MockOSINTEngine, \
          patch("app.ws_manager.ws_manager") as mock_ws:
 
-        mock_connect.return_value.__aenter__ = AsyncMock(return_value=tmp_db)
-        mock_connect.return_value.__aexit__ = AsyncMock(return_value=False)
+        mock_db_mgr.connection.return_value = mock_ctx
+
         MockOSINTEngine.return_value.discover = AsyncMock(
             side_effect=RuntimeError("crt.sh timeout")
         )

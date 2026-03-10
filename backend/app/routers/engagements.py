@@ -15,7 +15,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-import aiosqlite
+import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.database import get_db
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _row_to_engagement(row: aiosqlite.Row) -> Engagement:
+def _row_to_engagement(row: asyncpg.Record) -> Engagement:
     d = dict(row)
     d["in_scope"] = json.loads(d.get("in_scope") or "[]")
     d["out_of_scope"] = json.loads(d.get("out_of_scope") or "[]")
@@ -44,45 +44,41 @@ def _row_to_engagement(row: aiosqlite.Row) -> Engagement:
 async def create_engagement(
     op_id: str,
     body: EngagementCreate,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ) -> Engagement:
     """Create a Rules of Engagement record for an operation."""
     await ensure_operation(db, op_id)
 
     # Only one engagement per operation
-    cursor = await db.execute(
-        "SELECT id FROM engagements WHERE operation_id = ?", (op_id,)
+    existing = await db.fetchrow(
+        "SELECT id FROM engagements WHERE operation_id = $1", op_id
     )
-    if await cursor.fetchone():
+    if existing:
         raise HTTPException(
             status_code=409,
             detail=f"An engagement already exists for operation '{op_id}'. Use PATCH to update.",
         )
 
     eng_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(timezone.utc)
     await db.execute(
         """
         INSERT INTO engagements
             (id, operation_id, client_name, contact_email,
              in_scope, out_of_scope, start_time, end_time,
              emergency_contact, status, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'draft', $10)
         """,
-        (
-            eng_id, op_id,
-            body.client_name, body.contact_email,
-            json.dumps(body.in_scope),
-            json.dumps(body.out_of_scope),
-            body.start_time, body.end_time,
-            body.emergency_contact,
-            now,
-        ),
+        eng_id, op_id,
+        body.client_name, body.contact_email,
+        json.dumps(body.in_scope),
+        json.dumps(body.out_of_scope),
+        body.start_time, body.end_time,
+        body.emergency_contact,
+        now,
     )
-    await db.commit()
 
-    cursor = await db.execute("SELECT * FROM engagements WHERE id = ?", (eng_id,))
-    row = await cursor.fetchone()
+    row = await db.fetchrow("SELECT * FROM engagements WHERE id = $1", eng_id)
     return _row_to_engagement(row)
 
 
@@ -91,16 +87,15 @@ async def create_engagement(
 
 async def get_engagement(
     op_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ) -> Engagement:
     """Get the engagement/ROE for an operation."""
     await ensure_operation(db, op_id)
 
-    cursor = await db.execute(
-        "SELECT * FROM engagements WHERE operation_id = ? ORDER BY created_at DESC LIMIT 1",
-        (op_id,),
+    row = await db.fetchrow(
+        "SELECT * FROM engagements WHERE operation_id = $1 ORDER BY created_at DESC LIMIT 1",
+        op_id,
     )
-    row = await cursor.fetchone()
     if row is None:
         raise HTTPException(
             status_code=404,
@@ -114,16 +109,15 @@ async def get_engagement(
 
 async def activate_engagement(
     op_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ) -> Engagement:
     """Activate an engagement (draft -> active). Enables scope enforcement."""
     await ensure_operation(db, op_id)
 
-    cursor = await db.execute(
-        "SELECT * FROM engagements WHERE operation_id = ? ORDER BY created_at DESC LIMIT 1",
-        (op_id,),
+    row = await db.fetchrow(
+        "SELECT * FROM engagements WHERE operation_id = $1 ORDER BY created_at DESC LIMIT 1",
+        op_id,
     )
-    row = await cursor.fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail=f"No engagement for operation '{op_id}'")
 
@@ -131,13 +125,12 @@ async def activate_engagement(
         return _row_to_engagement(row)
 
     await db.execute(
-        "UPDATE engagements SET status = 'active' WHERE id = ?",
-        (row["id"],),
+        "UPDATE engagements SET status = 'active' WHERE id = $1",
+        row["id"],
     )
-    await db.commit()
 
-    cursor = await db.execute("SELECT * FROM engagements WHERE id = ?", (row["id"],))
-    return _row_to_engagement(await cursor.fetchone())
+    row = await db.fetchrow("SELECT * FROM engagements WHERE id = $1", row["id"])
+    return _row_to_engagement(row)
 
 
 @router.patch("/operations/{op_id}/engagement/suspend", response_model=Engagement)
@@ -145,24 +138,22 @@ async def activate_engagement(
 
 async def suspend_engagement(
     op_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ) -> Engagement:
     """Suspend an active engagement (emergency stop)."""
     await ensure_operation(db, op_id)
 
-    cursor = await db.execute(
-        "SELECT * FROM engagements WHERE operation_id = ? ORDER BY created_at DESC LIMIT 1",
-        (op_id,),
+    row = await db.fetchrow(
+        "SELECT * FROM engagements WHERE operation_id = $1 ORDER BY created_at DESC LIMIT 1",
+        op_id,
     )
-    row = await cursor.fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail=f"No engagement for operation '{op_id}'")
 
     await db.execute(
-        "UPDATE engagements SET status = 'suspended' WHERE id = ?",
-        (row["id"],),
+        "UPDATE engagements SET status = 'suspended' WHERE id = $1",
+        row["id"],
     )
-    await db.commit()
 
-    cursor = await db.execute("SELECT * FROM engagements WHERE id = ?", (row["id"],))
-    return _row_to_engagement(await cursor.fetchone())
+    row = await db.fetchrow("SELECT * FROM engagements WHERE id = $1", row["id"])
+    return _row_to_engagement(row)

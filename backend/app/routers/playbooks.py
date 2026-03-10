@@ -14,7 +14,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-import aiosqlite
+import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.database import get_db
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/playbooks", tags=["playbooks"])
 
 
-def _row_to_playbook(row: aiosqlite.Row) -> dict:
+def _row_to_playbook(row: asyncpg.Record) -> dict:
     return {
         "id": row["id"],
         "mitre_id": row["mitre_id"],
@@ -44,20 +44,22 @@ def _row_to_playbook(row: aiosqlite.Row) -> dict:
 async def list_playbooks(
     mitre_id: str | None = None,
     platform: str | None = None,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """List all playbooks with optional filtering."""
     query = "SELECT * FROM technique_playbooks WHERE 1=1"
     params: list = []
+    idx = 1
     if mitre_id:
-        query += " AND mitre_id = ?"
+        query += f" AND mitre_id = ${idx}"
         params.append(mitre_id)
+        idx += 1
     if platform:
-        query += " AND platform = ?"
+        query += f" AND platform = ${idx}"
         params.append(platform)
+        idx += 1
     query += " ORDER BY created_at ASC"
-    cursor = await db.execute(query, params)
-    rows = await cursor.fetchall()
+    rows = await db.fetch(query, *params)
     return [_row_to_playbook(r) for r in rows]
 
 
@@ -66,31 +68,28 @@ async def list_playbooks(
 
 async def create_playbook(
     body: PlaybookCreate,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Create a new playbook."""
     pb_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(timezone.utc)
     await db.execute(
         """INSERT INTO technique_playbooks
            (id, mitre_id, platform, command, output_parser, facts_traits, source, tags, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, 'user', ?, ?)""",
-        (
-            pb_id,
-            body.mitre_id,
-            body.platform,
-            body.command,
-            body.output_parser,
-            json.dumps(body.facts_traits),
-            json.dumps(body.tags),
-            now,
-        ),
+           VALUES ($1, $2, $3, $4, $5, $6, 'user', $7, $8)""",
+        pb_id,
+        body.mitre_id,
+        body.platform,
+        body.command,
+        body.output_parser,
+        json.dumps(body.facts_traits),
+        json.dumps(body.tags),
+        now,
     )
-    await db.commit()
-    cursor = await db.execute(
-        "SELECT * FROM technique_playbooks WHERE id = ?", (pb_id,)
+    row = await db.fetchrow(
+        "SELECT * FROM technique_playbooks WHERE id = $1", pb_id
     )
-    return _row_to_playbook(await cursor.fetchone())
+    return _row_to_playbook(row)
 
 
 @router.get("/{playbook_id}", response_model=Playbook)
@@ -98,13 +97,12 @@ async def create_playbook(
 
 async def get_playbook(
     playbook_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Get a specific playbook by ID."""
-    cursor = await db.execute(
-        "SELECT * FROM technique_playbooks WHERE id = ?", (playbook_id,)
+    row = await db.fetchrow(
+        "SELECT * FROM technique_playbooks WHERE id = $1", playbook_id
     )
-    row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Playbook not found")
     return _row_to_playbook(row)
@@ -116,13 +114,13 @@ async def get_playbook(
 async def update_playbook(
     playbook_id: str,
     body: PlaybookUpdate,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Update an existing playbook."""
-    cursor = await db.execute(
-        "SELECT * FROM technique_playbooks WHERE id = ?", (playbook_id,)
+    existing = await db.fetchrow(
+        "SELECT * FROM technique_playbooks WHERE id = $1", playbook_id
     )
-    if not await cursor.fetchone():
+    if not existing:
         raise HTTPException(status_code=404, detail="Playbook not found")
 
     updates: dict = {}
@@ -135,20 +133,21 @@ async def update_playbook(
         elif field == "tags":
             updates["tags"] = json.dumps(value) if value is not None else "[]"
         else:
-            updates[field] = value  # 允許 None 通過（清空 output_parser 等欄位）
+            updates[field] = value  # allow None through (clear output_parser etc.)
 
     if updates:
-        set_clause = ", ".join(f"{k} = ?" for k in updates)
+        set_clause = ", ".join(f"{k} = ${i+1}" for i, k in enumerate(updates))
+        values = list(updates.values())
+        values.append(playbook_id)
         await db.execute(  # noqa: S608
-            f"UPDATE technique_playbooks SET {set_clause} WHERE id = ?",
-            (*updates.values(), playbook_id),
+            f"UPDATE technique_playbooks SET {set_clause} WHERE id = ${len(values)}",
+            *values,
         )
-        await db.commit()
 
-    cursor = await db.execute(
-        "SELECT * FROM technique_playbooks WHERE id = ?", (playbook_id,)
+    row = await db.fetchrow(
+        "SELECT * FROM technique_playbooks WHERE id = $1", playbook_id
     )
-    return _row_to_playbook(await cursor.fetchone())
+    return _row_to_playbook(row)
 
 
 @router.delete("/{playbook_id}", status_code=204)
@@ -156,18 +155,16 @@ async def update_playbook(
 
 async def delete_playbook(
     playbook_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Delete a user-created playbook. Seed playbooks cannot be deleted."""
-    cursor = await db.execute(
-        "SELECT source FROM technique_playbooks WHERE id = ?", (playbook_id,)
+    row = await db.fetchrow(
+        "SELECT source FROM technique_playbooks WHERE id = $1", playbook_id
     )
-    row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Playbook not found")
     if row["source"] == "seed":
         raise HTTPException(status_code=403, detail="Cannot delete seed playbooks")
     await db.execute(
-        "DELETE FROM technique_playbooks WHERE id = ?", (playbook_id,)
+        "DELETE FROM technique_playbooks WHERE id = $1", playbook_id
     )
-    await db.commit()

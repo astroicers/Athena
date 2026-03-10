@@ -16,7 +16,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-import aiosqlite
+import asyncpg
 
 from app.config import settings
 from app.services.engine_router import EngineRouter
@@ -75,7 +75,7 @@ class SwarmExecutor:
 
     async def execute_swarm(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         operation_id: str,
         ooda_iteration_id: str,
         parallel_tasks: list[dict],
@@ -100,17 +100,16 @@ class SwarmExecutor:
             swarm_tasks.append(st)
 
         # Insert into DB
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         for st in swarm_tasks:
             await db.execute(
                 "INSERT INTO swarm_tasks "
                 "(id, ooda_iteration_id, operation_id, technique_id, target_id, "
                 "engine, status, created_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)",
-                (st.task_id, ooda_iteration_id, operation_id,
-                 st.technique_id, st.target_id, st.engine, now),
+                "VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7)",
+                st.task_id, ooda_iteration_id, operation_id,
+                st.technique_id, st.target_id, st.engine, now,
             )
-        await db.commit()
 
         # Broadcast initial state
         await self._broadcast_batch(operation_id, swarm_tasks)
@@ -145,14 +144,13 @@ class SwarmExecutor:
         # Update DB records
         for st in swarm_tasks:
             await db.execute(
-                "UPDATE swarm_tasks SET status = ?, error = ?, "
-                "started_at = ?, completed_at = ? WHERE id = ?",
-                (st.status, st.error,
-                 st.started_at.isoformat() if st.started_at else None,
-                 st.completed_at.isoformat() if st.completed_at else None,
-                 st.task_id),
+                "UPDATE swarm_tasks SET status = $1, error = $2, "
+                "started_at = $3, completed_at = $4 WHERE id = $5",
+                st.status, st.error,
+                st.started_at if st.started_at else None,
+                st.completed_at if st.completed_at else None,
+                st.task_id,
             )
-        await db.commit()
 
         # Broadcast final state
         await self._broadcast_batch(operation_id, swarm_tasks)

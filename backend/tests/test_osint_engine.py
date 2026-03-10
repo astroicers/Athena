@@ -22,12 +22,10 @@ from app.services.osint_engine import OSINTEngine, _MOCK_SUBDOMAINS
 
 def make_mock_db():
     db = AsyncMock()
-    cursor = AsyncMock()
-    cursor.fetchone = AsyncMock(return_value=None)
-    cursor.rowcount = 1
-    db.execute = AsyncMock(return_value=cursor)
-    db.commit = AsyncMock()
-    db.row_factory = None
+    db.fetchrow = AsyncMock(return_value=None)
+    db.fetch = AsyncMock(return_value=[])
+    db.fetchval = AsyncMock(return_value=None)
+    db.execute = AsyncMock(return_value="INSERT 0 1")
     return db
 
 
@@ -57,12 +55,9 @@ async def test_mock_mode_writes_facts():
     db = make_mock_db()
     captured: list = []
 
-    async def capture_execute(sql, params=None, /):
-        captured.append((sql, params))
-        cursor = AsyncMock()
-        cursor.fetchone = AsyncMock(return_value=None)
-        cursor.rowcount = 1
-        return cursor
+    async def capture_execute(sql, *args):
+        captured.append((sql, args))
+        return "INSERT 0 1"
 
     db.execute = AsyncMock(side_effect=capture_execute)
 
@@ -120,19 +115,18 @@ async def test_parse_mcp_subdomains():
 
 
 async def test_create_target_if_missing_deduplicates():
-    """_create_target_if_missing returns False when IP already exists (INSERT OR IGNORE)."""
+    """_create_target_if_missing returns False when IP already exists (ON CONFLICT DO NOTHING)."""
     db = make_mock_db()
 
     call_count = 0
 
-    async def side_effect(sql, params=None, /):
+    async def side_effect(sql, *args):
         nonlocal call_count
         call_count += 1
-        cursor = AsyncMock()
-        if "INSERT OR IGNORE" in sql:
-            # First insert succeeds (rowcount=1), second is ignored (rowcount=0)
-            cursor.rowcount = 1 if call_count == 1 else 0
-        return cursor
+        if "INSERT" in sql:
+            # First insert succeeds (1 row), second is conflict (0 rows)
+            return "INSERT 0 1" if call_count == 1 else "INSERT 0 0"
+        return "SELECT 1"
 
     db.execute = AsyncMock(side_effect=side_effect)
 
@@ -140,7 +134,7 @@ async def test_create_target_if_missing_deduplicates():
 
     # First call should create the target
     created1 = await engine._create_target_if_missing(db, "op-001", "www.test.com", "10.0.0.1")
-    # Second call with same IP should not create (INSERT OR IGNORE → rowcount=0)
+    # Second call with same IP should not create (ON CONFLICT DO NOTHING → 0 rows)
     created2 = await engine._create_target_if_missing(db, "op-001", "mail.test.com", "10.0.0.1")
 
     assert created1 is True

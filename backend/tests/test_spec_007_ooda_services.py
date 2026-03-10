@@ -13,7 +13,7 @@
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import aiosqlite
+import asyncpg
 
 from app.clients import ExecutionResult
 from app.models.enums import C5ISRDomainStatus
@@ -89,7 +89,6 @@ async def test_decision_manual_mode_always_needs_approval(seeded_db):
         "UPDATE operations SET automation_mode = 'manual', risk_threshold = 'medium' "
         "WHERE id = 'test-op-1'"
     )
-    await seeded_db.commit()
 
     engine = DecisionEngine()
     result = await engine.evaluate(
@@ -105,7 +104,6 @@ async def test_decision_low_confidence_forces_manual(seeded_db):
         "UPDATE operations SET automation_mode = 'semi_auto', risk_threshold = 'medium' "
         "WHERE id = 'test-op-1'"
     )
-    await seeded_db.commit()
 
     engine = DecisionEngine()
     result = await engine.evaluate(
@@ -142,7 +140,6 @@ async def test_decision_low_risk_auto_approved(seeded_db):
         "UPDATE operations SET automation_mode = 'semi_auto', risk_threshold = 'medium' "
         "WHERE id = 'test-op-1'"
     )
-    await seeded_db.commit()
 
     engine = DecisionEngine()
     result = await engine.evaluate(
@@ -158,7 +155,6 @@ async def test_decision_medium_risk_within_threshold(seeded_db):
         "UPDATE operations SET automation_mode = 'semi_auto', risk_threshold = 'medium' "
         "WHERE id = 'test-op-1'"
     )
-    await seeded_db.commit()
 
     engine = DecisionEngine()
     result = await engine.evaluate(
@@ -173,7 +169,6 @@ async def test_decision_medium_risk_above_threshold(seeded_db):
         "UPDATE operations SET automation_mode = 'semi_auto', risk_threshold = 'low' "
         "WHERE id = 'test-op-1'"
     )
-    await seeded_db.commit()
 
     engine = DecisionEngine()
     result = await engine.evaluate(
@@ -213,10 +208,9 @@ async def test_orient_mock_recommended_technique(seeded_db):
     rec = await orient.analyze(seeded_db, "test-op-1", "No intelligence yet.")
     assert rec["recommended_technique_id"] == "T1003.001"
     # Verify it was stored in DB
-    cursor = await seeded_db.execute(
+    row = await seeded_db.fetchrow(
         "SELECT recommended_technique_id FROM recommendations WHERE operation_id = 'test-op-1'"
     )
-    row = await cursor.fetchone()
     assert row is not None
 
 
@@ -227,7 +221,6 @@ async def test_orient_mock_recommended_technique(seeded_db):
 
 async def test_orient_build_prompt_returns_tuple(seeded_db):
     """_build_prompt() returns (system_prompt, user_prompt) tuple."""
-    seeded_db.row_factory = aiosqlite.Row
     ws = _make_ws()
     orient = OrientEngine(ws)
     result = await orient._build_prompt(seeded_db, "test-op-1", "Test summary")
@@ -251,9 +244,7 @@ async def test_orient_build_prompt_includes_mission_steps(seeded_db):
         "VALUES ('ms-1', 'test-op-1', 1, 'T1003.001', 'LSASS Memory', "
         "'test-target-1', 'DC-01', 'ssh', 'completed')"
     )
-    await seeded_db.commit()
 
-    seeded_db.row_factory = aiosqlite.Row
     ws = _make_ws()
     orient = OrientEngine(ws)
     _, user_prompt = await orient._build_prompt(seeded_db, "test-op-1", "Test summary")
@@ -273,9 +264,7 @@ async def test_orient_build_prompt_includes_ooda_history(seeded_db):
         "(id, operation_id, iteration_number, phase, observe_summary, act_summary) "
         "VALUES ('iter-2', 'test-op-1', 2, 'act', 'Found open SMB', 'Ran T1021.002')"
     )
-    await seeded_db.commit()
 
-    seeded_db.row_factory = aiosqlite.Row
     ws = _make_ws()
     orient = OrientEngine(ws)
     _, user_prompt = await orient._build_prompt(seeded_db, "test-op-1", "Test summary")
@@ -290,9 +279,7 @@ async def test_orient_build_prompt_categorized_facts(seeded_db):
         "INSERT INTO facts (id, trait, value, category, operation_id) "
         "VALUES ('fact-1', 'credential.ntlm', 'aad3b435b51404ee', 'credential', 'test-op-1')"
     )
-    await seeded_db.commit()
 
-    seeded_db.row_factory = aiosqlite.Row
     ws = _make_ws()
     orient = OrientEngine(ws)
     _, user_prompt = await orient._build_prompt(seeded_db, "test-op-1", "Test summary")
@@ -313,9 +300,7 @@ async def test_orient_prompt_includes_playbook_summary(seeded_db):
         "       ('pb-2', 'T1059.001', 'windows', 'Get-Process | Select -First 5', '[\"host.os\"]', 'seed', "
         "'[\"execution\",\"powershell\",\"windows\"]')"
     )
-    await seeded_db.commit()
 
-    seeded_db.row_factory = aiosqlite.Row
     ws = _make_ws()
     orient = OrientEngine(ws)
     _, user_prompt = await orient._build_prompt(seeded_db, "test-op-1", "Test summary")
@@ -329,7 +314,6 @@ async def test_orient_prompt_includes_playbook_summary(seeded_db):
 
 async def test_orient_prompt_no_playbooks_shows_placeholder(seeded_db):
     """Section 7.6 shows placeholder when no playbooks are registered."""
-    seeded_db.row_factory = aiosqlite.Row
     ws = _make_ws()
     orient = OrientEngine(ws)
     _, user_prompt = await orient._build_prompt(seeded_db, "test-op-1", "Test summary")
@@ -389,9 +373,8 @@ async def test_fact_collect_from_execution(seeded_db):
         "result_summary, started_at, completed_at) "
         "VALUES ('exec-1', 'T1003.001', 'test-target-1', 'test-op-1', "
         "'ssh', 'success', 'Extracted 5 NTLM hashes from LSASS', "
-        "datetime('now'), datetime('now'))"
+        "NOW(), NOW())"
     )
-    await seeded_db.commit()
 
     ws = _make_ws()
     collector = FactCollector(ws)
@@ -516,11 +499,9 @@ async def test_ooda_trigger_creates_iteration_record(seeded_db):
 
     await controller.trigger_cycle(seeded_db, "test-op-1")
 
-    seeded_db.row_factory = aiosqlite.Row
-    cursor = await seeded_db.execute(
+    rows = await seeded_db.fetch(
         "SELECT * FROM ooda_iterations WHERE operation_id = 'test-op-1'"
     )
-    rows = await cursor.fetchall()
     assert len(rows) >= 1
     assert rows[0]["observe_summary"] is not None
 
@@ -547,11 +528,9 @@ async def test_ooda_trigger_updates_operation_phase(seeded_db):
 
     await controller.trigger_cycle(seeded_db, "test-op-1")
 
-    seeded_db.row_factory = aiosqlite.Row
-    cursor = await seeded_db.execute(
+    op = await seeded_db.fetchrow(
         "SELECT current_ooda_phase, ooda_iteration_count FROM operations WHERE id = 'test-op-1'"
     )
-    op = await cursor.fetchone()
     # Phase should have progressed (act is the final phase)
     assert op["current_ooda_phase"] == "act"
     assert op["ooda_iteration_count"] == 1

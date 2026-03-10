@@ -14,7 +14,7 @@ import re as _re
 import uuid
 from datetime import datetime, timezone
 
-import aiosqlite
+import asyncpg
 
 from app.models.enums import FactCategory
 from app.services.vulnerability_manager import VulnerabilityManager
@@ -29,26 +29,24 @@ class FactCollector:
     def __init__(self, ws_manager: WebSocketManager):
         self._ws = ws_manager
 
-    async def collect(self, db: aiosqlite.Connection, operation_id: str) -> list[dict]:
+    async def collect(self, db: asyncpg.Connection, operation_id: str) -> list[dict]:
         """Extract facts from recent technique executions that have results."""
-        db.row_factory = aiosqlite.Row
 
         # Batch-load existing (trait, value) pairs for in-memory dedup
-        dup_cursor = await db.execute(
-            "SELECT trait, value FROM facts WHERE operation_id = ?",
-            (operation_id,),
+        dup_rows = await db.fetch(
+            "SELECT trait, value FROM facts WHERE operation_id = $1",
+            operation_id,
         )
-        existing = {(r["trait"], r["value"]) for r in await dup_cursor.fetchall()}
+        existing = {(r["trait"], r["value"]) for r in dup_rows}
 
-        cursor = await db.execute(
+        rows = await db.fetch(
             "SELECT te.id, te.technique_id, te.target_id, te.result_summary "
             "FROM technique_executions te "
-            "WHERE te.operation_id = ? AND te.status = 'success' "
+            "WHERE te.operation_id = $1 AND te.status = 'success' "
             "AND te.result_summary IS NOT NULL "
             "ORDER BY te.completed_at DESC LIMIT 20",
-            (operation_id,),
+            operation_id,
         )
-        rows = await cursor.fetchall()
 
         new_facts: list[dict] = []
         for row in rows:
@@ -67,13 +65,14 @@ class FactCollector:
             existing.add((trait, value))
 
             fact_id = str(uuid.uuid4())
-            now = datetime.now(timezone.utc).isoformat()
+            now = datetime.now(timezone.utc)
             await db.execute(
-                "INSERT OR IGNORE INTO facts (id, trait, value, category, source_technique_id, "
+                "INSERT INTO facts (id, trait, value, category, source_technique_id, "
                 "source_target_id, operation_id, score, collected_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (fact_id, trait, value, category.value, technique_id,
-                 target_id, operation_id, 1, now),
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) "
+                "ON CONFLICT DO NOTHING",
+                fact_id, trait, value, category.value, technique_id,
+                target_id, operation_id, 1, now,
             )
             fact = {
                 "id": fact_id, "trait": trait, "value": value,
@@ -82,8 +81,6 @@ class FactCollector:
             }
             new_facts.append(fact)
             await self._ws.broadcast(operation_id, "fact.new", fact)
-
-        await db.commit()
 
         # --- SPEC-044: Auto-populate vulnerabilities from vuln.cve facts ---
         for fact in new_facts:
@@ -100,13 +97,12 @@ class FactCollector:
         return new_facts
 
     async def collect_from_result(
-        self, db: aiosqlite.Connection, operation_id: str,
+        self, db: asyncpg.Connection, operation_id: str,
         technique_id: str, target_id: str, raw_facts: list[dict],
     ) -> list[dict]:
         """Store facts extracted from an ExecutionResult.facts list."""
         new_facts: list[dict] = []
-        now = datetime.now(timezone.utc).isoformat()
-        insert_params: list[tuple] = []
+        now = datetime.now(timezone.utc)
 
         for rf in raw_facts:
             trait = rf.get("trait", "unknown")
@@ -116,23 +112,18 @@ class FactCollector:
 
             category = self._category_from_trait(trait)
             fact_id = str(uuid.uuid4())
-            insert_params.append((
+            await db.execute(
+                "INSERT INTO facts (id, trait, value, category, source_technique_id, "
+                "source_target_id, operation_id, score, collected_at) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) "
+                "ON CONFLICT DO NOTHING",
                 fact_id, trait, str(value)[:500], category.value,
                 technique_id, target_id, operation_id, 1, now,
-            ))
+            )
             new_facts.append({
                 "id": fact_id, "trait": trait, "value": str(value)[:500],
                 "category": category.value, "operation_id": operation_id,
             })
-
-        if insert_params:
-            await db.executemany(
-                "INSERT OR IGNORE INTO facts (id, trait, value, category, source_technique_id, "
-                "source_target_id, operation_id, score, collected_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                insert_params,
-            )
-            await db.commit()
 
         for fact in new_facts:
             await self._ws.broadcast(operation_id, "fact.new", fact)
@@ -151,15 +142,13 @@ class FactCollector:
 
         return new_facts
 
-    async def summarize(self, db: aiosqlite.Connection, operation_id: str) -> str:
+    async def summarize(self, db: asyncpg.Connection, operation_id: str) -> str:
         """Produce an Observe-phase summary for Orient to consume."""
-        db.row_factory = aiosqlite.Row
-        cursor = await db.execute(
+        rows = await db.fetch(
             "SELECT trait, value, category FROM facts "
-            "WHERE operation_id = ? ORDER BY collected_at DESC LIMIT 30",
-            (operation_id,),
+            "WHERE operation_id = $1 ORDER BY collected_at DESC LIMIT 30",
+            operation_id,
         )
-        rows = await cursor.fetchall()
         if not rows:
             return "No intelligence collected yet."
 

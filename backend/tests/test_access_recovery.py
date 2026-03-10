@@ -8,9 +8,10 @@
 #
 # For commercial licensing, contact: [TODO: contact email]
 
-"""Tests for OODA Access Recovery & Credential Invalidation — SPEC-037."""
+"""Tests for OODA Access Recovery & Credential Invalidation -- SPEC-037."""
 
 import pytest
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.services.engine_router import EngineRouter, _is_auth_failure
@@ -88,7 +89,7 @@ async def test_handle_access_lost_revokes_compromised():
 
     # Verify at least one execute call updates targets
     calls = [str(c) for c in db.execute.call_args_list]
-    target_update = [c for c in calls if "is_compromised = 0" in c and "access_status = 'lost'" in c]
+    target_update = [c for c in calls if ("is_compromised = 0" in c or "is_compromised = FALSE" in c) and "access_status = 'lost'" in c]
     assert len(target_update) >= 1, f"Expected target update call, got: {calls}"
 
 
@@ -126,7 +127,7 @@ async def test_handle_access_lost_is_idempotent():
 
     # First call
     await router._handle_access_lost(db, "op-1", "tgt-1")
-    # Second call — should not raise
+    # Second call -- should not raise
     await router._handle_access_lost(db, "op-1", "tgt-1")
 
 
@@ -239,10 +240,6 @@ def test_attack_graph_excludes_invalidated_facts():
 
     graph = engine._build_graph_in_memory("op-1", targets, facts, [])
 
-    # credential.ssh should be in fact_traits, but credential.ssh.invalidated should not
-    # This is verified by checking that nodes requiring credential.ssh still have it satisfied
-    # but the invalidated one doesn't count
-    # We verify indirectly: the graph should have been built with only valid facts
     assert len(graph.nodes) > 0
 
 
@@ -258,11 +255,9 @@ async def test_infer_exploitable_service_vsftpd():
     db = AsyncMock()
     db.row_factory = None
 
-    cursor = AsyncMock()
-    cursor.fetchall = AsyncMock(return_value=[
+    db.fetch = AsyncMock(return_value=[
         {"value": "21/tcp/ftp/vsftpd_2.3.4"},
     ])
-    db.execute = AsyncMock(return_value=cursor)
 
     result = await router._infer_exploitable_service(db, "op-1", "tgt-1")
     assert result == "vsftpd"
@@ -273,13 +268,10 @@ async def test_infer_exploitable_service_samba():
     """_infer_exploitable_service matches samba 3.0 banner."""
     router = _make_router()
     db = AsyncMock()
-    db.row_factory = None
 
-    cursor = AsyncMock()
-    cursor.fetchall = AsyncMock(return_value=[
+    db.fetch = AsyncMock(return_value=[
         {"value": "445/tcp/netbios-ssn/Samba 3.0.20-Debian"},
     ])
-    db.execute = AsyncMock(return_value=cursor)
 
     result = await router._infer_exploitable_service(db, "op-1", "tgt-1")
     assert result == "samba"
@@ -308,168 +300,130 @@ async def test_infer_exploitable_service_unrealircd():
     """_infer_exploitable_service matches unrealircd banner."""
     router = _make_router()
     db = AsyncMock()
-    db.row_factory = None
 
-    cursor = AsyncMock()
-    cursor.fetchall = AsyncMock(return_value=[
+    db.fetch = AsyncMock(return_value=[
         {"value": "6667/tcp/irc/UnrealIRCd"},
     ])
-    db.execute = AsyncMock(return_value=cursor)
 
     result = await router._infer_exploitable_service(db, "op-1", "tgt-1")
     assert result == "unrealircd"
 
 
 @pytest.mark.asyncio
-async def test_no_cred_early_return_writes_execution():
+async def test_no_cred_early_return_writes_execution(tmp_db):
     """No-credential early return should write technique_executions record."""
-    import aiosqlite
+    # Seed required data
+    await tmp_db.execute(
+        "INSERT INTO techniques (id, mitre_id, name, tactic, tactic_id, risk_level) "
+        "VALUES ('t1', 'T1059.004', 'Unix Shell', 'Execution', 'TA0002', 'medium')"
+    )
+    await tmp_db.execute(
+        "INSERT INTO operations (id, code, name, codename, strategic_intent) "
+        "VALUES ('op-1', 'OP-1', 'Test', 'TEST', 'test')"
+    )
+    await tmp_db.execute(
+        "INSERT INTO targets (id, hostname, ip_address, os, role, operation_id, "
+        "is_compromised, access_status) "
+        "VALUES ('tgt-1', 'test-host', '10.0.0.1', 'Linux', 'target', 'op-1', false, 'lost')"
+    )
 
-    async with aiosqlite.connect(":memory:") as db:
-        db.row_factory = aiosqlite.Row
-        await db.executescript("""
-            CREATE TABLE techniques (id TEXT PRIMARY KEY, mitre_id TEXT, name TEXT,
-                tactic TEXT, tactic_id TEXT, kill_chain_stage TEXT, risk_level TEXT,
-                c2_ability_id TEXT);
-            CREATE TABLE technique_executions (id TEXT PRIMARY KEY, technique_id TEXT,
-                target_id TEXT, operation_id TEXT, ooda_iteration_id TEXT,
-                engine TEXT, status TEXT, started_at TEXT, completed_at TEXT,
-                result_summary TEXT, facts_collected_count INTEGER DEFAULT 0,
-                error_message TEXT);
-            CREATE TABLE facts (id TEXT PRIMARY KEY, operation_id TEXT,
-                source_target_id TEXT, category TEXT, trait TEXT, value TEXT,
-                source_technique_id TEXT,
-                score INTEGER DEFAULT 1, collected_at TEXT, source TEXT);
-            CREATE TABLE targets (id TEXT PRIMARY KEY, hostname TEXT,
-                ip_address TEXT, os TEXT, role TEXT, operation_id TEXT,
-                is_compromised INTEGER DEFAULT 0, privilege_level TEXT,
-                access_status TEXT DEFAULT 'unknown');
-            INSERT INTO techniques VALUES ('t1', 'T1059.004', 'Unix Shell',
-                'Execution', 'TA0002', 'execution', 'medium', 'T1059.004');
-            INSERT INTO targets VALUES ('tgt-1', 'test-host', '10.0.0.1', 'Linux',
-                'target', 'op-1', 0, NULL, 'lost');
-        """)
-        await db.commit()
+    router = _make_router()
+    now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    result = await router._execute_via_mcp_executor(
+        tmp_db, "exec-1", now, "T1059.004",
+        "T1059.004", "tgt-1", "mcp_ssh", "op-1", "ooda-1",
+    )
 
-        router = _make_router()
-        result = await router._execute_via_mcp_executor(
-            db, "exec-1", "2026-01-01T00:00:00", "T1059.004",
-            "T1059.004", "tgt-1", "mcp_ssh", "op-1", "ooda-1",
-        )
+    assert result["status"] == "failed"
+    assert "invalidated" in result["error"]
 
-        assert result["status"] == "failed"
-        assert "invalidated" in result["error"]
-
-        # Verify technique_executions record was written
-        cursor = await db.execute(
-            "SELECT status, error_message FROM technique_executions WHERE id = 'exec-1'"
-        )
-        row = await cursor.fetchone()
-        assert row is not None, "technique_executions record was not written"
-        assert row["status"] == "failed"
-        assert "invalidated" in row["error_message"]
+    # Verify technique_executions record was written
+    row = await tmp_db.fetchrow(
+        "SELECT status, error_message FROM technique_executions WHERE id = 'exec-1'"
+    )
+    assert row is not None, "technique_executions record was not written"
+    assert row["status"] == "failed"
+    assert "invalidated" in row["error_message"]
 
 
 @pytest.mark.asyncio
-async def test_metasploit_route_on_explicit_engine():
+async def test_metasploit_route_on_explicit_engine(tmp_db):
     """engine='metasploit' with exploitable banner should route to Metasploit."""
-    import aiosqlite
     from app.clients.mock_c2_client import MockC2Client
 
-    async with aiosqlite.connect(":memory:") as db:
-        db.row_factory = aiosqlite.Row
-        await db.executescript("""
-            CREATE TABLE techniques (id TEXT PRIMARY KEY, mitre_id TEXT, name TEXT,
-                tactic TEXT, tactic_id TEXT, kill_chain_stage TEXT, risk_level TEXT,
-                c2_ability_id TEXT);
-            CREATE TABLE technique_executions (id TEXT PRIMARY KEY, technique_id TEXT,
-                target_id TEXT, operation_id TEXT, ooda_iteration_id TEXT,
-                engine TEXT, status TEXT, started_at TEXT, completed_at TEXT,
-                result_summary TEXT, facts_collected_count INTEGER DEFAULT 0,
-                error_message TEXT);
-            CREATE TABLE facts (id TEXT PRIMARY KEY, operation_id TEXT,
-                source_target_id TEXT, category TEXT, trait TEXT, value TEXT,
-                source_technique_id TEXT,
-                score INTEGER DEFAULT 1, collected_at TEXT, source TEXT);
-            CREATE TABLE targets (id TEXT PRIMARY KEY, hostname TEXT,
-                ip_address TEXT, os TEXT, role TEXT, operation_id TEXT,
-                is_compromised INTEGER DEFAULT 0, privilege_level TEXT,
-                access_status TEXT DEFAULT 'unknown');
-            CREATE TABLE operations (id TEXT PRIMARY KEY, techniques_executed INTEGER DEFAULT 0);
-            INSERT INTO techniques VALUES ('t1', 'T1190', 'Exploit Public-Facing App',
-                'Initial Access', 'TA0001', 'initial_access', 'high', 'T1190');
-            INSERT INTO targets VALUES ('tgt-1', 'msf2', '192.168.0.23', 'Linux',
-                'target', 'op-1', 0, NULL, 'lost');
-            INSERT INTO operations VALUES ('op-1', 0);
-            INSERT INTO facts VALUES ('f1', 'op-1', 'tgt-1', 'service',
-                'service.open_port', '21/tcp/ftp/vsftpd_2.3.4', NULL, 1, '2026-01-01', 'nmap');
-        """)
-        await db.commit()
+    # Seed required data
+    await tmp_db.execute(
+        "INSERT INTO techniques (id, mitre_id, name, tactic, tactic_id, risk_level) "
+        "VALUES ('t1', 'T1190', 'Exploit Public-Facing App', 'Initial Access', 'TA0001', 'high')"
+    )
+    await tmp_db.execute(
+        "INSERT INTO operations (id, code, name, codename, strategic_intent) "
+        "VALUES ('op-1', 'OP-1', 'Test', 'TEST', 'test')"
+    )
+    await tmp_db.execute(
+        "INSERT INTO targets (id, hostname, ip_address, os, role, operation_id, "
+        "is_compromised, access_status) "
+        "VALUES ('tgt-1', 'msf2', '192.168.0.23', 'Linux', 'target', 'op-1', false, 'lost')"
+    )
+    await tmp_db.execute(
+        "INSERT INTO facts (id, operation_id, source_target_id, category, trait, value, score, collected_at) "
+        "VALUES ('f1', 'op-1', 'tgt-1', 'service', 'service.open_port', "
+        "'21/tcp/ftp/vsftpd_2.3.4', 1, '2026-01-01T00:00:00+00:00')"
+    )
 
-        ws = MagicMock()
-        ws.broadcast = AsyncMock()
-        fc = MagicMock()
-        fc.collect_from_result = AsyncMock(return_value=[])
-        router = EngineRouter(MockC2Client(), fc, ws)
+    ws = MagicMock()
+    ws.broadcast = AsyncMock()
+    fc = MagicMock()
+    fc.collect_from_result = AsyncMock(return_value=[])
+    router = EngineRouter(MockC2Client(), fc, ws)
 
-        result = await router.execute(
-            db, technique_id="T1190", target_id="tgt-1",
-            engine="metasploit", operation_id="op-1",
-        )
+    result = await router.execute(
+        tmp_db, technique_id="T1190", target_id="tgt-1",
+        engine="metasploit", operation_id="op-1",
+    )
 
-        # Should have routed through Metasploit (mock mode)
-        assert result.get("engine") in ("metasploit", "metasploit_mock")
+    # Should have routed through Metasploit (mock mode)
+    assert result.get("engine") in ("metasploit", "metasploit_mock")
 
 
 @pytest.mark.asyncio
-async def test_banner_fallback_auto_detects_vsftpd():
+async def test_banner_fallback_auto_detects_vsftpd(tmp_db):
     """Default routing auto-detects vsftpd from banner when no vuln.cve fact exists."""
-    import aiosqlite
     from app.clients.mock_c2_client import MockC2Client
 
-    async with aiosqlite.connect(":memory:") as db:
-        db.row_factory = aiosqlite.Row
-        await db.executescript("""
-            CREATE TABLE techniques (id TEXT PRIMARY KEY, mitre_id TEXT, name TEXT,
-                tactic TEXT, tactic_id TEXT, kill_chain_stage TEXT, risk_level TEXT,
-                c2_ability_id TEXT);
-            CREATE TABLE technique_executions (id TEXT PRIMARY KEY, technique_id TEXT,
-                target_id TEXT, operation_id TEXT, ooda_iteration_id TEXT,
-                engine TEXT, status TEXT, started_at TEXT, completed_at TEXT,
-                result_summary TEXT, facts_collected_count INTEGER DEFAULT 0,
-                error_message TEXT);
-            CREATE TABLE facts (id TEXT PRIMARY KEY, operation_id TEXT,
-                source_target_id TEXT, category TEXT, trait TEXT, value TEXT,
-                source_technique_id TEXT,
-                score INTEGER DEFAULT 1, collected_at TEXT, source TEXT);
-            CREATE TABLE targets (id TEXT PRIMARY KEY, hostname TEXT,
-                ip_address TEXT, os TEXT, role TEXT, operation_id TEXT,
-                is_compromised INTEGER DEFAULT 0, privilege_level TEXT,
-                access_status TEXT DEFAULT 'unknown');
-            CREATE TABLE operations (id TEXT PRIMARY KEY, techniques_executed INTEGER DEFAULT 0);
-            INSERT INTO techniques VALUES ('t1', 'T1110.001', 'Brute Force',
-                'Credential Access', 'TA0006', 'credential_access', 'medium', 'T1110.001');
-            INSERT INTO targets VALUES ('tgt-1', 'msf2', '192.168.0.23', 'Linux',
-                'target', 'op-1', 0, NULL, 'unknown');
-            INSERT INTO operations VALUES ('op-1', 0);
-            INSERT INTO facts VALUES ('f1', 'op-1', 'tgt-1', 'service',
-                'service.open_port', '21/tcp/ftp/vsftpd_2.3.4', NULL, 1, '2026-01-01', 'nmap');
-        """)
-        await db.commit()
+    # Seed required data
+    await tmp_db.execute(
+        "INSERT INTO techniques (id, mitre_id, name, tactic, tactic_id, risk_level) "
+        "VALUES ('t1', 'T1110.001', 'Brute Force', 'Credential Access', 'TA0006', 'medium')"
+    )
+    await tmp_db.execute(
+        "INSERT INTO operations (id, code, name, codename, strategic_intent) "
+        "VALUES ('op-1', 'OP-1', 'Test', 'TEST', 'test')"
+    )
+    await tmp_db.execute(
+        "INSERT INTO targets (id, hostname, ip_address, os, role, operation_id, "
+        "is_compromised, access_status) "
+        "VALUES ('tgt-1', 'msf2', '192.168.0.23', 'Linux', 'target', 'op-1', false, 'unknown')"
+    )
+    await tmp_db.execute(
+        "INSERT INTO facts (id, operation_id, source_target_id, category, trait, value, score, collected_at) "
+        "VALUES ('f1', 'op-1', 'tgt-1', 'service', 'service.open_port', "
+        "'21/tcp/ftp/vsftpd_2.3.4', 1, '2026-01-01T00:00:00+00:00')"
+    )
 
-        ws = MagicMock()
-        ws.broadcast = AsyncMock()
-        fc = MagicMock()
-        fc.collect_from_result = AsyncMock(return_value=[])
-        router = EngineRouter(MockC2Client(), fc, ws)
+    ws = MagicMock()
+    ws.broadcast = AsyncMock()
+    fc = MagicMock()
+    fc.collect_from_result = AsyncMock(return_value=[])
+    router = EngineRouter(MockC2Client(), fc, ws)
 
-        result = await router.execute(
-            db, technique_id="T1110.001", target_id="tgt-1",
-            engine="auto", operation_id="op-1",
-        )
+    result = await router.execute(
+        tmp_db, technique_id="T1110.001", target_id="tgt-1",
+        engine="auto", operation_id="op-1",
+    )
 
-        # Should have been intercepted by banner-based Metasploit fallback
-        assert result.get("engine") in ("metasploit", "metasploit_mock")
+    # Should have been intercepted by banner-based Metasploit fallback
+    assert result.get("engine") in ("metasploit", "metasploit_mock")
 
 
 @pytest.mark.asyncio
@@ -491,68 +445,54 @@ async def test_exploit_vsftpd_no_lhost():
 
 
 @pytest.mark.asyncio
-async def test_metasploit_success_updates_target():
+async def test_metasploit_success_updates_target(tmp_db):
     """Metasploit success should set target compromised=Root and write root_shell fact."""
-    import aiosqlite
     from app.clients.mock_c2_client import MockC2Client
 
-    async with aiosqlite.connect(":memory:") as db:
-        db.row_factory = aiosqlite.Row
-        await db.executescript("""
-            CREATE TABLE targets (
-                id TEXT, ip_address TEXT, operation_id TEXT,
-                is_compromised INTEGER DEFAULT 0, privilege_level TEXT,
-                access_status TEXT DEFAULT 'unknown'
-            );
-            CREATE TABLE technique_executions (
-                id TEXT, technique_id TEXT, target_id TEXT, operation_id TEXT,
-                ooda_iteration_id TEXT, engine TEXT, status TEXT,
-                started_at TEXT, completed_at TEXT, error_message TEXT,
-                result_summary TEXT, facts_collected_count INTEGER DEFAULT 0
-            );
-            CREATE TABLE operations (id TEXT, techniques_executed INTEGER DEFAULT 0);
-            CREATE TABLE facts (
-                id TEXT, operation_id TEXT, source_target_id TEXT, category TEXT,
-                trait TEXT, value TEXT, source_technique_id TEXT,
-                score REAL, collected_at TEXT, source TEXT,
-                UNIQUE(operation_id, trait, value)
-            );
-            INSERT INTO targets VALUES ('tgt-1', '192.168.0.23', 'op-1', 0, NULL, 'lost');
-            INSERT INTO operations VALUES ('op-1', 0);
-        """)
-        await db.commit()
+    # Seed required data
+    await tmp_db.execute(
+        "INSERT INTO operations (id, code, name, codename, strategic_intent) "
+        "VALUES ('op-1', 'OP-1', 'Test', 'TEST', 'test')"
+    )
+    await tmp_db.execute(
+        "INSERT INTO targets (id, ip_address, operation_id, is_compromised, "
+        "privilege_level, access_status, hostname, os, role) "
+        "VALUES ('tgt-1', '192.168.0.23', 'op-1', false, NULL, 'lost', 'msf2', 'Linux', 'target')"
+    )
 
-        ws = MagicMock()
-        ws.broadcast = AsyncMock()
-        fc = MagicMock()
-        fc.collect_from_result = AsyncMock(return_value=[])
-        router = EngineRouter(MockC2Client(), fc, ws)
+    ws = MagicMock()
+    ws.broadcast = AsyncMock()
+    fc = MagicMock()
+    fc.collect_from_result = AsyncMock(return_value=[])
+    router = EngineRouter(MockC2Client(), fc, ws)
 
-        # Mock MetasploitRPCEngine to return success
-        mock_msf_instance = MagicMock()
-        mock_msf_instance.get_exploit_for_service.return_value = AsyncMock(
-            return_value={"status": "success", "output": "uid=0(root)", "engine": "metasploit"}
+    # Mock MetasploitRPCEngine to return success
+    mock_msf_instance = MagicMock()
+    mock_msf_instance.get_exploit_for_service.return_value = AsyncMock(
+        return_value={"status": "success", "output": "uid=0(root)", "engine": "metasploit"}
+    )
+    mock_msf_cls = MagicMock(return_value=mock_msf_instance)
+
+    with patch("app.clients.metasploit_client.MetasploitRPCEngine", mock_msf_cls):
+        result = await router._execute_metasploit(
+            tmp_db, "exec-msf-1", "2026-01-01T00:00:00",
+            "T1190", "tgt-1", "op-1", "ooda-1",
+            "vsftpd", "192.168.0.23", "metasploit",
         )
-        mock_msf_cls = MagicMock(return_value=mock_msf_instance)
 
-        with patch("app.clients.metasploit_client.MetasploitRPCEngine", mock_msf_cls):
-            result = await router._execute_metasploit(
-                db, "exec-msf-1", "2026-01-01T00:00:00",
-                "T1190", "tgt-1", "op-1", "ooda-1",
-                "vsftpd", "192.168.0.23", "metasploit",
-            )
+    assert result["status"] == "success"
 
-        assert result["status"] == "success"
+    # Check target updated to Root
+    row = await tmp_db.fetchrow(
+        "SELECT is_compromised, privilege_level, access_status FROM targets WHERE id = 'tgt-1'"
+    )
+    assert row["is_compromised"] is True
+    assert row["privilege_level"] == "Root"
+    assert row["access_status"] == "active"
 
-        # Check target updated to Root
-        cursor = await db.execute("SELECT is_compromised, privilege_level, access_status FROM targets WHERE id = 'tgt-1'")
-        row = await cursor.fetchone()
-        assert row["is_compromised"] == 1
-        assert row["privilege_level"] == "Root"
-        assert row["access_status"] == "active"
-
-        # Check root_shell fact written
-        cursor = await db.execute("SELECT trait, value FROM facts WHERE trait = 'credential.root_shell'")
-        row = await cursor.fetchone()
-        assert row is not None, "credential.root_shell fact was not written"
-        assert "metasploit:vsftpd" in row["value"]
+    # Check root_shell fact written
+    row = await tmp_db.fetchrow(
+        "SELECT trait, value FROM facts WHERE trait = 'credential.root_shell'"
+    )
+    assert row is not None, "credential.root_shell fact was not written"
+    assert "metasploit:vsftpd" in row["value"]

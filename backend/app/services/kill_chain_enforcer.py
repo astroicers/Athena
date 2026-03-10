@@ -17,7 +17,7 @@ Kill Chain stages, reducing composite confidence to trigger manual review.
 import logging
 from dataclasses import dataclass, field
 
-import aiosqlite
+import asyncpg
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ class KillChainEnforcer:
 
     async def evaluate_skip(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         operation_id: str,
         tactic_id: str | None,
         target_id: str | None,
@@ -108,7 +108,7 @@ class KillChainEnforcer:
 
     async def _get_completed_tactics(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         operation_id: str,
         target_id: str | None,
     ) -> set[str]:
@@ -118,28 +118,25 @@ class KillChainEnforcer:
         technique_id -> tactic_id mapping.
         """
         if not target_id:
-            cursor = await db.execute(
+            rows = await db.fetch(
                 "SELECT DISTINCT agn.tactic_id "
                 "FROM technique_executions te "
                 "JOIN attack_graph_nodes agn "
                 "  ON te.technique_id = agn.technique_id "
                 "  AND te.operation_id = agn.operation_id "
-                "WHERE te.operation_id = ? AND te.status = 'success'",
-                (operation_id,),
+                "WHERE te.operation_id = $1 AND te.status = 'success'",
+                operation_id,
             )
         else:
-            cursor = await db.execute(
+            rows = await db.fetch(
                 "SELECT DISTINCT agn.tactic_id "
                 "FROM technique_executions te "
                 "JOIN attack_graph_nodes agn "
                 "  ON te.technique_id = agn.technique_id "
                 "  AND te.operation_id = agn.operation_id "
                 "  AND te.target_id = agn.target_id "
-                "WHERE te.operation_id = ? AND te.target_id = ? "
+                "WHERE te.operation_id = $1 AND te.target_id = $2 "
                 "AND te.status = 'success'",
-                (operation_id, target_id),
+                operation_id, target_id,
             )
-        rows = await cursor.fetchall()
-        return {
-            (r["tactic_id"] if isinstance(r, dict) else r[0]) for r in rows
-        }
+        return {r["tactic_id"] for r in rows}

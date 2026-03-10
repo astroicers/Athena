@@ -38,15 +38,13 @@ def _make_mock_ws():
 
 
 def _make_mock_db():
-    """Return a fully-mocked aiosqlite connection."""
+    """Return a fully-mocked asyncpg connection."""
     db = AsyncMock()
-    cursor = AsyncMock()
-    cursor.fetchone = AsyncMock(return_value=None)
-    cursor.fetchall = AsyncMock(return_value=[])
-    db.execute = AsyncMock(return_value=cursor)
+    db.fetchrow = AsyncMock(return_value=None)
+    db.fetch = AsyncMock(return_value=[])
+    db.fetchval = AsyncMock(return_value=None)
+    db.execute = AsyncMock(return_value="INSERT 0 1")
     db.executemany = AsyncMock()
-    db.commit = AsyncMock()
-    db.row_factory = None
     return db
 
 
@@ -472,43 +470,11 @@ async def test_websocket_event_on_rebuild():
     # Mock DB that returns enough data for rebuild
     db = _make_mock_db()
 
-    # Mock operation exists
-    op_cursor = AsyncMock()
-    op_cursor.fetchone = AsyncMock(return_value={"id": "op-1"})
-
-    # Mock targets
-    targets_cursor = AsyncMock()
-    targets_cursor.fetchall = AsyncMock(return_value=[])
-
-    # Mock facts
-    facts_cursor = AsyncMock()
-    facts_cursor.fetchall = AsyncMock(return_value=[])
-
-    # Mock executions
-    exec_cursor = AsyncMock()
-    exec_cursor.fetchall = AsyncMock(return_value=[])
-
-    call_count = 0
-
-    async def mock_execute(sql, params=None):
-        nonlocal call_count
-        call_count += 1
-        sql_lower = sql.strip().lower()
-        if "select" in sql_lower and "operations" in sql_lower:
-            return op_cursor
-        if "select" in sql_lower and "targets" in sql_lower:
-            return targets_cursor
-        if "select" in sql_lower and "facts" in sql_lower:
-            return facts_cursor
-        if "select" in sql_lower and "technique_executions" in sql_lower:
-            return exec_cursor
-        # DELETE / INSERT statements
-        default_cursor = AsyncMock()
-        default_cursor.fetchone = AsyncMock(return_value=None)
-        default_cursor.fetchall = AsyncMock(return_value=[])
-        return default_cursor
-
-    db.execute = AsyncMock(side_effect=mock_execute)
+    # rebuild() calls _query_targets, _query_facts, _query_executions (all use db.fetch)
+    # then db.execute for DELETE and INSERT statements
+    db.fetch = AsyncMock(return_value=[])
+    db.fetchrow = AsyncMock(return_value={"id": "op-1"})
+    db.execute = AsyncMock(return_value="DELETE 0")
 
     graph = await engine.rebuild(db, "op-1")
 

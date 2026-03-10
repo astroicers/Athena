@@ -10,7 +10,8 @@
 
 """Execution engine client tests — SPEC-008 acceptance criteria."""
 
-from unittest.mock import AsyncMock, patch
+import uuid
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.clients import ExecutionResult
 from app.clients.mock_c2_client import MockC2Client
@@ -82,28 +83,25 @@ async def test_c2_engine_client_check_version_callable():
 
 async def test_engine_router_metasploit_route(seeded_db):
     """EngineRouter routes to MetasploitRPCEngine when exploit=true CVE fact exists."""
-    import uuid
-    from unittest.mock import AsyncMock, MagicMock
     from app.services.engine_router import EngineRouter
     from app.clients.mock_c2_client import MockC2Client
     from app.services.fact_collector import FactCollector
-    from app.ws_manager import WebSocketManager
 
     # Insert vuln.cve fact with exploit=true for seeded target
     await seeded_db.execute(
         """INSERT INTO facts (id, operation_id, source_target_id, trait, value, category, score)
-           VALUES (?, 'test-op-1', 'test-target-1',
+           VALUES ($1, 'test-op-1', 'test-target-1',
                    'vuln.cve', 'CVE-2011-2523:vsftpd:vsftpd_2.3.4:cvss=10.0:exploit=true',
                    'vulnerability', 1)""",
-        (str(uuid.uuid4()),)
+        str(uuid.uuid4()),
     )
     # Insert a technique record for T1190
     await seeded_db.execute(
-        """INSERT OR IGNORE INTO techniques (id, mitre_id, name, tactic, tactic_id, risk_level)
+        """INSERT INTO techniques (id, mitre_id, name, tactic, tactic_id, risk_level)
            VALUES ('tech-t1190', 'T1190', 'Exploit Public-Facing Application',
-                   'Initial Access', 'TA0001', 'high')"""
+                   'Initial Access', 'TA0001', 'high')
+           ON CONFLICT DO NOTHING"""
     )
-    await seeded_db.commit()
 
     mock_ws = MagicMock()
     mock_ws.broadcast = AsyncMock()
@@ -125,23 +123,22 @@ async def test_engine_router_metasploit_route(seeded_db):
     assert result.get("engine") in ("metasploit", "metasploit_mock")
 
     # Verify that technique_executions was written by _execute_metasploit()
-    cursor = await seeded_db.execute(
+    exec_row = await seeded_db.fetchrow(
         "SELECT engine, status FROM technique_executions "
         "WHERE operation_id = 'test-op-1' ORDER BY started_at DESC LIMIT 1"
     )
-    exec_row = await cursor.fetchone()
     assert exec_row is not None, "technique_executions row was not written"
     assert exec_row["engine"] == "metasploit"
     assert exec_row["status"] == "success"
 
 
-async def test_engine_router_mcp_ssh_route():
-    """EXECUTION_ENGINE=mcp_ssh routes to _execute_via_mcp_executor."""
-    import aiosqlite
-    from unittest.mock import AsyncMock, MagicMock, patch
+async def test_engine_router_mcp_ssh_route(seeded_db):
+    """EXECUTION_ENGINE=mcp_ssh routes to _execute_via_mcp_executor.
+
+    Uses seeded_db with real PostgreSQL schema instead of in-memory SQLite.
+    """
     from app.services.engine_router import EngineRouter
     from app.clients.mock_c2_client import MockC2Client
-    from app.services.fact_collector import FactCollector
     from app.clients import ExecutionResult
 
     mock_ws = MagicMock()
@@ -162,53 +159,32 @@ async def test_engine_router_mcp_ssh_route():
         mcp_engine=mock_mcp,
     )
 
-    async with aiosqlite.connect(":memory:") as db:
-        db.row_factory = aiosqlite.Row
-        await db.executescript("""
-            CREATE TABLE techniques (id TEXT PRIMARY KEY, mitre_id TEXT, name TEXT,
-                tactic TEXT, tactic_id TEXT, kill_chain_stage TEXT, risk_level TEXT,
-                c2_ability_id TEXT);
-            CREATE TABLE technique_executions (id TEXT PRIMARY KEY, technique_id TEXT,
-                target_id TEXT, operation_id TEXT, ooda_iteration_id TEXT,
-                engine TEXT, status TEXT, started_at TEXT, completed_at TEXT,
-                result_summary TEXT, facts_collected_count INTEGER DEFAULT 0,
-                error_message TEXT);
-            CREATE TABLE facts (id TEXT PRIMARY KEY, operation_id TEXT,
-                source_target_id TEXT, category TEXT, trait TEXT, value TEXT,
-                score INTEGER DEFAULT 1, collected_at TEXT, source TEXT);
-            CREATE TABLE operations (id TEXT PRIMARY KEY, techniques_executed INTEGER DEFAULT 0);
-            CREATE TABLE technique_playbooks (id TEXT PRIMARY KEY, mitre_id TEXT NOT NULL,
-                platform TEXT NOT NULL DEFAULT 'linux', command TEXT NOT NULL,
-                output_parser TEXT, facts_traits TEXT NOT NULL DEFAULT '[]',
-                source TEXT DEFAULT 'seed', tags TEXT DEFAULT '[]',
-                created_at TEXT DEFAULT (datetime('now')));
-            INSERT INTO techniques VALUES ('t1', 'T1592', 'Host Discovery',
-                'Reconnaissance', 'TA0043', 'recon', 'low', 'T1592');
-            CREATE TABLE targets (id TEXT PRIMARY KEY, hostname TEXT,
-                ip_address TEXT, os TEXT, role TEXT, operation_id TEXT,
-                is_compromised INTEGER DEFAULT 0, privilege_level TEXT,
-                access_status TEXT DEFAULT 'unknown');
-            INSERT INTO targets VALUES ('tgt-1', 'test-host', '127.0.0.1', 'Linux',
-                'target', 'op-persist-test', 0, NULL, 'unknown');
-            INSERT INTO operations VALUES ('op-persist-test', 0);
-            INSERT INTO facts VALUES ('f1', 'op-persist-test', 'tgt-1', 'credential',
-                'credential.ssh', 'root:toor@127.0.0.1:22', 1, '2026-01-01', 'test');
-        """)
-        await db.commit()
+    # Insert required data for this test
+    await seeded_db.execute(
+        "INSERT INTO techniques (id, mitre_id, name, tactic, tactic_id, risk_level) "
+        "VALUES ('t1-mcp-route', 'T1592', 'Host Discovery', 'Reconnaissance', 'TA0043', 'low') "
+        "ON CONFLICT DO NOTHING"
+    )
+    await seeded_db.execute(
+        "INSERT INTO facts (id, operation_id, source_target_id, category, trait, value, score) "
+        "VALUES ($1, 'test-op-1', 'test-target-1', 'credential', "
+        "'credential.ssh', 'root:toor@10.0.1.5:22', 1)",
+        str(uuid.uuid4()),
+    )
 
-        with patch("app.services.engine_router.settings") as mock_settings:
-            mock_settings.EXECUTION_ENGINE = "mcp_ssh"
-            mock_settings.MOCK_C2_ENGINE = False
-            mock_settings.MCP_ENABLED = True
-            mock_settings.PERSISTENCE_ENABLED = False
+    with patch("app.services.engine_router.settings") as mock_settings:
+        mock_settings.EXECUTION_ENGINE = "mcp_ssh"
+        mock_settings.MOCK_C2_ENGINE = False
+        mock_settings.MCP_ENABLED = True
+        mock_settings.PERSISTENCE_ENABLED = False
 
-            result = await router.execute(
-                db=db,
-                technique_id="T1592",
-                target_id="tgt-1",
-                engine="auto",
-                operation_id="op-persist-test",
-            )
+        result = await router.execute(
+            db=seeded_db,
+            technique_id="T1592",
+            target_id="test-target-1",
+            engine="auto",
+            operation_id="test-op-1",
+        )
 
     assert result["status"] == "success"
     assert result["engine"] == "mcp_ssh"

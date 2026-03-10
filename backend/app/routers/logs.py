@@ -10,7 +10,7 @@
 
 """Log entry endpoints (paginated)."""
 
-import aiosqlite
+import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.database import get_db
@@ -20,7 +20,7 @@ from app.models.api_schemas import PaginatedLogs
 router = APIRouter()
 
 
-def _row_to_log(row: aiosqlite.Row) -> LogEntry:
+def _row_to_log(row: asyncpg.Record) -> LogEntry:
     return LogEntry(
         id=row["id"],
         timestamp=row["timestamp"],
@@ -42,29 +42,27 @@ async def list_logs(
     operation_id: str,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
 
     # Verify operation
-    cursor = await db.execute("SELECT id FROM operations WHERE id = ?", (operation_id,))
-    if not await cursor.fetchone():
+    row = await db.fetchrow("SELECT id FROM operations WHERE id = $1", operation_id)
+    if not row:
         raise HTTPException(status_code=404, detail="Operation not found")
 
     # Total count
-    cursor = await db.execute(
-        "SELECT COUNT(*) AS cnt FROM log_entries WHERE operation_id = ?",
-        (operation_id,),
+    total = await db.fetchval(
+        "SELECT COUNT(*) FROM log_entries WHERE operation_id = $1",
+        operation_id,
     )
-    total = (await cursor.fetchone())["cnt"]
 
     # Paginated results
     offset = (page - 1) * page_size
-    cursor = await db.execute(
-        "SELECT * FROM log_entries WHERE operation_id = ? "
-        "ORDER BY timestamp DESC LIMIT ? OFFSET ?",
-        (operation_id, page_size, offset),
+    rows = await db.fetch(
+        "SELECT * FROM log_entries WHERE operation_id = $1 "
+        "ORDER BY timestamp DESC LIMIT $2 OFFSET $3",
+        operation_id, page_size, offset,
     )
-    rows = await cursor.fetchall()
 
     return PaginatedLogs(
         items=[_row_to_log(r) for r in rows],

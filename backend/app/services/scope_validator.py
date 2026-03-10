@@ -17,7 +17,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-import aiosqlite
+import asyncpg
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ class ScopeValidator:
 
     async def validate_target(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         operation_id: str,
         target_address: str,
     ) -> ScopeCheckResult:
@@ -61,14 +61,11 @@ class ScopeValidator:
         ScopeCheckResult
             ``in_scope=True`` when allowed, ``in_scope=False`` otherwise.
         """
-        db.row_factory = aiosqlite.Row
-
         # --- Fetch engagement record ---
-        cursor = await db.execute(
-            "SELECT * FROM engagements WHERE operation_id = ? ORDER BY created_at DESC LIMIT 1",
-            (operation_id,),
+        row = await db.fetchrow(
+            "SELECT * FROM engagements WHERE operation_id = $1 ORDER BY created_at DESC LIMIT 1",
+            operation_id,
         )
-        row = await cursor.fetchone()
 
         # No engagement → unrestricted (backward compatible)
         if row is None:
@@ -87,7 +84,7 @@ class ScopeValidator:
             )
 
         # Time window check
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         if engagement.get("start_time") and now < engagement["start_time"]:
             return ScopeCheckResult(
                 in_scope=False,

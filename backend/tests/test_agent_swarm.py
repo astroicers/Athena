@@ -13,29 +13,10 @@
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import aiosqlite
-
-from app.database import _CREATE_TABLES
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-async def _make_in_memory_db() -> aiosqlite.Connection:
-    """Create an in-memory SQLite database with the full Athena schema.
-
-    Foreign keys are disabled to allow inserting swarm_tasks without
-    requiring parent rows in operations/ooda_iterations/targets.
-    """
-    db = await aiosqlite.connect(":memory:")
-    db.row_factory = aiosqlite.Row
-    # Disable FK for swarm tests — we test executor logic, not DB integrity
-    await db.execute("PRAGMA foreign_keys = OFF;")
-    for ddl in _CREATE_TABLES:
-        await db.execute(ddl)
-    await db.commit()
-    return db
-
 
 def _make_mock_ws():
     """Return a mock WebSocketManager."""
@@ -109,31 +90,27 @@ class TestSwarmResultProperties:
 class TestSwarmExecutorEmptyTasks:
     """Test empty parallel_tasks list."""
 
-    async def test_empty_parallel_tasks(self):
+    async def test_empty_parallel_tasks(self, tmp_db):
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
         router = _make_mock_router()
         executor = SwarmExecutor(engine_router=router, ws_manager=ws)
 
-        db = await _make_in_memory_db()
-        try:
-            result = await executor.execute_swarm(
-                db, "op-1", "ooda-1", []
-            )
-            assert result.total == 0
-            assert result.completed == 0
-            assert result.failed == 0
-            assert result.timed_out == 0
-            assert result.tasks == []
-        finally:
-            await db.close()
+        result = await executor.execute_swarm(
+            tmp_db, "op-1", "ooda-1", []
+        )
+        assert result.total == 0
+        assert result.completed == 0
+        assert result.failed == 0
+        assert result.timed_out == 0
+        assert result.tasks == []
 
 
 class TestSwarmExecutorSingleTask:
     """Test single task execution."""
 
-    async def test_single_task_executes(self):
+    async def test_single_task_executes(self, tmp_db):
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
@@ -145,30 +122,26 @@ class TestSwarmExecutorSingleTask:
 
             executor = SwarmExecutor(engine_router=router, ws_manager=ws)
 
-            db = await _make_in_memory_db()
-            try:
-                tasks = [
-                    {
-                        "technique_id": "T1059.004",
-                        "target_id": "tgt-1",
-                        "engine": "ssh",
-                    }
-                ]
-                result = await executor.execute_swarm(db, "op-1", "ooda-1", tasks)
-                assert result.total == 1
-                assert result.completed == 1
-                assert result.failed == 0
-                assert len(result.tasks) == 1
-                assert result.tasks[0].status == "completed"
-                router.execute.assert_awaited_once()
-            finally:
-                await db.close()
+            tasks = [
+                {
+                    "technique_id": "T1059.004",
+                    "target_id": "tgt-1",
+                    "engine": "ssh",
+                }
+            ]
+            result = await executor.execute_swarm(tmp_db, "op-1", "ooda-1", tasks)
+            assert result.total == 1
+            assert result.completed == 1
+            assert result.failed == 0
+            assert len(result.tasks) == 1
+            assert result.tasks[0].status == "completed"
+            router.execute.assert_awaited_once()
 
 
 class TestSwarmExecutorMultipleTasks:
     """Test multiple parallel task execution."""
 
-    async def test_multiple_tasks_parallel(self):
+    async def test_multiple_tasks_parallel(self, tmp_db):
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
@@ -180,27 +153,23 @@ class TestSwarmExecutorMultipleTasks:
 
             executor = SwarmExecutor(engine_router=router, ws_manager=ws)
 
-            db = await _make_in_memory_db()
-            try:
-                tasks = [
-                    {"technique_id": "T1059.004", "target_id": "tgt-1", "engine": "ssh"},
-                    {"technique_id": "T1087", "target_id": "tgt-2", "engine": "ssh"},
-                    {"technique_id": "T1083", "target_id": "tgt-3", "engine": "ssh"},
-                ]
-                result = await executor.execute_swarm(db, "op-1", "ooda-1", tasks)
-                assert result.total == 3
-                assert result.completed == 3
-                assert result.failed == 0
-                assert len(result.tasks) == 3
-                assert router.execute.await_count == 3
-            finally:
-                await db.close()
+            tasks = [
+                {"technique_id": "T1059.004", "target_id": "tgt-1", "engine": "ssh"},
+                {"technique_id": "T1087", "target_id": "tgt-2", "engine": "ssh"},
+                {"technique_id": "T1083", "target_id": "tgt-3", "engine": "ssh"},
+            ]
+            result = await executor.execute_swarm(tmp_db, "op-1", "ooda-1", tasks)
+            assert result.total == 3
+            assert result.completed == 3
+            assert result.failed == 0
+            assert len(result.tasks) == 3
+            assert router.execute.await_count == 3
 
 
 class TestSwarmExecutorSemaphore:
     """Test semaphore bounds concurrency."""
 
-    async def test_semaphore_bounds_concurrency(self):
+    async def test_semaphore_bounds_concurrency(self, tmp_db):
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
@@ -228,25 +197,21 @@ class TestSwarmExecutorSemaphore:
 
             executor = SwarmExecutor(engine_router=router, ws_manager=ws)
 
-            db = await _make_in_memory_db()
-            try:
-                tasks = [
-                    {"technique_id": f"T{i}", "target_id": f"tgt-{i}", "engine": "ssh"}
-                    for i in range(4)
-                ]
-                result = await executor.execute_swarm(db, "op-1", "ooda-1", tasks)
-                assert result.total == 4
-                assert result.completed == 4
-                # The semaphore should limit concurrency to 2
-                assert max_concurrent <= 2
-            finally:
-                await db.close()
+            tasks = [
+                {"technique_id": f"T{i}", "target_id": f"tgt-{i}", "engine": "ssh"}
+                for i in range(4)
+            ]
+            result = await executor.execute_swarm(tmp_db, "op-1", "ooda-1", tasks)
+            assert result.total == 4
+            assert result.completed == 4
+            # The semaphore should limit concurrency to 2
+            assert max_concurrent <= 2
 
 
 class TestSwarmExecutorTimeoutIsolation:
     """Test that one task timing out does not affect others."""
 
-    async def test_task_timeout_isolation(self):
+    async def test_task_timeout_isolation(self, tmp_db):
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
@@ -270,30 +235,26 @@ class TestSwarmExecutorTimeoutIsolation:
 
             executor = SwarmExecutor(engine_router=router, ws_manager=ws)
 
-            db = await _make_in_memory_db()
-            try:
-                tasks = [
-                    {"technique_id": "T_OK1", "target_id": "tgt-1", "engine": "ssh"},
-                    {"technique_id": "T_TIMEOUT", "target_id": "tgt-2", "engine": "ssh"},
-                    {"technique_id": "T_OK2", "target_id": "tgt-3", "engine": "ssh"},
-                ]
-                result = await executor.execute_swarm(db, "op-1", "ooda-1", tasks)
-                assert result.total == 3
-                assert result.completed == 2
-                assert result.timed_out == 1
+            tasks = [
+                {"technique_id": "T_OK1", "target_id": "tgt-1", "engine": "ssh"},
+                {"technique_id": "T_TIMEOUT", "target_id": "tgt-2", "engine": "ssh"},
+                {"technique_id": "T_OK2", "target_id": "tgt-3", "engine": "ssh"},
+            ]
+            result = await executor.execute_swarm(tmp_db, "op-1", "ooda-1", tasks)
+            assert result.total == 3
+            assert result.completed == 2
+            assert result.timed_out == 1
 
-                # Find the timed-out task
-                timeout_tasks = [t for t in result.tasks if t.status == "timeout"]
-                assert len(timeout_tasks) == 1
-                assert timeout_tasks[0].technique_id == "T_TIMEOUT"
-            finally:
-                await db.close()
+            # Find the timed-out task
+            timeout_tasks = [t for t in result.tasks if t.status == "timeout"]
+            assert len(timeout_tasks) == 1
+            assert timeout_tasks[0].technique_id == "T_TIMEOUT"
 
 
 class TestSwarmExecutorExceptionIsolation:
     """Test that one task raising an exception does not affect others."""
 
-    async def test_task_exception_isolation(self):
+    async def test_task_exception_isolation(self, tmp_db):
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
@@ -313,30 +274,26 @@ class TestSwarmExecutorExceptionIsolation:
 
             executor = SwarmExecutor(engine_router=router, ws_manager=ws)
 
-            db = await _make_in_memory_db()
-            try:
-                tasks = [
-                    {"technique_id": "T_OK1", "target_id": "tgt-1", "engine": "ssh"},
-                    {"technique_id": "T_FAIL", "target_id": "tgt-2", "engine": "ssh"},
-                    {"technique_id": "T_OK2", "target_id": "tgt-3", "engine": "ssh"},
-                ]
-                result = await executor.execute_swarm(db, "op-1", "ooda-1", tasks)
-                assert result.total == 3
-                assert result.completed == 2
-                assert result.failed == 1
+            tasks = [
+                {"technique_id": "T_OK1", "target_id": "tgt-1", "engine": "ssh"},
+                {"technique_id": "T_FAIL", "target_id": "tgt-2", "engine": "ssh"},
+                {"technique_id": "T_OK2", "target_id": "tgt-3", "engine": "ssh"},
+            ]
+            result = await executor.execute_swarm(tmp_db, "op-1", "ooda-1", tasks)
+            assert result.total == 3
+            assert result.completed == 2
+            assert result.failed == 1
 
-                # Find the failed task
-                failed_tasks = [t for t in result.tasks if t.status == "failed"]
-                assert len(failed_tasks) == 1
-                assert "RuntimeError" in failed_tasks[0].error
-            finally:
-                await db.close()
+            # Find the failed task
+            failed_tasks = [t for t in result.tasks if t.status == "failed"]
+            assert len(failed_tasks) == 1
+            assert "RuntimeError" in failed_tasks[0].error
 
 
 class TestSwarmExecutorAllFail:
     """Test all tasks failing."""
 
-    async def test_all_tasks_fail(self):
+    async def test_all_tasks_fail(self, tmp_db):
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
@@ -348,26 +305,22 @@ class TestSwarmExecutorAllFail:
 
             executor = SwarmExecutor(engine_router=router, ws_manager=ws)
 
-            db = await _make_in_memory_db()
-            try:
-                tasks = [
-                    {"technique_id": "T1", "target_id": "tgt-1", "engine": "ssh"},
-                    {"technique_id": "T2", "target_id": "tgt-2", "engine": "ssh"},
-                    {"technique_id": "T3", "target_id": "tgt-3", "engine": "ssh"},
-                ]
-                result = await executor.execute_swarm(db, "op-1", "ooda-1", tasks)
-                assert result.total == 3
-                assert result.completed == 0
-                assert result.failed == 3
-                assert result.all_failed is True
-            finally:
-                await db.close()
+            tasks = [
+                {"technique_id": "T1", "target_id": "tgt-1", "engine": "ssh"},
+                {"technique_id": "T2", "target_id": "tgt-2", "engine": "ssh"},
+                {"technique_id": "T3", "target_id": "tgt-3", "engine": "ssh"},
+            ]
+            result = await executor.execute_swarm(tmp_db, "op-1", "ooda-1", tasks)
+            assert result.total == 3
+            assert result.completed == 0
+            assert result.failed == 3
+            assert result.all_failed is True
 
 
 class TestSwarmExecutorPartialSuccess:
     """Test partial success."""
 
-    async def test_partial_success(self):
+    async def test_partial_success(self, tmp_db):
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
@@ -389,26 +342,22 @@ class TestSwarmExecutorPartialSuccess:
 
             executor = SwarmExecutor(engine_router=router, ws_manager=ws)
 
-            db = await _make_in_memory_db()
-            try:
-                tasks = [
-                    {"technique_id": "T1", "target_id": "tgt-1", "engine": "ssh"},
-                    {"technique_id": "T2", "target_id": "tgt-2", "engine": "ssh"},
-                    {"technique_id": "T3", "target_id": "tgt-3", "engine": "ssh"},
-                ]
-                result = await executor.execute_swarm(db, "op-1", "ooda-1", tasks)
-                assert result.total == 3
-                assert result.completed == 2
-                assert result.failed == 1
-                assert result.partial_success is True
-            finally:
-                await db.close()
+            tasks = [
+                {"technique_id": "T1", "target_id": "tgt-1", "engine": "ssh"},
+                {"technique_id": "T2", "target_id": "tgt-2", "engine": "ssh"},
+                {"technique_id": "T3", "target_id": "tgt-3", "engine": "ssh"},
+            ]
+            result = await executor.execute_swarm(tmp_db, "op-1", "ooda-1", tasks)
+            assert result.total == 3
+            assert result.completed == 2
+            assert result.failed == 1
+            assert result.partial_success is True
 
 
 class TestSwarmExecutorDBPersistence:
     """Test that task records are persisted to the database."""
 
-    async def test_db_records_created(self):
+    async def test_db_records_created(self, tmp_db):
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
@@ -420,30 +369,24 @@ class TestSwarmExecutorDBPersistence:
 
             executor = SwarmExecutor(engine_router=router, ws_manager=ws)
 
-            db = await _make_in_memory_db()
-            try:
-                tasks = [
-                    {"technique_id": "T1", "target_id": "tgt-1", "engine": "ssh"},
-                    {"technique_id": "T2", "target_id": "tgt-2", "engine": "ssh"},
-                ]
-                result = await executor.execute_swarm(db, "op-1", "ooda-1", tasks)
+            tasks = [
+                {"technique_id": "T1", "target_id": "tgt-1", "engine": "ssh"},
+                {"technique_id": "T2", "target_id": "tgt-2", "engine": "ssh"},
+            ]
+            result = await executor.execute_swarm(tmp_db, "op-1", "ooda-1", tasks)
 
-                # Check DB records
-                cursor = await db.execute(
-                    "SELECT COUNT(*) FROM swarm_tasks WHERE ooda_iteration_id = 'ooda-1'"
-                )
-                row = await cursor.fetchone()
-                assert row[0] == 2
+            # Check DB records
+            count = await tmp_db.fetchval(
+                "SELECT COUNT(*) FROM swarm_tasks WHERE ooda_iteration_id = 'ooda-1'"
+            )
+            assert count == 2
 
-                # Check records have completed status
-                cursor = await db.execute(
-                    "SELECT status FROM swarm_tasks WHERE ooda_iteration_id = 'ooda-1'"
-                )
-                rows = await cursor.fetchall()
-                for r in rows:
-                    assert r[0] == "completed"
-            finally:
-                await db.close()
+            # Check records have completed status
+            rows = await tmp_db.fetch(
+                "SELECT status FROM swarm_tasks WHERE ooda_iteration_id = 'ooda-1'"
+            )
+            for r in rows:
+                assert r["status"] == "completed"
 
 
 # ---------------------------------------------------------------------------
@@ -453,14 +396,13 @@ class TestSwarmExecutorDBPersistence:
 class TestDecisionEngineParallelTasks:
     """Test that DecisionEngine.evaluate() produces parallel_tasks."""
 
-    async def _setup_db(self):
+    async def _setup_db(self, db):
         """Setup DB with operation, targets, and completed Kill Chain stages.
 
         SPEC-040: Composite confidence includes Kill Chain penalty.  Seed
         prior-stage execution data so the penalty does not push confidence
         below the 0.5 gate for these parallel-task tests.
         """
-        db = await _make_in_memory_db()
         await db.execute(
             "INSERT INTO operations (id, code, name, codename, strategic_intent, "
             "automation_mode, risk_threshold) "
@@ -468,7 +410,7 @@ class TestDecisionEngineParallelTasks:
         )
         await db.execute(
             "INSERT INTO targets (id, hostname, ip_address, os, role, operation_id, is_active) "
-            "VALUES ('tgt-1', 'host1', '10.0.0.1', 'Linux', 'server', 'op-1', 1)"
+            "VALUES ('tgt-1', 'host1', '10.0.0.1', 'Linux', 'server', 'op-1', TRUE)"
         )
         # Seed completed Kill Chain stages (TA0043 Recon, TA0001 Initial Access)
         await db.execute(
@@ -478,153 +420,140 @@ class TestDecisionEngineParallelTasks:
         )
         await db.execute(
             "INSERT INTO technique_executions (id, technique_id, target_id, operation_id, engine, status, started_at, completed_at) "
-            "VALUES ('te-1', 'T1595.001', 'tgt-1', 'op-1', 'mcp_ssh', 'success', datetime('now'), datetime('now')), "
-            "       ('te-2', 'T1190', 'tgt-1', 'op-1', 'mcp_ssh', 'success', datetime('now'), datetime('now'))"
+            "VALUES ('te-1', 'T1595.001', 'tgt-1', 'op-1', 'mcp_ssh', 'success', NOW(), NOW()), "
+            "       ('te-2', 'T1190', 'tgt-1', 'op-1', 'mcp_ssh', 'success', NOW(), NOW())"
         )
-        await db.commit()
-        return db
 
-    async def test_evaluate_produces_parallel_tasks(self):
+    async def test_evaluate_produces_parallel_tasks(self, tmp_db):
         from app.services.decision_engine import DecisionEngine
 
-        db = await self._setup_db()
-        try:
-            engine = DecisionEngine()
-            recommendation = {
-                "recommended_technique_id": "T1059.004",
-                "confidence": 0.8,
-                "options": [
-                    {
-                        "technique_id": "T1059.004",
-                        "risk_level": "low",
-                        "recommended_engine": "ssh",
-                        "target_id": "tgt-1",
-                    },
-                    {
-                        "technique_id": "T1087",
-                        "risk_level": "low",
-                        "recommended_engine": "ssh",
-                        "target_id": "tgt-1",
-                    },
-                ],
-            }
-            result = await engine.evaluate(db, "op-1", recommendation)
-            assert "parallel_tasks" in result
-            assert len(result["parallel_tasks"]) == 2
-            assert result["parallel_tasks"][0]["technique_id"] == "T1059.004"
-            assert result["parallel_tasks"][1]["technique_id"] == "T1087"
-        finally:
-            await db.close()
+        await self._setup_db(tmp_db)
 
-    async def test_manual_mode_no_parallel_tasks(self):
+        engine = DecisionEngine()
+        recommendation = {
+            "recommended_technique_id": "T1059.004",
+            "confidence": 0.8,
+            "options": [
+                {
+                    "technique_id": "T1059.004",
+                    "risk_level": "low",
+                    "recommended_engine": "ssh",
+                    "target_id": "tgt-1",
+                },
+                {
+                    "technique_id": "T1087",
+                    "risk_level": "low",
+                    "recommended_engine": "ssh",
+                    "target_id": "tgt-1",
+                },
+            ],
+        }
+        result = await engine.evaluate(tmp_db, "op-1", recommendation)
+        assert "parallel_tasks" in result
+        assert len(result["parallel_tasks"]) == 2
+        assert result["parallel_tasks"][0]["technique_id"] == "T1059.004"
+        assert result["parallel_tasks"][1]["technique_id"] == "T1087"
+
+    async def test_manual_mode_no_parallel_tasks(self, tmp_db):
         from app.services.decision_engine import DecisionEngine
 
-        db = await _make_in_memory_db()
-        try:
-            await db.execute(
-                "INSERT INTO operations (id, code, name, codename, strategic_intent, "
-                "automation_mode, risk_threshold) "
-                "VALUES ('op-m', 'OP-M', 'Manual', 'MANUAL', 'test', 'manual', 'medium')"
-            )
-            await db.execute(
-                "INSERT INTO targets (id, hostname, ip_address, os, role, operation_id) "
-                "VALUES ('tgt-m', 'host-m', '10.0.0.2', 'Linux', 'server', 'op-m')"
-            )
-            await db.commit()
+        await tmp_db.execute(
+            "INSERT INTO operations (id, code, name, codename, strategic_intent, "
+            "automation_mode, risk_threshold) "
+            "VALUES ('op-m', 'OP-M', 'Manual', 'MANUAL', 'test', 'manual', 'medium')"
+        )
+        await tmp_db.execute(
+            "INSERT INTO targets (id, hostname, ip_address, os, role, operation_id) "
+            "VALUES ('tgt-m', 'host-m', '10.0.0.2', 'Linux', 'server', 'op-m')"
+        )
 
-            engine = DecisionEngine()
-            recommendation = {
-                "recommended_technique_id": "T1059.004",
-                "confidence": 0.8,
-                "options": [
-                    {
-                        "technique_id": "T1059.004",
-                        "risk_level": "low",
-                        "recommended_engine": "ssh",
-                        "target_id": "tgt-m",
-                    },
-                ],
-            }
-            result = await engine.evaluate(db, "op-m", recommendation)
-            assert "parallel_tasks" in result
-            assert result["parallel_tasks"] == []
-        finally:
-            await db.close()
+        engine = DecisionEngine()
+        recommendation = {
+            "recommended_technique_id": "T1059.004",
+            "confidence": 0.8,
+            "options": [
+                {
+                    "technique_id": "T1059.004",
+                    "risk_level": "low",
+                    "recommended_engine": "ssh",
+                    "target_id": "tgt-m",
+                },
+            ],
+        }
+        result = await engine.evaluate(tmp_db, "op-m", recommendation)
+        assert "parallel_tasks" in result
+        assert result["parallel_tasks"] == []
 
-    async def test_high_risk_excluded_from_parallel_tasks(self):
+    async def test_high_risk_excluded_from_parallel_tasks(self, tmp_db):
         from app.services.decision_engine import DecisionEngine
 
-        db = await self._setup_db()
-        try:
-            engine = DecisionEngine()
-            recommendation = {
-                "recommended_technique_id": "T1059.004",
-                "confidence": 0.8,
-                "options": [
-                    {
-                        "technique_id": "T1059.004",
-                        "risk_level": "low",
-                        "recommended_engine": "ssh",
-                        "target_id": "tgt-1",
-                    },
-                    {
-                        "technique_id": "T1003.001",
-                        "risk_level": "high",
-                        "recommended_engine": "ssh",
-                        "target_id": "tgt-1",
-                    },
-                    {
-                        "technique_id": "T_CRITICAL",
-                        "risk_level": "critical",
-                        "recommended_engine": "ssh",
-                        "target_id": "tgt-1",
-                    },
-                ],
-            }
-            result = await engine.evaluate(db, "op-1", recommendation)
-            assert "parallel_tasks" in result
-            # Only the low-risk technique should be in parallel_tasks
-            technique_ids = [t["technique_id"] for t in result["parallel_tasks"]]
-            assert "T1059.004" in technique_ids
-            assert "T1003.001" not in technique_ids
-            assert "T_CRITICAL" not in technique_ids
-        finally:
-            await db.close()
+        await self._setup_db(tmp_db)
 
-    async def test_parallel_tasks_dedup(self):
+        engine = DecisionEngine()
+        recommendation = {
+            "recommended_technique_id": "T1059.004",
+            "confidence": 0.8,
+            "options": [
+                {
+                    "technique_id": "T1059.004",
+                    "risk_level": "low",
+                    "recommended_engine": "ssh",
+                    "target_id": "tgt-1",
+                },
+                {
+                    "technique_id": "T1003.001",
+                    "risk_level": "high",
+                    "recommended_engine": "ssh",
+                    "target_id": "tgt-1",
+                },
+                {
+                    "technique_id": "T_CRITICAL",
+                    "risk_level": "critical",
+                    "recommended_engine": "ssh",
+                    "target_id": "tgt-1",
+                },
+            ],
+        }
+        result = await engine.evaluate(tmp_db, "op-1", recommendation)
+        assert "parallel_tasks" in result
+        # Only the low-risk technique should be in parallel_tasks
+        technique_ids = [t["technique_id"] for t in result["parallel_tasks"]]
+        assert "T1059.004" in technique_ids
+        assert "T1003.001" not in technique_ids
+        assert "T_CRITICAL" not in technique_ids
+
+    async def test_parallel_tasks_dedup(self, tmp_db):
         from app.services.decision_engine import DecisionEngine
 
-        db = await self._setup_db()
-        try:
-            engine = DecisionEngine()
-            recommendation = {
-                "recommended_technique_id": "T1059.004",
-                "confidence": 0.8,
-                "options": [
-                    {
-                        "technique_id": "T1059.004",
-                        "risk_level": "low",
-                        "recommended_engine": "ssh",
-                        "target_id": "tgt-1",
-                    },
-                    {
-                        "technique_id": "T1059.004",
-                        "risk_level": "low",
-                        "recommended_engine": "ssh",
-                        "target_id": "tgt-1",
-                    },
-                    {
-                        "technique_id": "T1087",
-                        "risk_level": "medium",
-                        "recommended_engine": "ssh",
-                        "target_id": "tgt-1",
-                    },
-                ],
-            }
-            result = await engine.evaluate(db, "op-1", recommendation)
-            assert "parallel_tasks" in result
-            # T1059.004 should appear only once
-            technique_ids = [t["technique_id"] for t in result["parallel_tasks"]]
-            assert technique_ids.count("T1059.004") == 1
-        finally:
-            await db.close()
+        await self._setup_db(tmp_db)
+
+        engine = DecisionEngine()
+        recommendation = {
+            "recommended_technique_id": "T1059.004",
+            "confidence": 0.8,
+            "options": [
+                {
+                    "technique_id": "T1059.004",
+                    "risk_level": "low",
+                    "recommended_engine": "ssh",
+                    "target_id": "tgt-1",
+                },
+                {
+                    "technique_id": "T1059.004",
+                    "risk_level": "low",
+                    "recommended_engine": "ssh",
+                    "target_id": "tgt-1",
+                },
+                {
+                    "technique_id": "T1087",
+                    "risk_level": "medium",
+                    "recommended_engine": "ssh",
+                    "target_id": "tgt-1",
+                },
+            ],
+        }
+        result = await engine.evaluate(tmp_db, "op-1", recommendation)
+        assert "parallel_tasks" in result
+        # T1059.004 should appear only once
+        technique_ids = [t["technique_id"] for t in result["parallel_tasks"]]
+        assert technique_ids.count("T1059.004") == 1

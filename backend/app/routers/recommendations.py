@@ -13,7 +13,7 @@
 import json
 from datetime import datetime, timezone
 
-import aiosqlite
+import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.database import get_db
@@ -24,7 +24,7 @@ from app.routers._deps import ensure_operation
 router = APIRouter()
 
 
-def _row_to_recommendation(row: aiosqlite.Row) -> OrientRecommendation:
+def _row_to_recommendation(row: asyncpg.Record) -> OrientRecommendation:
     options_raw = json.loads(row["options"]) if row["options"] else []
     return OrientRecommendation(
         id=row["id"],
@@ -48,16 +48,15 @@ def _row_to_recommendation(row: aiosqlite.Row) -> OrientRecommendation:
 
 async def get_latest_recommendation(
     operation_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     await ensure_operation(db, operation_id)
 
-    cursor = await db.execute(
-        "SELECT * FROM recommendations WHERE operation_id = ? "
+    row = await db.fetchrow(
+        "SELECT * FROM recommendations WHERE operation_id = $1 "
         "ORDER BY created_at DESC LIMIT 1",
-        (operation_id,),
+        operation_id,
     )
-    row = await cursor.fetchone()
     if not row:
         return None
     return _row_to_recommendation(row)
@@ -72,17 +71,16 @@ async def get_latest_recommendation(
 async def list_recommendations(
     operation_id: str,
     limit: int = Query(20, ge=1, le=100),
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """List all past recommendations for an operation, newest first."""
     await ensure_operation(db, operation_id)
 
-    cursor = await db.execute(
-        "SELECT * FROM recommendations WHERE operation_id = ? "
-        "ORDER BY created_at DESC LIMIT ?",
-        (operation_id, limit),
+    rows = await db.fetch(
+        "SELECT * FROM recommendations WHERE operation_id = $1 "
+        "ORDER BY created_at DESC LIMIT $2",
+        operation_id, limit,
     )
-    rows = await cursor.fetchall()
     return [_row_to_recommendation(r) for r in rows]
 
 
@@ -95,26 +93,23 @@ async def list_recommendations(
 async def accept_recommendation(
     operation_id: str,
     recommendation_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     await ensure_operation(db, operation_id)
 
-    cursor = await db.execute(
-        "SELECT * FROM recommendations WHERE id = ? AND operation_id = ?",
-        (recommendation_id, operation_id),
+    row = await db.fetchrow(
+        "SELECT * FROM recommendations WHERE id = $1 AND operation_id = $2",
+        recommendation_id, operation_id,
     )
-    row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Recommendation not found")
 
     await db.execute(
-        "UPDATE recommendations SET accepted = 1 WHERE id = ?",
-        (recommendation_id,),
+        "UPDATE recommendations SET accepted = TRUE WHERE id = $1",
+        recommendation_id,
     )
-    await db.commit()
 
-    cursor = await db.execute(
-        "SELECT * FROM recommendations WHERE id = ?", (recommendation_id,)
+    row = await db.fetchrow(
+        "SELECT * FROM recommendations WHERE id = $1", recommendation_id
     )
-    row = await cursor.fetchone()
     return _row_to_recommendation(row)

@@ -10,7 +10,7 @@
 
 """Fact endpoints."""
 
-import aiosqlite
+import asyncpg
 from fastapi import APIRouter, Depends
 
 from app.database import get_db
@@ -20,7 +20,7 @@ from app.routers._deps import ensure_operation
 router = APIRouter()
 
 
-def _row_to_fact(row: aiosqlite.Row) -> Fact:
+def _row_to_fact(row: asyncpg.Record) -> Fact:
     return Fact(
         id=row["id"],
         trait=row["trait"],
@@ -40,20 +40,19 @@ def _row_to_fact(row: aiosqlite.Row) -> Fact:
 async def list_facts(
     operation_id: str,
     target_id: str | None = None,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     await ensure_operation(db, operation_id)
 
     if target_id:
-        cursor = await db.execute(
-            "SELECT * FROM facts WHERE operation_id = ? AND source_target_id = ? "
+        rows = await db.fetch(
+            "SELECT * FROM facts WHERE operation_id = $1 AND source_target_id = $2 "
             "ORDER BY collected_at DESC",
-            (operation_id, target_id),
+            operation_id, target_id,
         )
     else:
-        cursor = await db.execute(
-            "SELECT * FROM facts WHERE operation_id = ? ORDER BY collected_at DESC",
-            (operation_id,),
+        rows = await db.fetch(
+            "SELECT * FROM facts WHERE operation_id = $1 ORDER BY collected_at DESC",
+            operation_id,
         )
-    rows = await cursor.fetchall()
     return [_row_to_fact(r) for r in rows]

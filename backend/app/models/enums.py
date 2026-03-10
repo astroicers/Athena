@@ -140,3 +140,35 @@ class ToolCategory(str, Enum):
     CREDENTIAL_ACCESS = "credential_access"
     EXPLOITATION = "exploitation"
     EXECUTION = "execution"
+
+
+class MissionProfile(str, Enum):
+    SR = "SR"  # Stealth Recon
+    CO = "CO"  # Covert Operation
+    SP = "SP"  # Standard Pentest
+    FA = "FA"  # Full Assault
+
+
+class NoiseLevel(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class OPSECSeverity(str, Enum):
+    INFO = "info"
+    WARNING = "warning"
+    CRITICAL = "critical"
+
+
+class OPSECEventType(str, Enum):
+    BURST = "burst"
+    AUTH_FAILURE = "auth_failure"
+    HIGH_NOISE = "high_noise"
+    ARTIFACT = "artifact"
+    DETECTION = "detection"
+
+
+class ConstraintLevel(str, Enum):
+    WARNING = "warning"
+    CRITICAL = "critical"

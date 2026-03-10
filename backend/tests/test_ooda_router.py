@@ -72,7 +72,7 @@ async def test_run_ooda_background_broadcasts_failed_on_exception():
     from app.routers.ooda import _run_ooda_background
 
     with patch("app.routers.ooda._get_controller") as mock_get_ctrl, \
-         patch("aiosqlite.connect") as mock_connect, \
+         patch("app.routers.ooda.db_manager") as mock_db_mgr, \
          patch("app.routers.ooda.ws_manager") as mock_ws:
 
         # Simulate controller.trigger_cycle raising an exception
@@ -80,10 +80,12 @@ async def test_run_ooda_background_broadcasts_failed_on_exception():
         mock_ctrl.trigger_cycle = AsyncMock(side_effect=RuntimeError("OODA cycle exploded"))
         mock_get_ctrl.return_value = mock_ctrl
 
-        # Make aiosqlite.connect behave as an async context manager
+        # Make db_manager.connection() behave as an async context manager
         mock_db = AsyncMock()
-        mock_connect.return_value.__aenter__ = AsyncMock(return_value=mock_db)
-        mock_connect.return_value.__aexit__ = AsyncMock(return_value=False)
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__ = AsyncMock(return_value=mock_db)
+        mock_ctx.__aexit__ = AsyncMock(return_value=False)
+        mock_db_mgr.connection.return_value = mock_ctx
 
         mock_ws.broadcast = AsyncMock()
 

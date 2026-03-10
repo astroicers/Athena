@@ -21,7 +21,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-import aiosqlite
+import asyncpg
 
 from app.config import settings
 from app.models.recon import InitialAccessResult
@@ -103,7 +103,7 @@ class InitialAccessEngine:
 
     async def try_initial_access(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         operation_id: str,
         target_id: str,
         ip: str,
@@ -157,7 +157,7 @@ class InitialAccessEngine:
 
     async def _try_mcp_credential_check(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         operation_id: str,
         target_id: str,
         ip: str,
@@ -242,7 +242,7 @@ class InitialAccessEngine:
 
     async def try_ssh_login(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         operation_id: str,
         target_id: str,
         ip: str,
@@ -403,7 +403,7 @@ class InitialAccessEngine:
 
     async def _register_agent(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         operation_id: str,
         target_id: str,
         ip_address: str,
@@ -419,27 +419,25 @@ class InitialAccessEngine:
         platform = "windows" if protocol in ("rdp", "winrm") else "linux"
         is_admin = credential.startswith("root:") or credential.lower().startswith("administrator:")
         privilege = "root" if is_admin else "user"
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
 
         # Upsert: update existing agent or insert new one
-        existing = await db.execute(
-            "SELECT id FROM agents WHERE paw = ? AND operation_id = ?",
-            (paw, operation_id),
+        row = await db.fetchrow(
+            "SELECT id FROM agents WHERE paw = $1 AND operation_id = $2",
+            paw, operation_id,
         )
-        row = await existing.fetchone()
         if row:
             await db.execute(
-                "UPDATE agents SET host_id=?, status='alive', privilege=?, platform=?, last_beacon=? WHERE id=?",
-                (target_id, privilege, platform, now, row[0]),
+                "UPDATE agents SET host_id=$1, status='alive', privilege=$2, platform=$3, last_beacon=$4 WHERE id=$5",
+                target_id, privilege, platform, now, row["id"],
             )
         else:
             await db.execute(
                 """INSERT INTO agents
                     (id, paw, host_id, status, privilege, platform, operation_id, last_beacon)
-                VALUES (?, ?, ?, 'alive', ?, ?, ?, ?)""",
-                (str(uuid.uuid4()), paw, target_id, privilege, platform, operation_id, now),
+                VALUES ($1, $2, $3, 'alive', $4, $5, $6, $7)""",
+                str(uuid.uuid4()), paw, target_id, privilege, platform, operation_id, now,
             )
-        await db.commit()
 
     # Backward-compatible alias
     async def _register_ssh_agent(self, db, operation_id, target_id, ip_address, credential):
@@ -447,7 +445,7 @@ class InitialAccessEngine:
 
     async def _mock_ssh_result(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         operation_id: str,
         target_id: str,
         ip: str,
@@ -471,7 +469,7 @@ class InitialAccessEngine:
 
     async def _load_harvested_creds(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         operation_id: str,
     ) -> list[tuple[str, str]]:
         """Load credential facts already collected in this operation.
@@ -481,16 +479,14 @@ class InitialAccessEngine:
         - ``user:pass@host:port``  (written by ``_write_credential_fact``)
         - ``user:pass``            (plaintext dump format)
         """
-        db.row_factory = aiosqlite.Row
-        cursor = await db.execute(
+        rows = await db.fetch(
             "SELECT value FROM facts "
-            "WHERE operation_id = ? AND category = 'credential' "
+            "WHERE operation_id = $1 AND category = 'credential' "
             "AND trait IN ('credential.ssh', 'credential.rdp', 'credential.winrm', "
             "'credential.plaintext', 'credential.dumped') "
             "ORDER BY score DESC, collected_at DESC",
-            (operation_id,),
+            operation_id,
         )
-        rows = await cursor.fetchall()
 
         seen: set[tuple[str, str]] = set()
         creds: list[tuple[str, str]] = []
@@ -508,7 +504,7 @@ class InitialAccessEngine:
 
     async def _real_ssh_login(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         operation_id: str,
         target_id: str,
         ip: str,
@@ -614,7 +610,7 @@ class InitialAccessEngine:
 
     async def _write_credential_fact(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         operation_id: str,
         target_id: str,
         cred_value: str,
@@ -622,16 +618,15 @@ class InitialAccessEngine:
     ) -> None:
         """Insert a credential fact into the facts table and broadcast it."""
         fact_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
 
         await db.execute(
-            "INSERT OR IGNORE INTO facts "
+            "INSERT INTO facts "
             "(id, trait, value, category, source_technique_id, "
             "source_target_id, operation_id, score, collected_at) "
-            "VALUES (?, ?, ?, ?, NULL, ?, ?, 1, ?)",
-            (fact_id, trait, cred_value, "credential", target_id, operation_id, now),
+            "VALUES ($1, $2, $3, $4, NULL, $5, $6, 1, $7) ON CONFLICT DO NOTHING",
+            fact_id, trait, cred_value, "credential", target_id, operation_id, now,
         )
-        await db.commit()
 
         # Broadcast unconditionally — DB-level UNIQUE index handles dedup
         fact_payload = {

@@ -13,7 +13,7 @@
 import uuid
 from datetime import datetime, timezone
 
-import aiosqlite
+import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.database import get_db
@@ -24,7 +24,7 @@ from app.routers._deps import ensure_operation
 router = APIRouter()
 
 
-def _row_to_step(row: aiosqlite.Row) -> MissionStep:
+def _row_to_step(row: asyncpg.Record) -> MissionStep:
     return MissionStep(
         id=row["id"],
         operation_id=row["operation_id"],
@@ -46,15 +46,14 @@ def _row_to_step(row: aiosqlite.Row) -> MissionStep:
 
 async def list_mission_steps(
     operation_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     await ensure_operation(db, operation_id)
 
-    cursor = await db.execute(
-        "SELECT * FROM mission_steps WHERE operation_id = ? ORDER BY step_number",
-        (operation_id,),
+    rows = await db.fetch(
+        "SELECT * FROM mission_steps WHERE operation_id = $1 ORDER BY step_number",
+        operation_id,
     )
-    rows = await cursor.fetchall()
     return [_row_to_step(r) for r in rows]
 
 
@@ -68,34 +67,30 @@ async def list_mission_steps(
 async def create_mission_step(
     operation_id: str,
     body: MissionStepCreate,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     await ensure_operation(db, operation_id)
 
     step_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(timezone.utc)
 
     await db.execute(
         "INSERT INTO mission_steps "
         "(id, operation_id, step_number, technique_id, technique_name, "
         "target_id, target_label, engine, status, created_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'queued', ?)",
-        (
-            step_id,
-            operation_id,
-            body.step_number,
-            body.technique_id,
-            body.technique_name,
-            body.target_id,
-            body.target_label,
-            body.engine.value,
-            now,
-        ),
+        "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'queued', $9)",
+        step_id,
+        operation_id,
+        body.step_number,
+        body.technique_id,
+        body.technique_name,
+        body.target_id,
+        body.target_label,
+        body.engine.value,
+        now,
     )
-    await db.commit()
 
-    cursor = await db.execute("SELECT * FROM mission_steps WHERE id = ?", (step_id,))
-    row = await cursor.fetchone()
+    row = await db.fetchrow("SELECT * FROM mission_steps WHERE id = $1", step_id)
     return _row_to_step(row)
 
 
@@ -109,25 +104,24 @@ async def update_mission_step(
     operation_id: str,
     step_id: str,
     body: MissionStepUpdate,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     await ensure_operation(db, operation_id)
 
-    cursor = await db.execute(
-        "SELECT * FROM mission_steps WHERE id = ? AND operation_id = ?",
-        (step_id, operation_id),
+    row = await db.fetchrow(
+        "SELECT * FROM mission_steps WHERE id = $1 AND operation_id = $2",
+        step_id, operation_id,
     )
-    if not await cursor.fetchone():
+    if not row:
         raise HTTPException(status_code=404, detail="Mission step not found")
 
     updates = body.model_dump(exclude_none=True)
     if not updates:
-        cursor = await db.execute("SELECT * FROM mission_steps WHERE id = ?", (step_id,))
-        row = await cursor.fetchone()
+        row = await db.fetchrow("SELECT * FROM mission_steps WHERE id = $1", step_id)
         return _row_to_step(row)
 
     # Handle started_at / completed_at timestamps based on status transitions
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(timezone.utc)
     if "status" in updates:
         status_val = updates["status"]
         if hasattr(status_val, "value"):
@@ -138,16 +132,14 @@ async def update_mission_step(
         elif status_val in ("completed", "failed", "skipped"):
             updates["completed_at"] = now
 
-    set_clause = ", ".join(f"{k} = ?" for k in updates)
+    set_clause = ", ".join(f"{k} = ${i+1}" for i, k in enumerate(updates))
     values = list(updates.values())
     values.append(step_id)
 
     await db.execute(
-        f"UPDATE mission_steps SET {set_clause} WHERE id = ?",
-        values,
+        f"UPDATE mission_steps SET {set_clause} WHERE id = ${len(values)}",
+        *values,
     )
-    await db.commit()
 
-    cursor = await db.execute("SELECT * FROM mission_steps WHERE id = ?", (step_id,))
-    row = await cursor.fetchone()
+    row = await db.fetchrow("SELECT * FROM mission_steps WHERE id = $1", step_id)
     return _row_to_step(row)

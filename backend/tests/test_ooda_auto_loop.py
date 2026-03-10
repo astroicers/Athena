@@ -37,7 +37,7 @@ async def test_start_auto_loop_registers_job(tmp_path):
         mock_sched.running = True
         mock_sched.get_job.return_value = None
         mock_sched.add_job = MagicMock()
-        result = await start_auto_loop("op-001", db_path, interval_sec=5, max_iterations=3)
+        result = await start_auto_loop("op-001", interval_sec=5, max_iterations=3)
     assert result["status"] == "started"
     assert result["operation_id"] == "op-001"
     assert result["interval_sec"] == 5

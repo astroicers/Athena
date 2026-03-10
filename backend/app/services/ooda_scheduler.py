@@ -13,7 +13,6 @@
 import logging
 from typing import Any
 
-import aiosqlite
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.config import settings
@@ -43,7 +42,6 @@ def stop_scheduler() -> None:
 
 async def start_auto_loop(
     operation_id: str,
-    db_path: str,
     interval_sec: int = settings.OODA_LOOP_INTERVAL_SEC,
     max_iterations: int = 0,
 ) -> dict:
@@ -51,7 +49,6 @@ async def start_auto_loop(
     if operation_id in _active_loops:
         return {"status": "already_running", "operation_id": operation_id}
 
-    # Issue 4: Build controller once here, captured in closure below
     controller = build_ooda_controller()
 
     _active_loops[operation_id] = {
@@ -62,6 +59,8 @@ async def start_auto_loop(
     }
 
     async def _run_cycle():
+        from app.database import db_manager
+
         meta = _active_loops.get(operation_id)
         if not meta:
             return
@@ -76,10 +75,7 @@ async def start_auto_loop(
         meta["iteration_count"] += 1
         logger.info("OODA auto-cycle %d for operation %s", meta["iteration_count"], operation_id)
         try:
-            # Issue 6: Enable foreign key enforcement on every scheduler-owned connection
-            async with aiosqlite.connect(db_path) as db:
-                await db.execute("PRAGMA foreign_keys = ON")
-                db.row_factory = aiosqlite.Row
+            async with db_manager.connection() as db:
                 await controller.trigger_cycle(db, operation_id)
         except Exception:
             logger.exception("OODA auto-cycle failed for operation %s", operation_id)

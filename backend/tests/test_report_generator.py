@@ -23,9 +23,12 @@ from app.models.report import PentestReport, Finding
 # ---------------------------------------------------------------------------
 
 def make_mock_db(op_row=None, eng_row=None, targets=None, facts=None, ooda_rows=None, rec_rows=None, mitre_rows=None, recon_rows=None):
-    """Build a mock DB that returns predetermined rows for sequential queries."""
+    """Build a mock DB that returns predetermined rows for asyncpg direct methods.
+
+    The generate() method now uses db.fetchrow() and db.fetch() directly via
+    asyncio.gather. We use side_effect functions that inspect SQL to route results.
+    """
     db = AsyncMock()
-    db.row_factory = None
 
     # Default empty data
     if targets is None:
@@ -42,81 +45,48 @@ def make_mock_db(op_row=None, eng_row=None, targets=None, facts=None, ooda_rows=
         recon_rows = []
 
     def make_row(d):
+        """Create a dict-like mock that supports dict(row) and row['key']."""
         row = MagicMock()
         row.__getitem__ = lambda self, k: d[k]
         row.keys = lambda: d.keys()
-        # Make it work with dict(row)
         for k, v in d.items():
             setattr(row, k, v)
         return row
 
-    # Build sequences of return values for db.execute().fetchone() and fetchall()
-    # The generate() method makes these queries in order:
-    # 1. operations SELECT (fetchone)
-    # 2. engagements SELECT (fetchone)
-    # 3. targets SELECT (fetchall)
-    # 4. COUNT osint.subdomain (fetchone)
-    # 5. COUNT service facts (fetchone)
-    # 6. vuln.cve facts (fetchall)
-    # 7. ooda_iterations SELECT (fetchall)
-    # 8. recommendations SELECT (fetchall)
-    # 9. technique_executions JOIN techniques (fetchall)
-    # 10. recon_scans COUNT (fetchone)
+    # Route fetchrow calls by SQL content
+    async def mock_fetchrow(sql, *args):
+        sql_lower = sql.lower()
+        if "operations" in sql_lower:
+            return make_row(op_row) if op_row else None
+        if "engagements" in sql_lower:
+            return make_row(eng_row) if eng_row else None
+        if "osint.subdomain" in sql_lower or "trait = " in sql_lower:
+            return make_row({"cnt": 0})
+        if "category = " in sql_lower and "service" in sql_lower:
+            return make_row({"cnt": 0})
+        if "recon_scans" in sql_lower:
+            return make_row({"cnt": len(recon_rows)})
+        return make_row({"cnt": 0})
 
-    # Prepare cursor mocks
-    cursors = []
+    # Route fetch calls by SQL content
+    async def mock_fetch(sql, *args):
+        sql_lower = sql.lower()
+        if "targets" in sql_lower:
+            return [make_row(t) for t in targets]
+        if "vuln.cve" in sql_lower or "trait = " in sql_lower:
+            return [make_row(f) for f in facts]
+        if "ooda_iterations" in sql_lower:
+            return [make_row(r) for r in ooda_rows]
+        if "recommendations" in sql_lower:
+            return [make_row(r) for r in rec_rows]
+        if "technique_executions" in sql_lower:
+            return [make_row(r) for r in mitre_rows]
+        return []
 
-    # 1. op row
-    c = AsyncMock()
-    c.fetchone = AsyncMock(return_value=make_row(op_row) if op_row else None)
-    cursors.append(c)
-
-    # 2. engagement row
-    c = AsyncMock()
-    c.fetchone = AsyncMock(return_value=make_row(eng_row) if eng_row else None)
-    cursors.append(c)
-
-    # 3. targets fetchall
-    c = AsyncMock()
-    c.fetchall = AsyncMock(return_value=[make_row(t) for t in targets])
-    cursors.append(c)
-
-    # 4. subdomain count
-    c = AsyncMock()
-    c.fetchone = AsyncMock(return_value=make_row({"cnt": 0}))
-    cursors.append(c)
-
-    # 5. service facts count
-    c = AsyncMock()
-    c.fetchone = AsyncMock(return_value=make_row({"cnt": 0}))
-    cursors.append(c)
-
-    # 6. vuln.cve facts
-    c = AsyncMock()
-    c.fetchall = AsyncMock(return_value=[make_row(f) for f in facts])
-    cursors.append(c)
-
-    # 7. ooda iterations
-    c = AsyncMock()
-    c.fetchall = AsyncMock(return_value=[make_row(r) for r in ooda_rows])
-    cursors.append(c)
-
-    # 8. recommendations
-    c = AsyncMock()
-    c.fetchall = AsyncMock(return_value=[make_row(r) for r in rec_rows])
-    cursors.append(c)
-
-    # 9. mitre coverage
-    c = AsyncMock()
-    c.fetchall = AsyncMock(return_value=[make_row(r) for r in mitre_rows])
-    cursors.append(c)
-
-    # 10. recon_scans count
-    c = AsyncMock()
-    c.fetchone = AsyncMock(return_value=make_row({"cnt": len(recon_rows)}))
-    cursors.append(c)
-
-    db.execute = AsyncMock(side_effect=cursors)
+    db.fetchrow = AsyncMock(side_effect=mock_fetchrow)
+    db.fetch = AsyncMock(side_effect=mock_fetch)
+    db.fetchval = AsyncMock(return_value=None)
+    db.execute = AsyncMock(return_value="INSERT 0 1")
     return db
 
 

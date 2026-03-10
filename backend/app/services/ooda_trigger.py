@@ -14,8 +14,6 @@ import asyncio
 import logging
 import uuid
 
-import aiosqlite
-
 logger = logging.getLogger(__name__)
 
 
@@ -37,7 +35,7 @@ async def auto_trigger_ooda(
         Optional override for the delay before triggering.
         Defaults to 5 seconds.
     """
-    from app.database import _DB_FILE
+    from app.database import db_manager
     from app.services.ooda_controller import build_ooda_controller
     from app.ws_manager import ws_manager
 
@@ -53,8 +51,7 @@ async def auto_trigger_ooda(
     )
 
     iteration_id = str(uuid.uuid4())
-    async with aiosqlite.connect(_DB_FILE) as db:
-        db.row_factory = aiosqlite.Row
+    async with db_manager.connection() as db:
         try:
             controller = build_ooda_controller()
             await controller.trigger_cycle(db, operation_id)

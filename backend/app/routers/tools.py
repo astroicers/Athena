@@ -14,7 +14,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-import aiosqlite
+import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.database import get_db
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/tools", tags=["Tools"])
 
 
-def _row_to_tool(row: aiosqlite.Row) -> dict:
+def _row_to_tool(row: asyncpg.Record) -> dict:
     return {
         "id": row["id"],
         "tool_id": row["tool_id"],
@@ -43,8 +43,8 @@ def _row_to_tool(row: aiosqlite.Row) -> dict:
         "mitre_techniques": json.loads(row["mitre_techniques"] or "[]"),
         "risk_level": row["risk_level"],
         "output_traits": json.loads(row["output_traits"] or "[]"),
-        "created_at": row["created_at"],
-        "updated_at": row["updated_at"],
+        "created_at": row["created_at"].isoformat() if hasattr(row["created_at"], "isoformat") else row["created_at"],
+        "updated_at": row["updated_at"].isoformat() if hasattr(row["updated_at"], "isoformat") else row["updated_at"],
     }
 
 
@@ -55,23 +55,26 @@ async def list_tools(
     kind: str | None = None,
     category: str | None = None,
     enabled: bool | None = None,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """List all tools with optional filtering by kind, category, enabled."""
     query = "SELECT * FROM tool_registry WHERE 1=1"
     params: list = []
+    idx = 0
     if kind:
-        query += " AND kind = ?"
+        idx += 1
+        query += f" AND kind = ${idx}"
         params.append(kind)
     if category:
-        query += " AND category = ?"
+        idx += 1
+        query += f" AND category = ${idx}"
         params.append(category)
     if enabled is not None:
-        query += " AND enabled = ?"
-        params.append(int(enabled))
+        idx += 1
+        query += f" AND enabled = ${idx}"
+        params.append(enabled)
     query += " ORDER BY created_at ASC"
-    cursor = await db.execute(query, params)
-    rows = await cursor.fetchall()
+    rows = await db.fetch(query, *params)
     return [_row_to_tool(r) for r in rows]
 
 
@@ -80,13 +83,12 @@ async def list_tools(
 
 async def get_tool(
     tool_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Get a specific tool by tool_id slug (NOT uuid)."""
-    cursor = await db.execute(
-        "SELECT * FROM tool_registry WHERE tool_id = ?", (tool_id,)
+    row = await db.fetchrow(
+        "SELECT * FROM tool_registry WHERE tool_id = $1", tool_id
     )
-    row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Tool not found")
     return _row_to_tool(row)
@@ -97,49 +99,46 @@ async def get_tool(
 
 async def create_tool(
     body: ToolRegistryCreate,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Create a new tool (source='user')."""
 
     # Check for duplicate tool_id
-    cursor = await db.execute(
-        "SELECT id FROM tool_registry WHERE tool_id = ?", (body.tool_id,)
+    row = await db.fetchrow(
+        "SELECT id FROM tool_registry WHERE tool_id = $1", body.tool_id
     )
-    if await cursor.fetchone():
+    if row:
         raise HTTPException(
             status_code=409, detail=f"Tool with tool_id '{body.tool_id}' already exists"
         )
 
     row_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(timezone.utc)
     await db.execute(
         """INSERT INTO tool_registry
            (id, tool_id, name, description, kind, category, version,
             enabled, source, config_json, mitre_techniques, risk_level,
             output_traits, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'user', ?, ?, ?, ?, ?, ?)""",
-        (
-            row_id,
-            body.tool_id,
-            body.name,
-            body.description,
-            body.kind,
-            body.category,
-            body.version,
-            int(body.enabled),
-            json.dumps(body.config_json),
-            json.dumps(body.mitre_techniques),
-            body.risk_level,
-            json.dumps(body.output_traits),
-            now,
-            now,
-        ),
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'user', $9, $10, $11, $12, $13, $14)""",
+        row_id,
+        body.tool_id,
+        body.name,
+        body.description,
+        body.kind,
+        body.category,
+        body.version,
+        body.enabled,
+        json.dumps(body.config_json),
+        json.dumps(body.mitre_techniques),
+        body.risk_level,
+        json.dumps(body.output_traits),
+        now,
+        now,
     )
-    await db.commit()
-    cursor = await db.execute(
-        "SELECT * FROM tool_registry WHERE id = ?", (row_id,)
+    row = await db.fetchrow(
+        "SELECT * FROM tool_registry WHERE id = $1", row_id
     )
-    return _row_to_tool(await cursor.fetchone())
+    return _row_to_tool(row)
 
 
 @router.patch("/{tool_id}", response_model=ToolRegistryEntry)
@@ -148,13 +147,12 @@ async def create_tool(
 async def update_tool(
     tool_id: str,
     body: ToolRegistryUpdate,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Update an existing tool. Cannot change tool_id, kind, or source."""
-    cursor = await db.execute(
-        "SELECT * FROM tool_registry WHERE tool_id = ?", (tool_id,)
+    existing = await db.fetchrow(
+        "SELECT * FROM tool_registry WHERE tool_id = $1", tool_id
     )
-    existing = await cursor.fetchone()
     if not existing:
         raise HTTPException(status_code=404, detail="Tool not found")
 
@@ -167,23 +165,24 @@ async def update_tool(
         elif field == "output_traits":
             updates["output_traits"] = json.dumps(value) if value is not None else "[]"
         elif field == "enabled":
-            updates["enabled"] = int(value) if value is not None else 1
+            updates["enabled"] = value if value is not None else True
         else:
             updates[field] = value
 
     if updates:
-        updates["updated_at"] = datetime.now(timezone.utc).isoformat()
-        set_clause = ", ".join(f"{k} = ?" for k in updates)
+        updates["updated_at"] = datetime.now(timezone.utc)
+        set_clause = ", ".join(f"{k} = ${i+1}" for i, k in enumerate(updates))
+        values = list(updates.values())
+        values.append(tool_id)
         await db.execute(  # noqa: S608
-            f"UPDATE tool_registry SET {set_clause} WHERE tool_id = ?",
-            (*updates.values(), tool_id),
+            f"UPDATE tool_registry SET {set_clause} WHERE tool_id = ${len(values)}",
+            *values,
         )
-        await db.commit()
 
-    cursor = await db.execute(
-        "SELECT * FROM tool_registry WHERE tool_id = ?", (tool_id,)
+    row = await db.fetchrow(
+        "SELECT * FROM tool_registry WHERE tool_id = $1", tool_id
     )
-    return _row_to_tool(await cursor.fetchone())
+    return _row_to_tool(row)
 
 
 @router.delete("/{tool_id}", status_code=204)
@@ -191,21 +190,19 @@ async def update_tool(
 
 async def delete_tool(
     tool_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Delete a user-created tool. Seed tools cannot be deleted (403)."""
-    cursor = await db.execute(
-        "SELECT source FROM tool_registry WHERE tool_id = ?", (tool_id,)
+    row = await db.fetchrow(
+        "SELECT source FROM tool_registry WHERE tool_id = $1", tool_id
     )
-    row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Tool not found")
     if row["source"] == "seed":
         raise HTTPException(status_code=403, detail="Cannot delete seed tools")
     await db.execute(
-        "DELETE FROM tool_registry WHERE tool_id = ?", (tool_id,)
+        "DELETE FROM tool_registry WHERE tool_id = $1", tool_id
     )
-    await db.commit()
 
 
 @router.post("/{tool_id}/check")
@@ -214,17 +211,16 @@ async def delete_tool(
 async def check_tool(
     tool_id: str,
     request: Request,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
-    """Health check — returns availability status for a tool.
+    """Health check -- returns availability status for a tool.
 
     For MCP-backed tools (config_json.mcp_server), pings the MCP server.
     """
-    cursor = await db.execute(
-        "SELECT tool_id, name, enabled, config_json FROM tool_registry WHERE tool_id = ?",
-        (tool_id,),
+    row = await db.fetchrow(
+        "SELECT tool_id, name, enabled, config_json FROM tool_registry WHERE tool_id = $1",
+        tool_id,
     )
-    row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Tool not found")
 

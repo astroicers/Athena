@@ -12,7 +12,7 @@
 Seed script for the OP-2024-017 "PHANTOM-EYE" demo scenario.
 
 Populates all 12 tables with reproducible, fixed-ID data.
-Idempotent: uses INSERT OR IGNORE so re-running is safe.
+Idempotent: uses INSERT ... ON CONFLICT DO NOTHING so re-running is safe.
 
 Usage (from backend/ directory):
     python -m app.seed.demo_scenario
@@ -21,9 +21,9 @@ Usage (from backend/ directory):
 import asyncio
 import json
 
-import aiosqlite
+import asyncpg
 
-from app.database import _DB_FILE, init_db
+from app.database import db_manager, init_db
 
 # ---------------------------------------------------------------------------
 # Fixed IDs for reproducibility
@@ -98,51 +98,50 @@ async def seed() -> None:
     """Insert all demo data into the database (idempotent)."""
     await init_db()
 
-    async with aiosqlite.connect(_DB_FILE) as db:
-        await db.execute("PRAGMA foreign_keys = ON;")
+    async with db_manager.connection() as db:
 
         # ==================================================================
         # 1. users (1 record)
         # ==================================================================
         await db.execute(
-            "INSERT OR IGNORE INTO users (id, callsign, role, created_at) "
-            "VALUES (?, ?, ?, ?)",
-            (USR_VIPER, "VIPER-1", "Commander", TS_BASE),
+            "INSERT INTO users (id, callsign, role, created_at) "
+            "VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING",
+            USR_VIPER, "VIPER-1", "Commander", TS_BASE,
         )
 
         # ==================================================================
         # 2. operations (1 record)
         # ==================================================================
         await db.execute(
-            "INSERT OR IGNORE INTO operations "
+            "INSERT INTO operations "
             "(id, code, name, codename, strategic_intent, status, "
             "current_ooda_phase, ooda_iteration_count, threat_level, "
             "success_rate, techniques_executed, techniques_total, "
             "active_agents, data_exfiltrated_bytes, automation_mode, "
             "risk_threshold, operator_id, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                OP_PHANTOM,
-                "OP-2024-017",
-                "Obtain Domain Admin",
-                "PHANTOM-EYE",
-                "Obtain Domain Admin access via credential harvesting "
-                "and lateral movement",
-                "planning",
-                "observe",
-                0,
-                0.0,
-                0.0,
-                0,
-                4,
-                0,
-                0,
-                "semi_auto",
-                "medium",
-                USR_VIPER,
-                TS_BASE,
-                TS_BASE,
-            ),
+            "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "
+            "$11, $12, $13, $14, $15, $16, $17, $18, $19) "
+            "ON CONFLICT DO NOTHING",
+            OP_PHANTOM,
+            "OP-2024-017",
+            "Obtain Domain Admin",
+            "PHANTOM-EYE",
+            "Obtain Domain Admin access via credential harvesting "
+            "and lateral movement",
+            "planning",
+            "observe",
+            0,
+            0.0,
+            0.0,
+            0,
+            4,
+            0,
+            0,
+            "semi_auto",
+            "medium",
+            USR_VIPER,
+            TS_BASE,
+            TS_BASE,
         )
 
         # ==================================================================
@@ -150,28 +149,30 @@ async def seed() -> None:
         # ==================================================================
         targets = [
             (TGT_DC01, "DC-01", "10.0.1.5", "Windows Server 2019",
-             "Domain Controller", "10.0.1.0/24", 0, None,
+             "Domain Controller", "10.0.1.0/24", False, None,
              OP_PHANTOM, TS_BASE),
             (TGT_WSPC01, "WS-PC01", "10.0.1.20", "Windows 10",
-             "Workstation", "10.0.1.0/24", 0, None,
+             "Workstation", "10.0.1.0/24", False, None,
              OP_PHANTOM, TS_BASE),
             (TGT_WSPC02, "WS-PC02", "10.0.1.21", "Windows 10",
-             "Workstation", "10.0.1.0/24", 0, None,
+             "Workstation", "10.0.1.0/24", False, None,
              OP_PHANTOM, TS_BASE),
             (TGT_DB01, "DB-01", "10.0.1.30", "Windows Server 2019",
-             "Database Server", "10.0.1.0/24", 0, None,
+             "Database Server", "10.0.1.0/24", False, None,
              OP_PHANTOM, TS_BASE),
             (TGT_FS01, "FS-01", "10.0.1.40", "Windows Server 2016",
-             "File Server", "10.0.1.0/24", 0, None,
+             "File Server", "10.0.1.0/24", False, None,
              OP_PHANTOM, TS_BASE),
         ]
-        await db.executemany(
-            "INSERT OR IGNORE INTO targets "
-            "(id, hostname, ip_address, os, role, network_segment, "
-            "is_compromised, privilege_level, operation_id, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            targets,
-        )
+        for t in targets:
+            await db.execute(
+                "INSERT INTO targets "
+                "(id, hostname, ip_address, os, role, network_segment, "
+                "is_compromised, privilege_level, operation_id, created_at) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) "
+                "ON CONFLICT DO NOTHING",
+                *t,
+            )
 
         # ==================================================================
         # 4. agents (4 records)
@@ -186,16 +187,18 @@ async def seed() -> None:
             (AGT_5A7B, "AGENT-5A7B", TGT_FS01, "pending", "User",
              None, 5, "windows", OP_PHANTOM, TS_BASE),
         ]
-        await db.executemany(
-            "INSERT OR IGNORE INTO agents "
-            "(id, paw, host_id, status, privilege, last_beacon, "
-            "beacon_interval_sec, platform, operation_id, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            agents,
-        )
+        for a in agents:
+            await db.execute(
+                "INSERT INTO agents "
+                "(id, paw, host_id, status, privilege, last_beacon, "
+                "beacon_interval_sec, platform, operation_id, created_at) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) "
+                "ON CONFLICT DO NOTHING",
+                *a,
+            )
 
         # ==================================================================
-        # 5. techniques (4 records — static catalog, no operation_id)
+        # 5. techniques (13 records — static catalog, no operation_id)
         # ==================================================================
         techniques = [
             (TECH_T1595, "T1595.001",
@@ -260,23 +263,25 @@ async def seed() -> None:
              "recon", "low", None,
              json.dumps(["linux", "windows"])),
             # Recon techniques (Phase 12)
-            ("tech-t1592",     "T1592",     "Gather Victim Host Information",
-             "Reconnaissance",    "TA0043", None, "recon",   "low",    None,
+            ("tech-t1592", "T1592", "Gather Victim Host Information",
+             "Reconnaissance", "TA0043", None, "recon", "low", None,
              '["linux","windows"]'),
             ("tech-t1595-002", "T1595.002", "Active Scanning: Vulnerability Scan",
-             "Reconnaissance",    "TA0043", None, "recon",   "low",    None,
+             "Reconnaissance", "TA0043", None, "recon", "low", None,
              '["linux","windows"]'),
             ("tech-t1110-003", "T1110.003", "Brute Force: Password Spraying",
              "Credential Access", "TA0006", None, "exploit", "medium", None,
              '["linux","windows"]'),
         ]
-        await db.executemany(
-            "INSERT OR IGNORE INTO techniques "
-            "(id, mitre_id, name, tactic, tactic_id, description, "
-            "kill_chain_stage, risk_level, c2_ability_id, platforms) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            techniques,
-        )
+        for t in techniques:
+            await db.execute(
+                "INSERT INTO techniques "
+                "(id, mitre_id, name, tactic, tactic_id, description, "
+                "kill_chain_stage, risk_level, c2_ability_id, platforms) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) "
+                "ON CONFLICT DO NOTHING",
+                *t,
+            )
 
         # ==================================================================
         # 6. mission_steps (4 records — all queued, awaiting OODA)
@@ -299,14 +304,16 @@ async def seed() -> None:
              "WS-PC02", "ssh", "queued",
              TS_BASE, None, None),
         ]
-        await db.executemany(
-            "INSERT OR IGNORE INTO mission_steps "
-            "(id, operation_id, step_number, technique_id, "
-            "technique_name, target_id, target_label, engine, "
-            "status, created_at, started_at, completed_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            mission_steps,
-        )
+        for ms in mission_steps:
+            await db.execute(
+                "INSERT INTO mission_steps "
+                "(id, operation_id, step_number, technique_id, "
+                "technique_name, target_id, target_label, engine, "
+                "status, created_at, started_at, completed_at) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) "
+                "ON CONFLICT DO NOTHING",
+                *ms,
+            )
 
         # ==================================================================
         # 11. technique_executions (7 records — demo execution results)
@@ -342,14 +349,16 @@ async def seed() -> None:
              "ssh", "success", "Lateral movement via admin$ share successful",
              2, TS_BEACON, "2024-11-15T09:10:00", None, TS_BEACON),
         ]
-        await db.executemany(
-            "INSERT OR IGNORE INTO technique_executions "
-            "(id, technique_id, target_id, operation_id, ooda_iteration_id, "
-            "engine, status, result_summary, facts_collected_count, "
-            "started_at, completed_at, error_message, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            executions,
-        )
+        for e in executions:
+            await db.execute(
+                "INSERT INTO technique_executions "
+                "(id, technique_id, target_id, operation_id, ooda_iteration_id, "
+                "engine, status, result_summary, facts_collected_count, "
+                "started_at, completed_at, error_message, created_at) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) "
+                "ON CONFLICT DO NOTHING",
+                *e,
+            )
 
         # ==================================================================
         # 12. c5isr_statuses (6 records)
@@ -368,15 +377,15 @@ async def seed() -> None:
             (C5_ISR, OP_PHANTOM, "isr", "offline", 0.0,
              "Awaiting operation start", TS_BASE),
         ]
-        await db.executemany(
-            "INSERT OR IGNORE INTO c5isr_statuses "
-            "(id, operation_id, domain, status, health_pct, detail, "
-            "updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            c5isr,
-        )
-
-        await db.commit()
+        for c in c5isr:
+            await db.execute(
+                "INSERT INTO c5isr_statuses "
+                "(id, operation_id, domain, status, health_pct, detail, "
+                "updated_at) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7) "
+                "ON CONFLICT DO NOTHING",
+                *c,
+            )
 
     print("Seed data inserted successfully for OP-2024-017 PHANTOM-EYE.")
 

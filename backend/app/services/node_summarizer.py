@@ -21,7 +21,7 @@ import time
 from collections import OrderedDict
 from datetime import datetime, timezone
 
-import aiosqlite
+import asyncpg
 
 from app.config import settings, TASK_MODEL_MAP
 from app.services.llm_client import get_llm_client
@@ -196,7 +196,7 @@ def _parse_summary(raw: str) -> dict:
 
 
 async def get_node_summary(
-    db: aiosqlite.Connection,
+    db: asyncpg.Connection,
     operation_id: str,
     target_id: str,
     force_refresh: bool = False,
@@ -205,27 +205,23 @@ async def get_node_summary(
 
     Returns dict with keys: summary, fact_count, cached, generated_at, model
     """
-    db.row_factory = aiosqlite.Row
-
     # Verify target exists
-    cursor = await db.execute(
-        "SELECT * FROM targets WHERE id = ? AND operation_id = ?",
-        (target_id, operation_id),
+    target_row = await db.fetchrow(
+        "SELECT * FROM targets WHERE id = $1 AND operation_id = $2",
+        target_id, operation_id,
     )
-    target_row = await cursor.fetchone()
     if not target_row:
         return None
 
     target = dict(target_row)
 
     # Fetch facts for this target (server-side filter)
-    cursor = await db.execute(
+    fact_rows = await db.fetch(
         "SELECT trait, value, category FROM facts "
-        "WHERE operation_id = ? AND source_target_id = ? "
-        "ORDER BY collected_at DESC LIMIT ?",
-        (operation_id, target_id, _TOTAL_FACTS_LIMIT),
+        "WHERE operation_id = $1 AND source_target_id = $2 "
+        "ORDER BY collected_at DESC LIMIT $3",
+        operation_id, target_id, _TOTAL_FACTS_LIMIT,
     )
-    fact_rows = await cursor.fetchall()
     facts = [dict(r) for r in fact_rows]
 
     # 0 facts → static response, no LLM call

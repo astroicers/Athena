@@ -10,7 +10,7 @@
 
 """Tests for SPEC-040: KillChainEnforcer skip-stage penalty calculator.
 
-Uses the ``tmp_db`` fixture (in-memory SQLite with full Athena schema) so
+Uses the ``tmp_db`` fixture (PostgreSQL with full Athena schema) so
 that ``_get_completed_tactics`` exercises real SQL JOINs against
 ``technique_executions`` and ``attack_graph_nodes``.
 """
@@ -38,21 +38,19 @@ async def _seed_operation(db):
     await db.execute(
         "INSERT INTO operations (id, code, name, codename, strategic_intent, "
         "status, current_ooda_phase) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (OP_ID, "OP-001", "Test", "PHANTOM", "intent", "active", "observe"),
+        "VALUES ($1, $2, $3, $4, $5, $6, $7)",
+        OP_ID, "OP-001", "Test", "PHANTOM", "intent", "active", "observe",
     )
-    await db.commit()
 
 
 async def _seed_target(db, target_id: str = TARGET_ID):
     """Insert a minimal target row."""
     await db.execute(
         "INSERT INTO targets (id, hostname, ip_address, os, role, operation_id) "
-        "VALUES (?, ?, ?, ?, ?, ?)",
-        (target_id, "DC-01", "10.0.1.5", "Windows Server 2022",
-         "Domain Controller", OP_ID),
+        "VALUES ($1, $2, $3, $4, $5, $6)",
+        target_id, "DC-01", "10.0.1.5", "Windows Server 2022",
+        "Domain Controller", OP_ID,
     )
-    await db.commit()
 
 
 async def _mark_tactic_completed(
@@ -71,16 +69,15 @@ async def _mark_tactic_completed(
     await db.execute(
         "INSERT INTO technique_executions "
         "(id, technique_id, target_id, operation_id, engine, status) "
-        "VALUES (?, ?, ?, ?, ?, ?)",
-        (exec_id, tech_id, target_id, OP_ID, "mock", "success"),
+        "VALUES ($1, $2, $3, $4, $5, $6)",
+        exec_id, tech_id, target_id, OP_ID, "mock", "success",
     )
     await db.execute(
         "INSERT INTO attack_graph_nodes "
         "(id, operation_id, target_id, technique_id, tactic_id, status, confidence) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (node_id, OP_ID, target_id, tech_id, tactic_id, "completed", 0.9),
+        "VALUES ($1, $2, $3, $4, $5, $6, $7)",
+        node_id, OP_ID, target_id, tech_id, tactic_id, "completed", 0.9,
     )
-    await db.commit()
 
 
 # ---------------------------------------------------------------------------

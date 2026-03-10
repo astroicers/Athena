@@ -12,7 +12,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from .enums import AutomationMode, OODAPhase, OperationStatus, RiskLevel
+from .enums import AutomationMode, MissionProfile, OODAPhase, OperationStatus, RiskLevel
 
 
 class Operation(BaseModel):
@@ -33,6 +33,7 @@ class Operation(BaseModel):
     max_iterations: int = 0  # 0 = unlimited
     automation_mode: AutomationMode = AutomationMode.SEMI_AUTO
     risk_threshold: RiskLevel = RiskLevel.MEDIUM
+    mission_profile: MissionProfile = MissionProfile.SP
     operator_id: str | None = None
     created_at: datetime
     updated_at: datetime

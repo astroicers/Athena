@@ -17,20 +17,16 @@ import pytest
 
 async def test_orient_includes_rdp_winrm_creds(seeded_db):
     """Section 7.7 should pick up credential.rdp and credential.winrm facts."""
-    import aiosqlite
     from unittest.mock import AsyncMock, MagicMock
     from app.services.orient_engine import OrientEngine
-
-    seeded_db.row_factory = aiosqlite.Row
 
     # Insert multi-protocol credential facts
     for trait in ("credential.rdp", "credential.winrm"):
         await seeded_db.execute(
             "INSERT INTO facts (id, operation_id, source_target_id, trait, value, category, score) "
-            "VALUES (?, 'test-op-1', 'test-target-1', ?, 'admin:pass@10.0.0.1', 'credential', 1)",
-            (str(uuid.uuid4()), trait),
+            "VALUES ($1, 'test-op-1', 'test-target-1', $2, 'admin:pass@10.0.0.1', 'credential', 1)",
+            str(uuid.uuid4()), trait,
         )
-    await seeded_db.commit()
 
     ws = MagicMock()
     ws.broadcast = AsyncMock()
@@ -44,10 +40,6 @@ async def test_orient_includes_rdp_winrm_creds(seeded_db):
 
 async def test_topology_lateral_edges(seeded_db, client):
     """Topology should include host-to-host lateral edges when credentials + agents exist."""
-    import aiosqlite
-
-    seeded_db.row_factory = aiosqlite.Row
-
     # Add a second target
     await seeded_db.execute(
         "INSERT INTO targets (id, hostname, ip_address, os, role, operation_id) "
@@ -61,10 +53,9 @@ async def test_topology_lateral_edges(seeded_db, client):
     # Add credential fact on target-1 (source) that enables pivoting
     await seeded_db.execute(
         "INSERT INTO facts (id, operation_id, source_target_id, trait, value, category, score) "
-        "VALUES (?, 'test-op-1', 'test-target-1', 'credential.ssh', 'root:pass@10.0.1.10:22', 'credential', 1)",
-        (str(uuid.uuid4()),),
+        "VALUES ($1, 'test-op-1', 'test-target-1', 'credential.ssh', 'root:pass@10.0.1.10:22', 'credential', 1)",
+        str(uuid.uuid4()),
     )
-    await seeded_db.commit()
 
     resp = await client.get("/api/operations/test-op-1/topology")
     assert resp.status_code == 200
@@ -81,10 +72,6 @@ async def test_topology_lateral_edges(seeded_db, client):
 
 async def test_topology_no_false_lateral_edges(seeded_db, client):
     """No lateral edges should appear when there are no agents on other targets."""
-    import aiosqlite
-
-    seeded_db.row_factory = aiosqlite.Row
-
     # Add a second target but NO agent on it
     await seeded_db.execute(
         "INSERT INTO targets (id, hostname, ip_address, os, role, operation_id) "
@@ -93,10 +80,9 @@ async def test_topology_no_false_lateral_edges(seeded_db, client):
     # Credential fact exists but no alive agent on target-3
     await seeded_db.execute(
         "INSERT INTO facts (id, operation_id, source_target_id, trait, value, category, score) "
-        "VALUES (?, 'test-op-1', 'test-target-1', 'credential.rdp', 'admin:pass@10.0.1.11:3389', 'credential', 1)",
-        (str(uuid.uuid4()),),
+        "VALUES ($1, 'test-op-1', 'test-target-1', 'credential.rdp', 'admin:pass@10.0.1.11:3389', 'credential', 1)",
+        str(uuid.uuid4()),
     )
-    await seeded_db.commit()
 
     resp = await client.get("/api/operations/test-op-1/topology")
     assert resp.status_code == 200

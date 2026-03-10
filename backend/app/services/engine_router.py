@@ -14,7 +14,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-import aiosqlite
+import asyncpg
 
 from app.clients import BaseEngineClient, ExecutionResult
 from app.config import settings
@@ -24,7 +24,7 @@ from app.ws_manager import WebSocketManager
 
 logger = logging.getLogger(__name__)
 
-# Known vulnerable service banners → Metasploit service name (SPEC-037 Phase 2)
+# Known vulnerable service banners -> Metasploit service name (SPEC-037 Phase 2)
 _KNOWN_EXPLOITABLE_BANNERS: dict[str, str] = {
     "vsftpd_2.3.4": "vsftpd",
     "vsftpd 2.3.4": "vsftpd",
@@ -56,7 +56,7 @@ def _is_auth_failure(error: str | None) -> bool:
     return any(kw in lower for kw in _AUTH_FAILURE_KEYWORDS)
 
 
-# ── Engine fallback chain (SPEC-040) ─────────────────────────────────────
+# -- Engine fallback chain (SPEC-040) --
 
 _FALLBACK_CHAIN: dict[str, list[str]] = {
     "mcp_ssh":    ["metasploit", "c2"],
@@ -96,7 +96,7 @@ class EngineRouter:
         self._mcp_engine = mcp_engine
 
     async def execute(
-        self, db: aiosqlite.Connection, technique_id: str, target_id: str,
+        self, db: asyncpg.Connection, technique_id: str, target_id: str,
         engine: str, operation_id: str, ooda_iteration_id: str | None = None,
     ) -> dict:
         """Execute with automatic engine fallback (SPEC-040).
@@ -173,7 +173,7 @@ class EngineRouter:
         return result
 
     async def _execute_single(
-        self, db: aiosqlite.Connection, technique_id: str, target_id: str,
+        self, db: asyncpg.Connection, technique_id: str, target_id: str,
         engine: str, operation_id: str, ooda_iteration_id: str | None = None,
     ) -> dict:
         """Execute a technique via a single engine (no fallback).
@@ -184,25 +184,23 @@ class EngineRouter:
         - "mock"    : Use MockC2Client (MOCK_C2_ENGINE=true legacy path)
         """
         exec_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
 
         # Get the technique's c2_ability_id
-        db.row_factory = aiosqlite.Row
-        cursor = await db.execute(
-            "SELECT mitre_id, c2_ability_id FROM techniques WHERE mitre_id = ?",
-            (technique_id,),
+        tech_row = await db.fetchrow(
+            "SELECT mitre_id, c2_ability_id FROM techniques WHERE mitre_id = $1",
+            technique_id,
         )
-        tech_row = await cursor.fetchone()
         ability_id = (tech_row["c2_ability_id"] if tech_row else None) or technique_id
 
-        # ── MCP route: engine == "mcp" (explicit tool-registry dispatch) ──────
+        # -- MCP route: engine == "mcp" (explicit tool-registry dispatch) --
         if engine == "mcp" and settings.MCP_ENABLED and self._mcp_engine:
             return await self._execute_mcp(
                 db, exec_id, now, ability_id, technique_id, target_id,
                 engine, operation_id, ooda_iteration_id,
             )
 
-        # ── Explicit Metasploit route: engine == "metasploit" (SPEC-037 P2) ──
+        # -- Explicit Metasploit route: engine == "metasploit" (SPEC-037 P2) --
         if engine == "metasploit":
             service = await self._has_exploitable_service(db, operation_id, target_id)
             if not service:
@@ -215,11 +213,11 @@ class EngineRouter:
                         ooda_iteration_id, service, target_ip, engine,
                     )
             logger.warning(
-                "engine=metasploit requested but no exploitable service found for %s — falling through",
+                "engine=metasploit requested but no exploitable service found for %s -- falling through",
                 target_id,
             )
 
-        # ── Metasploit route: exploit=true CVE fact → highest priority ────────
+        # -- Metasploit route: exploit=true CVE fact -> highest priority --
         # Check BEFORE other routing (ADR-019)
         service = await self._has_exploitable_service(db, operation_id, target_id)
         if not service:
@@ -229,7 +227,7 @@ class EngineRouter:
             target_ip = await self._get_target_ip(db, target_id)
             if target_ip is None:
                 logger.error(
-                    "Cannot resolve IP for target %s — aborting Metasploit route",
+                    "Cannot resolve IP for target %s -- aborting Metasploit route",
                     target_id,
                 )
             else:
@@ -238,7 +236,7 @@ class EngineRouter:
                     ooda_iteration_id, service, target_ip, engine,
                 )
 
-        # ── Engine selection ──────────────────────────────────────────────────
+        # -- Engine selection --
         effective_mode = settings.EXECUTION_ENGINE  # "mcp_ssh" | "c2" | "mock"
         if settings.MOCK_C2_ENGINE and effective_mode not in ("c2", "mcp_ssh"):
             effective_mode = "mock"
@@ -254,17 +252,17 @@ class EngineRouter:
                 engine, operation_id, ooda_iteration_id, require_agent=False,
             )
         else:
-            # "c2" mode — original path with alive-agent requirement
+            # "c2" mode -- original path with alive-agent requirement
             return await self._execute_c2(
                 db, exec_id, now, ability_id, technique_id, target_id,
                 engine, operation_id, ooda_iteration_id, require_agent=True,
             )
 
-    # ── Internal helpers ──────────────────────────────────────────────────────
+    # -- Internal helpers --
 
     async def _execute_via_mcp_executor(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         exec_id: str,
         now: str,
         ability_id: str,
@@ -274,12 +272,12 @@ class EngineRouter:
         operation_id: str,
         ooda_iteration_id: str | None,
     ) -> dict:
-        """MCP attack-executor path — route SSH/WinRM through the MCP server."""
+        """MCP attack-executor path -- route SSH/WinRM through the MCP server."""
         # Look up credential facts (priority: winrm > ssh_key > ssh)
         # SPEC-037: exclude invalidated credentials
-        cred_cursor = await db.execute(
+        cred_row = await db.fetchrow(
             "SELECT trait, value FROM facts "
-            "WHERE operation_id = ? AND source_target_id = ? "
+            "WHERE operation_id = $1 AND source_target_id = $2 "
             "AND trait IN ('credential.ssh', 'credential.ssh_key', 'credential.winrm') "
             "AND trait NOT LIKE '%.invalidated' "
             "ORDER BY CASE trait "
@@ -287,13 +285,12 @@ class EngineRouter:
             "  WHEN 'credential.ssh_key' THEN 1 "
             "  ELSE 2 END "
             "LIMIT 1",
-            (operation_id, target_id),
+            operation_id, target_id,
         )
-        cred_row = await cred_cursor.fetchone()
 
         if not cred_row:
             # SPEC-037 Phase 2: record the failure so Orient sees why Act failed
-            error_msg = f"No valid credentials — all invalidated for target {target_id}"
+            error_msg = f"No valid credentials -- all invalidated for target {target_id}"
             logger.warning(
                 "No credentials for target %s in operation %s", target_id, operation_id
             )
@@ -301,11 +298,10 @@ class EngineRouter:
                 "INSERT INTO technique_executions "
                 "(id, technique_id, target_id, operation_id, ooda_iteration_id, "
                 "engine, status, started_at, completed_at, error_message) "
-                "VALUES (?, ?, ?, ?, ?, ?, 'failed', ?, ?, ?)",
-                (exec_id, technique_id, target_id, operation_id,
-                 ooda_iteration_id, "mcp_ssh", now, now, error_msg),
+                "VALUES ($1, $2, $3, $4, $5, $6, 'failed', $7, $8, $9)",
+                exec_id, technique_id, target_id, operation_id,
+                ooda_iteration_id, "mcp_ssh", now, now, error_msg,
             )
-            await db.commit()
             return {
                 "execution_id": exec_id,
                 "technique_id": technique_id,
@@ -326,11 +322,10 @@ class EngineRouter:
             "INSERT INTO technique_executions "
             "(id, technique_id, target_id, operation_id, ooda_iteration_id, "
             "engine, status, started_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, 'running', ?)",
-            (exec_id, technique_id, target_id, operation_id,
-             ooda_iteration_id, "mcp_ssh", now),
+            "VALUES ($1, $2, $3, $4, $5, $6, 'running', $7)",
+            exec_id, technique_id, target_id, operation_id,
+            ooda_iteration_id, "mcp_ssh", now,
         )
-        await db.commit()
 
         await self._ws.broadcast(operation_id, "execution.update", {
             "id": exec_id, "technique_id": technique_id,
@@ -376,34 +371,33 @@ class EngineRouter:
             await self._mark_target_compromised(db, target_id, result.output)
         if settings.PERSISTENCE_ENABLED and final.get("status") == "success" and cred_row:
             from app.services.persistence_engine import PersistenceEngine  # noqa: PLC0415
-            from app.database import _DB_FILE  # noqa: PLC0415
+            from app.database import get_pool  # noqa: PLC0415
             import asyncio  # noqa: PLC0415
             asyncio.create_task(
-                PersistenceEngine().probe(_DB_FILE, operation_id, target_id, cred_row["value"])
+                PersistenceEngine().probe(get_pool, operation_id, target_id, cred_row["value"])
             )
         return final
 
     async def _get_output_parser(
-        self, db: aiosqlite.Connection, technique_id: str, platform: str = "linux"
+        self, db: asyncpg.Connection, technique_id: str, platform: str = "linux"
     ) -> "str | None":
         """Read output_parser from technique_playbooks for the given platform."""
-        cursor = await db.execute(
+        row = await db.fetchrow(
             "SELECT output_parser FROM technique_playbooks "
-            "WHERE mitre_id = ? AND platform = ? "
+            "WHERE mitre_id = $1 AND platform = $2 "
             "ORDER BY created_at DESC LIMIT 1",
-            (technique_id, platform),
+            technique_id, platform,
         )
-        row = await cursor.fetchone()
         return row["output_parser"] if row else None
 
 
     async def _mark_target_compromised(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         target_id: str,
         output: "str | None",
     ) -> None:
-        """SSH 執行成功後，更新 target 的 is_compromised 和 privilege_level。"""
+        """SSH success -> update target is_compromised and privilege_level."""
         privilege = "user"
         if output:
             if "uid=0" in output or "root" in output:
@@ -412,15 +406,14 @@ class EngineRouter:
                 privilege = "sudo"
 
         await db.execute(
-            "UPDATE targets SET is_compromised = 1, privilege_level = ?, "
-            "access_status = 'active' WHERE id = ?",
-            (privilege, target_id),
+            "UPDATE targets SET is_compromised = TRUE, privilege_level = $1, "
+            "access_status = 'active' WHERE id = $2",
+            privilege, target_id,
         )
-        await db.commit()
 
     async def _execute_mcp(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         exec_id: str,
         now: str,
         ability_id: str,
@@ -430,16 +423,15 @@ class EngineRouter:
         operation_id: str,
         ooda_iteration_id: str | None,
     ) -> dict:
-        """MCP execution path — call tool via MCP server."""
+        """MCP execution path -- call tool via MCP server."""
         await db.execute(
             "INSERT INTO technique_executions "
             "(id, technique_id, target_id, operation_id, ooda_iteration_id, "
             "engine, status, started_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, 'running', ?)",
-            (exec_id, technique_id, target_id, operation_id,
-             ooda_iteration_id, "mcp", now),
+            "VALUES ($1, $2, $3, $4, $5, $6, 'running', $7)",
+            exec_id, technique_id, target_id, operation_id,
+            ooda_iteration_id, "mcp", now,
         )
-        await db.commit()
 
         await self._ws.broadcast(operation_id, "execution.update", {
             "id": exec_id, "technique_id": technique_id,
@@ -448,11 +440,10 @@ class EngineRouter:
 
         # Look up tool_registry for matching MCP tool (qualified name)
         try:
-            tr_cursor = await db.execute(
+            tr_rows = await db.fetch(
                 "SELECT config_json FROM tool_registry "
-                "WHERE enabled = 1 AND config_json LIKE '%mcp_server%' LIMIT 10"
+                "WHERE enabled = TRUE AND config_json LIKE '%mcp_server%' LIMIT 10"
             )
-            tr_rows = await tr_cursor.fetchall()
             for tr_row in tr_rows:
                 import json as _json
 
@@ -484,7 +475,7 @@ class EngineRouter:
 
     async def _execute_c2(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         exec_id: str,
         now: str,
         ability_id: str,
@@ -527,11 +518,10 @@ class EngineRouter:
             "INSERT INTO technique_executions "
             "(id, technique_id, target_id, operation_id, ooda_iteration_id, "
             "engine, status, started_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, 'running', ?)",
-            (exec_id, technique_id, target_id, operation_id,
-             ooda_iteration_id, engine, now),
+            "VALUES ($1, $2, $3, $4, $5, $6, 'running', $7)",
+            exec_id, technique_id, target_id, operation_id,
+            ooda_iteration_id, engine, now,
         )
-        await db.commit()
 
         await self._ws.broadcast(operation_id, "execution.update", {
             "id": exec_id, "technique_id": technique_id,
@@ -549,7 +539,7 @@ class EngineRouter:
 
     async def _finalize_execution(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         exec_id: str,
         technique_id: str,
         target_id: str,
@@ -558,32 +548,31 @@ class EngineRouter:
         result: ExecutionResult,
     ) -> dict:
         """Update DB, collect facts, and broadcast the final execution.update event."""
-        completed_at = datetime.now(timezone.utc).isoformat()
+        completed_at = datetime.now(timezone.utc)
         status = "success" if result.success else "failed"
         facts_count = len(result.facts)
 
         await db.execute(
-            "UPDATE technique_executions SET status = ?, result_summary = ?, "
-            "facts_collected_count = ?, completed_at = ?, error_message = ? "
-            "WHERE id = ?",
-            (status, result.output, facts_count, completed_at,
-             result.error, exec_id),
+            "UPDATE technique_executions SET status = $1, result_summary = $2, "
+            "facts_collected_count = $3, completed_at = $4, error_message = $5 "
+            "WHERE id = $6",
+            status, result.output, facts_count, completed_at,
+            result.error, exec_id,
         )
 
         # [I-1] Only increment techniques_executed on success
         if result.success:
             await db.execute(
                 "UPDATE operations SET techniques_executed = techniques_executed + 1 "
-                "WHERE id = ?",
-                (operation_id,),
+                "WHERE id = $1",
+                operation_id,
             )
             # SPEC-043: Record PoC reproduction steps on success
             await self._record_poc(
                 db, technique_id, target_id, operation_id, result, engine,
             )
-        await db.commit()
 
-        # SPEC-037: Detect auth failure → trigger access lost handling
+        # SPEC-037: Detect auth failure -> trigger access lost handling
         if not result.success and _is_auth_failure(result.error):
             await self._handle_access_lost(db, operation_id, target_id)
 
@@ -610,11 +599,11 @@ class EngineRouter:
             "error": result.error,
         }
 
-    # ── PoC auto-generation (SPEC-043) ──────────────────────────────────────
+    # -- PoC auto-generation (SPEC-043) --
 
     async def _record_poc(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         technique_id: str,
         target_id: str,
         operation_id: str,
@@ -631,7 +620,7 @@ class EngineRouter:
 
     async def _record_poc_inner(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         technique_id: str,
         target_id: str,
         operation_id: str,
@@ -643,11 +632,10 @@ class EngineRouter:
         target_ip = await self._get_target_ip(db, target_id) or target_id
 
         # Infer environment info
-        tgt_cursor = await db.execute(
-            "SELECT os, privilege_level FROM targets WHERE id = ?",
-            (target_id,),
+        tgt_row = await db.fetchrow(
+            "SELECT os, privilege_level FROM targets WHERE id = $1",
+            target_id,
         )
-        tgt_row = await tgt_cursor.fetchone()
         env = {
             "os": (tgt_row["os"] if tgt_row and isinstance(tgt_row, dict) else
                    tgt_row[0] if tgt_row else "unknown"),
@@ -679,76 +667,74 @@ class EngineRouter:
         )
 
         fact_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         await db.execute(
-            "INSERT OR IGNORE INTO facts "
+            "INSERT INTO facts "
             "(id, trait, value, category, source_technique_id, "
             "source_target_id, operation_id, score, collected_at) "
-            "VALUES (?, ?, ?, 'poc', ?, ?, ?, 1, ?)",
-            (fact_id, f"poc.{technique_id}", poc.to_json(),
-             technique_id, target_id, operation_id, now),
+            "VALUES ($1, $2, $3, 'poc', $4, $5, $6, 1, $7) "
+            "ON CONFLICT DO NOTHING",
+            fact_id, f"poc.{technique_id}", poc.to_json(),
+            technique_id, target_id, operation_id, now,
         )
-        await db.commit()
 
-    # ── Access recovery (SPEC-037) ────────────────────────────────────────────
+    # -- Access recovery (SPEC-037) --
 
     async def _handle_access_lost(
-        self, db: aiosqlite.Connection, operation_id: str, target_id: str,
+        self, db: asyncpg.Connection, operation_id: str, target_id: str,
     ) -> None:
         """Handle detected access loss: revoke compromised status, invalidate credentials."""
         logger.warning(
-            "Access lost to target %s in operation %s — invalidating credentials",
+            "Access lost to target %s in operation %s -- invalidating credentials",
             target_id, operation_id,
         )
 
         # 1. Revoke target compromised status
         await db.execute(
-            "UPDATE targets SET is_compromised = 0, access_status = 'lost', "
-            "privilege_level = NULL WHERE id = ? AND operation_id = ?",
-            (target_id, operation_id),
+            "UPDATE targets SET is_compromised = FALSE, access_status = 'lost', "
+            "privilege_level = NULL WHERE id = $1 AND operation_id = $2",
+            target_id, operation_id,
         )
 
         # 2. Invalidate credential facts (trait rename)
         await db.execute(
             "UPDATE facts SET trait = REPLACE(trait, 'credential.ssh', 'credential.ssh.invalidated') "
-            "WHERE operation_id = ? AND source_target_id = ? "
+            "WHERE operation_id = $1 AND source_target_id = $2 "
             "AND trait = 'credential.ssh'",
-            (operation_id, target_id),
+            operation_id, target_id,
         )
         await db.execute(
             "UPDATE facts SET trait = REPLACE(trait, 'credential.winrm', 'credential.winrm.invalidated') "
-            "WHERE operation_id = ? AND source_target_id = ? "
+            "WHERE operation_id = $1 AND source_target_id = $2 "
             "AND trait = 'credential.winrm'",
-            (operation_id, target_id),
+            operation_id, target_id,
         )
 
         # 3. Insert access.lost fact
         target_ip = await self._get_target_ip(db, target_id)
         fact_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         try:
             await db.execute(
                 "INSERT INTO facts (id, trait, value, category, source_target_id, "
                 "operation_id, score, collected_at) "
-                "VALUES (?, 'access.lost', ?, 'host', ?, ?, 1, ?)",
-                (fact_id, f"ssh_auth_failed:{target_ip or target_id}",
-                 target_id, operation_id, now),
+                "VALUES ($1, 'access.lost', $2, 'host', $3, $4, 1, $5)",
+                fact_id, f"ssh_auth_failed:{target_ip or target_id}",
+                target_id, operation_id, now,
             )
         except Exception:
-            pass  # unique constraint — already recorded
-
-        await db.commit()
+            pass  # unique constraint -- already recorded
 
         # SPEC-041: Three-phase access recovery
         await self._recovery_phase1_rescan(db, operation_id, target_id, target_ip)
         await self._recovery_phase2_alt_protocol(db, operation_id, target_id, target_ip)
         await self._recovery_phase3_pivot(db, operation_id, target_id, target_ip)
 
-    # ── Access recovery phases (SPEC-041 Part B) ─────────────────────────────
+    # -- Access recovery phases (SPEC-041 Part B) --
 
     async def _recovery_phase1_rescan(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         operation_id: str,
         target_id: str,
         target_ip: str | None,
@@ -756,13 +742,12 @@ class EngineRouter:
         """Phase 1: Collect known open ports for Orient to evaluate re-entry."""
         if not target_ip:
             return
-        cursor = await db.execute(
+        rows = await db.fetch(
             "SELECT value FROM facts "
-            "WHERE operation_id = ? AND source_target_id = ? "
+            "WHERE operation_id = $1 AND source_target_id = $2 "
             "AND trait = 'service.open_port'",
-            (operation_id, target_id),
+            operation_id, target_id,
         )
-        rows = await cursor.fetchall()
         if not rows:
             return
         ports = []
@@ -774,21 +759,21 @@ class EngineRouter:
         if not ports:
             return
         fact_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         try:
             await db.execute(
-                "INSERT OR IGNORE INTO facts "
+                "INSERT INTO facts "
                 "(id, trait, value, category, source_target_id, operation_id, score, collected_at) "
-                "VALUES (?, 'access.recovery_candidate', ?, 'host', ?, ?, 1, ?)",
-                (fact_id, f"rescan:{target_ip}:ports={','.join(ports)}", target_id, operation_id, now),
+                "VALUES ($1, 'access.recovery_candidate', $2, 'host', $3, $4, 1, $5) "
+                "ON CONFLICT DO NOTHING",
+                fact_id, f"rescan:{target_ip}:ports={','.join(ports)}", target_id, operation_id, now,
             )
-            await db.commit()
         except Exception:
             logger.debug("recovery_candidate fact already exists for %s", target_id)
 
     async def _recovery_phase2_alt_protocol(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         operation_id: str,
         target_id: str,
         target_ip: str | None,
@@ -801,54 +786,53 @@ class EngineRouter:
             ("445", "smb", "445"),
             ("5986", "winrm_ssl", "5986"),
         ]
-        cursor = await db.execute(
+        port_rows = await db.fetch(
             "SELECT value FROM facts "
-            "WHERE operation_id = ? AND source_target_id = ? "
+            "WHERE operation_id = $1 AND source_target_id = $2 "
             "AND trait = 'service.open_port'",
-            (operation_id, target_id),
+            operation_id, target_id,
         )
-        port_rows = await cursor.fetchall()
         port_values = [(r["value"] if isinstance(r, dict) else r[0]) for r in port_rows]
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         for search_pattern, protocol, default_port in _ALT_CHECKS:
             for pv in port_values:
                 if search_pattern in pv.split("/")[0]:
                     fact_id = str(uuid.uuid4())
                     try:
                         await db.execute(
-                            "INSERT OR IGNORE INTO facts "
+                            "INSERT INTO facts "
                             "(id, trait, value, category, source_target_id, "
                             "operation_id, score, collected_at) "
-                            "VALUES (?, 'access.alternative_available', ?, 'host', ?, ?, 1, ?)",
-                            (fact_id, f"{protocol}:{target_ip}:{default_port}", target_id, operation_id, now),
+                            "VALUES ($1, 'access.alternative_available', $2, 'host', $3, $4, 1, $5) "
+                            "ON CONFLICT DO NOTHING",
+                            fact_id, f"{protocol}:{target_ip}:{default_port}", target_id, operation_id, now,
                         )
                     except Exception:
                         pass
                     break
-        key_cursor = await db.execute(
+        key_row = await db.fetchrow(
             "SELECT value FROM facts "
-            "WHERE operation_id = ? AND source_target_id = ? "
+            "WHERE operation_id = $1 AND source_target_id = $2 "
             "AND trait = 'credential.ssh_key'",
-            (operation_id, target_id),
+            operation_id, target_id,
         )
-        key_row = await key_cursor.fetchone()
         if key_row:
             fact_id = str(uuid.uuid4())
             try:
                 await db.execute(
-                    "INSERT OR IGNORE INTO facts "
+                    "INSERT INTO facts "
                     "(id, trait, value, category, source_target_id, "
                     "operation_id, score, collected_at) "
-                    "VALUES (?, 'access.alternative_available', ?, 'host', ?, ?, 1, ?)",
-                    (fact_id, f"ssh_key:{target_ip}:22", target_id, operation_id, now),
+                    "VALUES ($1, 'access.alternative_available', $2, 'host', $3, $4, 1, $5) "
+                    "ON CONFLICT DO NOTHING",
+                    fact_id, f"ssh_key:{target_ip}:22", target_id, operation_id, now,
                 )
             except Exception:
                 pass
-        await db.commit()
 
     async def _recovery_phase3_pivot(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         operation_id: str,
         target_id: str,
         target_ip: str | None,
@@ -856,16 +840,15 @@ class EngineRouter:
         """Phase 3: Find compromised hosts that could pivot to the lost target."""
         if not target_ip:
             return
-        cursor = await db.execute(
+        pivot_hosts = await db.fetch(
             "SELECT id, ip_address, privilege_level FROM targets "
-            "WHERE operation_id = ? AND is_compromised = 1 "
-            "AND access_status = 'active' AND id != ?",
-            (operation_id, target_id),
+            "WHERE operation_id = $1 AND is_compromised = TRUE "
+            "AND access_status = 'active' AND id != $2",
+            operation_id, target_id,
         )
-        pivot_hosts = await cursor.fetchall()
         if not pivot_hosts:
             return
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         for host in pivot_hosts:
             host_id = host["id"] if isinstance(host, dict) else host[0]
             host_ip = host["ip_address"] if isinstance(host, dict) else host[1]
@@ -873,44 +856,41 @@ class EngineRouter:
             if not host_ip:
                 continue
             if host_priv and host_priv.lower() in ("root", "sudo", "system", "administrator"):
-                svc_cursor = await db.execute(
+                shell_row = await db.fetchrow(
                     "SELECT value FROM facts "
-                    "WHERE operation_id = ? AND source_target_id = ? "
+                    "WHERE operation_id = $1 AND source_target_id = $2 "
                     "AND trait = 'credential.root_shell'",
-                    (operation_id, host_id),
+                    operation_id, host_id,
                 )
-                shell_row = await svc_cursor.fetchone()
                 via = "root_shell" if shell_row else "elevated_privilege"
                 fact_id = str(uuid.uuid4())
                 try:
                     await db.execute(
-                        "INSERT OR IGNORE INTO facts "
+                        "INSERT INTO facts "
                         "(id, trait, value, category, source_target_id, "
                         "operation_id, score, collected_at) "
-                        "VALUES (?, 'access.pivot_candidate', ?, 'host', ?, ?, 1, ?)",
-                        (fact_id, f"pivot:{host_ip}->{target_ip}:via={via}",
-                         target_id, operation_id, now),
+                        "VALUES ($1, 'access.pivot_candidate', $2, 'host', $3, $4, 1, $5) "
+                        "ON CONFLICT DO NOTHING",
+                        fact_id, f"pivot:{host_ip}->{target_ip}:via={via}",
+                        target_id, operation_id, now,
                     )
                 except Exception:
                     pass
-        await db.commit()
 
-    # ── Metasploit helpers ────────────────────────────────────────────────────
+    # -- Metasploit helpers --
 
     async def _has_exploitable_service(
-        self, db: aiosqlite.Connection, operation_id: str, target_id: str
+        self, db: asyncpg.Connection, operation_id: str, target_id: str
     ) -> "str | None":
         """Return service name from vuln.cve fact with exploit=true, else None."""
-        db.row_factory = aiosqlite.Row
-        cursor = await db.execute(
+        row = await db.fetchrow(
             """SELECT value FROM facts
-               WHERE operation_id = ? AND source_target_id = ?
+               WHERE operation_id = $1 AND source_target_id = $2
                AND trait = 'vuln.cve' AND value LIKE '%exploit=true%'
                ORDER BY score DESC
                LIMIT 1""",
-            (operation_id, target_id),
+            operation_id, target_id,
         )
-        row = await cursor.fetchone()
         if row:
             # format: CVE-xxx:service:product:cvss=N:exploit=true
             parts = row["value"].split(":")
@@ -918,19 +898,17 @@ class EngineRouter:
         return None
 
     async def _infer_exploitable_service(
-        self, db: aiosqlite.Connection, operation_id: str, target_id: str
+        self, db: asyncpg.Connection, operation_id: str, target_id: str
     ) -> "str | None":
         """Infer exploitable service from service.open_port facts (banner matching).
 
         SPEC-037 Phase 2: fallback when no vuln.cve exploit=true fact exists.
         """
-        db.row_factory = aiosqlite.Row
-        cursor = await db.execute(
-            "SELECT value FROM facts WHERE operation_id = ? AND source_target_id = ? "
+        rows = await db.fetch(
+            "SELECT value FROM facts WHERE operation_id = $1 AND source_target_id = $2 "
             "AND trait = 'service.open_port'",
-            (operation_id, target_id),
+            operation_id, target_id,
         )
-        rows = await cursor.fetchall()
         for row in rows:
             val_lower = row["value"].lower()
             for banner_key, service_name in _KNOWN_EXPLOITABLE_BANNERS.items():
@@ -943,20 +921,18 @@ class EngineRouter:
         return None
 
     async def _get_target_ip(
-        self, db: aiosqlite.Connection, target_id: str
+        self, db: asyncpg.Connection, target_id: str
     ) -> "str | None":
         """Resolve target IP from targets table. Returns None if target not found."""
-        db.row_factory = aiosqlite.Row
-        cursor = await db.execute(
-            "SELECT ip_address FROM targets WHERE id = ?",
-            (target_id,),
+        row = await db.fetchrow(
+            "SELECT ip_address FROM targets WHERE id = $1",
+            target_id,
         )
-        row = await cursor.fetchone()
         return row["ip_address"] if row else None
 
     async def _execute_metasploit(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         exec_id: str,
         now: str,
         technique_id: str,
@@ -970,14 +946,13 @@ class EngineRouter:
         """Execute technique via MetasploitRPCEngine (ADR-019)."""
         from app.clients.metasploit_client import MetasploitRPCEngine  # noqa: PLC0415
 
-        started_at = datetime.now(timezone.utc).isoformat()
+        started_at = datetime.now(timezone.utc)
         await db.execute(
             """INSERT INTO technique_executions
                (id, technique_id, target_id, operation_id, status, engine, started_at)
-               VALUES (?, ?, ?, ?, 'running', 'metasploit', ?)""",
-            (exec_id, technique_id, target_id, operation_id, started_at),
+               VALUES ($1, $2, $3, $4, 'running', 'metasploit', $5)""",
+            exec_id, technique_id, target_id, operation_id, started_at,
         )
-        await db.commit()
 
         await self._ws.broadcast(operation_id, "execution.update", {
             "id": exec_id, "technique_id": technique_id,
@@ -1000,44 +975,43 @@ class EngineRouter:
         output = result_dict.get("output", result_dict.get("reason", ""))
         msf_engine_label = result_dict.get("engine", "metasploit")
 
-        completed_at = datetime.now(timezone.utc).isoformat()
+        completed_at = datetime.now(timezone.utc)
         await db.execute(
             """UPDATE technique_executions
-               SET status = ?, result_summary = ?,
-                   facts_collected_count = 0, completed_at = ?,
-                   error_message = ?
-               WHERE id = ?""",
-            (
-                result_dict["status"],
-                result_dict.get("output", ""),
-                completed_at,
-                result_dict.get("reason") if result_dict["status"] != "success" else None,
-                exec_id,
-            ),
+               SET status = $1, result_summary = $2,
+                   facts_collected_count = 0, completed_at = $3,
+                   error_message = $4
+               WHERE id = $5""",
+            result_dict["status"],
+            result_dict.get("output", ""),
+            completed_at,
+            result_dict.get("reason") if result_dict["status"] != "success" else None,
+            exec_id,
         )
         facts_count = 0
         if status == "success":
             # Mark target as compromised with root access
             await db.execute(
-                "UPDATE targets SET is_compromised = 1, privilege_level = 'Root', "
-                "access_status = 'active' WHERE id = ? AND operation_id = ?",
-                (target_id, operation_id),
+                "UPDATE targets SET is_compromised = TRUE, privilege_level = 'Root', "
+                "access_status = 'active' WHERE id = $1 AND operation_id = $2",
+                target_id, operation_id,
             )
             # Record root shell fact
             shell_fact_id = str(uuid.uuid4())
-            completed_ts = datetime.now(timezone.utc).isoformat()
+            completed_ts = datetime.now(timezone.utc)
             await db.execute(
-                "INSERT OR IGNORE INTO facts (id, trait, value, category, "
+                "INSERT INTO facts (id, trait, value, category, "
                 "source_target_id, operation_id, score, collected_at) "
-                "VALUES (?, 'credential.root_shell', ?, 'host', ?, ?, 1, ?)",
-                (shell_fact_id, f"metasploit:{service_name}:{output[:100]}",
-                 target_id, operation_id, completed_ts),
+                "VALUES ($1, 'credential.root_shell', $2, 'host', $3, $4, 1, $5) "
+                "ON CONFLICT DO NOTHING",
+                shell_fact_id, f"metasploit:{service_name}:{output[:100]}",
+                target_id, operation_id, completed_ts,
             )
             facts_count = 1
             await db.execute(
                 "UPDATE operations SET techniques_executed = techniques_executed + 1 "
-                "WHERE id = ?",
-                (operation_id,),
+                "WHERE id = $1",
+                operation_id,
             )
             # SPEC-043: Record PoC for Metasploit success
             from app.models.poc_record import PoCRecord  # noqa: PLC0415
@@ -1052,15 +1026,15 @@ class EngineRouter:
             )
             poc_fact_id = str(uuid.uuid4())
             await db.execute(
-                "INSERT OR IGNORE INTO facts "
+                "INSERT INTO facts "
                 "(id, trait, value, category, source_technique_id, "
                 "source_target_id, operation_id, score, collected_at) "
-                "VALUES (?, ?, ?, 'poc', ?, ?, ?, 1, ?)",
-                (poc_fact_id, f"poc.{technique_id}", poc.to_json(),
-                 technique_id, target_id, operation_id,
-                 datetime.now(timezone.utc).isoformat()),
+                "VALUES ($1, $2, $3, 'poc', $4, $5, $6, 1, $7) "
+                "ON CONFLICT DO NOTHING",
+                poc_fact_id, f"poc.{technique_id}", poc.to_json(),
+                technique_id, target_id, operation_id,
+                datetime.now(timezone.utc),
             )
-        await db.commit()
 
         await self._ws.broadcast(operation_id, "execution.update", {
             "id": exec_id, "technique_id": technique_id,
@@ -1078,15 +1052,15 @@ class EngineRouter:
             "error": result_dict.get("reason"),
         }
 
-    # ── Engine / client selection ─────────────────────────────────────────────
+    # -- Engine / client selection --
 
     def select_engine(self, technique_id: str, context: dict, gpt_recommendation: str | None = None) -> str:
         """
         Engine selection logic per ADR-006 priority order:
-        1. High-confidence AI recommendation → trust its engine choice
-        2. Unknown environment → C2 engine
-        3. High stealth requirement → C2 engine
-        4. Default → mcp_ssh
+        1. High-confidence AI recommendation -> trust its engine choice
+        2. Unknown environment -> C2 engine
+        3. High stealth requirement -> C2 engine
+        4. Default -> mcp_ssh
         """
         valid = {"c2", "mcp_ssh", "mcp"}
         if gpt_recommendation and gpt_recommendation in valid:

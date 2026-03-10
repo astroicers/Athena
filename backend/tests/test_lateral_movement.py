@@ -11,6 +11,7 @@
 """Unit tests: lateral movement — SSH key-based auth + credential priority."""
 import base64
 import uuid
+from datetime import datetime, timezone
 
 import pytest
 
@@ -52,45 +53,38 @@ def test_parse_key_credential_invalid_format_raises():
 
 async def test_ssh_key_fact_prioritized_over_password(seeded_db):
     """credential.ssh_key fact should be prioritized over credential.ssh."""
-    import aiosqlite
-    seeded_db.row_factory = aiosqlite.Row
     await seeded_db.execute(
         "INSERT INTO facts (id, operation_id, source_target_id, trait, value, category, score) "
-        "VALUES (?, 'test-op-1', 'test-target-1', 'credential.ssh', 'user:pass@10.0.0.1:22', 'credential', 1)",
-        (str(uuid.uuid4()),),
+        "VALUES ($1, 'test-op-1', 'test-target-1', 'credential.ssh', 'user:pass@10.0.0.1:22', 'credential', 1)",
+        str(uuid.uuid4()),
     )
     await seeded_db.execute(
         "INSERT INTO facts (id, operation_id, source_target_id, trait, value, category, score) "
-        "VALUES (?, 'test-op-1', 'test-target-1', 'credential.ssh_key', 'user@10.0.0.1:22#KEYDATA', 'credential', 1)",
-        (str(uuid.uuid4()),),
+        "VALUES ($1, 'test-op-1', 'test-target-1', 'credential.ssh_key', 'user@10.0.0.1:22#KEYDATA', 'credential', 1)",
+        str(uuid.uuid4()),
     )
-    await seeded_db.commit()
 
-    cursor = await seeded_db.execute(
+    row = await seeded_db.fetchrow(
         "SELECT trait, value FROM facts "
         "WHERE operation_id = 'test-op-1' AND source_target_id = 'test-target-1' "
         "AND trait IN ('credential.ssh', 'credential.ssh_key') "
         "ORDER BY CASE trait WHEN 'credential.ssh_key' THEN 0 ELSE 1 END "
         "LIMIT 1",
     )
-    row = await cursor.fetchone()
     assert row["trait"] == "credential.ssh_key"
 
 
 async def test_mcp_executor_marks_target_compromised(seeded_db):
     """MCP executor success should mark target as compromised with root privilege."""
-    import aiosqlite
     from unittest.mock import AsyncMock, MagicMock
     from app.services.engine_router import EngineRouter
     from app.clients import ExecutionResult
 
-    seeded_db.row_factory = aiosqlite.Row
     await seeded_db.execute(
         "INSERT INTO facts (id, operation_id, source_target_id, trait, value, category, score) "
-        "VALUES (?, 'test-op-1', 'test-target-1', 'credential.ssh', 'root:pass@10.0.0.1:22', 'credential', 1)",
-        (str(uuid.uuid4()),),
+        "VALUES ($1, 'test-op-1', 'test-target-1', 'credential.ssh', 'root:pass@10.0.0.1:22', 'credential', 1)",
+        str(uuid.uuid4()),
     )
-    await seeded_db.commit()
 
     mock_result = ExecutionResult(
         success=True,
@@ -116,7 +110,7 @@ async def test_mcp_executor_marks_target_compromised(seeded_db):
     await router._execute_via_mcp_executor(
         db=seeded_db,
         exec_id="test-exec-99",
-        now="2026-01-01T00:00:00",
+        now=datetime.now(timezone.utc),
         ability_id="T1021.004",
         technique_id="T1021.004",
         target_id="test-target-1",
@@ -125,28 +119,24 @@ async def test_mcp_executor_marks_target_compromised(seeded_db):
         ooda_iteration_id=None,
     )
 
-    cursor = await seeded_db.execute(
+    row = await seeded_db.fetchrow(
         "SELECT is_compromised, privilege_level FROM targets WHERE id = 'test-target-1'"
     )
-    row = await cursor.fetchone()
-    assert row["is_compromised"] == 1
+    assert row["is_compromised"] is True
     assert row["privilege_level"] == "root"
 
 
 async def test_failed_mcp_executor_does_not_mark_compromised(seeded_db):
     """MCP executor failure should not change target.is_compromised."""
-    import aiosqlite
     from unittest.mock import AsyncMock, MagicMock
     from app.services.engine_router import EngineRouter
     from app.clients import ExecutionResult
 
-    seeded_db.row_factory = aiosqlite.Row
     await seeded_db.execute(
         "INSERT INTO facts (id, operation_id, source_target_id, trait, value, category, score) "
-        "VALUES (?, 'test-op-1', 'test-target-1', 'credential.ssh', 'root:pass@10.0.0.1:22', 'credential', 1)",
-        (str(uuid.uuid4()),),
+        "VALUES ($1, 'test-op-1', 'test-target-1', 'credential.ssh', 'root:pass@10.0.0.1:22', 'credential', 1)",
+        str(uuid.uuid4()),
     )
-    await seeded_db.commit()
 
     mock_result = ExecutionResult(
         success=False,
@@ -173,7 +163,7 @@ async def test_failed_mcp_executor_does_not_mark_compromised(seeded_db):
     await router._execute_via_mcp_executor(
         db=seeded_db,
         exec_id="test-exec-100",
-        now="2026-01-01T00:00:00",
+        now=datetime.now(timezone.utc),
         ability_id="T1021.004",
         technique_id="T1021.004",
         target_id="test-target-1",
@@ -182,8 +172,7 @@ async def test_failed_mcp_executor_does_not_mark_compromised(seeded_db):
         ooda_iteration_id=None,
     )
 
-    cursor = await seeded_db.execute(
+    row = await seeded_db.fetchrow(
         "SELECT is_compromised FROM targets WHERE id = 'test-target-1'"
     )
-    row = await cursor.fetchone()
-    assert row["is_compromised"] == 0
+    assert row["is_compromised"] is False

@@ -22,7 +22,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    DATABASE_URL: str = "sqlite:///backend/data/athena.db"
+    DATABASE_URL: str = "postgresql://athena:athena_secret@localhost:55432/athena"
     C2_ENGINE_URL: str = "http://localhost:8888"
     # External URL that deployed agents (on target machines) use to reach the C2 engine.
     # Must be reachable from the target network, e.g. http://192.168.0.18:58888

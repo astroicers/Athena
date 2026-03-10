@@ -16,7 +16,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 
-import aiosqlite
+import asyncpg
 
 from app.models.enums import C5ISRDomain, C5ISRDomainStatus
 from app.ws_manager import WebSocketManager
@@ -64,7 +64,11 @@ class DomainReport:
 
     def to_json(self) -> str:
         """Serialize to JSON string (stored in DB detail column)."""
-        return json.dumps(asdict(self), ensure_ascii=False)
+        def _default(o: object) -> object:
+            if isinstance(o, datetime):
+                return o.isoformat()
+            raise TypeError(f"Object of type {type(o).__name__} is not JSON serializable")
+        return json.dumps(asdict(self), ensure_ascii=False, default=_default)
 
     @classmethod
     def from_json(cls, raw: str) -> "DomainReport":
@@ -95,33 +99,31 @@ class C5ISRMapper:
     #  _build_command_report
     # ------------------------------------------------------------------
     async def _build_command_report(
-        self, db: aiosqlite.Connection, operation_id: str,
+        self, db: asyncpg.Connection, operation_id: str,
     ) -> DomainReport:
         risks: list[RiskVector] = []
         actions: list[str] = []
         cross: list[str] = []
 
         # Decision throughput
-        cursor = await db.execute(
-            "SELECT ooda_iteration_count, max_iterations FROM operations WHERE id = ?",
-            (operation_id,),
+        op = await db.fetchrow(
+            "SELECT ooda_iteration_count, max_iterations FROM operations WHERE id = $1",
+            operation_id,
         )
-        op = await cursor.fetchone()
         ooda_count = op["ooda_iteration_count"] if op else 0
         expected = (op["max_iterations"] if op and op["max_iterations"] else 20)
         dt_value = min(100.0, ooda_count / max(1, expected) * 100)
 
         # Stall penalty: check last 3 recommendations
-        cursor = await db.execute(
+        rec_rows = await db.fetch(
             "SELECT created_at FROM recommendations "
-            "WHERE operation_id = ? ORDER BY created_at DESC LIMIT 3",
-            (operation_id,),
+            "WHERE operation_id = $1 ORDER BY created_at DESC LIMIT 3",
+            operation_id,
         )
-        rec_rows = await cursor.fetchall()
         if rec_rows and ooda_count > 0:
             oldest_ts = rec_rows[-1]["created_at"]
             try:
-                oldest_dt = datetime.fromisoformat(oldest_ts)
+                oldest_dt = (oldest_ts if isinstance(oldest_ts, datetime) else datetime.fromisoformat(oldest_ts))
                 if oldest_dt.tzinfo is None:
                     oldest_dt = oldest_dt.replace(tzinfo=timezone.utc)
                 stall_threshold = ooda_count * 30 * 3  # seconds
@@ -136,13 +138,12 @@ class C5ISRMapper:
                 pass
 
         # Acceptance rate
-        cursor = await db.execute(
+        rec_row = await db.fetchrow(
             "SELECT COUNT(*) as total, "
-            "SUM(CASE WHEN accepted = 1 THEN 1 ELSE 0 END) as accepted "
-            "FROM recommendations WHERE operation_id = ?",
-            (operation_id,),
+            "SUM(CASE WHEN accepted = TRUE THEN 1 ELSE 0 END) as accepted "
+            "FROM recommendations WHERE operation_id = $1",
+            operation_id,
         )
-        rec_row = await cursor.fetchone()
         total_recs = rec_row["total"] or 0
         accepted_recs = rec_row["accepted"] or 0
         if total_recs > 0:
@@ -151,13 +152,12 @@ class C5ISRMapper:
             ar_value = 50.0  # baseline
 
         # Directive consumption
-        cursor = await db.execute(
+        dir_row = await db.fetchrow(
             "SELECT COUNT(*) as total, "
             "SUM(CASE WHEN consumed_at IS NOT NULL THEN 1 ELSE 0 END) as consumed "
-            "FROM ooda_directives WHERE operation_id = ?",
-            (operation_id,),
+            "FROM ooda_directives WHERE operation_id = $1",
+            operation_id,
         )
-        dir_row = await cursor.fetchone()
         total_dirs = dir_row["total"] or 0
         consumed_dirs = dir_row["consumed"] or 0
         if total_dirs > 0:
@@ -202,11 +202,10 @@ class C5ISRMapper:
         )
 
         # Asset roster: ooda_directives
-        cursor = await db.execute(
-            "SELECT id, directive, consumed_at FROM ooda_directives WHERE operation_id = ?",
-            (operation_id,),
+        directive_rows = await db.fetch(
+            "SELECT id, directive, consumed_at FROM ooda_directives WHERE operation_id = $1",
+            operation_id,
         )
-        directive_rows = await cursor.fetchall()
         roster = [
             {
                 "type": "directive",
@@ -233,50 +232,47 @@ class C5ISRMapper:
     #  _build_control_report
     # ------------------------------------------------------------------
     async def _build_control_report(
-        self, db: aiosqlite.Connection, operation_id: str,
+        self, db: asyncpg.Connection, operation_id: str,
     ) -> DomainReport:
         risks: list[RiskVector] = []
         actions: list[str] = []
         cross: list[str] = []
 
         # Agent liveness
-        cursor = await db.execute(
+        agent_row = await db.fetchrow(
             "SELECT COUNT(*) as total, "
             "SUM(CASE WHEN status = 'alive' THEN 1 ELSE 0 END) as alive "
-            "FROM agents WHERE operation_id = ?",
-            (operation_id,),
+            "FROM agents WHERE operation_id = $1",
+            operation_id,
         )
-        agent_row = await cursor.fetchone()
         total_agents = agent_row["total"] or 0
         alive_agents = agent_row["alive"] or 0
         al_value = (alive_agents / total_agents * 100) if total_agents > 0 else 0.0
 
         # Access stability
-        cursor = await db.execute(
+        access_row = await db.fetchrow(
             "SELECT SUM(CASE WHEN access_status = 'active' THEN 1 ELSE 0 END) as active_count, "
             "SUM(CASE WHEN access_status IN ('active', 'lost') THEN 1 ELSE 0 END) as total_accessed "
-            "FROM targets WHERE operation_id = ?",
-            (operation_id,),
+            "FROM targets WHERE operation_id = $1",
+            operation_id,
         )
-        access_row = await cursor.fetchone()
         active_count = access_row["active_count"] or 0
         total_accessed = access_row["total_accessed"] or 0
         as_value = (active_count / total_accessed * 100) if total_accessed > 0 else 0.0
 
         # Beacon freshness
-        cursor = await db.execute(
+        beacon_rows = await db.fetch(
             "SELECT last_beacon FROM agents "
-            "WHERE operation_id = ? AND status = 'alive' AND last_beacon IS NOT NULL",
-            (operation_id,),
+            "WHERE operation_id = $1 AND status = 'alive' AND last_beacon IS NOT NULL",
+            operation_id,
         )
-        beacon_rows = await cursor.fetchall()
         now = datetime.now(timezone.utc)
         if beacon_rows:
             staleness_values = []
             stale_count = 0
             for row in beacon_rows:
                 try:
-                    beacon_dt = datetime.fromisoformat(row["last_beacon"])
+                    beacon_dt = (row["last_beacon"] if isinstance(row["last_beacon"], datetime) else datetime.fromisoformat(row["last_beacon"]))
                     if beacon_dt.tzinfo is None:
                         beacon_dt = beacon_dt.replace(tzinfo=timezone.utc)
                     staleness_sec = (now - beacon_dt).total_seconds()
@@ -327,11 +323,10 @@ class C5ISRMapper:
         )
 
         # Asset roster: agents
-        cursor = await db.execute(
-            "SELECT paw, status, host_id, last_beacon, privilege FROM agents WHERE operation_id = ?",
-            (operation_id,),
+        agent_rows = await db.fetch(
+            "SELECT paw, status, host_id, last_beacon, privilege FROM agents WHERE operation_id = $1",
+            operation_id,
         )
-        agent_rows = await cursor.fetchall()
         roster = [
             {
                 "type": "agent",
@@ -360,7 +355,7 @@ class C5ISRMapper:
     #  _build_comms_report
     # ------------------------------------------------------------------
     async def _build_comms_report(
-        self, db: aiosqlite.Connection, operation_id: str,
+        self, db: asyncpg.Connection, operation_id: str,
     ) -> DomainReport:
         risks: list[RiskVector] = []
         actions: list[str] = []
@@ -371,12 +366,11 @@ class C5ISRMapper:
         ws_value = min(100.0, ws_count * 50)  # 2+ connections = 100%
 
         # MCP availability
-        cursor = await db.execute(
+        tool_row = await db.fetchrow(
             "SELECT COUNT(*) as total, "
-            "SUM(CASE WHEN enabled = 1 THEN 1 ELSE 0 END) as enabled_count "
+            "SUM(CASE WHEN enabled = TRUE THEN 1 ELSE 0 END) as enabled_count "
             "FROM tool_registry WHERE kind = 'tool'",
         )
-        tool_row = await cursor.fetchone()
         total_tools = tool_row["total"] or 0
         enabled_tools = tool_row["enabled_count"] or 0
         mcp_value = (enabled_tools / total_tools * 100) if total_tools > 0 else 0.0
@@ -422,10 +416,9 @@ class C5ISRMapper:
         )
 
         # Asset roster: enabled MCP tools
-        cursor = await db.execute(
+        tool_rows = await db.fetch(
             "SELECT id, tool_id, name, enabled FROM tool_registry WHERE kind = 'tool'",
         )
-        tool_rows = await cursor.fetchall()
         roster = [
             {
                 "type": "mcp_tool",
@@ -452,21 +445,20 @@ class C5ISRMapper:
     #  _build_computers_report
     # ------------------------------------------------------------------
     async def _build_computers_report(
-        self, db: aiosqlite.Connection, operation_id: str,
+        self, db: asyncpg.Connection, operation_id: str,
     ) -> DomainReport:
         risks: list[RiskVector] = []
         actions: list[str] = []
         cross: list[str] = []
 
         # Compromise rate + privilege depth
-        cursor = await db.execute(
+        target_row = await db.fetchrow(
             "SELECT COUNT(*) as total, "
-            "SUM(CASE WHEN is_compromised = 1 THEN 1 ELSE 0 END) as compromised, "
-            "SUM(CASE WHEN is_compromised = 1 AND privilege_level = 'Root' THEN 1 ELSE 0 END) as root_count "
-            "FROM targets WHERE operation_id = ?",
-            (operation_id,),
+            "SUM(CASE WHEN is_compromised = TRUE THEN 1 ELSE 0 END) as compromised, "
+            "SUM(CASE WHEN is_compromised = TRUE AND privilege_level = 'Root' THEN 1 ELSE 0 END) as root_count "
+            "FROM targets WHERE operation_id = $1",
+            operation_id,
         )
-        target_row = await cursor.fetchone()
         total_targets = target_row["total"] or 0
         compromised = target_row["compromised"] or 0
         root_count = target_row["root_count"] or 0
@@ -475,14 +467,13 @@ class C5ISRMapper:
         pd_value = (root_count / max(1, compromised) * 100)
 
         # Kill chain advancement
-        cursor = await db.execute(
+        kc_rows = await db.fetch(
             "SELECT DISTINCT t.kill_chain_stage "
             "FROM technique_executions te "
             "JOIN techniques t ON te.technique_id = t.mitre_id "
-            "WHERE te.operation_id = ? AND te.status = 'success'",
-            (operation_id,),
+            "WHERE te.operation_id = $1 AND te.status = 'success'",
+            operation_id,
         )
-        kc_rows = await cursor.fetchall()
         kc_score = 0
         for row in kc_rows:
             stage = row["kill_chain_stage"]
@@ -519,12 +510,11 @@ class C5ISRMapper:
         )
 
         # Asset roster: targets
-        cursor = await db.execute(
+        t_rows = await db.fetch(
             "SELECT hostname, ip_address, is_compromised, privilege_level, access_status "
-            "FROM targets WHERE operation_id = ?",
-            (operation_id,),
+            "FROM targets WHERE operation_id = $1",
+            operation_id,
         )
-        t_rows = await cursor.fetchall()
         roster = [
             {
                 "type": "target",
@@ -553,25 +543,24 @@ class C5ISRMapper:
     #  _build_cyber_report
     # ------------------------------------------------------------------
     async def _build_cyber_report(
-        self, db: aiosqlite.Connection, operation_id: str,
+        self, db: asyncpg.Connection, operation_id: str,
     ) -> DomainReport:
         risks: list[RiskVector] = []
         actions: list[str] = []
         cross: list[str] = []
 
         # Category stats: recon vs exploit
-        cursor = await db.execute(
+        cat_rows = await db.fetch(
             "SELECT "
             "CASE WHEN t.tactic IN ('Reconnaissance', 'Discovery') THEN 'recon' ELSE 'exploit' END as category, "
             "COUNT(*) as total, "
             "SUM(CASE WHEN te.status = 'success' THEN 1 ELSE 0 END) as success "
             "FROM technique_executions te "
             "LEFT JOIN techniques t ON te.technique_id = t.mitre_id "
-            "WHERE te.operation_id = ? "
+            "WHERE te.operation_id = $1 "
             "GROUP BY category",
-            (operation_id,),
+            operation_id,
         )
-        cat_rows = await cursor.fetchall()
         recon_total = recon_success = 0
         exploit_total = exploit_success = 0
         for row in cat_rows:
@@ -587,24 +576,22 @@ class C5ISRMapper:
         es_value = (exploit_success / exploit_total * 100) if exploit_total > 0 else 0.0
 
         # Overall success rate
-        cursor = await db.execute(
+        overall_row = await db.fetchrow(
             "SELECT COUNT(*) as total, "
             "SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success "
-            "FROM technique_executions WHERE operation_id = ?",
-            (operation_id,),
+            "FROM technique_executions WHERE operation_id = $1",
+            operation_id,
         )
-        overall_row = await cursor.fetchone()
         overall_total = overall_row["total"] or 0
         overall_success = overall_row["success"] or 0
         overall_rate = (overall_success / overall_total) if overall_total > 0 else 0.0
 
         # Recent 5 trend
-        cursor = await db.execute(
+        recent_rows = await db.fetch(
             "SELECT status FROM technique_executions "
-            "WHERE operation_id = ? ORDER BY created_at DESC LIMIT 5",
-            (operation_id,),
+            "WHERE operation_id = $1 ORDER BY created_at DESC LIMIT 5",
+            operation_id,
         )
-        recent_rows = await cursor.fetchall()
         if recent_rows:
             recent_success = sum(1 for r in recent_rows if r["status"] == "success")
             recent_rate = recent_success / len(recent_rows)
@@ -664,19 +651,18 @@ class C5ISRMapper:
     #  _build_isr_report
     # ------------------------------------------------------------------
     async def _build_isr_report(
-        self, db: aiosqlite.Connection, operation_id: str,
+        self, db: asyncpg.Connection, operation_id: str,
     ) -> DomainReport:
         risks: list[RiskVector] = []
         actions: list[str] = []
         cross: list[str] = []
 
         # Confidence trend: average of last 5 recommendations
-        cursor = await db.execute(
+        conf_rows = await db.fetch(
             "SELECT confidence FROM recommendations "
-            "WHERE operation_id = ? ORDER BY created_at DESC LIMIT 5",
-            (operation_id,),
+            "WHERE operation_id = $1 ORDER BY created_at DESC LIMIT 5",
+            operation_id,
         )
-        conf_rows = await cursor.fetchall()
         if conf_rows:
             avg_conf = sum(r["confidence"] for r in conf_rows) / len(conf_rows)
             ct_value = avg_conf * 100
@@ -684,23 +670,21 @@ class C5ISRMapper:
             ct_value = 0.0
 
         # Fact coverage: distinct categories / 7
-        cursor = await db.execute(
+        fact_row = await db.fetchrow(
             "SELECT COUNT(DISTINCT category) as distinct_categories "
-            "FROM facts WHERE operation_id = ?",
-            (operation_id,),
+            "FROM facts WHERE operation_id = $1",
+            operation_id,
         )
-        fact_row = await cursor.fetchone()
         distinct_cats = fact_row["distinct_categories"] or 0
         fc_value = distinct_cats / 7 * 100
 
         # Graph coverage
-        cursor = await db.execute(
+        graph_row = await db.fetchrow(
             "SELECT COUNT(*) as total, "
             "SUM(CASE WHEN status IN ('reachable', 'completed') THEN 1 ELSE 0 END) as covered "
-            "FROM attack_graph_nodes WHERE operation_id = ?",
-            (operation_id,),
+            "FROM attack_graph_nodes WHERE operation_id = $1",
+            operation_id,
         )
-        graph_row = await cursor.fetchone()
         total_nodes = graph_row["total"] or 0
         covered_nodes = graph_row["covered"] or 0
         gc_value = (covered_nodes / total_nodes * 100) if total_nodes > 0 else 0.0
@@ -733,12 +717,11 @@ class C5ISRMapper:
         )
 
         # Asset roster: last 10 facts
-        cursor = await db.execute(
+        fact_rows = await db.fetch(
             "SELECT trait, value, category, collected_at FROM facts "
-            "WHERE operation_id = ? ORDER BY collected_at DESC LIMIT 10",
-            (operation_id,),
+            "WHERE operation_id = $1 ORDER BY collected_at DESC LIMIT 10",
+            operation_id,
         )
-        fact_rows = await cursor.fetchall()
         roster = [
             {
                 "type": "fact",
@@ -765,12 +748,11 @@ class C5ISRMapper:
     # ------------------------------------------------------------------
     #  update (main entry point)
     # ------------------------------------------------------------------
-    async def update(self, db: aiosqlite.Connection, operation_id: str) -> list[dict]:
+    async def update(self, db: asyncpg.Connection, operation_id: str) -> list[dict]:
         """
         Six-domain aggregation per ADR-012 / SPEC-038:
         Each domain produces a structured DomainReport with weighted metrics.
         """
-        db.row_factory = aiosqlite.Row
         results: list[dict] = []
 
         reports = {
@@ -782,7 +764,7 @@ class C5ISRMapper:
             C5ISRDomain.ISR: await self._build_isr_report(db, operation_id),
         }
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         for domain, report in reports.items():
             health = report.health_pct
             status = self._health_to_status(health)
@@ -796,18 +778,17 @@ class C5ISRMapper:
             detail_json = report.to_json()
 
             # Upsert
-            cursor = await db.execute(
-                "SELECT id FROM c5isr_statuses WHERE operation_id = ? AND domain = ?",
-                (operation_id, domain.value),
+            existing = await db.fetchrow(
+                "SELECT id FROM c5isr_statuses WHERE operation_id = $1 AND domain = $2",
+                operation_id, domain.value,
             )
-            existing = await cursor.fetchone()
             if existing:
                 await db.execute(
-                    "UPDATE c5isr_statuses SET status = ?, health_pct = ?, "
-                    "detail = ?, numerator = ?, denominator = ?, metric_label = ?, "
-                    "updated_at = ? WHERE id = ?",
-                    (status.value, round(health, 1), detail_json,
-                     numerator, denominator, metric_label, now, existing["id"]),
+                    "UPDATE c5isr_statuses SET status = $1, health_pct = $2, "
+                    "detail = $3, numerator = $4, denominator = $5, metric_label = $6, "
+                    "updated_at = $7 WHERE id = $8",
+                    status.value, round(health, 1), detail_json,
+                    numerator, denominator, metric_label, now, existing["id"],
                 )
                 row_id = existing["id"]
             else:
@@ -816,11 +797,21 @@ class C5ISRMapper:
                     "INSERT INTO c5isr_statuses "
                     "(id, operation_id, domain, status, health_pct, detail, "
                     "numerator, denominator, metric_label, updated_at) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    (row_id, operation_id, domain.value, status.value,
-                     round(health, 1), detail_json, numerator, denominator,
-                     metric_label, now),
+                    "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+                    row_id, operation_id, domain.value, status.value,
+                    round(health, 1), detail_json, numerator, denominator,
+                    metric_label, now,
                 )
+
+            # SPEC-047: Record history for time-series analysis
+            hist_id = str(uuid.uuid4())
+            await db.execute(
+                "INSERT INTO c5isr_status_history "
+                "(id, operation_id, domain, health_pct, status, metrics) "
+                "VALUES ($1, $2, $3, $4, $5, $6)",
+                hist_id, operation_id, domain.value, round(health, 1),
+                status.value, detail_json,
+            )
 
             result = {
                 "id": row_id, "operation_id": operation_id,
@@ -833,7 +824,6 @@ class C5ISRMapper:
             }
             results.append(result)
 
-        await db.commit()
         await self._ws.broadcast(operation_id, "c5isr.update", {"domains": results})
         return results
 

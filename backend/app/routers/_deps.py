@@ -10,12 +10,12 @@
 
 """Shared dependencies for router modules."""
 
-import aiosqlite
+import asyncpg
 from fastapi import HTTPException
 
 
-async def ensure_operation(db: aiosqlite.Connection, operation_id: str) -> None:
+async def ensure_operation(db: asyncpg.Connection, operation_id: str) -> None:
     """Raise 404 if *operation_id* does not exist."""
-    cursor = await db.execute("SELECT id FROM operations WHERE id = ?", (operation_id,))
-    if not await cursor.fetchone():
+    row = await db.fetchrow("SELECT id FROM operations WHERE id = $1", operation_id)
+    if not row:
         raise HTTPException(status_code=404, detail="Operation not found")

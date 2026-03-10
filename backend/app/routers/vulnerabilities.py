@@ -12,7 +12,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-import aiosqlite
+import asyncpg
 
 from app.database import get_db
 from app.routers._deps import ensure_operation
@@ -31,7 +31,7 @@ async def list_vulnerabilities(
     op_id: str,
     severity: str | None = None,
     status: str | None = None,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ) -> dict:
     await ensure_operation(db, op_id)
     vulns = await _vuln_mgr.list_by_operation(db, op_id, severity, status)
@@ -44,7 +44,7 @@ async def update_vulnerability_status(
     op_id: str,
     vuln_id: str,
     body: StatusTransitionRequest,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ) -> dict:
     await ensure_operation(db, op_id)
     try:
@@ -56,7 +56,7 @@ async def update_vulnerability_status(
 @router.get("/operations/{op_id}/vulnerabilities/summary")
 async def get_vulnerability_summary(
     op_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ) -> dict:
     await ensure_operation(db, op_id)
     return await _vuln_mgr.get_summary(db, op_id)

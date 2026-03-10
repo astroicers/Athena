@@ -8,7 +8,7 @@
 #
 # For commercial licensing, contact: [TODO: contact email]
 
-"""Recon phase endpoints — nmap scanning and initial access."""
+"""Recon phase endpoints -- nmap scanning and initial access."""
 
 import asyncio
 import json
@@ -16,12 +16,12 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-import aiosqlite
+import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.config import settings
-from app.database import get_db, _DB_FILE
+from app.database import db_manager, get_db
 from app.models.osint import OSINTDiscoverQueued, OSINTResult
 from app.models.recon import ReconScanResult, InitialAccessResult, ReconScanQueued, ServiceInfo
 from app.routers._deps import ensure_operation
@@ -61,19 +61,18 @@ class OSINTDiscoverRequest(BaseModel):
 async def run_recon_scan(
     op_id: str,
     body: ReconScanRequest,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ) -> ReconScanQueued:
-    """Enqueue a recon scan — returns immediately, executes in background."""
+    """Enqueue a recon scan -- returns immediately, executes in background."""
 
-    # ── 1. Validate operation exists ─────────────────────────────────────────
+    # -- 1. Validate operation exists --
     await ensure_operation(db, op_id)
 
-    # ── 2. Validate target exists and belongs to this operation ──────────────
-    cursor = await db.execute(
-        "SELECT id, ip_address FROM targets WHERE id = ? AND operation_id = ?",
-        (body.target_id, op_id),
+    # -- 2. Validate target exists and belongs to this operation --
+    target_row = await db.fetchrow(
+        "SELECT id, ip_address FROM targets WHERE id = $1 AND operation_id = $2",
+        body.target_id, op_id,
     )
-    target_row = await cursor.fetchone()
     if target_row is None:
         raise HTTPException(
             status_code=404,
@@ -81,20 +80,19 @@ async def run_recon_scan(
         )
     ip_address: str = target_row["ip_address"]
 
-    # ── 3. Insert recon_scans row with status="queued" ────────────────────────
+    # -- 3. Insert recon_scans row with status="queued" --
     scan_id = str(uuid.uuid4())
-    now_utc = datetime.now(timezone.utc).isoformat()
+    now_utc = datetime.now(timezone.utc)
     await db.execute(
         """
         INSERT INTO recon_scans
             (id, operation_id, target_id, ip_address, status, started_at)
-        VALUES (?, ?, ?, ?, 'queued', ?)
+        VALUES ($1, $2, $3, $4, 'queued', $5)
         """,
-        (scan_id, op_id, body.target_id, ip_address, now_utc),
+        scan_id, op_id, body.target_id, ip_address, now_utc,
     )
-    await db.commit()
 
-    # ── 4. Launch background task ─────────────────────────────────────────────
+    # -- 4. Launch background task --
     _task = asyncio.create_task(
         _run_scan_background(scan_id, op_id, body.target_id, ip_address, body)
     )
@@ -104,7 +102,7 @@ async def run_recon_scan(
             if t.cancelled() else None
         )
 
-    # ── 5. Return immediately with 202 Accepted ───────────────────────────────
+    # -- 5. Return immediately with 202 Accepted --
     return ReconScanQueued(
         scan_id=scan_id,
         status="queued",
@@ -138,19 +136,17 @@ async def _run_scan_background(
             },
         )
 
-    async with aiosqlite.connect(_DB_FILE) as db:
-        db.row_factory = aiosqlite.Row
+    async with db_manager.connection() as db:
         try:
             # Mark running
             await db.execute(
-                "UPDATE recon_scans SET status='running' WHERE id=?", (scan_id,)
+                "UPDATE recon_scans SET status='running' WHERE id=$1", scan_id
             )
-            await db.commit()
             await ws_manager.broadcast(
                 op_id, "recon.started", {"scan_id": scan_id, "target_id": target_id}
             )
 
-            # ── Mock mode: simulate phased scan with delays ─────────────
+            # -- Mock mode: simulate phased scan with delays --
             if settings.MOCK_C2_ENGINE:
                 for idx, (phase_key, delay) in enumerate(_MOCK_SCAN_PHASES[:4]):
                     await _broadcast_phase(phase_key, idx + 1)
@@ -167,7 +163,7 @@ async def _run_scan_background(
             else:
                 await _broadcast_phase("initial_access", 2)
 
-            # Optional initial access — multi-protocol (SSH/RDP/WinRM)
+            # Optional initial access -- multi-protocol (SSH/RDP/WinRM)
             ia_result = InitialAccessResult(
                 success=False,
                 method="none",
@@ -226,32 +222,29 @@ async def _run_scan_background(
                 }
                 for svc in recon_result.services
             ])
-            completed_at = datetime.now(timezone.utc).isoformat()
+            completed_at = datetime.now(timezone.utc)
             await db.execute(
                 """
                 UPDATE recon_scans SET
                     status                = 'completed',
-                    open_ports            = ?,
-                    os_guess              = ?,
-                    initial_access_method = ?,
-                    credential_found      = ?,
-                    agent_deployed        = ?,
-                    facts_written         = ?,
-                    completed_at          = ?
-                WHERE id = ?
+                    open_ports            = $1,
+                    os_guess              = $2,
+                    initial_access_method = $3,
+                    credential_found      = $4,
+                    agent_deployed        = $5,
+                    facts_written         = $6,
+                    completed_at          = $7
+                WHERE id = $8
                 """,
-                (
-                    open_ports_json,
-                    recon_result.os_guess,
-                    ia_result.method,
-                    ia_result.credential,
-                    1 if ia_result.agent_deployed else 0,
-                    recon_result.facts_written,
-                    completed_at,
-                    scan_id,
-                ),
+                open_ports_json,
+                recon_result.os_guess,
+                ia_result.method,
+                ia_result.credential,
+                ia_result.agent_deployed,
+                recon_result.facts_written,
+                completed_at,
+                scan_id,
             )
-            await db.commit()
 
             # Broadcast completion
             await ws_manager.broadcast(
@@ -270,10 +263,9 @@ async def _run_scan_background(
             logger.exception("Background recon scan %s failed: %s", scan_id, exc)
             try:
                 await db.execute(
-                    "UPDATE recon_scans SET status='failed', completed_at=? WHERE id=?",
-                    (datetime.now(timezone.utc).isoformat(), scan_id),
+                    "UPDATE recon_scans SET status='failed', completed_at=$1 WHERE id=$2",
+                    datetime.now(timezone.utc), scan_id,
                 )
-                await db.commit()
             except Exception:
                 logger.exception(
                     "Failed to update recon_scan status to 'failed' for %s", scan_id
@@ -285,7 +277,7 @@ async def _run_scan_background(
             )
 
 
-def _build_scan_result(row: aiosqlite.Row) -> ReconScanResult:
+def _build_scan_result(row: asyncpg.Record) -> ReconScanResult:
     """Build a ReconScanResult from a recon_scans DB row (joined with targets)."""
     open_ports = json.loads(row["open_ports"] or "[]")
     started = row["started_at"] or ""
@@ -293,8 +285,8 @@ def _build_scan_result(row: aiosqlite.Row) -> ReconScanResult:
     scan_duration = 0.0
     if started and completed:
         try:
-            t_start = datetime.fromisoformat(started)
-            t_end = datetime.fromisoformat(completed)
+            t_start = (started if isinstance(started, datetime) else datetime.fromisoformat(started))
+            t_end = (completed if isinstance(completed, datetime) else datetime.fromisoformat(completed))
             scan_duration = (t_end - t_start).total_seconds()
         except ValueError:
             pass
@@ -351,16 +343,15 @@ _SCAN_SELECT = """
 async def get_recon_scan_result(
     op_id: str,
     scan_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ) -> ReconScanResult:
     """Return a full ReconScanResult for a completed scan (used by frontend modal)."""
     await ensure_operation(db, op_id)
 
-    cursor = await db.execute(
-        _SCAN_SELECT + " WHERE s.id = ? AND s.operation_id = ?",
-        (scan_id, op_id),
+    row = await db.fetchrow(
+        _SCAN_SELECT + " WHERE s.id = $1 AND s.operation_id = $2",
+        scan_id, op_id,
     )
-    row = await cursor.fetchone()
     if row is None:
         raise HTTPException(
             status_code=404,
@@ -379,18 +370,17 @@ async def get_recon_scan_result(
 async def get_latest_scan_by_target(
     op_id: str,
     target_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ) -> ReconScanResult | None:
     """Return the latest completed scan for a specific target."""
     await ensure_operation(db, op_id)
 
-    cursor = await db.execute(
+    row = await db.fetchrow(
         _SCAN_SELECT
-        + " WHERE s.operation_id = ? AND s.target_id = ? AND s.status = 'completed'"
+        + " WHERE s.operation_id = $1 AND s.target_id = $2 AND s.status = 'completed'"
         " ORDER BY s.completed_at DESC LIMIT 1",
-        (op_id, target_id),
+        op_id, target_id,
     )
-    row = await cursor.fetchone()
     if row is None:
         return None
 
@@ -409,35 +399,33 @@ class InitialAccessRequest(BaseModel):
 async def run_initial_access(
     op_id: str,
     body: InitialAccessRequest,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ) -> dict:
     """Run initial access on a target (requires a prior completed recon scan)."""
     await ensure_operation(db, op_id)
 
     # Validate target
-    cursor = await db.execute(
-        "SELECT id, ip_address FROM targets WHERE id = ? AND operation_id = ?",
-        (body.target_id, op_id),
+    target_row = await db.fetchrow(
+        "SELECT id, ip_address FROM targets WHERE id = $1 AND operation_id = $2",
+        body.target_id, op_id,
     )
-    target_row = await cursor.fetchone()
     if target_row is None:
         raise HTTPException(404, f"Target '{body.target_id}' not found in operation '{op_id}'")
     ip_address: str = target_row["ip_address"]
 
     # Require a completed scan with services
-    scan_cursor = await db.execute(
+    scan_row = await db.fetchrow(
         "SELECT open_ports FROM recon_scans "
-        "WHERE target_id = ? AND operation_id = ? AND status = 'completed' "
+        "WHERE target_id = $1 AND operation_id = $2 AND status = 'completed' "
         "ORDER BY completed_at DESC LIMIT 1",
-        (body.target_id, op_id),
+        body.target_id, op_id,
     )
-    scan_row = await scan_cursor.fetchone()
     if scan_row is None:
-        raise HTTPException(400, "No completed recon scan found — run recon scan first")
+        raise HTTPException(400, "No completed recon scan found -- run recon scan first")
 
     services_json = json.loads(scan_row["open_ports"] or "[]")
     if not services_json:
-        raise HTTPException(400, "Recon scan found no open ports — nothing to attack")
+        raise HTTPException(400, "Recon scan found no open ports -- nothing to attack")
 
     # Launch background task
     _task = asyncio.create_task(
@@ -462,8 +450,7 @@ async def _run_initial_access_background(
     """Background task: attempt initial access on a target using known services."""
     from app.ws_manager import ws_manager
 
-    async with aiosqlite.connect(_DB_FILE) as db:
-        db.row_factory = aiosqlite.Row
+    async with db_manager.connection() as db:
         try:
             await ws_manager.broadcast(
                 op_id, "initial_access.started", {"target_id": target_id}
@@ -517,7 +504,7 @@ async def _run_initial_access_background(
 
 async def get_recon_status(
     op_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ) -> dict:
     """Return the most recent recon scan row for this operation.
 
@@ -526,20 +513,19 @@ async def get_recon_status(
 
     await ensure_operation(db, op_id)
 
-    cursor = await db.execute(
+    row = await db.fetchrow(
         """
         SELECT id, operation_id, target_id, status,
                nmap_result, open_ports, os_guess,
                initial_access_method, credential_found,
                agent_deployed, started_at, completed_at
         FROM recon_scans
-        WHERE operation_id = ?
+        WHERE operation_id = $1
         ORDER BY started_at DESC
         LIMIT 1
         """,
-        (op_id,),
+        op_id,
     )
-    row = await cursor.fetchone()
     if row is None:
         raise HTTPException(
             status_code=404,
@@ -551,15 +537,14 @@ async def get_recon_status(
     # Auto-fail stuck scans (running/queued > 10 minutes)
     if result["status"] in ("running", "queued") and result.get("started_at"):
         try:
-            started = datetime.fromisoformat(result["started_at"])
+            started = (result["started_at"] if isinstance(result["started_at"], datetime) else datetime.fromisoformat(result["started_at"]))
             elapsed = (datetime.now(timezone.utc) - started).total_seconds()
             if elapsed > 600:  # 10 minutes
-                now_iso = datetime.now(timezone.utc).isoformat()
+                now_iso = datetime.now(timezone.utc)
                 await db.execute(
-                    "UPDATE recon_scans SET status='failed', completed_at=? WHERE id=?",
-                    (now_iso, result["id"]),
+                    "UPDATE recon_scans SET status='failed', completed_at=$1 WHERE id=$2",
+                    now_iso, result["id"],
                 )
-                await db.commit()
                 result["status"] = "failed"
                 result["completed_at"] = now_iso
                 logger.warning("Auto-failed stuck recon scan %s (>10 min)", result["id"])
@@ -579,9 +564,9 @@ async def get_recon_status(
 async def run_osint_discover(
     op_id: str,
     body: OSINTDiscoverRequest,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ) -> OSINTDiscoverQueued:
-    """Enqueue OSINT discovery — returns 202 immediately, executes in background."""
+    """Enqueue OSINT discovery -- returns 202 immediately, executes in background."""
     await ensure_operation(db, op_id)
 
     _task = asyncio.create_task(
@@ -606,8 +591,7 @@ async def _run_osint_background(op_id: str, domain: str, max_subdomains: int) ->
     """Background task: run OSINT subdomain discovery."""
     from app.ws_manager import ws_manager  # local import to avoid circular
 
-    async with aiosqlite.connect(_DB_FILE) as db:
-        db.row_factory = aiosqlite.Row
+    async with db_manager.connection() as db:
         try:
             result = await OSINTEngine().discover(
                 db=db,

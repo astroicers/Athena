@@ -18,7 +18,7 @@ SPEC-022 / ADR-021
 
 import logging
 
-import aiosqlite
+import asyncpg
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ class AgentCapabilityMatcher:
 
     async def select_agent_for_technique(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         operation_id: str,
         target_id: str,
         technique_id: str,
@@ -48,46 +48,42 @@ class AgentCapabilityMatcher:
            If no playbook entry exists for the technique, platform filter is skipped.
         3. Among matching agents, prefer highest privilege (SYSTEM > Admin > User).
         """
-        db.row_factory = aiosqlite.Row
-
         required_platform = await self._technique_platform(db, technique_id)
 
         if required_platform:
-            cursor = await db.execute(
+            rows = await db.fetch(
                 "SELECT paw, privilege FROM agents "
-                "WHERE host_id = ? AND operation_id = ? AND status = 'alive' "
-                "AND LOWER(platform) = LOWER(?)",
-                (target_id, operation_id, required_platform),
+                "WHERE host_id = $1 AND operation_id = $2 AND status = 'alive' "
+                "AND LOWER(platform) = LOWER($3)",
+                target_id, operation_id, required_platform,
             )
         else:
-            cursor = await db.execute(
+            rows = await db.fetch(
                 "SELECT paw, privilege FROM agents "
-                "WHERE host_id = ? AND operation_id = ? AND status = 'alive'",
-                (target_id, operation_id),
+                "WHERE host_id = $1 AND operation_id = $2 AND status = 'alive'",
+                target_id, operation_id,
             )
 
-        rows = await cursor.fetchall()
         if not rows:
             return None
 
-        def _rank(row: aiosqlite.Row) -> int:
+        def _rank(row) -> int:
             return _PRIVILEGE_RANK.get((row["privilege"] or "").lower(), 0)
 
         best = max(rows, key=_rank)
         return best["paw"]
 
     async def _technique_platform(
-        self, db: aiosqlite.Connection, technique_id: str
+        self, db: asyncpg.Connection, technique_id: str
     ) -> str | None:
         """Return canonical platform ('windows' or 'linux') for technique, or None.
 
         If a technique has playbooks for multiple platforms, returns the
         lexicographically first platform (ORDER BY platform ensures stability).
         """
-        cursor = await db.execute(
+        row = await db.fetchrow(
             "SELECT DISTINCT LOWER(platform) AS platform "
-            "FROM technique_playbooks WHERE mitre_id = ? ORDER BY platform LIMIT 1",
-            (technique_id,),
+            "FROM technique_playbooks WHERE mitre_id = $1 ORDER BY platform LIMIT 1",
+            technique_id,
         )
-        row = await cursor.fetchone()
         return row["platform"] if row else None

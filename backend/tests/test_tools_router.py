@@ -11,75 +11,60 @@
 """Integration tests for Tool Registry CRUD API (GET/POST/PATCH/DELETE)."""
 
 import pytest
+from uuid import uuid4
+
+import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
-from app.database import (
-    _CREATE_TABLES,
-    _seed_technique_playbooks,
-    _seed_tool_registry,
-    get_db,
-)
-from app.main import app
-
-import aiosqlite
-
-
-# ---------------------------------------------------------------------------
-# Seed SQL — minimal data for operations (required by foreign key schema)
-# ---------------------------------------------------------------------------
-_SEED_STATEMENTS: list[str] = [
-    """
-    INSERT INTO operations (id, code, name, codename, strategic_intent, status, current_ooda_phase)
-    VALUES ('test-op-1', 'OP-TEST-001', 'Test Operation', 'PHANTOM-TEST',
-            'Test strategic intent', 'active', 'observe');
-    """,
-    """
-    INSERT INTO targets (id, hostname, ip_address, os, role, operation_id)
-    VALUES ('test-target-1', 'DC-01', '10.0.1.5', 'Windows Server 2022',
-            'Domain Controller', 'test-op-1');
-    """,
-    """
-    INSERT INTO agents (id, paw, host_id, status, operation_id)
-    VALUES ('test-agent-1', 'abc123', 'test-target-1', 'alive', 'test-op-1');
-    """,
-    """
-    INSERT INTO techniques (id, mitre_id, name, tactic, tactic_id, risk_level)
-    VALUES ('test-tech-1', 'T1003.001', 'LSASS Memory', 'Credential Access',
-            'TA0006', 'medium');
-    """,
-]
+import asyncpg
 
 
 # ---------------------------------------------------------------------------
 # Fixture: tools_client — httpx.AsyncClient with tool_registry seeded
 # ---------------------------------------------------------------------------
-@pytest.fixture
-async def tools_client():
+@pytest_asyncio.fixture
+async def tools_client(seeded_db: asyncpg.Connection):
     """Async HTTP client with seeded tool_registry for tool API tests.
 
-    Creates an isolated in-memory SQLite database, applies the full schema,
-    seeds both technique_playbooks and tool_registry, and overrides the
-    ``get_db`` dependency so every request uses this test database.
+    Uses the conftest ``seeded_db`` fixture (asyncpg) and seeds both
+    technique_playbooks and tool_registry via the new seed module.
     """
-    db = await aiosqlite.connect(":memory:")
-    db.row_factory = aiosqlite.Row
-    await db.execute("PRAGMA foreign_keys = ON;")
-    for ddl in _CREATE_TABLES:
-        await db.execute(ddl)
-    await db.commit()
+    from app.database import get_db
+    from app.database.seed import TECHNIQUE_PLAYBOOK_SEEDS, TOOL_REGISTRY_SEEDS
+    from app.main import app
 
-    # Seed minimal operation data (some tables have foreign key constraints)
-    for stmt in _SEED_STATEMENTS:
-        await db.execute(stmt)
-    await db.commit()
+    # Seed technique_playbooks if needed
+    count = await seeded_db.fetchval("SELECT COUNT(*) FROM technique_playbooks")
+    if count == 0:
+        for seed in TECHNIQUE_PLAYBOOK_SEEDS:
+            await seeded_db.execute(
+                """INSERT INTO technique_playbooks
+                   (id, mitre_id, platform, command, output_parser, facts_traits, source, tags)
+                   VALUES ($1, $2, $3, $4, $5, $6, 'seed', $7)
+                   ON CONFLICT DO NOTHING""",
+                str(uuid4()), seed["mitre_id"], seed["platform"],
+                seed["command"], seed.get("output_parser"),
+                seed["facts_traits"], seed["tags"],
+            )
 
-    # Seed technique_playbooks and tool_registry
-    await _seed_technique_playbooks(db)
-    await _seed_tool_registry(db)
-    await db.commit()
+    # Seed tool_registry if needed
+    tool_count = await seeded_db.fetchval("SELECT COUNT(*) FROM tool_registry")
+    if tool_count == 0:
+        for seed in TOOL_REGISTRY_SEEDS:
+            await seeded_db.execute(
+                """INSERT INTO tool_registry
+                   (id, tool_id, name, kind, category, description,
+                    mitre_techniques, risk_level, output_traits, config_json, source)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'seed')
+                   ON CONFLICT (tool_id) DO NOTHING""",
+                str(uuid4()), seed["tool_id"], seed["name"],
+                seed["kind"], seed["category"], seed["description"],
+                seed["mitre_techniques"], seed["risk_level"],
+                seed["output_traits"], seed.get("config_json", "{}"),
+            )
 
     async def _override_get_db():
-        yield db
+        yield seeded_db
 
     app.dependency_overrides[get_db] = _override_get_db
 
@@ -90,7 +75,6 @@ async def tools_client():
         yield ac
 
     app.dependency_overrides.clear()
-    await db.close()
 
 
 # ---------------------------------------------------------------------------

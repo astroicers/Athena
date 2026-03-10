@@ -1,0 +1,75 @@
+# Mission Profiles — controls OODA loop behavior per operation type.
+# See ADR-039 for design rationale.
+
+profiles:
+  SR:
+    name: Stealth Recon
+    description: Pure reconnaissance, no target interaction
+    max_noise: low
+    max_parallel: 1
+    min_confidence: 0.8
+    orient_max_options: 2
+    noise_budget_10min: 10
+    auth_attempts_per_target: 2
+    detection_response: pause_and_notify
+    c5isr_thresholds:
+      command:   { warning: 70, critical: 50 }
+      control:   { warning: 80, critical: 60 }
+      comms:     { warning: 70, critical: 50 }
+      computers: { warning: 60, critical: 40 }
+      cyber:     { warning: 70, critical: 50 }
+      isr:       { warning: 80, critical: 60 }
+
+  CO:
+    name: Covert Operation
+    description: Stealthy infiltration, APT simulation, long-term persistence
+    max_noise: medium
+    max_parallel: 2
+    min_confidence: 0.7
+    orient_max_options: 2
+    noise_budget_10min: 25
+    auth_attempts_per_target: 3
+    detection_response: pause_and_notify
+    c5isr_thresholds:
+      command:   { warning: 60, critical: 40 }
+      control:   { warning: 70, critical: 50 }
+      comms:     { warning: 60, critical: 40 }
+      computers: { warning: 50, critical: 30 }
+      cyber:     { warning: 60, critical: 40 }
+      isr:       { warning: 70, critical: 50 }
+
+  SP:
+    name: Standard Pentest
+    description: Balanced speed and stealth, assumed breach
+    max_noise: high
+    max_parallel: 5
+    min_confidence: 0.5
+    orient_max_options: 3
+    noise_budget_10min: 50
+    auth_attempts_per_target: 5
+    detection_response: notify_only
+    c5isr_thresholds:
+      command:   { warning: 50, critical: 25 }
+      control:   { warning: 50, critical: 25 }
+      comms:     { warning: 50, critical: 25 }
+      computers: { warning: 40, critical: 20 }
+      cyber:     { warning: 50, critical: 25 }
+      isr:       { warning: 50, critical: 25 }
+
+  FA:
+    name: Full Assault
+    description: Time-boxed red/blue exercise, speed over stealth
+    max_noise: all
+    max_parallel: 8
+    min_confidence: 0.4
+    orient_max_options: 3
+    noise_budget_10min: -1  # unlimited
+    auth_attempts_per_target: -1  # unlimited
+    detection_response: log_only
+    c5isr_thresholds:
+      command:   { warning: 30, critical: 10 }
+      control:   { warning: 30, critical: 10 }
+      comms:     { warning: 30, critical: 10 }
+      computers: { warning: 20, critical: 5 }
+      cyber:     { warning: 30, critical: 10 }
+      isr:       { warning: 30, critical: 10 }

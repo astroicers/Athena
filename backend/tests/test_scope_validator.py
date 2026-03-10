@@ -22,21 +22,15 @@ from app.services.scope_validator import ScopeValidator, ScopeCheckResult
 # ---------------------------------------------------------------------------
 
 def make_mock_db(engagement: dict | None = None):
-    """Return a mocked aiosqlite connection."""
+    """Return a mocked asyncpg connection."""
     db = AsyncMock()
-    db.row_factory = None
 
     if engagement is None:
-        # No engagement record
-        cursor = AsyncMock()
-        cursor.fetchone = AsyncMock(return_value=None)
+        db.fetchrow = AsyncMock(return_value=None)
     else:
-        row = {**engagement}
-        # Simulate aiosqlite.Row by making it dict-subscriptable
-        cursor = AsyncMock()
-        cursor.fetchone = AsyncMock(return_value=row)
+        db.fetchrow = AsyncMock(return_value={**engagement})
 
-    db.execute = AsyncMock(return_value=cursor)
+    db.execute = AsyncMock(return_value="INSERT 0 1")
     return db
 
 

@@ -41,7 +41,6 @@ async def test_reset_clears_execution_history(client, seeded_db):
         "INSERT INTO facts (id, operation_id, trait, value, score) "
         "VALUES ('fact-1', 'test-op-1', 'host.os', 'Windows', 0.9)"
     )
-    await seeded_db.commit()
     with patch("app.routers.admin.ws_manager") as mock_ws:
         mock_ws.broadcast = AsyncMock()
         await client.post("/api/operations/test-op-1/reset")

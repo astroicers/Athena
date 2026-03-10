@@ -10,7 +10,7 @@
 
 """Mission report export endpoint."""
 
-import aiosqlite
+import asyncpg
 from fastapi import APIRouter, Depends
 
 from app.database import get_db
@@ -29,82 +29,82 @@ def _rows_to_dicts(rows: list) -> list[dict]:
 
 async def get_operation_report(
     operation_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Export a complete mission report as JSON."""
     await ensure_operation(db, operation_id)
 
     # Operation summary
-    cursor = await db.execute(
-        "SELECT * FROM operations WHERE id = ?", (operation_id,)
+    row = await db.fetchrow(
+        "SELECT * FROM operations WHERE id = $1", operation_id
     )
-    operation = dict(await cursor.fetchone())
+    operation = dict(row)
 
     # OODA timeline
-    cursor = await db.execute(
-        "SELECT * FROM ooda_iterations WHERE operation_id = ? "
+    ooda_rows = await db.fetch(
+        "SELECT * FROM ooda_iterations WHERE operation_id = $1 "
         "ORDER BY iteration_number",
-        (operation_id,),
+        operation_id,
     )
-    ooda_timeline = _rows_to_dicts(await cursor.fetchall())
+    ooda_timeline = _rows_to_dicts(ooda_rows)
 
     # Technique executions
-    cursor = await db.execute(
-        "SELECT * FROM technique_executions WHERE operation_id = ? "
+    exec_rows = await db.fetch(
+        "SELECT * FROM technique_executions WHERE operation_id = $1 "
         "ORDER BY started_at",
-        (operation_id,),
+        operation_id,
     )
-    executions = _rows_to_dicts(await cursor.fetchall())
+    executions = _rows_to_dicts(exec_rows)
 
     # Facts
-    cursor = await db.execute(
-        "SELECT * FROM facts WHERE operation_id = ? ORDER BY collected_at",
-        (operation_id,),
+    fact_rows = await db.fetch(
+        "SELECT * FROM facts WHERE operation_id = $1 ORDER BY collected_at",
+        operation_id,
     )
-    facts = _rows_to_dicts(await cursor.fetchall())
+    facts = _rows_to_dicts(fact_rows)
 
     # Recommendations
-    cursor = await db.execute(
-        "SELECT * FROM recommendations WHERE operation_id = ? "
+    rec_rows = await db.fetch(
+        "SELECT * FROM recommendations WHERE operation_id = $1 "
         "ORDER BY created_at",
-        (operation_id,),
+        operation_id,
     )
-    recommendations = _rows_to_dicts(await cursor.fetchall())
+    recommendations = _rows_to_dicts(rec_rows)
 
     # C5ISR statuses
-    cursor = await db.execute(
-        "SELECT * FROM c5isr_statuses WHERE operation_id = ?",
-        (operation_id,),
+    c5_rows = await db.fetch(
+        "SELECT * FROM c5isr_statuses WHERE operation_id = $1",
+        operation_id,
     )
-    c5isr = _rows_to_dicts(await cursor.fetchall())
+    c5isr = _rows_to_dicts(c5_rows)
 
     # Log entries
-    cursor = await db.execute(
-        "SELECT * FROM log_entries WHERE operation_id = ? ORDER BY timestamp",
-        (operation_id,),
+    log_rows = await db.fetch(
+        "SELECT * FROM log_entries WHERE operation_id = $1 ORDER BY timestamp",
+        operation_id,
     )
-    logs = _rows_to_dicts(await cursor.fetchall())
+    logs = _rows_to_dicts(log_rows)
 
     # Mission steps
-    cursor = await db.execute(
-        "SELECT * FROM mission_steps WHERE operation_id = ? ORDER BY step_number",
-        (operation_id,),
+    step_rows = await db.fetch(
+        "SELECT * FROM mission_steps WHERE operation_id = $1 ORDER BY step_number",
+        operation_id,
     )
-    mission_steps = _rows_to_dicts(await cursor.fetchall())
+    mission_steps = _rows_to_dicts(step_rows)
 
     # Targets
-    cursor = await db.execute(
-        "SELECT * FROM targets WHERE operation_id = ?",
-        (operation_id,),
+    target_rows = await db.fetch(
+        "SELECT * FROM targets WHERE operation_id = $1",
+        operation_id,
     )
-    targets = _rows_to_dicts(await cursor.fetchall())
+    targets = _rows_to_dicts(target_rows)
 
     # Agents
-    cursor = await db.execute(
-        "SELECT * FROM agents WHERE operation_id = ?",
-        (operation_id,),
+    agent_rows = await db.fetch(
+        "SELECT * FROM agents WHERE operation_id = $1",
+        operation_id,
     )
-    agents = _rows_to_dicts(await cursor.fetchall())
+    agents = _rows_to_dicts(agent_rows)
 
     return {
         "operation": operation,
@@ -128,7 +128,7 @@ async def get_operation_report(
 
 async def get_structured_report(
     operation_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ) -> PentestReport:
     """Generate a structured client-deliverable pentest report (JSON)."""
     await ensure_operation(db, operation_id)
@@ -144,7 +144,7 @@ async def get_structured_report(
 
 async def get_markdown_report(
     operation_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Generate a structured pentest report as downloadable Markdown."""
     from fastapi.responses import PlainTextResponse

@@ -12,7 +12,7 @@
 
 from datetime import datetime, timezone
 
-import aiosqlite
+import asyncpg
 from fastapi import APIRouter, Depends, Response
 
 from app.database import get_db
@@ -35,7 +35,7 @@ async def reload_technique_rules():
 
 async def reset_operation(
     operation_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Reset an operation to its initial planning state.
 
@@ -46,79 +46,78 @@ async def reset_operation(
     """
     await ensure_operation(db, operation_id)
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(timezone.utc)
 
-    # ── DELETE execution history (FK-safe order) ─────────────────────────
-    await db.execute(
-        "DELETE FROM log_entries WHERE operation_id = ?", (operation_id,)
-    )
-    await db.execute(
-        "DELETE FROM recommendations WHERE operation_id = ?", (operation_id,)
-    )
-    await db.execute(
-        "DELETE FROM facts WHERE operation_id = ?", (operation_id,)
-    )
-    await db.execute(
-        "DELETE FROM technique_executions WHERE operation_id = ?", (operation_id,)
-    )
-    await db.execute(
-        "DELETE FROM ooda_iterations WHERE operation_id = ?", (operation_id,)
-    )
+    async with db.transaction():
+        # ── DELETE execution history (FK-safe order) ─────────────────────────
+        await db.execute(
+            "DELETE FROM log_entries WHERE operation_id = $1", operation_id
+        )
+        await db.execute(
+            "DELETE FROM recommendations WHERE operation_id = $1", operation_id
+        )
+        await db.execute(
+            "DELETE FROM facts WHERE operation_id = $1", operation_id
+        )
+        await db.execute(
+            "DELETE FROM technique_executions WHERE operation_id = $1", operation_id
+        )
+        await db.execute(
+            "DELETE FROM ooda_iterations WHERE operation_id = $1", operation_id
+        )
 
-    # ── DELETE graph / swarm / directives (FK-safe: before targets) ─────
-    await db.execute(
-        "DELETE FROM attack_graph_edges WHERE operation_id = ?", (operation_id,)
-    )
-    await db.execute(
-        "DELETE FROM attack_graph_nodes WHERE operation_id = ?", (operation_id,)
-    )
-    await db.execute(
-        "DELETE FROM swarm_tasks WHERE operation_id = ?", (operation_id,)
-    )
-    await db.execute(
-        "DELETE FROM ooda_directives WHERE operation_id = ?", (operation_id,)
-    )
+        # ── DELETE graph / swarm / directives (FK-safe: before targets) ─────
+        await db.execute(
+            "DELETE FROM attack_graph_edges WHERE operation_id = $1", operation_id
+        )
+        await db.execute(
+            "DELETE FROM attack_graph_nodes WHERE operation_id = $1", operation_id
+        )
+        await db.execute(
+            "DELETE FROM swarm_tasks WHERE operation_id = $1", operation_id
+        )
+        await db.execute(
+            "DELETE FROM ooda_directives WHERE operation_id = $1", operation_id
+        )
 
-    # ── DELETE operational data (FK-safe order) ──────────────────────────
-    await db.execute(
-        "DELETE FROM mission_steps WHERE operation_id = ?", (operation_id,)
-    )
-    await db.execute(
-        "DELETE FROM recon_scans WHERE operation_id = ?", (operation_id,)
-    )
-    await db.execute(
-        "DELETE FROM agents WHERE operation_id = ?", (operation_id,)
-    )
-    await db.execute(
-        "DELETE FROM targets WHERE operation_id = ?", (operation_id,)
-    )
+        # ── DELETE operational data (FK-safe order) ──────────────────────────
+        await db.execute(
+            "DELETE FROM mission_steps WHERE operation_id = $1", operation_id
+        )
+        await db.execute(
+            "DELETE FROM recon_scans WHERE operation_id = $1", operation_id
+        )
+        await db.execute(
+            "DELETE FROM agents WHERE operation_id = $1", operation_id
+        )
+        await db.execute(
+            "DELETE FROM targets WHERE operation_id = $1", operation_id
+        )
 
-    # ── RESET operation counters & C5ISR statuses ──────────────────────
-    await db.execute(
-        "UPDATE operations SET "
-        "status = 'planning', "
-        "current_ooda_phase = 'observe', "
-        "ooda_iteration_count = 0, "
-        "threat_level = 0.0, "
-        "success_rate = 0.0, "
-        "techniques_executed = 0, "
-        "active_agents = 0, "
-        "data_exfiltrated_bytes = 0, "
-        "updated_at = ? "
-        "WHERE id = ?",
-        (now, operation_id),
-    )
-    await db.execute(
-        "UPDATE c5isr_statuses SET "
-        "status = 'offline', "
-        "health_pct = 0.0, "
-        "detail = 'Awaiting operation start', "
-        "updated_at = ? "
-        "WHERE operation_id = ?",
-        (now, operation_id),
-    )
-
-    await db.commit()
+        # ── RESET operation counters & C5ISR statuses ──────────────────────
+        await db.execute(
+            "UPDATE operations SET "
+            "status = 'planning', "
+            "current_ooda_phase = 'observe', "
+            "ooda_iteration_count = 0, "
+            "threat_level = 0.0, "
+            "success_rate = 0.0, "
+            "techniques_executed = 0, "
+            "active_agents = 0, "
+            "data_exfiltrated_bytes = 0, "
+            "updated_at = $1 "
+            "WHERE id = $2",
+            now, operation_id,
+        )
+        await db.execute(
+            "UPDATE c5isr_statuses SET "
+            "status = 'offline', "
+            "health_pct = 0.0, "
+            "detail = 'Awaiting operation start', "
+            "updated_at = $1 "
+            "WHERE operation_id = $2",
+            now, operation_id,
+        )
 
     # ── Broadcast reset event via WebSocket ──────────────────────────────
     await ws_manager.broadcast(

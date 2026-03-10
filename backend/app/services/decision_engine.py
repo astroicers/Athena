@@ -12,7 +12,7 @@
 
 import logging
 
-import aiosqlite
+import asyncpg
 
 from app.models.enums import AutomationMode, RiskLevel
 from app.services.kill_chain_enforcer import KillChainEnforcer
@@ -37,24 +37,22 @@ class DecisionEngine:
         self._validation_engine = ValidationEngine()
 
     async def evaluate(
-        self, db: aiosqlite.Connection, operation_id: str, recommendation: dict
+        self, db: asyncpg.Connection, operation_id: str, recommendation: dict
     ) -> dict:
         """
         Decision logic per ADR-004:
-        - MANUAL mode        → always auto_approved=False
-        - confidence < 0.5   → force manual review
-        - CRITICAL            → auto_approved=False, needs_manual=True
-        - HIGH                → auto_approved=False, needs_confirmation=True (HexConfirmModal)
-        - MEDIUM above thresh → auto_approved=False, needs_confirmation=True (queue + approve)
-        - MEDIUM within thresh→ auto_approved=True (auto-queue)
-        - LOW                 → auto_approved=True (auto-execute)
+        - MANUAL mode        -> always auto_approved=False
+        - confidence < 0.5   -> force manual review
+        - CRITICAL            -> auto_approved=False, needs_manual=True
+        - HIGH                -> auto_approved=False, needs_confirmation=True (HexConfirmModal)
+        - MEDIUM above thresh -> auto_approved=False, needs_confirmation=True (queue + approve)
+        - MEDIUM within thresh-> auto_approved=True (auto-queue)
+        - LOW                 -> auto_approved=True (auto-execute)
         """
-        db.row_factory = aiosqlite.Row
-        cursor = await db.execute(
-            "SELECT automation_mode, risk_threshold FROM operations WHERE id = ?",
-            (operation_id,),
+        op = await db.fetchrow(
+            "SELECT automation_mode, risk_threshold FROM operations WHERE id = $1",
+            operation_id,
         )
-        op = await cursor.fetchone()
         if not op:
             return {"error": "operation not found", "auto_approved": False}
 
@@ -81,21 +79,19 @@ class DecisionEngine:
         engine = (selected_option or {}).get("recommended_engine", "ssh")
 
         # Priority: explicit active target > heuristic fallback
-        cursor = await db.execute(
-            "SELECT id FROM targets WHERE operation_id = ? AND is_active = 1 LIMIT 1",
-            (operation_id,),
+        target_row = await db.fetchrow(
+            "SELECT id FROM targets WHERE operation_id = $1 AND is_active = TRUE LIMIT 1",
+            operation_id,
         )
-        target_row = await cursor.fetchone()
         if not target_row:
             # Fall back to original heuristic
-            cursor = await db.execute(
-                "SELECT id FROM targets WHERE operation_id = ? ORDER BY is_compromised DESC LIMIT 1",
-                (operation_id,),
+            target_row = await db.fetchrow(
+                "SELECT id FROM targets WHERE operation_id = $1 ORDER BY is_compromised DESC LIMIT 1",
+                operation_id,
             )
-            target_row = await cursor.fetchone()
         target_id = target_row["id"] if target_row else None
 
-        # ── SPEC-044: Dynamic Validation before composite confidence ─────
+        # -- SPEC-044: Dynamic Validation before composite confidence --
         validation_result = await self._validation_engine.validate(
             db, recommendation, operation_id,
         )
@@ -113,7 +109,7 @@ class DecisionEngine:
                 validation_result.checks,
             )
 
-        # ── Composite confidence (SPEC-040) ──────────────────────────────
+        # -- Composite confidence (SPEC-040) --
         tactic_id = await self._resolve_tactic_id(
             db, operation_id, rec_technique_id, target_id
         )
@@ -169,51 +165,51 @@ class DecisionEngine:
             },
         }
 
-        # MANUAL mode → always require human approval
+        # MANUAL mode -> always require human approval
         if automation_mode == AutomationMode.MANUAL:
             return {
                 **base,
                 "auto_approved": False,
                 "needs_confirmation": True,
                 "needs_manual": True,
-                "reason": "Manual mode — all decisions require commander approval",
+                "reason": "Manual mode -- all decisions require commander approval",
                 "parallel_tasks": [],
             }
 
-        # Low confidence → force manual
+        # Low confidence -> force manual
         if confidence < 0.5:
             return {
                 **base,
                 "auto_approved": False,
                 "needs_confirmation": True,
                 "needs_manual": False,
-                "reason": f"Low confidence ({confidence:.0%}) — requires manual review",
+                "reason": f"Low confidence ({confidence:.0%}) -- requires manual review",
                 "parallel_tasks": [],
             }
 
-        # CRITICAL → always manual
+        # CRITICAL -> always manual
         if technique_risk == RiskLevel.CRITICAL:
             return {
                 **base,
                 "auto_approved": False,
                 "needs_confirmation": True,
                 "needs_manual": True,
-                "reason": "Critical risk — requires manual authorization",
+                "reason": "Critical risk -- requires manual authorization",
                 "parallel_tasks": [],
             }
 
-        # HIGH → HexConfirmModal confirmation
+        # HIGH -> HexConfirmModal confirmation
         if technique_risk == RiskLevel.HIGH:
             return {
                 **base,
                 "auto_approved": False,
                 "needs_confirmation": True,
                 "needs_manual": False,
-                "reason": "High risk — requires HexConfirmModal confirmation",
+                "reason": "High risk -- requires HexConfirmModal confirmation",
                 "parallel_tasks": [],
             }
 
-        # Within threshold → auto-approve
+        # Within threshold -> auto-approve
         if tech_level <= threshold_level:
             return {
                 **base,
@@ -224,7 +220,7 @@ class DecisionEngine:
                 "parallel_tasks": parallel_tasks,
             }
 
-        # Above threshold (e.g. MEDIUM when threshold is LOW) → needs commander approval
+        # Above threshold (e.g. MEDIUM when threshold is LOW) -> needs commander approval
         return {
             **base,
             "auto_approved": False,
@@ -232,16 +228,16 @@ class DecisionEngine:
             "needs_manual": False,
             "reason": (
                 f"Risk ({technique_risk.value}) exceeds threshold ({risk_threshold})"
-                " — requires commander approval"
+                " -- requires commander approval"
             ),
             "parallel_tasks": [],
         }
 
-    # ── Composite confidence helpers (SPEC-040) ─────────────────────────────
+    # -- Composite confidence helpers (SPEC-040) --
 
     async def _compute_composite_confidence(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         operation_id: str,
         technique_id: str,
         target_id: str | None,
@@ -280,16 +276,15 @@ class DecisionEngine:
         return composite, breakdown
 
     async def _get_historical_success_rate(
-        self, db: aiosqlite.Connection, technique_id: str
+        self, db: asyncpg.Connection, technique_id: str
     ) -> float:
         """Query success rate from technique_executions for the given technique."""
-        cursor = await db.execute(
+        row = await db.fetchrow(
             "SELECT COUNT(*) as total, "
             "SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as successes "
-            "FROM technique_executions WHERE technique_id = ?",
-            (technique_id,),
+            "FROM technique_executions WHERE technique_id = $1",
+            technique_id,
         )
-        row = await cursor.fetchone()
         total = row["total"] if isinstance(row, dict) else row[0]
         successes = row["successes"] if isinstance(row, dict) else row[1]
         if not total:
@@ -297,35 +292,33 @@ class DecisionEngine:
         return (successes or 0) / total
 
     async def _get_graph_node_confidence(
-        self, db: aiosqlite.Connection,
+        self, db: asyncpg.Connection,
         operation_id: str, technique_id: str, target_id: str | None,
     ) -> float:
         """Read node confidence from attack_graph_nodes."""
         if not target_id:
             return 0.5
-        cursor = await db.execute(
+        row = await db.fetchrow(
             "SELECT confidence FROM attack_graph_nodes "
-            "WHERE operation_id = ? AND technique_id = ? AND target_id = ? "
+            "WHERE operation_id = $1 AND technique_id = $2 AND target_id = $3 "
             "ORDER BY updated_at DESC LIMIT 1",
-            (operation_id, technique_id, target_id),
+            operation_id, technique_id, target_id,
         )
-        row = await cursor.fetchone()
         if not row:
             return 0.5
         return row["confidence"] if isinstance(row, dict) else row[0]
 
     async def _get_target_state_score(
-        self, db: aiosqlite.Connection, target_id: str | None,
+        self, db: asyncpg.Connection, target_id: str | None,
     ) -> float:
         """Compute target state score from targets + facts tables."""
         if not target_id:
             return 0.5
-        cursor = await db.execute(
+        row = await db.fetchrow(
             "SELECT is_compromised, privilege_level, access_status "
-            "FROM targets WHERE id = ?",
-            (target_id,),
+            "FROM targets WHERE id = $1",
+            target_id,
         )
-        row = await cursor.fetchone()
         if not row:
             return 0.5
 
@@ -346,12 +339,11 @@ class DecisionEngine:
             score -= 0.1
 
         # EDR detection from facts table
-        edr_cursor = await db.execute(
+        edr_row = await db.fetchrow(
             "SELECT COUNT(*) FROM facts "
-            "WHERE source_target_id = ? AND trait IN ('host.edr', 'host.av')",
-            (target_id,),
+            "WHERE source_target_id = $1 AND trait IN ('host.edr', 'host.av')",
+            target_id,
         )
-        edr_row = await edr_cursor.fetchone()
         edr_count = edr_row[0] if edr_row else 0
         if edr_count > 0:
             score -= 0.2
@@ -359,18 +351,17 @@ class DecisionEngine:
         return max(0.0, min(1.0, score))
 
     async def _resolve_tactic_id(
-        self, db: aiosqlite.Connection,
+        self, db: asyncpg.Connection,
         operation_id: str, technique_id: str, target_id: str | None,
     ) -> str | None:
         """Resolve tactic_id from attack_graph_nodes, falling back to _RULE_BY_TECHNIQUE."""
         if target_id:
-            cursor = await db.execute(
+            row = await db.fetchrow(
                 "SELECT tactic_id FROM attack_graph_nodes "
-                "WHERE operation_id = ? AND technique_id = ? AND target_id = ? "
+                "WHERE operation_id = $1 AND technique_id = $2 AND target_id = $3 "
                 "LIMIT 1",
-                (operation_id, technique_id, target_id),
+                operation_id, technique_id, target_id,
             )
-            row = await cursor.fetchone()
             if row:
                 return row["tactic_id"] if isinstance(row, dict) else row[0]
         # Fallback to static rule table

@@ -547,11 +547,9 @@ class MCPClientManager:
             return
 
         try:
-            import aiosqlite
-            from app.database import _DB_FILE
+            from app.database import db_manager
 
-            async with aiosqlite.connect(_DB_FILE) as db:
-                db.row_factory = aiosqlite.Row
+            async with db_manager.connection() as db:
                 for tool_info in tools:
                     mcp_config = json.dumps({
                         "mcp_server": server_name,
@@ -559,40 +557,40 @@ class MCPClientManager:
                     })
 
                     # Check if seed/user entry already covers this MCP tool
-                    cursor = await db.execute(
+                    existing = await db.fetchrow(
                         """SELECT id, source, enabled, mitre_techniques, category
                            FROM tool_registry
-                           WHERE config_json LIKE ? AND config_json LIKE ?""",
-                        (
-                            f'%"mcp_server":"{server_name}"%',
-                            f'%"mcp_tool":"{tool_info.tool_name}"%',
-                        ),
+                           WHERE config_json LIKE $1 AND config_json LIKE $2""",
+                        f'%"mcp_server":"{server_name}"%',
+                        f'%"mcp_tool":"{tool_info.tool_name}"%',
                     )
-                    existing = await cursor.fetchone()
 
                     if existing:
                         tool_id = f"{server_name}_{tool_info.tool_name}"
                         meta = _MCP_TOOL_METADATA.get(tool_id, {})
                         updates: list[str] = []
-                        params: list[str] = []
+                        params: list = []
+                        param_idx = 1
                         # Re-enable if disabled
                         if not existing["enabled"]:
-                            updates.append("enabled = 1")
+                            updates.append("enabled = TRUE")
                         # Backfill MITRE techniques if empty
                         cur_mitre = existing["mitre_techniques"] or "[]"
                         if meta.get("mitre") and cur_mitre == "[]":
-                            updates.append("mitre_techniques = ?")
+                            updates.append(f"mitre_techniques = ${param_idx}")
                             params.append(json.dumps(meta["mitre"]))
+                            param_idx += 1
                         # Backfill category if still default
                         if meta.get("category") and existing["category"] == "reconnaissance" and meta["category"] != "reconnaissance":
-                            updates.append("category = ?")
+                            updates.append(f"category = ${param_idx}")
                             params.append(meta["category"])
+                            param_idx += 1
                         if updates:
-                            updates.append("updated_at = datetime('now')")
+                            updates.append("updated_at = NOW()")
                             params.append(existing["id"])
                             await db.execute(
-                                f"UPDATE tool_registry SET {', '.join(updates)} WHERE id = ?",
-                                params,
+                                f"UPDATE tool_registry SET {', '.join(updates)} WHERE id = ${param_idx}",
+                                *params,
                             )
                     else:
                         # Insert new mcp_discovery entry
@@ -601,25 +599,22 @@ class MCPClientManager:
                         category = meta.get("category", "reconnaissance")
                         mitre = json.dumps(meta.get("mitre", []))
                         await db.execute(
-                            """INSERT OR IGNORE INTO tool_registry
+                            """INSERT INTO tool_registry
                                (id, tool_id, name, description, kind, category,
                                 mitre_techniques, enabled, source, config_json,
                                 created_at, updated_at)
-                               VALUES (?, ?, ?, ?, 'tool', ?,
-                                       ?, 1, 'mcp_discovery', ?,
-                                       datetime('now'), datetime('now'))""",
-                            (
-                                str(uuid.uuid4()),
-                                tool_id,
-                                tool_info.tool_name,
-                                tool_info.description,
-                                category,
-                                mitre,
-                                mcp_config,
-                            ),
+                               VALUES ($1, $2, $3, $4, 'tool', $5,
+                                       $6, TRUE, 'mcp_discovery', $7,
+                                       NOW(), NOW())
+                               ON CONFLICT DO NOTHING""",
+                            str(uuid.uuid4()),
+                            tool_id,
+                            tool_info.tool_name,
+                            tool_info.description,
+                            category,
+                            mitre,
+                            mcp_config,
                         )
-
-                await db.commit()
 
             logger.info(
                 "MCP_AUDIT event=tool_sync server=%s tools_synced=%d",
@@ -631,17 +626,15 @@ class MCPClientManager:
     async def _soft_delete_server_tools(self, server_name: str) -> None:
         """Soft-delete (disable) tools associated with a disconnected MCP server."""
         try:
-            import aiosqlite
-            from app.database import _DB_FILE
+            from app.database import db_manager
 
-            async with aiosqlite.connect(_DB_FILE) as db:
+            async with db_manager.connection() as db:
                 await db.execute(
-                    """UPDATE tool_registry SET enabled = 0, updated_at = datetime('now')
-                       WHERE config_json LIKE ?
+                    """UPDATE tool_registry SET enabled = FALSE, updated_at = NOW()
+                       WHERE config_json LIKE $1
                          AND source IN ('seed', 'mcp_discovery')""",
-                    (f'%"mcp_server":"{server_name}"%',),
+                    f'%"mcp_server":"{server_name}"%',
                 )
-                await db.commit()
 
             logger.info(
                 "MCP_AUDIT event=tool_soft_delete server=%s", server_name,

@@ -16,7 +16,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 
-import aiosqlite
+import asyncpg
 
 from app.config import settings
 from app.models.recon import ReconResult, ServiceInfo
@@ -39,7 +39,7 @@ class ReconEngine:
 
     async def scan(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         operation_id: str,
         target_id: str,
     ) -> ReconResult:
@@ -55,16 +55,13 @@ class ReconEngine:
         7. Broadcast a ``fact.new`` WebSocket event per fact written.
         8. Return a fully-populated ReconResult.
         """
-        db.row_factory = aiosqlite.Row
-
         # ------------------------------------------------------------------
         # Step 1: Fetch target IP
         # ------------------------------------------------------------------
-        cursor = await db.execute(
-            "SELECT ip_address FROM targets WHERE id = ? AND operation_id = ?",
-            (target_id, operation_id),
+        row = await db.fetchrow(
+            "SELECT ip_address FROM targets WHERE id = $1 AND operation_id = $2",
+            target_id, operation_id,
         )
-        row = await cursor.fetchone()
         if row is None:
             raise ValueError(
                 f"Target {target_id!r} not found in operation {operation_id!r}"
@@ -136,10 +133,9 @@ class ReconEngine:
         # Step 6: Update target OS in DB
         if os_guess:
             await db.execute(
-                "UPDATE targets SET os = ? WHERE id = ?",
-                (os_guess, target_id),
+                "UPDATE targets SET os = $1 WHERE id = $2",
+                os_guess, target_id,
             )
-            await db.commit()
 
         # ------------------------------------------------------------------
         # Step 8: CVE enrichment (graceful fallback — never breaks recon)
@@ -281,7 +277,7 @@ class ReconEngine:
 
     async def _mock_result(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         operation_id: str,
         target_id: str,
         ip_address: str,
@@ -311,7 +307,7 @@ class ReconEngine:
 
     async def _write_web_facts(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         operation_id: str,
         target_id: str,
         probe_result: dict,
@@ -319,7 +315,7 @@ class ReconEngine:
         """Parse web probe MCP result and persist web facts. Returns count written."""
         import json as _json
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         facts_written = 0
 
         text_parts = [
@@ -351,11 +347,11 @@ class ReconEngine:
 
             fact_id = str(uuid.uuid4())
             await db.execute(
-                "INSERT OR IGNORE INTO facts "
+                "INSERT INTO facts "
                 "(id, trait, value, category, source_technique_id, "
                 "source_target_id, operation_id, score, collected_at) "
-                "VALUES (?, ?, ?, ?, NULL, ?, ?, 1, ?)",
-                (fact_id, trait, value, category, target_id, operation_id, now),
+                "VALUES ($1, $2, $3, $4, NULL, $5, $6, 1, $7) ON CONFLICT DO NOTHING",
+                fact_id, trait, value, category, target_id, operation_id, now,
             )
             fact_payload = {
                 "id": fact_id,
@@ -368,12 +364,11 @@ class ReconEngine:
             await ws_manager.broadcast(operation_id, "fact.new", fact_payload)
             facts_written += 1
 
-        await db.commit()
         return facts_written
 
     async def _write_facts(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         operation_id: str,
         target_id: str,
         ip_address: str,
@@ -381,18 +376,18 @@ class ReconEngine:
         os_guess: str | None,
     ) -> int:
         """Persist facts and broadcast WebSocket events. Returns count written."""
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         facts_written = 0
 
         async def _insert_fact(trait: str, value: str, category: str) -> None:
             nonlocal facts_written
             fact_id = str(uuid.uuid4())
             await db.execute(
-                "INSERT OR IGNORE INTO facts "
+                "INSERT INTO facts "
                 "(id, trait, value, category, source_technique_id, "
                 "source_target_id, operation_id, score, collected_at) "
-                "VALUES (?, ?, ?, ?, NULL, ?, ?, 1, ?)",
-                (fact_id, trait, value, category, target_id, operation_id, now),
+                "VALUES ($1, $2, $3, $4, NULL, $5, $6, 1, $7) ON CONFLICT DO NOTHING",
+                fact_id, trait, value, category, target_id, operation_id, now,
             )
             # Broadcast unconditionally — DB-level UNIQUE index handles dedup
             fact_payload = {
@@ -432,5 +427,4 @@ class ReconEngine:
                 category="host",
             )
 
-        await db.commit()
         return facts_written

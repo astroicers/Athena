@@ -59,12 +59,10 @@ def test_banner_to_cpe_version_from_version_string():
 async def test_enrich_services_graceful_on_api_failure():
     """NVD API failure → empty findings list (recon scan continues)."""
     db = AsyncMock()
-    cursor = AsyncMock()
-    cursor.fetchall = AsyncMock(return_value=[])
-    cursor.fetchone = AsyncMock(return_value=None)
-    db.execute = AsyncMock(return_value=cursor)
-    db.commit = AsyncMock()
-    db.row_factory = None
+    db.fetchrow = AsyncMock(return_value=None)
+    db.fetch = AsyncMock(return_value=[])
+    db.fetchval = AsyncMock(return_value=None)
+    db.execute = AsyncMock(return_value="INSERT 0 1")
 
     services = [ServiceInfo(port=22, protocol="tcp", service="ssh", version="OpenSSH 7.4", state="open")]
 

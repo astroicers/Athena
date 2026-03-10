@@ -25,6 +25,7 @@ from .enums import (
     C5ISRDomainStatus,
     ExecutionEngine,
     KillChainStage,
+    MissionProfile,
     MissionStepStatus,
     OODAPhase,
     OperationStatus,
@@ -58,6 +59,7 @@ class OperationCreate(BaseModel):
     name: str
     codename: str
     strategic_intent: str
+    mission_profile: MissionProfile = MissionProfile.SP
 
 
 class OperationUpdate(BaseModel):
@@ -71,6 +73,7 @@ class OperationUpdate(BaseModel):
     data_exfiltrated_bytes: int | None = None
     automation_mode: AutomationMode | None = None
     risk_threshold: RiskLevel | None = None
+    mission_profile: MissionProfile | None = None
 
 
 # ---------------------------------------------------------------------------

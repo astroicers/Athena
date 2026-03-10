@@ -21,12 +21,12 @@ from app.services.initial_access_engine import InitialAccessEngine
 # ---------------------------------------------------------------------------
 
 def make_mock_db():
-    """Return a fully-mocked aiosqlite connection."""
+    """Return a fully-mocked asyncpg connection."""
     db = AsyncMock()
-    cursor = AsyncMock()
-    cursor.fetchone = AsyncMock(return_value=None)
-    db.execute = AsyncMock(return_value=cursor)
-    db.commit = AsyncMock()
+    db.fetchrow = AsyncMock(return_value=None)
+    db.fetch = AsyncMock(return_value=[])
+    db.fetchval = AsyncMock(return_value=None)
+    db.execute = AsyncMock(return_value="INSERT 0 1")
     return db
 
 
@@ -62,10 +62,9 @@ async def test_ssh_mock_writes_credential_fact():
     db = make_mock_db()
     captured_calls: list = []
 
-    async def capture_execute(sql, params=None, /):
-        captured_calls.append((sql, params))
-        cursor = AsyncMock()
-        return cursor
+    async def capture_execute(sql, *args):
+        captured_calls.append((sql, args))
+        return "INSERT 0 1"
 
     db.execute = AsyncMock(side_effect=capture_execute)
 
@@ -168,15 +167,12 @@ async def test_load_harvested_creds_parses_format():
     """_load_harvested_creds correctly parses 'user:pass@host:port' format."""
     db = AsyncMock()
 
-    # Mock cursor with credential rows
-    cursor = AsyncMock()
-    cursor.fetchall = AsyncMock(return_value=[
+    # Mock fetch with credential rows
+    db.fetch = AsyncMock(return_value=[
         {"value": "admin:secret@192.168.1.1:22"},
         {"value": "root:toor@192.168.1.2:22"},
         {"value": "vagrant:vagrant"},  # without @host:port
     ])
-    db.execute = AsyncMock(return_value=cursor)
-    db.row_factory = None
 
     creds = await InitialAccessEngine()._load_harvested_creds(db, "op-001")
 
@@ -189,13 +185,10 @@ async def test_load_harvested_creds_parses_format():
 async def test_load_harvested_creds_deduplicates():
     """Duplicate credentials are returned only once."""
     db = AsyncMock()
-    cursor = AsyncMock()
-    cursor.fetchall = AsyncMock(return_value=[
+    db.fetch = AsyncMock(return_value=[
         {"value": "admin:secret@192.168.1.1:22"},
         {"value": "admin:secret@192.168.1.2:22"},  # same creds, different host
     ])
-    db.execute = AsyncMock(return_value=cursor)
-    db.row_factory = None
 
     creds = await InitialAccessEngine()._load_harvested_creds(db, "op-001")
 

@@ -15,7 +15,7 @@ All external calls (LLM, SSH, Metasploit) are mocked via conftest env vars.
 """
 import uuid
 
-import aiosqlite
+import asyncpg
 from httpx import AsyncClient
 
 
@@ -282,7 +282,7 @@ async def test_e2e_kill_chain_create_op_add_target_trigger_ooda(client: AsyncCli
     assert op_detail["status"] in ("active", "planning")
 
 
-async def test_metasploit_mock_route(seeded_db: aiosqlite.Connection):
+async def test_metasploit_mock_route(seeded_db: asyncpg.Connection):
     """EngineRouter + exploit=true CVE fact → Metasploit mock 成功。
 
     Uses seeded_db directly (no HTTP client) to exercise engine routing at the
@@ -293,16 +293,14 @@ async def test_metasploit_mock_route(seeded_db: aiosqlite.Connection):
 
     # Insert a vuln.cve fact with exploit=true for the seeded target
     fact_id = str(uuid.uuid4())
-    seeded_db.row_factory = aiosqlite.Row
     await seeded_db.execute(
         """INSERT INTO facts
            (id, operation_id, source_target_id, trait, value, category, score)
-           VALUES (?, 'test-op-1', 'test-target-1',
+           VALUES ($1, 'test-op-1', 'test-target-1',
                    'vuln.cve', 'CVE-2011-2523:vsftpd:vsftpd_2.3.4:cvss=10.0:exploit=true',
                    'vulnerability', 1)""",
-        (fact_id,),
+        fact_id,
     )
-    await seeded_db.commit()
 
     # Build EngineRouter with mock dependencies
     from app.clients.mock_c2_client import MockC2Client
@@ -333,11 +331,10 @@ async def test_metasploit_mock_route(seeded_db: aiosqlite.Connection):
     assert result["target_id"] == "test-target-1"
 
     # 驗證 technique_executions 有寫入
-    cursor = await seeded_db.execute(
+    row = await seeded_db.fetchrow(
         "SELECT status, engine FROM technique_executions "
         "WHERE operation_id = 'test-op-1' ORDER BY started_at DESC LIMIT 1"
     )
-    row = await cursor.fetchone()
     assert row is not None, "technique_executions row was not written"
     assert row["status"] == "success"
     assert row["engine"] == "metasploit"

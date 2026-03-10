@@ -11,6 +11,7 @@
 """Tests for MCP engine routing in EngineRouter."""
 
 import uuid
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -101,18 +102,14 @@ async def test_execute_mcp_calls_mcp_engine(seeded_db):
 @pytest.mark.asyncio
 async def test_mcp_ssh_routes_to_executor(seeded_db):
     """EXECUTION_ENGINE=mcp_ssh routes through _execute_via_mcp_executor."""
-    import aiosqlite
     from app.services.engine_router import EngineRouter
     from app.clients import ExecutionResult
 
-    seeded_db.row_factory = aiosqlite.Row
-
     await seeded_db.execute(
         "INSERT INTO facts (id, operation_id, source_target_id, trait, value, category, score) "
-        "VALUES (?, 'test-op-1', 'test-target-1', 'credential.ssh', 'root:pass@10.0.0.1:22', 'credential', 1)",
-        (str(uuid.uuid4()),),
+        "VALUES ($1, 'test-op-1', 'test-target-1', 'credential.ssh', 'root:pass@10.0.0.1:22', 'credential', 1)",
+        str(uuid.uuid4()),
     )
-    await seeded_db.commit()
 
     mock_result = ExecutionResult(
         success=True,
@@ -161,11 +158,8 @@ async def test_mcp_ssh_routes_to_executor(seeded_db):
 @pytest.mark.asyncio
 async def test_execute_mcp_marks_compromised(seeded_db):
     """_execute_mcp() should call _mark_target_compromised on success."""
-    import aiosqlite
     from app.services.engine_router import EngineRouter
     from app.clients import ExecutionResult
-
-    seeded_db.row_factory = aiosqlite.Row
 
     mock_result = ExecutionResult(
         success=True,
@@ -192,7 +186,7 @@ async def test_execute_mcp_marks_compromised(seeded_db):
     await router._execute_mcp(
         db=seeded_db,
         exec_id="mcp-exec-2",
-        now="2026-01-01T00:00:00",
+        now=datetime.now(timezone.utc),
         ability_id="nmap-scanner:scan_host",
         technique_id="T1592",
         target_id="test-target-1",
@@ -201,11 +195,10 @@ async def test_execute_mcp_marks_compromised(seeded_db):
         ooda_iteration_id=None,
     )
 
-    cursor = await seeded_db.execute(
+    row = await seeded_db.fetchrow(
         "SELECT is_compromised, privilege_level FROM targets WHERE id = 'test-target-1'"
     )
-    row = await cursor.fetchone()
-    assert row["is_compromised"] == 1
+    assert row["is_compromised"] is True
     assert row["privilege_level"] == "root"
 
 

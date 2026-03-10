@@ -19,10 +19,9 @@ import asyncio
 import json
 import logging
 
-import aiosqlite
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from app.database import _DB_FILE
+from app.database import db_manager
 
 logger = logging.getLogger(__name__)
 
@@ -55,16 +54,14 @@ async def ssh_terminal(
     """
     await websocket.accept()
 
-    async with aiosqlite.connect(_DB_FILE) as db:
-        db.row_factory = aiosqlite.Row
+    async with db_manager.connection() as db:
 
         # Verify target exists and is compromised
-        cursor = await db.execute(
+        target = await db.fetchrow(
             "SELECT id, hostname, ip_address, is_compromised FROM targets "
-            "WHERE id = ? AND operation_id = ?",
-            (target_id, operation_id),
+            "WHERE id = $1 AND operation_id = $2",
+            target_id, operation_id,
         )
-        target = await cursor.fetchone()
         if not target:
             await websocket.send_text(json.dumps({"error": "Target not found"}))
             await websocket.close()
@@ -79,24 +76,22 @@ async def ssh_terminal(
         hostname = target["hostname"] or ip_address
 
         # Look up SSH credential from facts table
-        cursor = await db.execute(
+        cred_row = await db.fetchrow(
             "SELECT value FROM facts "
-            "WHERE operation_id = ? AND source_target_id = ? "
+            "WHERE operation_id = $1 AND source_target_id = $2 "
             "AND trait = 'credential.ssh' "
             "ORDER BY collected_at DESC LIMIT 1",
-            (operation_id, target_id),
+            operation_id, target_id,
         )
-        cred_row = await cursor.fetchone()
 
         # Check for Metasploit root shell as fallback
-        cursor = await db.execute(
+        msf_row = await db.fetchrow(
             "SELECT value FROM facts "
-            "WHERE operation_id = ? AND source_target_id = ? "
+            "WHERE operation_id = $1 AND source_target_id = $2 "
             "AND trait = 'credential.root_shell' "
             "ORDER BY collected_at DESC LIMIT 1",
-            (operation_id, target_id),
+            operation_id, target_id,
         )
-        msf_row = await cursor.fetchone()
 
     # Decide backend: SSH or Metasploit
     use_msf = False

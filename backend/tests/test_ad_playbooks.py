@@ -39,17 +39,25 @@ def test_mcp_attack_executor_has_ad_techniques():
 
 async def test_windows_ad_playbooks_seeded(seeded_db):
     """After seeding, Windows AD playbooks should exist in technique_playbooks."""
-    import aiosqlite
-    from app.database import _seed_technique_playbooks
+    from app.database.seed import TECHNIQUE_PLAYBOOK_SEEDS
+    from uuid import uuid4
 
-    await _seed_technique_playbooks(seeded_db)
-    await seeded_db.commit()
+    count = await seeded_db.fetchval("SELECT COUNT(*) FROM technique_playbooks")
+    if count == 0:
+        for seed in TECHNIQUE_PLAYBOOK_SEEDS:
+            await seeded_db.execute(
+                """INSERT INTO technique_playbooks
+                   (id, mitre_id, platform, command, output_parser, facts_traits, source, tags)
+                   VALUES ($1, $2, $3, $4, $5, $6, 'seed', $7)
+                   ON CONFLICT DO NOTHING""",
+                str(uuid4()), seed["mitre_id"], seed["platform"],
+                seed["command"], seed.get("output_parser"),
+                seed["facts_traits"], seed["tags"],
+            )
 
-    seeded_db.row_factory = aiosqlite.Row
-    cursor = await seeded_db.execute(
+    rows = await seeded_db.fetch(
         "SELECT mitre_id FROM technique_playbooks WHERE platform = 'windows'"
     )
-    rows = await cursor.fetchall()
     seeded_ids = {r["mitre_id"] for r in rows}
 
     for tid in ["T1069.002", "T1558.003", "T1003.003", "T1018"]:
@@ -58,17 +66,25 @@ async def test_windows_ad_playbooks_seeded(seeded_db):
 
 async def test_technique_seeds_exist(seeded_db):
     """After seeding, AD technique definitions should exist in techniques table."""
-    import aiosqlite
-    from app.database import _seed_techniques
+    from app.database.seed import TECHNIQUE_SEEDS
+    from uuid import uuid4
 
-    await _seed_techniques(seeded_db)
-    await seeded_db.commit()
+    # Seed techniques if needed
+    count = await seeded_db.fetchval("SELECT COUNT(*) FROM techniques WHERE mitre_id IN ('T1069.002','T1558.003','T1003.003','T1018')")
+    if count == 0:
+        for seed in TECHNIQUE_SEEDS:
+            if seed.get("mitre_id") in ("T1069.002", "T1558.003", "T1003.003", "T1018"):
+                await seeded_db.execute(
+                    """INSERT INTO techniques (id, mitre_id, name, tactic, tactic_id, risk_level)
+                       VALUES ($1, $2, $3, $4, $5, $6)
+                       ON CONFLICT DO NOTHING""",
+                    str(uuid4()), seed["mitre_id"], seed["name"],
+                    seed["tactic"], seed["tactic_id"], seed.get("risk_level", "medium"),
+                )
 
-    seeded_db.row_factory = aiosqlite.Row
-    cursor = await seeded_db.execute(
+    rows = await seeded_db.fetch(
         "SELECT mitre_id, tactic_id FROM techniques WHERE mitre_id IN ('T1069.002','T1558.003','T1003.003','T1018')"
     )
-    rows = await cursor.fetchall()
     found = {r["mitre_id"]: r["tactic_id"] for r in rows}
 
     assert found.get("T1069.002") == "TA0007"  # Discovery

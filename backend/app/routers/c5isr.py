@@ -12,7 +12,7 @@
 
 from datetime import datetime, timezone
 
-import aiosqlite
+import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.database import get_db
@@ -24,7 +24,7 @@ from app.routers._deps import ensure_operation
 router = APIRouter()
 
 
-def _row_to_c5isr(row: aiosqlite.Row) -> C5ISRStatus:
+def _row_to_c5isr(row: asyncpg.Record) -> C5ISRStatus:
     keys = row.keys()
     return C5ISRStatus(
         id=row["id"],
@@ -47,14 +47,13 @@ def _row_to_c5isr(row: aiosqlite.Row) -> C5ISRStatus:
 
 async def list_c5isr(
     operation_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     await ensure_operation(db, operation_id)
 
-    cursor = await db.execute(
-        "SELECT * FROM c5isr_statuses WHERE operation_id = ?", (operation_id,)
+    rows = await db.fetch(
+        "SELECT * FROM c5isr_statuses WHERE operation_id = $1", operation_id
     )
-    rows = await cursor.fetchall()
     return [_row_to_c5isr(r) for r in rows]
 
 
@@ -68,7 +67,7 @@ async def update_c5isr(
     operation_id: str,
     domain: str,
     body: C5ISRUpdate,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     await ensure_operation(db, operation_id)
 
@@ -77,11 +76,10 @@ async def update_c5isr(
     if domain not in valid_domains:
         raise HTTPException(status_code=400, detail="Invalid domain")
 
-    cursor = await db.execute(
-        "SELECT * FROM c5isr_statuses WHERE operation_id = ? AND domain = ?",
-        (operation_id, domain),
+    row = await db.fetchrow(
+        "SELECT * FROM c5isr_statuses WHERE operation_id = $1 AND domain = $2",
+        operation_id, domain,
     )
-    row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="C5ISR status not found for domain")
 
@@ -89,24 +87,23 @@ async def update_c5isr(
     if not updates:
         return _row_to_c5isr(row)
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(timezone.utc)
     updates["updated_at"] = now
 
     # Serialize enum values
-    set_clause = ", ".join(f"{k} = ?" for k in updates)
+    set_clause = ", ".join(f"{k} = ${i+1}" for i, k in enumerate(updates))
     values = [v.value if hasattr(v, "value") else v for v in updates.values()]
     values.extend([operation_id, domain])
 
+    n = len(updates)
     await db.execute(
         f"UPDATE c5isr_statuses SET {set_clause} "
-        "WHERE operation_id = ? AND domain = ?",
-        values,
+        f"WHERE operation_id = ${n+1} AND domain = ${n+2}",
+        *values,
     )
-    await db.commit()
 
-    cursor = await db.execute(
-        "SELECT * FROM c5isr_statuses WHERE operation_id = ? AND domain = ?",
-        (operation_id, domain),
+    row = await db.fetchrow(
+        "SELECT * FROM c5isr_statuses WHERE operation_id = $1 AND domain = $2",
+        operation_id, domain,
     )
-    row = await cursor.fetchone()
     return _row_to_c5isr(row)

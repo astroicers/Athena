@@ -61,18 +61,17 @@ def _parse_result(result: str) -> dict:
 
 
 def make_mock_db():
-    """Return a fully-mocked aiosqlite connection."""
+    """Return a fully-mocked asyncpg connection."""
     db = AsyncMock()
-    cursor = AsyncMock()
-    cursor.fetchone = AsyncMock(return_value=None)
-    db.execute = AsyncMock(return_value=cursor)
-    db.commit = AsyncMock()
-    db.row_factory = None
+    db.fetchrow = AsyncMock(return_value=None)
+    db.fetch = AsyncMock(return_value=[])
+    db.fetchval = AsyncMock(return_value=None)
+    db.execute = AsyncMock(return_value="INSERT 0 1")
     return db
 
 
 def make_ip_row(ip: str = "192.168.1.100"):
-    """Return a MagicMock that behaves like an aiosqlite.Row for ip_address."""
+    """Return a MagicMock that behaves like an asyncpg.Record for ip_address."""
     row = MagicMock()
     row.__getitem__ = lambda self, k: ip if k == "ip_address" else None
     return row
@@ -647,10 +646,8 @@ class TestReconEngineStep8b:
 
         row = make_ip_row("192.168.1.100")
         db = make_mock_db()
-        # First fetchone → ip_row (target lookup), subsequent → None (no engagement)
-        cursor = AsyncMock()
-        cursor.fetchone = AsyncMock(side_effect=[row, None])
-        db.execute = AsyncMock(return_value=cursor)
+        # First fetchrow → ip_row (target lookup), subsequent → None (no engagement)
+        db.fetchrow = AsyncMock(side_effect=[row, None])
 
         mock_mcp_result = {
             "content": [
@@ -718,9 +715,7 @@ class TestReconEngineStep8b:
 
         row = make_ip_row("192.168.1.100")
         db = make_mock_db()
-        cursor = AsyncMock()
-        cursor.fetchone = AsyncMock(side_effect=[row, None])
-        db.execute = AsyncMock(return_value=cursor)
+        db.fetchrow = AsyncMock(side_effect=[row, None])
 
         # nmap result with only SSH (no http)
         mock_mcp_result = {
@@ -764,9 +759,7 @@ class TestReconEngineStep8b:
 
         row = make_ip_row("192.168.1.100")
         db = make_mock_db()
-        cursor = AsyncMock()
-        cursor.fetchone = AsyncMock(side_effect=[row, None])
-        db.execute = AsyncMock(return_value=cursor)
+        db.fetchrow = AsyncMock(side_effect=[row, None])
 
         # nmap result with http service
         mock_mcp_result = {
@@ -817,9 +810,7 @@ class TestReconEngineStep8b:
 
         row = make_ip_row("192.168.1.100")
         db = make_mock_db()
-        cursor = AsyncMock()
-        cursor.fetchone = AsyncMock(side_effect=[row, None])
-        db.execute = AsyncMock(return_value=cursor)
+        db.fetchrow = AsyncMock(side_effect=[row, None])
 
         mock_mcp_result = {
             "content": [
@@ -906,11 +897,10 @@ class TestReconEngineStep8b:
         db = make_mock_db()
         captured_params: list = []
 
-        async def capture_execute(sql, params=None, /):
-            if params:
-                captured_params.append(params)
-            cursor = AsyncMock()
-            return cursor
+        async def capture_execute(sql, *args):
+            if args:
+                captured_params.append(args)
+            return "INSERT 0 1"
 
         db.execute = AsyncMock(side_effect=capture_execute)
 

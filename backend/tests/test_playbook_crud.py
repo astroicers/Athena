@@ -134,7 +134,7 @@ def test_parse_stdout_regex_parser():
 
 
 async def test_patch_can_clear_output_parser(client: AsyncClient):
-    """PATCH {"output_parser": null} 應能將 output_parser 清空為 NULL。"""
+    """PATCH {"output_parser": null} should clear output_parser to NULL."""
     create_resp = await client.post("/api/playbooks", json={
         "mitre_id": "T5555", "platform": "linux",
         "command": "test_cmd", "facts_traits": [],
@@ -143,11 +143,9 @@ async def test_patch_can_clear_output_parser(client: AsyncClient):
     assert create_resp.status_code == 201
     pb_id = create_resp.json()["id"]
 
-    # 先確認有值
     get_resp = await client.get(f"/api/playbooks/{pb_id}")
     assert get_resp.json()["output_parser"] == "json"
 
-    # PATCH 清空
     patch_resp = await client.patch(
         f"/api/playbooks/{pb_id}",
         json={"output_parser": None},
@@ -155,13 +153,12 @@ async def test_patch_can_clear_output_parser(client: AsyncClient):
     assert patch_resp.status_code == 200
     assert patch_resp.json()["output_parser"] is None
 
-    # 再次 GET 確認持久化
     get_after = await client.get(f"/api/playbooks/{pb_id}")
     assert get_after.json()["output_parser"] is None
 
 
 async def test_patch_command_null_is_ignored(client: AsyncClient):
-    """PATCH {"command": null} 應被忽略，不修改現有 command。"""
+    """PATCH {"command": null} should be ignored, not modify existing command."""
     create = await client.post("/api/playbooks", json={
         "mitre_id": "T4444", "platform": "linux",
         "command": "original_cmd", "facts_traits": [],
@@ -170,32 +167,41 @@ async def test_patch_command_null_is_ignored(client: AsyncClient):
 
     resp = await client.patch(f"/api/playbooks/{pb_id}", json={"command": None})
     assert resp.status_code == 200
-    # command 不應被清空
     assert resp.json()["command"] == "original_cmd"
 
 
 async def test_output_parser_read_from_playbook_on_mcp_execute(seeded_db):
     """engine_router._get_output_parser should read output_parser from technique_playbooks
     and _execute_via_mcp_executor should forward it to MCP engine."""
-    import aiosqlite
     from unittest.mock import AsyncMock, patch, MagicMock
-    from app.database import _seed_technique_playbooks
+    from app.database.seed import TECHNIQUE_PLAYBOOK_SEEDS
     from app.clients import ExecutionResult
     from app.services.engine_router import EngineRouter
+    from uuid import uuid4
 
-    # Seed playbooks so the table has data (linux platform rows)
-    await _seed_technique_playbooks(seeded_db)
+    # Seed playbooks if needed
+    count = await seeded_db.fetchval("SELECT COUNT(*) FROM technique_playbooks")
+    if count == 0:
+        for seed in TECHNIQUE_PLAYBOOK_SEEDS:
+            await seeded_db.execute(
+                """INSERT INTO technique_playbooks
+                   (id, mitre_id, platform, command, output_parser, facts_traits, source, tags)
+                   VALUES ($1, $2, $3, $4, $5, $6, 'seed', $7)
+                   ON CONFLICT DO NOTHING""",
+                str(uuid4()), seed["mitre_id"], seed["platform"],
+                seed["command"], seed.get("output_parser"),
+                seed["facts_traits"], seed["tags"],
+            )
 
     # Insert a linux-platform T1033 playbook with output_parser='json' if not present
     await seeded_db.execute(
-        "INSERT OR IGNORE INTO technique_playbooks "
+        "INSERT INTO technique_playbooks "
         "(id, mitre_id, platform, command, output_parser, facts_traits, tags, source) "
-        "VALUES ('pb-t1033-test', 'T1033', 'linux', 'id', 'json', '[]', '[]', 'seed')"
+        "VALUES ('pb-t1033-test', 'T1033', 'linux', 'id', 'json', '[]', '[]', 'seed') "
+        "ON CONFLICT DO NOTHING"
     )
-    await seeded_db.commit()
 
     # Verify _get_output_parser returns the DB value
-    seeded_db.row_factory = aiosqlite.Row
     ws_mock = MagicMock()
     ws_mock.broadcast = AsyncMock()
     mock_mcp = MagicMock()
@@ -221,15 +227,15 @@ async def test_output_parser_read_from_playbook_on_mcp_execute(seeded_db):
 
     # Insert required data: SSH credential fact for test target + technique record
     await seeded_db.execute(
-        "INSERT OR IGNORE INTO techniques (id, mitre_id, name, tactic, tactic_id, risk_level) "
-        "VALUES ('tech-t1033', 'T1033', 'System Owner/User Discovery', 'Discovery', 'TA0007', 'low')"
+        "INSERT INTO techniques (id, mitre_id, name, tactic, tactic_id, risk_level) "
+        "VALUES ('tech-t1033', 'T1033', 'System Owner/User Discovery', 'Discovery', 'TA0007', 'low') "
+        "ON CONFLICT DO NOTHING"
     )
     await seeded_db.execute(
         "INSERT INTO facts (id, operation_id, source_target_id, trait, value, score) "
         "VALUES ('fact-ssh-1', 'test-op-1', 'test-target-1', 'credential.ssh', "
         "'root:pass@10.0.1.5:22', 100)"
     )
-    await seeded_db.commit()
 
     with patch("app.services.engine_router.settings") as mock_settings:
         mock_settings.EXECUTION_ENGINE = "mcp_ssh"
@@ -256,17 +262,27 @@ async def test_output_parser_read_from_playbook_on_mcp_execute(seeded_db):
 
 async def test_get_output_parser_windows_platform(seeded_db):
     """_get_output_parser with platform='windows' reads Windows playbook's output_parser."""
-    import aiosqlite
     from unittest.mock import MagicMock, AsyncMock
-    from app.database import _seed_technique_playbooks
+    from app.database.seed import TECHNIQUE_PLAYBOOK_SEEDS
     from app.services.engine_router import EngineRouter
+    from uuid import uuid4
 
-    await _seed_technique_playbooks(seeded_db)
-    seeded_db.row_factory = aiosqlite.Row
+    count = await seeded_db.fetchval("SELECT COUNT(*) FROM technique_playbooks")
+    if count == 0:
+        for seed in TECHNIQUE_PLAYBOOK_SEEDS:
+            await seeded_db.execute(
+                """INSERT INTO technique_playbooks
+                   (id, mitre_id, platform, command, output_parser, facts_traits, source, tags)
+                   VALUES ($1, $2, $3, $4, $5, $6, 'seed', $7)
+                   ON CONFLICT DO NOTHING""",
+                str(uuid4()), seed["mitre_id"], seed["platform"],
+                seed["command"], seed.get("output_parser"),
+                seed["facts_traits"], seed["tags"],
+            )
+
     # T1059.001 is seeded with platform='windows', output_parser='first_line'
     router = EngineRouter(
         c2_engine=MagicMock(),
-
         fact_collector=MagicMock(),
         ws_manager=MagicMock(broadcast=AsyncMock()),
     )
@@ -276,16 +292,26 @@ async def test_get_output_parser_windows_platform(seeded_db):
 
 async def test_get_output_parser_windows_technique_linux_path_returns_none(seeded_db):
     """Windows-only technique queried with platform='linux' returns None (no linux seed)."""
-    import aiosqlite
     from unittest.mock import MagicMock, AsyncMock
-    from app.database import _seed_technique_playbooks
+    from app.database.seed import TECHNIQUE_PLAYBOOK_SEEDS
     from app.services.engine_router import EngineRouter
+    from uuid import uuid4
 
-    await _seed_technique_playbooks(seeded_db)
-    seeded_db.row_factory = aiosqlite.Row
+    count = await seeded_db.fetchval("SELECT COUNT(*) FROM technique_playbooks")
+    if count == 0:
+        for seed in TECHNIQUE_PLAYBOOK_SEEDS:
+            await seeded_db.execute(
+                """INSERT INTO technique_playbooks
+                   (id, mitre_id, platform, command, output_parser, facts_traits, source, tags)
+                   VALUES ($1, $2, $3, $4, $5, $6, 'seed', $7)
+                   ON CONFLICT DO NOTHING""",
+                str(uuid4()), seed["mitre_id"], seed["platform"],
+                seed["command"], seed.get("output_parser"),
+                seed["facts_traits"], seed["tags"],
+            )
+
     router = EngineRouter(
         c2_engine=MagicMock(),
-
         fact_collector=MagicMock(),
         ws_manager=MagicMock(broadcast=AsyncMock()),
     )
@@ -296,14 +322,24 @@ async def test_get_output_parser_windows_technique_linux_path_returns_none(seede
 
 async def test_mcp_executor_uses_windows_output_parser(seeded_db):
     """_execute_via_mcp_executor should pass windows output_parser for WinRM credential."""
-    import aiosqlite
     from unittest.mock import AsyncMock, patch, MagicMock
-    from app.database import _seed_technique_playbooks
+    from app.database.seed import TECHNIQUE_PLAYBOOK_SEEDS
     from app.clients import ExecutionResult
     from app.services.engine_router import EngineRouter
+    from uuid import uuid4
 
-    await _seed_technique_playbooks(seeded_db)
-    seeded_db.row_factory = aiosqlite.Row
+    count = await seeded_db.fetchval("SELECT COUNT(*) FROM technique_playbooks")
+    if count == 0:
+        for seed in TECHNIQUE_PLAYBOOK_SEEDS:
+            await seeded_db.execute(
+                """INSERT INTO technique_playbooks
+                   (id, mitre_id, platform, command, output_parser, facts_traits, source, tags)
+                   VALUES ($1, $2, $3, $4, $5, $6, 'seed', $7)
+                   ON CONFLICT DO NOTHING""",
+                str(uuid4()), seed["mitre_id"], seed["platform"],
+                seed["command"], seed.get("output_parser"),
+                seed["facts_traits"], seed["tags"],
+            )
 
     mock_mcp = MagicMock()
     mock_mcp.execute = AsyncMock(
@@ -323,8 +359,9 @@ async def test_mcp_executor_uses_windows_output_parser(seeded_db):
     )
 
     await seeded_db.execute(
-        "INSERT OR IGNORE INTO techniques (id, mitre_id, name, tactic, tactic_id, risk_level) "
-        "VALUES ('tech-t1059', 'T1059.001', 'PowerShell', 'Execution', 'TA0002', 'medium')"
+        "INSERT INTO techniques (id, mitre_id, name, tactic, tactic_id, risk_level) "
+        "VALUES ('tech-t1059', 'T1059.001', 'PowerShell', 'Execution', 'TA0002', 'medium') "
+        "ON CONFLICT DO NOTHING"
     )
     # Insert WinRM credential so router picks windows platform
     await seeded_db.execute(
@@ -332,7 +369,6 @@ async def test_mcp_executor_uses_windows_output_parser(seeded_db):
         "VALUES ('fact-winrm-1', 'test-op-1', 'test-target-1', 'credential.winrm', "
         "'admin:pass@10.0.0.1:5985', 100)"
     )
-    await seeded_db.commit()
 
     with patch("app.services.engine_router.settings") as mock_settings:
         mock_settings.EXECUTION_ENGINE = "mcp_ssh"

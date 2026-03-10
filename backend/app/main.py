@@ -12,22 +12,18 @@
 Athena C5ISR API — FastAPI entry point.
 
 Lifespan:
-    - on startup  → init_db(), then seed if tables are empty
-    - on shutdown → (nothing special for POC)
-
-Routers are mounted under ``/api`` prefix.
-WebSocket is mounted at ``/ws/{operation_id}`` (no ``/api`` prefix).
+    - on startup  → init_db() (asyncpg pool + Alembic migrations + seed)
+    - on shutdown → close pool
 """
 
 from contextlib import asynccontextmanager
 
-import aiosqlite
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 
 from app.config import settings
-from app.database import _DB_FILE, get_db, init_db
+from app.database import db_manager, get_db, init_db
 from app.services.ooda_scheduler import start_scheduler, stop_scheduler
 from app.routers import (
     admin,
@@ -52,6 +48,7 @@ from app.routers import (
     vulnerabilities,
     ws,
 )
+from app.routers import constraints, dashboard, objectives, opsec
 from app.routers.playbooks import router as playbooks_router
 
 
@@ -61,11 +58,10 @@ async def lifespan(app: FastAPI):
     await init_db()
     start_scheduler()
 
-    # Seed if the operations table is empty
-    async with aiosqlite.connect(_DB_FILE) as db:
-        cursor = await db.execute("SELECT COUNT(*) FROM operations")
-        row = await cursor.fetchone()
-        if row and row[0] == 0:
+    # Seed demo scenario if operations table is empty
+    async with db_manager.connection() as conn:
+        count = await conn.fetchval("SELECT COUNT(*) FROM operations")
+        if count == 0:
             from app.seed.demo_scenario import seed
             await seed()
 
@@ -91,6 +87,7 @@ async def lifespan(app: FastAPI):
         from app.services.mcp_client_manager import set_mcp_manager as _set
         _set(None)
     stop_scheduler()
+    await db_manager.shutdown()
 
 
 app = FastAPI(
@@ -134,6 +131,12 @@ app.include_router(vulnerabilities.router, tags=["Vulnerabilities"])
 app.include_router(poc.router, tags=["PoC"])
 
 app.include_router(playbooks_router)
+
+# ── New Phase 2-4 routers ────────────────────────────────────────────────
+app.include_router(constraints.router, prefix="/api", tags=["Constraints"])
+app.include_router(opsec.router, prefix="/api", tags=["OPSEC"])
+app.include_router(objectives.router, prefix="/api", tags=["Objectives"])
+app.include_router(dashboard.router, prefix="/api", tags=["Dashboard"])
 
 # ── WebSocket (no /api prefix) ───────────────────────────────────────────
 app.include_router(ws.router, tags=["WebSocket"])

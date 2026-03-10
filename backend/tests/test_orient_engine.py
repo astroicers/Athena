@@ -25,17 +25,13 @@ def _make_ws():
 
 async def test_section_77_appears_when_creds_available(seeded_db):
     """有 credential.ssh fact 時，prompt 應包含 Section 7.7 橫移機會資訊。"""
-    import aiosqlite
-    seeded_db.row_factory = aiosqlite.Row
-
     await seeded_db.execute(
         "INSERT INTO facts "
         "(id, operation_id, source_target_id, trait, value, category, score) "
-        "VALUES (?, 'test-op-1', 'test-target-1', 'credential.ssh', "
+        "VALUES ($1, 'test-op-1', 'test-target-1', 'credential.ssh', "
         "'admin:password@10.0.1.5:22', 'credential', 1)",
-        (str(uuid.uuid4()),),
+        str(uuid.uuid4()),
     )
-    await seeded_db.commit()
 
     from app.services.orient_engine import OrientEngine
     engine = OrientEngine(_make_ws())
@@ -46,9 +42,6 @@ async def test_section_77_appears_when_creds_available(seeded_db):
 
 async def test_section_77_idle_when_no_creds(seeded_db):
     """無 credential.ssh fact 時，Section 7.7 應顯示 no opportunities。"""
-    import aiosqlite
-    seeded_db.row_factory = aiosqlite.Row
-
     from app.services.orient_engine import OrientEngine
     engine = OrientEngine(_make_ws())
     _, user_prompt = await engine._build_prompt(seeded_db, "test-op-1", "test-target-1")
@@ -61,13 +54,22 @@ async def test_section_76_shows_windows_playbooks_for_windows_target(seeded_db):
     seeded_db has test-target-1 as 'Windows Server 2022', so platform detection
     should resolve to 'windows' and query windows-platform playbooks.
     """
-    import aiosqlite
-    from app.database import _seed_technique_playbooks
-    seeded_db.row_factory = aiosqlite.Row
+    from app.database.seed import seed_if_empty, TECHNIQUE_PLAYBOOK_SEEDS
+    from uuid import uuid4
 
     # Seed playbooks so Section 7.6 has data to return
-    await _seed_technique_playbooks(seeded_db)
-    await seeded_db.commit()
+    count = await seeded_db.fetchval("SELECT COUNT(*) FROM technique_playbooks")
+    if count == 0:
+        for seed in TECHNIQUE_PLAYBOOK_SEEDS:
+            await seeded_db.execute(
+                """INSERT INTO technique_playbooks
+                   (id, mitre_id, platform, command, output_parser, facts_traits, source, tags)
+                   VALUES ($1, $2, $3, $4, $5, $6, 'seed', $7)
+                   ON CONFLICT DO NOTHING""",
+                str(uuid4()), seed["mitre_id"], seed["platform"],
+                seed["command"], seed.get("output_parser"),
+                seed["facts_traits"], seed["tags"],
+            )
 
     from app.services.orient_engine import OrientEngine
     engine = OrientEngine(_make_ws())
@@ -83,9 +85,8 @@ async def test_section_76_shows_linux_playbooks_for_linux_target(seeded_db):
 
     Inserts a second Linux target and verifies linux playbooks appear.
     """
-    import aiosqlite
-    from app.database import _seed_technique_playbooks
-    seeded_db.row_factory = aiosqlite.Row
+    from app.database.seed import TECHNIQUE_PLAYBOOK_SEEDS
+    from uuid import uuid4
 
     # Insert a Linux-only operation and target
     await seeded_db.execute(
@@ -98,11 +99,20 @@ async def test_section_76_shows_linux_playbooks_for_linux_target(seeded_db):
         "VALUES ('test-target-linux', 'LX-01', '10.0.2.1', 'Ubuntu 22.04', "
         "'Web Server', 'test-op-linux')"
     )
-    await seeded_db.commit()
 
     # Seed playbooks
-    await _seed_technique_playbooks(seeded_db)
-    await seeded_db.commit()
+    count = await seeded_db.fetchval("SELECT COUNT(*) FROM technique_playbooks")
+    if count == 0:
+        for seed in TECHNIQUE_PLAYBOOK_SEEDS:
+            await seeded_db.execute(
+                """INSERT INTO technique_playbooks
+                   (id, mitre_id, platform, command, output_parser, facts_traits, source, tags)
+                   VALUES ($1, $2, $3, $4, $5, $6, 'seed', $7)
+                   ON CONFLICT DO NOTHING""",
+                str(uuid4()), seed["mitre_id"], seed["platform"],
+                seed["command"], seed.get("output_parser"),
+                seed["facts_traits"], seed["tags"],
+            )
 
     from app.services.orient_engine import OrientEngine
     engine = OrientEngine(_make_ws())
@@ -115,9 +125,6 @@ async def test_section_76_shows_linux_playbooks_for_linux_target(seeded_db):
 
 async def test_section_77_shows_persistence_status(seeded_db):
     """Section 7.7 should always include 'Persistence status:' line."""
-    import aiosqlite
-    seeded_db.row_factory = aiosqlite.Row
-
     from app.services.orient_engine import OrientEngine
     engine = OrientEngine(_make_ws())
     _, user_prompt = await engine._build_prompt(seeded_db, "test-op-1", "test-target-1")
@@ -126,18 +133,14 @@ async def test_section_77_shows_persistence_status(seeded_db):
 
 async def test_section_77_shows_persistence_facts_when_present(seeded_db):
     """When host.persistence facts exist, Section 7.7 reports confirmed persistence vectors."""
-    import aiosqlite
-    seeded_db.row_factory = aiosqlite.Row
-
     # Insert a persistence fact for the primary target
     await seeded_db.execute(
         "INSERT INTO facts "
         "(id, operation_id, source_target_id, trait, value, category, score) "
-        "VALUES (?, 'test-op-1', 'test-target-1', 'host.persistence', "
+        "VALUES ($1, 'test-op-1', 'test-target-1', 'host.persistence', "
         "'cron job /etc/cron.d/backdoor', 'host', 1)",
-        (str(uuid.uuid4()),),
+        str(uuid.uuid4()),
     )
-    await seeded_db.commit()
 
     from app.services.orient_engine import OrientEngine
     engine = OrientEngine(_make_ws())
@@ -148,9 +151,6 @@ async def test_section_77_shows_persistence_facts_when_present(seeded_db):
 
 async def test_section_77_shows_no_persistence_when_none(seeded_db):
     """When no host.persistence facts exist, Section 7.7 reports no persistence established."""
-    import aiosqlite
-    seeded_db.row_factory = aiosqlite.Row
-
     from app.services.orient_engine import OrientEngine
     engine = OrientEngine(_make_ws())
     _, user_prompt = await engine._build_prompt(seeded_db, "test-op-1", "test-target-1")
@@ -159,10 +159,6 @@ async def test_section_77_shows_no_persistence_when_none(seeded_db):
 
 async def test_orient_prompt_includes_mcp_section_when_enabled(seeded_db):
     """Section 7.8 MCP tools appears when MCP_ENABLED=True."""
-    import aiosqlite
-
-    seeded_db.row_factory = aiosqlite.Row
-
     mock_mgr = MagicMock()
     mock_tool = MagicMock(
         server_name="nmap-scanner", tool_name="nmap_scan", description="Port scan"
@@ -191,10 +187,6 @@ async def test_orient_prompt_includes_mcp_section_when_enabled(seeded_db):
 
 async def test_orient_prompt_no_mcp_section_when_disabled(seeded_db):
     """Section 7.8 shows (MCP disabled) when MCP_ENABLED=False."""
-    import aiosqlite
-
-    seeded_db.row_factory = aiosqlite.Row
-
     with patch("app.services.orient_engine.settings") as s:
         s.MOCK_LLM = True
         s.MCP_ENABLED = False

@@ -12,7 +12,7 @@
 
 import uuid
 
-import aiosqlite
+import asyncpg
 import pytest
 
 from app.services.agent_capability_matcher import AgentCapabilityMatcher
@@ -22,36 +22,36 @@ from app.services.agent_capability_matcher import AgentCapabilityMatcher
 # DB helpers — insert parent rows before inserting agents
 # ---------------------------------------------------------------------------
 
-async def _ensure_operation(db: aiosqlite.Connection, operation_id: str) -> None:
+async def _ensure_operation(db: asyncpg.Connection, operation_id: str) -> None:
     """Insert an operation row if it doesn't already exist."""
     await db.execute(
-        "INSERT OR IGNORE INTO operations "
+        "INSERT INTO operations "
         "(id, code, name, codename, strategic_intent, status, current_ooda_phase) "
-        "VALUES (?, ?, ?, ?, ?, 'active', 'observe')",
-        (operation_id, f"CODE-{operation_id}", f"Op {operation_id}",
-         f"CN-{operation_id}", "test intent"),
+        "VALUES ($1, $2, $3, $4, $5, 'active', 'observe') "
+        "ON CONFLICT DO NOTHING",
+        operation_id, f"CODE-{operation_id}", f"Op {operation_id}",
+        f"CN-{operation_id}", "test intent",
     )
-    await db.commit()
 
 
 async def _ensure_target(
-    db: aiosqlite.Connection,
+    db: asyncpg.Connection,
     host_id: str,
     operation_id: str,
 ) -> None:
     """Insert a target row if it doesn't already exist."""
     await _ensure_operation(db, operation_id)
     await db.execute(
-        "INSERT OR IGNORE INTO targets "
+        "INSERT INTO targets "
         "(id, hostname, ip_address, os, role, operation_id) "
-        "VALUES (?, ?, '10.0.0.1', 'Windows', 'server', ?)",
-        (host_id, f"host-{host_id}", operation_id),
+        "VALUES ($1, $2, '10.0.0.1', 'Windows', 'server', $3) "
+        "ON CONFLICT DO NOTHING",
+        host_id, f"host-{host_id}", operation_id,
     )
-    await db.commit()
 
 
 async def _insert_agent(
-    db: aiosqlite.Connection,
+    db: asyncpg.Connection,
     paw: str,
     host_id: str,
     operation_id: str,
@@ -63,24 +63,23 @@ async def _insert_agent(
     await _ensure_target(db, host_id, operation_id)
     await db.execute(
         "INSERT INTO agents (id, paw, host_id, operation_id, status, privilege, platform) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (str(uuid.uuid4()), paw, host_id, operation_id, status, privilege, platform),
+        "VALUES ($1, $2, $3, $4, $5, $6, $7)",
+        str(uuid.uuid4()), paw, host_id, operation_id, status, privilege, platform,
     )
-    await db.commit()
 
 
 async def _insert_playbook(
-    db: aiosqlite.Connection,
+    db: asyncpg.Connection,
     mitre_id: str,
     platform: str,
 ) -> None:
     """Insert a technique_playbooks row."""
     await db.execute(
-        "INSERT OR IGNORE INTO technique_playbooks (id, mitre_id, platform, command) "
-        "VALUES (?, ?, ?, ?)",
-        (str(uuid.uuid4()), mitre_id, platform, "whoami"),
+        "INSERT INTO technique_playbooks (id, mitre_id, platform, command) "
+        "VALUES ($1, $2, $3, $4) "
+        "ON CONFLICT DO NOTHING",
+        str(uuid.uuid4()), mitre_id, platform, "whoami",
     )
-    await db.commit()
 
 
 # ---------------------------------------------------------------------------

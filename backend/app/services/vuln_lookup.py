@@ -14,7 +14,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-import aiosqlite
+import asyncpg
 
 from app.config import settings
 from app.models.recon import ServiceInfo
@@ -81,13 +81,12 @@ class VulnLookupService:
 
     async def enrich_services(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         services: list[ServiceInfo],
         operation_id: str,
         target_id: str,
     ) -> list[VulnFinding]:
         """Enrich all services with CVE data. Returns found VulnFindings."""
-        db.row_factory = aiosqlite.Row
         all_findings: list[VulnFinding] = []
 
         for svc in services:
@@ -132,7 +131,7 @@ class VulnLookupService:
 
     async def _lookup_cve(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         cpe: str,
         svc: ServiceInfo,
         operation_id: str,
@@ -202,27 +201,25 @@ class VulnLookupService:
         return findings
 
     async def _get_cached(
-        self, db: aiosqlite.Connection, cpe: str
-    ) -> list[aiosqlite.Row] | None:
+        self, db: asyncpg.Connection, cpe: str
+    ) -> list | None:
         """Return cached rows if they exist and haven't expired. None = cache miss."""
-        cursor = await db.execute(
+        rows = await db.fetch(
             """
             SELECT cve_id, cvss_score, severity, description, exploit_available
             FROM vuln_cache
-            WHERE cpe_string = ?
-              AND datetime(cached_at) > datetime('now', ? || ' hours')
+            WHERE cpe_string = $1
+              AND cached_at > NOW() - INTERVAL '1 hours' * $2
             """,
-            (cpe, f"-{settings.NVD_CACHE_TTL_HOURS}"),
+            cpe, settings.NVD_CACHE_TTL_HOURS,
         )
-        rows = await cursor.fetchall()
         # Return None only if not in cache at all (empty result is still a cache hit)
         # We distinguish by checking if ANY row exists with expired=false
         if rows is not None:  # rows is a list (possibly empty)
             # Check if there's any non-expired entry for this CPE
-            count_cursor = await db.execute(
-                "SELECT COUNT(*) FROM vuln_cache WHERE cpe_string = ?", (cpe,)
+            count_row = await db.fetchrow(
+                "SELECT COUNT(*) FROM vuln_cache WHERE cpe_string = $1", cpe,
             )
-            count_row = await count_cursor.fetchone()
             if count_row and count_row[0] > 0:
                 return list(rows)  # Cache hit (may be empty list if no CVEs found)
         return None  # Cache miss
@@ -332,69 +329,63 @@ class VulnLookupService:
 
         return results
 
-    async def _cache_finding(self, db: aiosqlite.Connection, cpe: str, nvd_item: dict) -> None:
+    async def _cache_finding(self, db: asyncpg.Connection, cpe: str, nvd_item: dict) -> None:
         """Insert a CVE into the cache table."""
         cache_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         try:
             await db.execute(
                 """
-                INSERT OR IGNORE INTO vuln_cache
+                INSERT INTO vuln_cache
                     (id, cpe_string, cve_id, cvss_score, severity, description,
                      exploit_available, cached_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING
                 """,
-                (
-                    cache_id, cpe, nvd_item["cve_id"],
-                    nvd_item["cvss_score"],
-                    _cvss_to_severity(nvd_item["cvss_score"]),
-                    nvd_item.get("description", "")[:500],
-                    1 if nvd_item.get("exploit_available") else 0,
-                    now,
-                ),
+                cache_id, cpe, nvd_item["cve_id"],
+                nvd_item["cvss_score"],
+                _cvss_to_severity(nvd_item["cvss_score"]),
+                nvd_item.get("description", "")[:500],
+                True if nvd_item.get("exploit_available") else False,
+                now,
             )
-            await db.commit()
         except Exception as exc:
             logger.debug("Cache insert failed: %s", exc)
 
-    async def _cache_empty(self, db: aiosqlite.Connection, cpe: str) -> None:
+    async def _cache_empty(self, db: asyncpg.Connection, cpe: str) -> None:
         """Insert a sentinel row to cache 'no CVEs found' for this CPE."""
         cache_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         try:
             await db.execute(
                 """
-                INSERT OR IGNORE INTO vuln_cache
+                INSERT INTO vuln_cache
                     (id, cpe_string, cve_id, cvss_score, severity, description,
                      exploit_available, cached_at)
-                VALUES (?, ?, '__empty__', 0, 'info', 'No CVEs found', 0, ?)
+                VALUES ($1, $2, '__empty__', 0, 'info', 'No CVEs found', FALSE, $3)
+                ON CONFLICT DO NOTHING
                 """,
-                (cache_id, cpe, now),
+                cache_id, cpe, now,
             )
-            await db.commit()
         except Exception as exc:
             logger.debug("Cache empty-sentinel insert failed: %s", exc)
 
-    async def _write_finding_fact(self, db: aiosqlite.Connection, finding: VulnFinding) -> None:
+    async def _write_finding_fact(self, db: asyncpg.Connection, finding: VulnFinding) -> None:
         """Write a vuln.cve fact to the facts table and broadcast."""
         fact_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         value = (
             f"{finding.cve_id}:{finding.service}:{finding.version.replace(' ', '_')}"
             f":cvss={finding.cvss_score:.1f}:exploit={'true' if finding.exploit_available else 'false'}"
         )
         try:
             await db.execute(
-                "INSERT OR IGNORE INTO facts "
+                "INSERT INTO facts "
                 "(id, trait, value, category, source_technique_id, "
                 "source_target_id, operation_id, score, collected_at) "
-                "VALUES (?, ?, ?, ?, NULL, ?, ?, 1, ?)",
-                (
-                    fact_id, "vuln.cve", value, "vulnerability",
-                    finding.target_id, finding.operation_id, now,
-                ),
+                "VALUES ($1, $2, $3, $4, NULL, $5, $6, 1, $7) ON CONFLICT DO NOTHING",
+                fact_id, "vuln.cve", value, "vulnerability",
+                finding.target_id, finding.operation_id, now,
             )
-            await db.commit()
             payload = {
                 "id": fact_id,
                 "trait": "vuln.cve",

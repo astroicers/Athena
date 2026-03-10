@@ -52,7 +52,6 @@ async def test_report_with_log_entries(client, seeded_db):
         "INSERT INTO log_entries (id, operation_id, timestamp, severity, source, message) "
         "VALUES ('log-1', 'test-op-1', '2026-01-01T00:00:00Z', 'info', 'test', 'Hello')"
     )
-    await seeded_db.commit()
     data = (await client.get("/api/operations/test-op-1/report")).json()
     assert len(data["logs"]) == 1
     assert data["logs"][0]["message"] == "Hello"

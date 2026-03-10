@@ -16,7 +16,7 @@ POST /api/operations/{operation_id}/attack-graph/rebuild  → force rebuild
 
 import logging
 
-import aiosqlite
+import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.database import get_db
@@ -99,17 +99,16 @@ def _to_response(graph: AttackGraph) -> dict:
         explored_paths=graph.explored_paths,
         unexplored_branches=graph.unexplored_branches,
         coverage_score=graph.coverage_score,
-        updated_at=graph.updated_at,
+        updated_at=graph.updated_at.isoformat() if hasattr(graph.updated_at, 'isoformat') else graph.updated_at,
         stats=stats,
     ).model_dump()
 
 
-async def _verify_operation(db: aiosqlite.Connection, operation_id: str) -> None:
+async def _verify_operation(db: asyncpg.Connection, operation_id: str) -> None:
     """Raise 404 if operation does not exist."""
-    cursor = await db.execute(
-        "SELECT id FROM operations WHERE id = ?", (operation_id,)
+    row = await db.fetchrow(
+        "SELECT id FROM operations WHERE id = $1", operation_id
     )
-    row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Operation not found")
 
@@ -117,10 +116,9 @@ async def _verify_operation(db: aiosqlite.Connection, operation_id: str) -> None
 @router.get("/attack-graph", response_model=AttackGraphResponse)
 async def get_attack_graph(
     operation_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Load existing attack graph or auto-build if none exists."""
-    db.row_factory = aiosqlite.Row
     await _verify_operation(db, operation_id)
 
     engine = AttackGraphEngine(ws_manager)
@@ -137,10 +135,9 @@ async def get_attack_graph(
 @router.post("/attack-graph/rebuild", response_model=AttackGraphResponse)
 async def rebuild_attack_graph(
     operation_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Force rebuild the attack graph."""
-    db.row_factory = aiosqlite.Row
     await _verify_operation(db, operation_id)
 
     engine = AttackGraphEngine(ws_manager)

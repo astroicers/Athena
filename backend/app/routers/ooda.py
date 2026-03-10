@@ -16,10 +16,10 @@ import json
 import logging
 import uuid
 
-import aiosqlite
+import asyncpg
 from fastapi import APIRouter, Depends
 
-from app.database import get_db, _DB_FILE
+from app.database import db_manager, get_db
 from app.models import OODAIteration
 from app.models.ooda import OodaTriggerQueued, OODADirectiveCreate
 from app.models.api_schemas import OODATimelineEntry
@@ -41,7 +41,7 @@ def _get_controller() -> OODAController:
     return build_ooda_controller()
 
 
-def _row_to_ooda(row: aiosqlite.Row) -> OODAIteration:
+def _row_to_ooda(row: asyncpg.Record) -> OODAIteration:
     return OODAIteration(
         id=row["id"],
         operation_id=row["operation_id"],
@@ -63,9 +63,9 @@ def _row_to_ooda(row: aiosqlite.Row) -> OODAIteration:
 
 async def trigger_ooda(
     operation_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ) -> OodaTriggerQueued:
-    """Enqueue an OODA cycle — returns 202 immediately, executes in background."""
+    """Enqueue an OODA cycle -- returns 202 immediately, executes in background."""
     await ensure_operation(db, operation_id)
 
     iteration_id = str(uuid.uuid4())
@@ -88,8 +88,7 @@ async def trigger_ooda(
 
 async def _run_ooda_background(iteration_id: str, op_id: str) -> None:
     """Background task: run full OODA cycle with its own DB connection."""
-    async with aiosqlite.connect(_DB_FILE) as db:
-        db.row_factory = aiosqlite.Row
+    async with db_manager.connection() as db:
         try:
             controller = _get_controller()
             await controller.trigger_cycle(db, op_id)
@@ -100,10 +99,9 @@ async def _run_ooda_background(iteration_id: str, op_id: str) -> None:
             try:
                 await db.execute(
                     "UPDATE ooda_iterations SET phase = 'failed' "
-                    "WHERE id = ? OR (operation_id = ? AND completed_at IS NULL)",
-                    (iteration_id, op_id),
+                    "WHERE id = $1 OR (operation_id = $2 AND completed_at IS NULL)",
+                    iteration_id, op_id,
                 )
-                await db.commit()
             except Exception:
                 logger.exception(
                     "Failed to update ooda_iteration status for %s", iteration_id
@@ -119,16 +117,15 @@ async def _run_ooda_background(iteration_id: str, op_id: str) -> None:
 
 async def get_current_ooda(
     operation_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     await ensure_operation(db, operation_id)
 
-    cursor = await db.execute(
-        "SELECT * FROM ooda_iterations WHERE operation_id = ? "
+    row = await db.fetchrow(
+        "SELECT * FROM ooda_iterations WHERE operation_id = $1 "
         "ORDER BY iteration_number DESC LIMIT 1",
-        (operation_id,),
+        operation_id,
     )
-    row = await cursor.fetchone()
     if not row:
         return None
     return _row_to_ooda(row)
@@ -139,16 +136,15 @@ async def get_current_ooda(
 
 async def get_ooda_history(
     operation_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     await ensure_operation(db, operation_id)
 
-    cursor = await db.execute(
-        "SELECT * FROM ooda_iterations WHERE operation_id = ? "
+    rows = await db.fetch(
+        "SELECT * FROM ooda_iterations WHERE operation_id = $1 "
         "ORDER BY iteration_number ASC",
-        (operation_id,),
+        operation_id,
     )
-    rows = await cursor.fetchall()
     return [_row_to_ooda(r) for r in rows]
 
 
@@ -160,17 +156,16 @@ async def get_ooda_history(
 
 async def get_ooda_timeline(
     operation_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Flatten iterations into per-phase timeline entries."""
     await ensure_operation(db, operation_id)
 
-    cursor = await db.execute(
-        "SELECT * FROM ooda_iterations WHERE operation_id = ? "
+    rows = await db.fetch(
+        "SELECT * FROM ooda_iterations WHERE operation_id = $1 "
         "ORDER BY iteration_number ASC",
-        (operation_id,),
+        operation_id,
     )
-    rows = await cursor.fetchall()
 
     entries: list[OODATimelineEntry] = []
     phase_map = [
@@ -191,8 +186,8 @@ async def get_ooda_timeline(
                         timestamp=row["started_at"] or "",
                     )
                 )
-    # ── Also include completed recon scans as timeline entries ──────────
-    recon_cursor = await db.execute(
+    # -- Also include completed recon scans as timeline entries --
+    recon_rows = await db.fetch(
         """
         SELECT rs.target_id, rs.open_ports, rs.os_guess,
                rs.initial_access_method, rs.credential_found,
@@ -200,12 +195,11 @@ async def get_ooda_timeline(
                t.hostname, t.ip_address
         FROM recon_scans rs
         LEFT JOIN targets t ON t.id = rs.target_id
-        WHERE rs.operation_id = ? AND rs.status = 'completed'
+        WHERE rs.operation_id = $1 AND rs.status = 'completed'
         ORDER BY rs.completed_at ASC
         """,
-        (operation_id,),
+        operation_id,
     )
-    recon_rows = await recon_cursor.fetchall()
 
     for row in recon_rows:
         ports = json.loads(row["open_ports"] or "[]")
@@ -239,31 +233,29 @@ async def get_ooda_timeline(
 async def create_directive(
     operation_id: str,
     body: OODADirectiveCreate,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Store a human operator directive to influence the next OODA orient phase."""
     await ensure_operation(db, operation_id)
     directive_id = str(uuid.uuid4())
     await db.execute(
-        "INSERT INTO ooda_directives (id, operation_id, directive, scope) VALUES (?, ?, ?, ?)",
-        (directive_id, operation_id, body.directive, body.scope),
+        "INSERT INTO ooda_directives (id, operation_id, directive, scope) VALUES ($1, $2, $3, $4)",
+        directive_id, operation_id, body.directive, body.scope,
     )
-    await db.commit()
     return {"id": directive_id, "status": "stored"}
 
 
 @router.get("/operations/{operation_id}/ooda/directive/latest")
 async def get_latest_directive(
     operation_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Get the most recent directive for this operation."""
     await ensure_operation(db, operation_id)
-    cursor = await db.execute(
-        "SELECT * FROM ooda_directives WHERE operation_id = ? ORDER BY created_at DESC LIMIT 1",
-        (operation_id,),
+    row = await db.fetchrow(
+        "SELECT * FROM ooda_directives WHERE operation_id = $1 ORDER BY created_at DESC LIMIT 1",
+        operation_id,
     )
-    row = await cursor.fetchone()
     if not row:
         return None
     return dict(row)
@@ -276,13 +268,12 @@ async def start_ooda_auto_loop(
     operation_id: str,
     interval_sec: int = 30,
     max_iterations: int = 0,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Start automated OODA loop (APScheduler). Runs every interval_sec until max_iterations or stopped."""
     await ensure_operation(db, operation_id)  # raises 404 if not found
     return await start_auto_loop(
         operation_id=operation_id,
-        db_path=str(_DB_FILE),
         interval_sec=interval_sec,
         max_iterations=max_iterations,
     )
@@ -293,7 +284,7 @@ async def start_ooda_auto_loop(
 
 async def stop_ooda_auto_loop(
     operation_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Stop automated OODA loop for this operation."""
     await ensure_operation(db, operation_id)  # raises 404 if not found

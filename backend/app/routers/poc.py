@@ -9,24 +9,23 @@ router = APIRouter(tags=["PoC"])
 @router.get("/api/operations/{operation_id}/poc")
 async def get_poc_records(operation_id: str, db=Depends(get_db)):
     """Get all PoC records for an operation."""
-    cursor = await db.execute(
-        "SELECT id FROM operations WHERE id = ?", (operation_id,)
+    row = await db.fetchrow(
+        "SELECT id FROM operations WHERE id = $1", operation_id
     )
-    if not await cursor.fetchone():
+    if not row:
         raise HTTPException(status_code=404, detail="Operation not found")
 
-    cursor = await db.execute(
+    rows = await db.fetch(
         "SELECT trait, value, source_target_id, collected_at "
-        "FROM facts WHERE operation_id = ? AND trait LIKE 'poc.%' "
+        "FROM facts WHERE operation_id = $1 AND trait LIKE 'poc.%' "
         "ORDER BY collected_at DESC",
-        (operation_id,),
+        operation_id,
     )
-    rows = await cursor.fetchall()
 
     poc_records = []
     for row in rows:
         try:
-            val = row["value"] if isinstance(row, dict) else row[1]
+            val = row["value"]
             record = json.loads(val)
             poc_records.append(record)
         except (json.JSONDecodeError, IndexError):

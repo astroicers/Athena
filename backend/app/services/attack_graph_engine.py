@@ -27,7 +27,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
-import aiosqlite
+import asyncpg
 import yaml
 
 from app.models.attack_graph import (
@@ -172,7 +172,7 @@ class AttackGraphEngine:
     # ------------------------------------------------------------------
 
     async def rebuild(
-        self, db: aiosqlite.Connection, operation_id: str
+        self, db: asyncpg.Connection, operation_id: str
     ) -> AttackGraph:
         """Full rebuild: query DB, build graph, persist, broadcast."""
         # 1. Query data
@@ -182,14 +182,13 @@ class AttackGraphEngine:
 
         # 2. Clear old graph data
         await db.execute(
-            "DELETE FROM attack_graph_edges WHERE operation_id = ?",
-            (operation_id,),
+            "DELETE FROM attack_graph_edges WHERE operation_id = $1",
+            operation_id,
         )
         await db.execute(
-            "DELETE FROM attack_graph_nodes WHERE operation_id = ?",
-            (operation_id,),
+            "DELETE FROM attack_graph_nodes WHERE operation_id = $1",
+            operation_id,
         )
-        await db.commit()
 
         # 3. Build in-memory graph
         graph = self._build_graph_in_memory(operation_id, targets, facts, executions)
@@ -580,7 +579,7 @@ class AttackGraphEngine:
         executions: list[dict],
     ) -> AttackGraph:
         """Build the full graph from raw data. Pure function (no DB access)."""
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         graph = AttackGraph(
             graph_id=str(uuid.uuid4()),
             operation_id=operation_id,
@@ -830,49 +829,36 @@ class AttackGraphEngine:
     # ------------------------------------------------------------------
 
     async def _query_targets(self, db, operation_id: str) -> list[dict]:
-        cursor = await db.execute(
+        rows = await db.fetch(
             "SELECT id, hostname, ip_address, os, role, operation_id "
-            "FROM targets WHERE operation_id = ?",
-            (operation_id,),
+            "FROM targets WHERE operation_id = $1",
+            operation_id,
         )
-        rows = await cursor.fetchall()
-        return [dict(r) if hasattr(r, "keys") else {
-            "id": r[0], "hostname": r[1], "ip_address": r[2],
-            "os": r[3], "role": r[4], "operation_id": r[5],
-        } for r in rows]
+        return [dict(r) for r in rows]
 
     async def _query_facts(self, db, operation_id: str) -> list[dict]:
-        cursor = await db.execute(
+        rows = await db.fetch(
             "SELECT id, trait, value, category, source_technique_id, "
-            "source_target_id, operation_id FROM facts WHERE operation_id = ?",
-            (operation_id,),
+            "source_target_id, operation_id FROM facts WHERE operation_id = $1",
+            operation_id,
         )
-        rows = await cursor.fetchall()
-        return [dict(r) if hasattr(r, "keys") else {
-            "id": r[0], "trait": r[1], "value": r[2], "category": r[3],
-            "source_technique_id": r[4], "source_target_id": r[5],
-            "operation_id": r[6],
-        } for r in rows]
+        return [dict(r) for r in rows]
 
     async def _query_executions(self, db, operation_id: str) -> list[dict]:
-        cursor = await db.execute(
+        rows = await db.fetch(
             "SELECT id, technique_id, target_id, operation_id, status "
-            "FROM technique_executions WHERE operation_id = ?",
-            (operation_id,),
+            "FROM technique_executions WHERE operation_id = $1",
+            operation_id,
         )
-        rows = await cursor.fetchall()
-        return [dict(r) if hasattr(r, "keys") else {
-            "id": r[0], "technique_id": r[1], "target_id": r[2],
-            "operation_id": r[3], "status": r[4],
-        } for r in rows]
+        return [dict(r) for r in rows]
 
     # ------------------------------------------------------------------
     # DB persistence
     # ------------------------------------------------------------------
 
     async def _persist_graph(self, db, graph: AttackGraph) -> None:
-        """Persist graph nodes and edges to SQLite."""
-        now = datetime.now(timezone.utc).isoformat()
+        """Persist graph nodes and edges to PostgreSQL."""
+        now = datetime.now(timezone.utc)
 
         for node in graph.nodes.values():
             await db.execute(
@@ -881,15 +867,13 @@ class AttackGraphEngine:
                 "status, confidence, risk_level, information_gain, effort, "
                 "prerequisites, satisfied_prerequisites, source, execution_id, "
                 "depth, created_at, updated_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    node.node_id, graph.operation_id, node.target_id,
-                    node.technique_id, node.tactic_id, node.status.value,
-                    node.confidence, node.risk_level, node.information_gain,
-                    node.effort, json.dumps(node.prerequisites),
-                    json.dumps(node.satisfied_prerequisites), node.source,
-                    node.execution_id, node.depth, now, now,
-                ),
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)",
+                node.node_id, graph.operation_id, node.target_id,
+                node.technique_id, node.tactic_id, node.status.value,
+                node.confidence, node.risk_level, node.information_gain,
+                node.effort, json.dumps(node.prerequisites),
+                json.dumps(node.satisfied_prerequisites), node.source,
+                node.execution_id, node.depth, now, now,
             )
 
         for edge in graph.edges:
@@ -897,15 +881,11 @@ class AttackGraphEngine:
                 "INSERT INTO attack_graph_edges "
                 "(id, operation_id, source_node_id, target_node_id, "
                 "weight, relationship, required_facts, source_type, created_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    edge.edge_id, graph.operation_id, edge.source,
-                    edge.target, edge.weight, edge.relationship.value,
-                    json.dumps(edge.required_facts), edge.source_type, now,
-                ),
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                edge.edge_id, graph.operation_id, edge.source,
+                edge.target, edge.weight, edge.relationship.value,
+                json.dumps(edge.required_facts), edge.source_type, now,
             )
-
-        await db.commit()
 
     # ------------------------------------------------------------------
     # Load from DB
@@ -913,11 +893,10 @@ class AttackGraphEngine:
 
     async def load_from_db(self, db, operation_id: str) -> AttackGraph | None:
         """Load a previously persisted attack graph from DB."""
-        cursor = await db.execute(
-            "SELECT * FROM attack_graph_nodes WHERE operation_id = ?",
-            (operation_id,),
+        node_rows = await db.fetch(
+            "SELECT * FROM attack_graph_nodes WHERE operation_id = $1",
+            operation_id,
         )
-        node_rows = await cursor.fetchall()
 
         if not node_rows:
             return None
@@ -925,51 +904,44 @@ class AttackGraphEngine:
         graph = AttackGraph(
             graph_id=str(uuid.uuid4()),
             operation_id=operation_id,
-            updated_at=datetime.now(timezone.utc).isoformat(),
+            updated_at=datetime.now(timezone.utc),
         )
 
         for row in node_rows:
-            r = dict(row) if hasattr(row, "keys") else row
+            r = dict(row)
             node = AttackNode(
-                node_id=r["id"] if isinstance(r, dict) else r[0],
-                target_id=r["target_id"] if isinstance(r, dict) else r[2],
-                technique_id=r["technique_id"] if isinstance(r, dict) else r[3],
-                tactic_id=r["tactic_id"] if isinstance(r, dict) else r[4],
-                status=NodeStatus(r["status"] if isinstance(r, dict) else r[5]),
-                confidence=r["confidence"] if isinstance(r, dict) else r[6],
-                risk_level=r["risk_level"] if isinstance(r, dict) else r[7],
-                information_gain=r["information_gain"] if isinstance(r, dict) else r[8],
-                effort=r["effort"] if isinstance(r, dict) else r[9],
-                prerequisites=json.loads(
-                    r["prerequisites"] if isinstance(r, dict) else r[10]
-                ),
-                satisfied_prerequisites=json.loads(
-                    r["satisfied_prerequisites"] if isinstance(r, dict) else r[11]
-                ),
-                source=r["source"] if isinstance(r, dict) else r[12],
-                execution_id=r["execution_id"] if isinstance(r, dict) else r[13],
-                depth=r["depth"] if isinstance(r, dict) else r[14],
+                node_id=r["id"],
+                target_id=r["target_id"],
+                technique_id=r["technique_id"],
+                tactic_id=r["tactic_id"],
+                status=NodeStatus(r["status"]),
+                confidence=r["confidence"],
+                risk_level=r["risk_level"],
+                information_gain=r["information_gain"],
+                effort=r["effort"],
+                prerequisites=json.loads(r["prerequisites"]),
+                satisfied_prerequisites=json.loads(r["satisfied_prerequisites"]),
+                source=r["source"],
+                execution_id=r["execution_id"],
+                depth=r["depth"],
             )
             graph.nodes[node.node_id] = node
 
-        cursor = await db.execute(
-            "SELECT * FROM attack_graph_edges WHERE operation_id = ?",
-            (operation_id,),
+        edge_rows = await db.fetch(
+            "SELECT * FROM attack_graph_edges WHERE operation_id = $1",
+            operation_id,
         )
-        edge_rows = await cursor.fetchall()
 
         for row in edge_rows:
-            r = dict(row) if hasattr(row, "keys") else row
+            r = dict(row)
             edge = AttackEdge(
-                edge_id=r["id"] if isinstance(r, dict) else r[0],
-                source=r["source_node_id"] if isinstance(r, dict) else r[2],
-                target=r["target_node_id"] if isinstance(r, dict) else r[3],
-                weight=r["weight"] if isinstance(r, dict) else r[4],
-                relationship=EdgeRelationship(r["relationship"] if isinstance(r, dict) else r[5]),
-                required_facts=json.loads(
-                    r["required_facts"] if isinstance(r, dict) else r[6]
-                ),
-                source_type=r["source_type"] if isinstance(r, dict) else r[7],
+                edge_id=r["id"],
+                source=r["source_node_id"],
+                target=r["target_node_id"],
+                weight=r["weight"],
+                relationship=EdgeRelationship(r["relationship"]),
+                required_facts=json.loads(r["required_facts"]),
+                source_type=r["source_type"],
             )
             graph.edges.append(edge)
 

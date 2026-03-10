@@ -15,11 +15,11 @@ import json
 import logging
 import uuid
 
-import aiosqlite
+import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.config import settings
-from app.database import get_db, _DB_FILE
+from app.database import db_manager, get_db
 from app.models import Technique
 from app.models.api_schemas import AttackPathEntry, AttackPathResponse, TechniqueCreate, TechniqueWithStatus
 from app.ws_manager import ws_manager
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _row_to_technique(row: aiosqlite.Row) -> Technique:
+def _row_to_technique(row: asyncpg.Record) -> Technique:
     platforms_raw = row["platforms"]
     platforms = json.loads(platforms_raw) if platforms_raw else []
     return Technique(
@@ -49,10 +49,9 @@ def _row_to_technique(row: aiosqlite.Row) -> Technique:
 @router.get("/techniques", response_model=list[Technique])
 
 
-async def list_techniques(db: aiosqlite.Connection = Depends(get_db)):
+async def list_techniques(db: asyncpg.Connection = Depends(get_db)):
     """Return the full static technique catalog."""
-    cursor = await db.execute("SELECT * FROM techniques ORDER BY mitre_id")
-    rows = await cursor.fetchall()
+    rows = await db.fetch("SELECT * FROM techniques ORDER BY mitre_id")
     return [_row_to_technique(r) for r in rows]
 
 
@@ -61,7 +60,7 @@ async def list_techniques(db: aiosqlite.Connection = Depends(get_db)):
 
 async def create_technique(
     body: TechniqueCreate,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Add a new MITRE ATT&CK technique."""
     tech_id = str(uuid.uuid4())
@@ -69,23 +68,19 @@ async def create_technique(
         "INSERT INTO techniques "
         "(id, mitre_id, name, tactic, tactic_id, description, "
         "kill_chain_stage, risk_level, c2_ability_id, platforms) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (
-            tech_id,
-            body.mitre_id,
-            body.name,
-            body.tactic,
-            body.tactic_id,
-            body.description,
-            body.kill_chain_stage,
-            body.risk_level,
-            body.c2_ability_id,
-            json.dumps(body.platforms),
-        ),
+        "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+        tech_id,
+        body.mitre_id,
+        body.name,
+        body.tactic,
+        body.tactic_id,
+        body.description,
+        body.kill_chain_stage,
+        body.risk_level,
+        body.c2_ability_id,
+        json.dumps(body.platforms),
     )
-    await db.commit()
-    cursor = await db.execute("SELECT * FROM techniques WHERE id = ?", (tech_id,))
-    row = await cursor.fetchone()
+    row = await db.fetchrow("SELECT * FROM techniques WHERE id = $1", tech_id)
     return dict(row)
 
 
@@ -93,7 +88,7 @@ async def create_technique(
 
 
 async def sync_c2_abilities(
-    db: aiosqlite.Connection = Depends(get_db),  # noqa: ARG001  kept for DI consistency
+    db: asyncpg.Connection = Depends(get_db),  # noqa: ARG001  kept for DI consistency
 ):
     """Sync c2_ability_id from C2 engine's ability catalog -- returns 202 immediately."""
     _task = asyncio.create_task(_sync_techniques_background())
@@ -108,7 +103,7 @@ async def _sync_techniques_background() -> None:
     """Background: fetch C2 abilities, update technique c2_ability_id."""
     try:
         if settings.MOCK_C2_ENGINE:
-            logger.info("techniques/sync-c2 mock mode — no-op")
+            logger.info("techniques/sync-c2 mock mode -- no-op")
             return
 
         from app.clients.c2_client import C2EngineClient
@@ -132,22 +127,22 @@ async def _sync_techniques_background() -> None:
                 mapping.setdefault(tech_id, ab_id)
 
         synced = 0
-        async with aiosqlite.connect(_DB_FILE) as db:
+        async with db_manager.connection() as db:
             for mitre_id, ability_id in mapping.items():
                 result = await db.execute(
-                    "UPDATE techniques SET c2_ability_id = ? "
-                    "WHERE mitre_id = ? AND (c2_ability_id IS NULL OR c2_ability_id = '')",
-                    (ability_id, mitre_id),
+                    "UPDATE techniques SET c2_ability_id = $1 "
+                    "WHERE mitre_id = $2 AND (c2_ability_id IS NULL OR c2_ability_id = '')",
+                    ability_id, mitre_id,
                 )
-                if result.rowcount > 0:
+                # asyncpg returns 'UPDATE N' string
+                if result and result.split()[-1] != '0':
                     synced += 1
-            await db.commit()
 
         logger.info(
             "techniques/sync-c2: synced=%d total_abilities=%d mapped=%d",
             synced, len(abilities), len(mapping),
         )
-        # techniques/sync-c2 is a global endpoint (no op_id) —
+        # techniques/sync-c2 is a global endpoint (no op_id) --
         # WS broadcast requires an operation_id, so we log only.
     except Exception as exc:
         logger.exception("techniques/sync-c2 background failed: %s", exc)
@@ -161,16 +156,16 @@ async def _sync_techniques_background() -> None:
 
 async def list_techniques_with_status(
     operation_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Techniques enriched with the latest execution status for an operation."""
 
     # Verify operation exists
-    cursor = await db.execute("SELECT id FROM operations WHERE id = ?", (operation_id,))
-    if not await cursor.fetchone():
+    row = await db.fetchrow("SELECT id FROM operations WHERE id = $1", operation_id)
+    if not row:
         raise HTTPException(status_code=404, detail="Operation not found")
 
-    cursor = await db.execute(
+    rows = await db.fetch(
         """
         SELECT t.*,
                te.status AS latest_status,
@@ -184,13 +179,12 @@ async def list_techniques_with_status(
                        PARTITION BY technique_id ORDER BY created_at DESC
                    ) AS rn
             FROM technique_executions
-            WHERE operation_id = ?
+            WHERE operation_id = $1
         ) te ON te.technique_id = t.id AND te.rn = 1
         ORDER BY t.mitre_id
         """,
-        (operation_id,),
+        operation_id,
     )
-    rows = await cursor.fetchall()
 
     results = []
     for r in rows:
@@ -220,13 +214,13 @@ async def list_techniques_with_status(
 
 async def get_attack_path(
     operation_id: str,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db),
 ) -> AttackPathResponse:
     """Return full execution history for attack path timeline visualization."""
     from app.routers._deps import ensure_operation
     await ensure_operation(db, operation_id)
 
-    cursor = await db.execute(
+    rows = await db.fetch(
         """
         SELECT te.id           AS execution_id,
                te.status,
@@ -247,12 +241,11 @@ async def get_attack_path(
         FROM technique_executions te
         JOIN techniques t  ON te.technique_id = t.id
         LEFT JOIN targets tg ON te.target_id = tg.id
-        WHERE te.operation_id = ?
+        WHERE te.operation_id = $1
         ORDER BY te.started_at ASC NULLS LAST, te.created_at ASC
         """,
-        (operation_id,),
+        operation_id,
     )
-    rows = await cursor.fetchall()
 
     # TACTIC_ORDER defines the 14 ATT&CK tactics left-to-right
     TACTIC_ORDER_IDS = [
@@ -273,8 +266,8 @@ async def get_attack_path(
             try:
                 from datetime import datetime
                 fmt = "%Y-%m-%dT%H:%M:%S.%f" if "." in r["started_at"] else "%Y-%m-%dT%H:%M:%S"
-                t_start = datetime.fromisoformat(r["started_at"])
-                t_end = datetime.fromisoformat(r["completed_at"])
+                t_start = (r["started_at"] if isinstance(r["started_at"], datetime) else datetime.fromisoformat(r["started_at"]))
+                t_end = (r["completed_at"] if isinstance(r["completed_at"], datetime) else datetime.fromisoformat(r["completed_at"]))
                 duration_sec = (t_end - t_start).total_seconds()
             except Exception:
                 pass

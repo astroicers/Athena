@@ -13,7 +13,7 @@
 import asyncio
 import logging
 
-import aiosqlite
+import asyncpg
 from fastapi import APIRouter, Depends
 
 from app.config import settings
@@ -28,13 +28,12 @@ router = APIRouter()
 @router.get("/health", response_model=HealthStatus)
 
 
-async def health_check(db: aiosqlite.Connection = Depends(get_db)):
+async def health_check(db: asyncpg.Connection = Depends(get_db)):
     """Return service health status."""
     # Check database connectivity
     db_status = "error"
     try:
-        cursor = await db.execute("SELECT 1")
-        await cursor.fetchone()
+        await db.fetchval("SELECT 1")
         db_status = "connected"
     except Exception:
         db_status = "error"

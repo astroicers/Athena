@@ -16,7 +16,7 @@ import re
 import socket
 from dataclasses import dataclass, field
 
-import aiosqlite
+import asyncpg
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ class ValidationEngine:
     """
 
     async def validate(
-        self, db: aiosqlite.Connection, recommendation: dict,
+        self, db: asyncpg.Connection, recommendation: dict,
         operation_id: str,
     ) -> ValidationResult:
         """Run pre-validation checks on an exploit recommendation."""
@@ -250,41 +250,36 @@ class ValidationEngine:
     # ------------------------------------------------------------------
 
     async def _get_tactic_id(
-        self, db: aiosqlite.Connection, technique_id: str,
+        self, db: asyncpg.Connection, technique_id: str,
     ) -> str:
-        db.row_factory = aiosqlite.Row
-        cursor = await db.execute(
-            "SELECT tactic_id FROM techniques WHERE mitre_id = ? LIMIT 1",
-            (technique_id,),
+        row = await db.fetchrow(
+            "SELECT tactic_id FROM techniques WHERE mitre_id = $1 LIMIT 1",
+            technique_id,
         )
-        row = await cursor.fetchone()
         return row["tactic_id"] if row else ""
 
     async def _get_target_ip(
-        self, db: aiosqlite.Connection, target_id: str,
+        self, db: asyncpg.Connection, target_id: str,
     ) -> str | None:
         if not target_id:
             return None
-        db.row_factory = aiosqlite.Row
-        cursor = await db.execute(
-            "SELECT ip_address FROM targets WHERE id = ?", (target_id,),
+        row = await db.fetchrow(
+            "SELECT ip_address FROM targets WHERE id = $1", target_id,
         )
-        row = await cursor.fetchone()
         return row["ip_address"] if row else None
 
     async def _get_service_facts(
-        self, db: aiosqlite.Connection,
+        self, db: asyncpg.Connection,
         operation_id: str, target_id: str,
     ) -> list[dict]:
-        db.row_factory = aiosqlite.Row
-        cursor = await db.execute(
+        rows = await db.fetch(
             "SELECT trait, value FROM facts "
-            "WHERE operation_id = ? AND source_target_id = ? "
+            "WHERE operation_id = $1 AND source_target_id = $2 "
             "AND trait LIKE 'service.%' "
             "ORDER BY collected_at DESC LIMIT 20",
-            (operation_id, target_id),
+            operation_id, target_id,
         )
-        return [dict(r) for r in await cursor.fetchall()]
+        return [dict(r) for r in rows]
 
     # ------------------------------------------------------------------
     # Value extraction helpers

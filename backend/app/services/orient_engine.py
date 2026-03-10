@@ -17,9 +17,10 @@ import re
 import uuid
 from datetime import datetime, timezone
 
-import aiosqlite
+import asyncpg
 
 from app.config import settings
+from app.services.mission_profile_loader import get_profile, noise_allowed, NOISE_RANKS
 from app.ws_manager import WebSocketManager
 
 
@@ -81,7 +82,7 @@ _MOCK_RECOMMENDATION = {
         {
             "technique_id": "T1558.003",
             "technique_name": "Steal or Forge Kerberos Tickets: Kerberoasting",
-            "reasoning": "AD environment with SPN-enabled service accounts — Kerberoasting extracts TGS tickets.",
+            "reasoning": "AD environment with SPN-enabled service accounts -- Kerberoasting extracts TGS tickets.",
             "risk_level": "medium",
             "recommended_engine": "winrm",
             "confidence": 0.65,
@@ -111,10 +112,10 @@ _KILL_CHAIN_STAGES = [
 ]
 
 # ---------------------------------------------------------------------------
-# System prompt — static role contract + analytical framework (Pattern 2, 3)
+# System prompt -- static role contract + analytical framework (Pattern 2, 3)
 # Inspired by: PentestGPT (MIT), hackingBuddyGPT (MIT), autopentest-ai (Apache 2.0)
 # ---------------------------------------------------------------------------
-_ORIENT_SYSTEM_PROMPT = """You are the Orient phase intelligence advisor for Athena C5ISR — \
+_ORIENT_SYSTEM_PROMPT = """You are the Orient phase intelligence advisor for Athena C5ISR -- \
 a military-grade cyber operations command platform. Your role is STRICTLY advisory: \
 analyze intelligence, recommend tactics, explain reasoning. You NEVER execute attacks.
 
@@ -124,10 +125,10 @@ Apply these 5 rules to every analysis:
 
 ### 1. Kill Chain Reasoning (MITRE ATT&CK Progression)
 Determine the current position in the ATT&CK kill chain:
-TA0043 Reconnaissance → TA0042 Resource Development → TA0001 Initial Access → \
-TA0002 Execution → TA0003 Persistence → TA0004 Privilege Escalation → \
-TA0005 Defense Evasion → TA0006 Credential Access → TA0007 Discovery → \
-TA0008 Lateral Movement → TA0009 Collection → TA0011 C2 → TA0010 Exfiltration → TA0040 Impact.
+TA0043 Reconnaissance -> TA0042 Resource Development -> TA0001 Initial Access -> \
+TA0002 Execution -> TA0003 Persistence -> TA0004 Privilege Escalation -> \
+TA0005 Defense Evasion -> TA0006 Credential Access -> TA0007 Discovery -> \
+TA0008 Lateral Movement -> TA0009 Collection -> TA0011 C2 -> TA0010 Exfiltration -> TA0040 Impact.
 Identify where we are and what the logical next stage is. Do NOT skip stages without justification.
 
 ### 2. Dead Branch Pruning
@@ -140,7 +141,7 @@ Only recommend techniques whose prerequisites are CONFIRMED by collected intelli
 If a prerequisite is unverified, flag it and suggest a Discovery technique to verify it first.
 
 ### 4. Engine Routing
-- SSH Engine ("ssh"): standard execution via DirectSSH — default for most techniques.
+- SSH Engine ("ssh"): standard execution via DirectSSH -- default for most techniques.
 - C2 Engine ("c2"): agent-based execution requiring a live C2 agent on target.
 - MCP Engine ("mcp"): stateless recon/OSINT/vuln-lookup tools via MCP protocol. Prefer for reconnaissance, OSINT, and vulnerability scanning when MCP tools are listed in Section 7.8.
 - Default to SSH Engine unless there is a specific reason for C2 or MCP Engine.
@@ -179,13 +180,13 @@ those credentials for lateral movement before attempting new credential harvesti
 Engine selection guide:
 - "ssh": Execute commands via SSH on a compromised host (requires valid credential.ssh fact)
 - "mcp": Run MCP reconnaissance/enumeration tools (nmap, vuln-lookup, credential-checker)
-- "metasploit": Exploit vulnerable services (vsftpd backdoor, Samba RCE, etc.) — use when a known-exploitable service is detected in service.open_port facts and you need to gain initial/root access WITHOUT existing credentials
+- "metasploit": Exploit vulnerable services (vsftpd backdoor, Samba RCE, etc.) -- use when a known-exploitable service is detected in service.open_port facts and you need to gain initial/root access WITHOUT existing credentials
 - "c2": Use C2 agent for stealth operations
 
 IMPORTANT: When access is lost or no valid credentials exist, use "metasploit" engine to exploit vulnerable network services (e.g., vsftpd 2.3.4, Samba 3.X, UnrealIRCd) for direct root shell access."""
 
 # ---------------------------------------------------------------------------
-# User prompt template — dynamic context assembled per-call (8 sections)
+# User prompt template -- dynamic context assembled per-call (8 sections)
 # Inspired by: PentestGPT PTT (Pattern 1), PentAGI memory (Pattern 5),
 #              hackingBuddyGPT reflection (Pattern 2), AttackGen grounding (Pattern 4)
 # ---------------------------------------------------------------------------
@@ -193,6 +194,8 @@ _ORIENT_USER_PROMPT_TEMPLATE = """## 1. OPERATION BRIEF
 - Codename: {codename}
 - Strategic Intent: {strategic_intent}
 - Status: {status}
+- Mission Profile: {mission_profile} ({mission_profile_name})
+- Max Noise Allowed: {max_noise}
 - Threat Level: {threat_level}
 - Automation Mode: {automation_mode}
 - Risk Threshold: {risk_threshold}
@@ -250,21 +253,29 @@ Based on the above intelligence, provide your tactical analysis and 3 options as
 
 
 class OrientEngine:
-    """Orient phase — PentestGPT integration via LLM API."""
+    """Orient phase -- PentestGPT integration via LLM API."""
 
     def __init__(self, ws_manager: WebSocketManager):
         self._ws = ws_manager
 
     async def analyze(
-        self, db: aiosqlite.Connection, operation_id: str,
+        self, db: asyncpg.Connection, operation_id: str,
         observe_summary: str, *, attack_graph_summary: str = "",
     ) -> dict:
         """Call LLM (or mock) to produce OrientRecommendation."""
-        db.row_factory = aiosqlite.Row
+
+        # Read mission profile for noise filtering
+        op_row = await db.fetchrow(
+            "SELECT mission_profile FROM operations WHERE id = $1", operation_id,
+        )
+        mission_code = (op_row["mission_profile"] if op_row else None) or "SP"
 
         if settings.MOCK_LLM:
+            filtered_mock = await self._filter_options_by_noise(
+                db, _MOCK_RECOMMENDATION, mission_code,
+            )
             rec = await self._store_recommendation(
-                db, operation_id, _MOCK_RECOMMENDATION
+                db, operation_id, filtered_mock
             )
             await self._ws.broadcast(operation_id, "recommendation", _dict_to_camel_case(rec))
             return rec
@@ -319,9 +330,71 @@ class OrientEngine:
             logger.warning("LLM response has no valid options, falling back to mock")
             parsed = _MOCK_RECOMMENDATION
 
+        # SPEC-046: Filter options exceeding mission noise limit
+        parsed = await self._filter_options_by_noise(db, parsed, mission_code)
+
         rec = await self._store_recommendation(db, operation_id, parsed)
         await self._ws.broadcast(operation_id, "recommendation", _dict_to_camel_case(rec))
         return rec
+
+    # ------------------------------------------------------------------
+    # SPEC-046: Noise-level filtering
+    # ------------------------------------------------------------------
+
+    async def _filter_options_by_noise(
+        self, db: asyncpg.Connection, parsed: dict, mission_code: str,
+    ) -> dict:
+        """Remove options whose technique noise_level exceeds the mission limit.
+
+        Looks up each option's technique_id in the techniques table to get its
+        noise_level, then filters using the mission profile's max_noise setting.
+        """
+        profile = get_profile(mission_code)
+        max_noise = profile.get("max_noise", "high")
+        if max_noise == "all":
+            return parsed  # FA mode — no filtering
+
+        options = parsed.get("options", [])
+        if not options:
+            return parsed
+
+        # Batch-fetch noise levels for all technique_ids in options
+        tech_ids = [o.get("technique_id", "") for o in options]
+        rows = await db.fetch(
+            "SELECT mitre_id, noise_level FROM techniques WHERE mitre_id = ANY($1)",
+            tech_ids,
+        )
+        noise_map = {r["mitre_id"]: r["noise_level"] or "medium" for r in rows}
+
+        filtered = []
+        for opt in options:
+            tid = opt.get("technique_id", "")
+            tech_noise = noise_map.get(tid, "medium")
+            if NOISE_RANKS.get(tech_noise, 2) <= NOISE_RANKS.get(max_noise, 3):
+                filtered.append(opt)
+            else:
+                logger.info(
+                    "SPEC-046: Excluded technique %s (noise=%s) for mission %s (max=%s)",
+                    tid, tech_noise, mission_code, max_noise,
+                )
+
+        if not filtered:
+            # All options were filtered — keep the lowest-noise one as fallback
+            logger.warning(
+                "All Orient options exceeded noise limit for %s — keeping original",
+                mission_code,
+            )
+            return parsed
+
+        result = dict(parsed)
+        result["options"] = filtered
+        # Update recommended_technique_id to the first remaining option
+        if filtered and result.get("recommended_technique_id") not in [
+            o["technique_id"] for o in filtered
+        ]:
+            result["recommended_technique_id"] = filtered[0]["technique_id"]
+            result["confidence"] = filtered[0].get("confidence", result.get("confidence", 0.0))
+        return result
 
     # ------------------------------------------------------------------
     # Prompt formatting helpers
@@ -338,14 +411,14 @@ class OrientEngine:
             )
             lines.append(
                 f"  {r['step_number']}. {status_icon} {r['technique_name']} "
-                f"({r['technique_id']}) → {r['target_label']} [{r['engine']}]"
+                f"({r['technique_id']}) -> {r['target_label']} [{r['engine']}]"
             )
         return "\n".join(lines)
 
     @staticmethod
     def _format_ooda_history(rows) -> str:
         if not rows:
-            return "First iteration — no prior cycles."
+            return "First iteration -- no prior cycles."
         lines = []
         for r in rows:
             lines.append(
@@ -432,50 +505,46 @@ class OrientEngine:
         return current, next_stage
 
     # ------------------------------------------------------------------
-    # Build prompt — returns (system_prompt, user_prompt) tuple
+    # Build prompt -- returns (system_prompt, user_prompt) tuple
     # ------------------------------------------------------------------
 
     async def _build_prompt(
-        self, db: aiosqlite.Connection, operation_id: str, observe_summary: str,
+        self, db: asyncpg.Connection, operation_id: str, observe_summary: str,
         *, attack_graph_summary: str = "",
     ) -> tuple[str, str]:
         # --- Existing queries (preserved) ---
 
         # Q1: Operation details
-        cursor = await db.execute(
-            "SELECT * FROM operations WHERE id = ?", (operation_id,)
+        op = await db.fetchrow(
+            "SELECT * FROM operations WHERE id = $1", operation_id,
         )
-        op = await cursor.fetchone()
 
         # Q2: Completed techniques
-        cursor = await db.execute(
+        completed = await db.fetch(
             "SELECT te.technique_id, te.status, te.result_summary "
-            "FROM technique_executions te WHERE te.operation_id = ? AND te.status = 'success'",
-            (operation_id,),
+            "FROM technique_executions te WHERE te.operation_id = $1 AND te.status = 'success'",
+            operation_id,
         )
-        completed = await cursor.fetchall()
         completed_str = "\n".join(
             f"- {r['technique_id']}: {r['result_summary'] or 'completed'}" for r in completed
         ) or "None yet"
 
         # Q3: Failed techniques
-        cursor = await db.execute(
+        failed = await db.fetch(
             "SELECT te.technique_id, te.error_message "
-            "FROM technique_executions te WHERE te.operation_id = ? AND te.status = 'failed'",
-            (operation_id,),
+            "FROM technique_executions te WHERE te.operation_id = $1 AND te.status = 'failed'",
+            operation_id,
         )
-        failed = await cursor.fetchall()
         failed_str = "\n".join(
             f"- {r['technique_id']}: {r['error_message'] or 'failed'}" for r in failed
         ) or "None"
 
-        # Q4: Targets (enriched with os, network_segment, access_status — SPEC-037)
-        cursor = await db.execute(
+        # Q4: Targets (enriched with os, network_segment, access_status -- SPEC-037)
+        targets = await db.fetch(
             "SELECT hostname, ip_address, os, role, network_segment, "
             "is_compromised, privilege_level, access_status "
-            "FROM targets WHERE operation_id = ?", (operation_id,),
+            "FROM targets WHERE operation_id = $1", operation_id,
         )
-        targets = await cursor.fetchall()
         target_lines = []
         for r in targets:
             access_status = r['access_status'] or 'unknown'
@@ -492,18 +561,17 @@ class OrientEngine:
             )
             if access_status == 'lost':
                 line += (
-                    "\n  ⚠ WARNING: Access lost — credential invalidated. "
+                    "\n  WARNING: Access lost -- credential invalidated. "
                     "Prioritize re-entry via alternative services."
                 )
             target_lines.append(line)
         targets_str = "\n".join(target_lines) or "No targets"
 
         # Q5: Agents
-        cursor = await db.execute(
-            "SELECT paw, status, privilege, platform FROM agents WHERE operation_id = ?",
-            (operation_id,),
+        agents = await db.fetch(
+            "SELECT paw, status, privilege, platform FROM agents WHERE operation_id = $1",
+            operation_id,
         )
-        agents = await cursor.fetchall()
         agents_str = "\n".join(
             f"- {r['paw']} [{r['status']}] {r['privilege']} ({r['platform']})"
             for r in agents
@@ -511,66 +579,60 @@ class OrientEngine:
 
         # --- New queries (Pattern 1, 4, 5) ---
 
-        # Q6: Mission task tree (Pattern 1 — PTT)
-        cursor = await db.execute(
+        # Q6: Mission task tree (Pattern 1 -- PTT)
+        mission_steps = await db.fetch(
             "SELECT step_number, technique_name, status, technique_id, engine, target_label "
-            "FROM mission_steps WHERE operation_id = ? ORDER BY step_number ASC",
-            (operation_id,),
+            "FROM mission_steps WHERE operation_id = $1 ORDER BY step_number ASC",
+            operation_id,
         )
-        mission_steps = await cursor.fetchall()
         task_tree_str = self._format_task_tree(mission_steps)
 
-        # Q7: OODA history — compressed working memory (Pattern 5)
-        cursor = await db.execute(
+        # Q7: OODA history -- compressed working memory (Pattern 5)
+        ooda_history = await db.fetch(
             "SELECT iteration_number, observe_summary, act_summary, completed_at "
-            "FROM ooda_iterations WHERE operation_id = ? "
+            "FROM ooda_iterations WHERE operation_id = $1 "
             "ORDER BY iteration_number DESC LIMIT 3",
-            (operation_id,),
+            operation_id,
         )
-        ooda_history = await cursor.fetchall()
         ooda_history_str = self._format_ooda_history(ooda_history)
 
-        # Q8: Previous assessments — episodic memory (Pattern 5)
-        cursor = await db.execute(
+        # Q8: Previous assessments -- episodic memory (Pattern 5)
+        prev_assessments = await db.fetch(
             "SELECT situation_assessment, recommended_technique_id, reasoning_text "
-            "FROM recommendations WHERE operation_id = ? "
+            "FROM recommendations WHERE operation_id = $1 "
             "ORDER BY created_at DESC LIMIT 2",
-            (operation_id,),
+            operation_id,
         )
-        prev_assessments = await cursor.fetchall()
         prev_assessments_str = self._format_previous_assessments(prev_assessments)
 
         # Q9: Kill chain tactic progression (Pattern 4)
-        cursor = await db.execute(
+        tactic_rows = await db.fetch(
             "SELECT DISTINCT t.tactic, t.tactic_id "
             "FROM technique_executions te JOIN techniques t ON te.technique_id = t.mitre_id "
-            "WHERE te.operation_id = ? AND te.status = 'success'",
-            (operation_id,),
+            "WHERE te.operation_id = $1 AND te.status = 'success'",
+            operation_id,
         )
-        tactic_rows = await cursor.fetchall()
         executed_tactic_ids = [r["tactic_id"] for r in tactic_rows]
         executed_tactics_str = ", ".join(
             f"{r['tactic']} ({r['tactic_id']})" for r in tactic_rows
         ) or "None yet"
         current_stage, next_stage = self._infer_kill_chain_stage(executed_tactic_ids)
 
-        # Q10: Categorized facts (Pattern 2 — reflection)
-        cursor = await db.execute(
+        # Q10: Categorized facts (Pattern 2 -- reflection)
+        facts = await db.fetch(
             "SELECT category, trait, value FROM facts "
-            "WHERE operation_id = ? ORDER BY category, collected_at DESC LIMIT 30",
-            (operation_id,),
+            "WHERE operation_id = $1 ORDER BY category, collected_at DESC LIMIT 30",
+            operation_id,
         )
-        facts = await cursor.fetchall()
         categorized_facts_str = self._format_categorized_facts(facts)
 
         # Q11: Harvested credentials for chaining context
-        cred_cursor = await db.execute(
+        cred_rows = await db.fetch(
             "SELECT trait, value FROM facts "
-            "WHERE operation_id = ? AND category = 'credential' "
+            "WHERE operation_id = $1 AND category = 'credential' "
             "ORDER BY collected_at DESC LIMIT 10",
-            (operation_id,),
+            operation_id,
         )
-        cred_rows = await cred_cursor.fetchall()
         harvested_creds_str = (
             "\n".join(f"- {r['trait']}: {r['value'][:60]}" for r in cred_rows)
             if cred_rows
@@ -579,56 +641,51 @@ class OrientEngine:
 
         # Q12: Available technique playbooks (ADR-018 Layer C)
         # Use active target for primary platform detection if set
-        prim_tgt_cursor = await db.execute(
-            "SELECT id, os FROM targets WHERE operation_id = ? AND is_active = 1 LIMIT 1",
-            (operation_id,),
+        prim_tgt_row = await db.fetchrow(
+            "SELECT id, os FROM targets WHERE operation_id = $1 AND is_active = TRUE LIMIT 1",
+            operation_id,
         )
-        prim_tgt_row = await prim_tgt_cursor.fetchone()
         if not prim_tgt_row:
-            prim_tgt_cursor = await db.execute(
-                "SELECT id, os FROM targets WHERE operation_id = ? ORDER BY id LIMIT 1",
-                (operation_id,),
+            prim_tgt_row = await db.fetchrow(
+                "SELECT id, os FROM targets WHERE operation_id = $1 ORDER BY id LIMIT 1",
+                operation_id,
             )
-            prim_tgt_row = await prim_tgt_cursor.fetchone()
         target_os = (prim_tgt_row["os"] or "").lower() if prim_tgt_row else ""
         platform = "windows" if "windows" in target_os else "linux"
         primary_target_id = prim_tgt_row["id"] if prim_tgt_row else None
 
-        pb_cursor = await db.execute(
+        playbook_rows = await db.fetch(
             "SELECT mitre_id, tags FROM technique_playbooks "
-            "WHERE platform = ? ORDER BY mitre_id",
-            (platform,),
+            "WHERE platform = $1 ORDER BY mitre_id",
+            platform,
         )
-        playbook_rows = await pb_cursor.fetchall()
         if playbook_rows:
             lines = []
             for row in playbook_rows:
                 tags = json.loads(row["tags"] or "[]")
                 tag_str = f" [{', '.join(tags)}]" if tags else ""
-                lines.append(f"- {row['mitre_id']}{tag_str} — available via DirectSSHEngine")
+                lines.append(f"- {row['mitre_id']}{tag_str} -- available via DirectSSHEngine")
             playbook_summary = "\n".join(lines)
         else:
             playbook_summary = "(no playbooks registered)"
 
-        # Section 7.7 — Lateral movement opportunities
-        cred_cursor = await db.execute(
+        # Section 7.7 -- Lateral movement opportunities
+        cred_rows = await db.fetch(
             "SELECT DISTINCT f.value, f.source_target_id, t.hostname, t.ip_address "
             "FROM facts f "
             "LEFT JOIN targets t ON t.id = f.source_target_id "
-            "WHERE f.operation_id = ? AND f.trait IN ('credential.ssh', 'credential.rdp', 'credential.winrm') "
+            "WHERE f.operation_id = $1 AND f.trait IN ('credential.ssh', 'credential.rdp', 'credential.winrm') "
             "LIMIT 10",
-            (operation_id,),
+            operation_id,
         )
-        cred_rows = await cred_cursor.fetchall()
 
-        uncompromised_cursor = await db.execute(
+        uncompromised_rows = await db.fetch(
             "SELECT id, hostname, ip_address, role, os "
             "FROM targets "
-            "WHERE operation_id = ? AND (is_compromised = 0 OR is_compromised IS NULL) "
+            "WHERE operation_id = $1 AND (is_compromised = FALSE OR is_compromised IS NULL) "
             "LIMIT 50",
-            (operation_id,),
+            operation_id,
         )
-        uncompromised_rows = await uncompromised_cursor.fetchall()
 
         if cred_rows and uncompromised_rows:
             cred_lines = [
@@ -652,12 +709,11 @@ class OrientEngine:
         # Query persistence facts for the primary target of this operation
         # (primary_target_id already resolved above alongside platform detection)
         if primary_target_id:
-            persist_cursor = await db.execute(
+            persist_rows = await db.fetch(
                 "SELECT DISTINCT value FROM facts "
-                "WHERE operation_id = ? AND source_target_id = ? AND trait = 'host.persistence'",
-                (operation_id, primary_target_id),
+                "WHERE operation_id = $1 AND source_target_id = $2 AND trait = 'host.persistence'",
+                operation_id, primary_target_id,
             )
-            persist_rows = await persist_cursor.fetchall()
         else:
             persist_rows = []
 
@@ -680,7 +736,7 @@ class OrientEngine:
                     mcp_tools = mcp_mgr.list_all_tools()
                     if mcp_tools:
                         mcp_tools_summary = "\n".join(
-                            f"- {t.server_name}:{t.tool_name} — {t.description}"
+                            f"- {t.server_name}:{t.tool_name} -- {t.description}"
                             for t in mcp_tools
                         )
                     else:
@@ -691,10 +747,15 @@ class OrientEngine:
                 mcp_tools_summary = "(MCP unavailable)"
 
         # --- Assemble user prompt ---
+        mission_code = (op["mission_profile"] if op else None) or "SP"
+        mission_prof = get_profile(mission_code)
         user_prompt = _ORIENT_USER_PROMPT_TEMPLATE.format(
             codename=op["codename"] if op else "Unknown",
             strategic_intent=op["strategic_intent"] if op else "Unknown",
             status=op["status"] if op else "unknown",
+            mission_profile=mission_code,
+            mission_profile_name=mission_prof.get("name", mission_code),
+            max_noise=mission_prof.get("max_noise", "high"),
             threat_level=op["threat_level"] if op else 0,
             automation_mode=op["automation_mode"] if op else "semi_auto",
             risk_threshold=op["risk_threshold"] if op else "medium",
@@ -726,11 +787,10 @@ class OrientEngine:
 
         skill_tactic_id = None
         if last_rec_technique:
-            tac_cursor = await db.execute(
-                "SELECT tactic_id FROM techniques WHERE mitre_id = ? LIMIT 1",
-                (last_rec_technique,),
+            tac_row = await db.fetchrow(
+                "SELECT tactic_id FROM techniques WHERE mitre_id = $1 LIMIT 1",
+                last_rec_technique,
             )
-            tac_row = await tac_cursor.fetchone()
             skill_tactic_id = tac_row["tactic_id"] if tac_row else None
 
         skills_section = load_skills(
@@ -740,22 +800,20 @@ class OrientEngine:
             user_prompt += f"\n\n{skills_section}"
 
         # --- Section 9: Operator directive (if any) ---
-        directive_cursor = await db.execute(
+        directive_row = await db.fetchrow(
             "SELECT id, directive FROM ooda_directives "
-            "WHERE operation_id = ? AND consumed_at IS NULL "
+            "WHERE operation_id = $1 AND consumed_at IS NULL "
             "ORDER BY created_at DESC LIMIT 1",
-            (operation_id,),
+            operation_id,
         )
-        directive_row = await directive_cursor.fetchone()
         if directive_row:
             user_prompt += (
                 f"\n\n## OPERATOR DIRECTIVE (PRIORITY)\n{directive_row['directive']}"
             )
             await db.execute(
-                "UPDATE ooda_directives SET consumed_at = datetime('now') WHERE id = ?",
-                (directive_row["id"],),
+                "UPDATE ooda_directives SET consumed_at = NOW() WHERE id = $1",
+                directive_row["id"],
             )
-            await db.commit()
 
         return _ORIENT_SYSTEM_PROMPT, user_prompt
 
@@ -770,19 +828,18 @@ class OrientEngine:
         return result
 
     async def _store_recommendation(
-        self, db: aiosqlite.Connection, operation_id: str, parsed: dict
+        self, db: asyncpg.Connection, operation_id: str, parsed: dict
     ) -> dict:
         """Store recommendation in DB and return as dict."""
         rec_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
 
         # Get current OODA iteration
-        cursor = await db.execute(
-            "SELECT id FROM ooda_iterations WHERE operation_id = ? "
+        row = await db.fetchrow(
+            "SELECT id FROM ooda_iterations WHERE operation_id = $1 "
             "ORDER BY iteration_number DESC LIMIT 1",
-            (operation_id,),
+            operation_id,
         )
-        row = await cursor.fetchone()
         ooda_iter_id = row["id"] if row else None
 
         options_json = json.dumps(parsed.get("options", []))
@@ -790,26 +847,22 @@ class OrientEngine:
             "INSERT INTO recommendations "
             "(id, operation_id, ooda_iteration_id, situation_assessment, "
             "recommended_technique_id, confidence, options, reasoning_text, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                rec_id, operation_id, ooda_iter_id,
-                parsed.get("situation_assessment", ""),
-                parsed.get("recommended_technique_id", ""),
-                parsed.get("confidence", 0.0),
-                options_json,
-                parsed.get("reasoning_text", ""),
-                now,
-            ),
+            "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+            rec_id, operation_id, ooda_iter_id,
+            parsed.get("situation_assessment", ""),
+            parsed.get("recommended_technique_id", ""),
+            parsed.get("confidence", 0.0),
+            options_json,
+            parsed.get("reasoning_text", ""),
+            now,
         )
 
         # Link recommendation to OODA iteration
         if ooda_iter_id:
             await db.execute(
-                "UPDATE ooda_iterations SET recommendation_id = ? WHERE id = ?",
-                (rec_id, ooda_iter_id),
+                "UPDATE ooda_iterations SET recommendation_id = $1 WHERE id = $2",
+                rec_id, ooda_iter_id,
             )
-
-        await db.commit()
 
         return {
             "id": rec_id,

@@ -15,7 +15,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 
-import aiosqlite
+import asyncpg
 
 from app.config import settings
 from app.models.osint import OSINTResult, SubdomainInfo
@@ -38,7 +38,7 @@ class OSINTEngine:
 
     async def discover(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         operation_id: str,
         domain: str,
         max_subdomains: int | None = None,
@@ -52,7 +52,6 @@ class OSINTEngine:
         4. Write facts and broadcast events.
         5. Return OSINTResult.
         """
-        db.row_factory = aiosqlite.Row
         limit = max_subdomains or settings.OSINT_MAX_SUBDOMAINS
         t_start = time.monotonic()
 
@@ -224,7 +223,7 @@ class OSINTEngine:
 
     async def _write_fact(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         operation_id: str,
         trait: str,
         value: str,
@@ -232,13 +231,13 @@ class OSINTEngine:
     ) -> int:
         """Write a single fact to the DB and broadcast. Returns 1 on success."""
         fact_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         await db.execute(
-            "INSERT OR IGNORE INTO facts "
+            "INSERT INTO facts "
             "(id, trait, value, category, source_technique_id, "
             "source_target_id, operation_id, score, collected_at) "
-            "VALUES (?, ?, ?, ?, NULL, NULL, ?, 1, ?)",
-            (fact_id, trait, value, category, operation_id, now),
+            "VALUES ($1, $2, $3, $4, NULL, NULL, $5, 1, $6) ON CONFLICT DO NOTHING",
+            fact_id, trait, value, category, operation_id, now,
         )
         payload = {
             "id": fact_id,
@@ -252,7 +251,7 @@ class OSINTEngine:
 
     async def _create_target_if_missing(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         operation_id: str,
         hostname: str,
         ip_address: str,
@@ -263,22 +262,22 @@ class OSINTEngine:
         to avoid race conditions under concurrent discovery.
         """
         target_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
-        cursor = await db.execute(
+        now = datetime.now(timezone.utc)
+        result = await db.execute(
             """
-            INSERT OR IGNORE INTO targets
+            INSERT INTO targets
                 (id, hostname, ip_address, os, role, network_segment,
                  is_compromised, privilege_level, operation_id, created_at)
-            VALUES (?, ?, ?, NULL, 'discovered', 'external', 0, NULL, ?, ?)
+            VALUES ($1, $2, $3, NULL, 'discovered', 'external', FALSE, NULL, $4, $5)
+            ON CONFLICT DO NOTHING
             """,
-            (target_id, hostname, ip_address, operation_id, now),
+            target_id, hostname, ip_address, operation_id, now,
         )
-        await db.commit()
-        return cursor.rowcount > 0
+        return result.split()[-1] != '0' if result else False
 
     async def _mock_result(
         self,
-        db: aiosqlite.Connection,
+        db: asyncpg.Connection,
         operation_id: str,
         domain: str,
     ) -> OSINTResult:
@@ -307,7 +306,6 @@ class OSINTEngine:
                     if created:
                         targets_created += 1
 
-        await db.commit()
         scan_duration = time.monotonic() - t_start
 
         return OSINTResult(

@@ -15,7 +15,7 @@ import json
 import logging
 from datetime import datetime, timezone
 
-import aiosqlite
+import asyncpg
 
 from app.config import settings
 from app.models.report import AttackStep, Finding, PentestReport
@@ -35,109 +35,98 @@ class ReportGenerator:
     # ── Private fetch helpers (parallelized via asyncio.gather) ──────
 
     @staticmethod
-    async def _fetch_operation(db: aiosqlite.Connection, op_id: str):
-        cursor = await db.execute(
-            "SELECT id, name, codename, strategic_intent, status FROM operations WHERE id = ?",
-            (op_id,),
+    async def _fetch_operation(db: asyncpg.Connection, op_id: str):
+        return await db.fetchrow(
+            "SELECT id, name, codename, strategic_intent, status FROM operations WHERE id = $1",
+            op_id,
         )
-        return await cursor.fetchone()
 
     @staticmethod
-    async def _fetch_engagement(db: aiosqlite.Connection, op_id: str):
-        cursor = await db.execute(
+    async def _fetch_engagement(db: asyncpg.Connection, op_id: str):
+        return await db.fetchrow(
             "SELECT client_name, contact_email, in_scope, out_of_scope, status "
-            "FROM engagements WHERE operation_id = ? ORDER BY created_at DESC LIMIT 1",
-            (op_id,),
+            "FROM engagements WHERE operation_id = $1 ORDER BY created_at DESC LIMIT 1",
+            op_id,
         )
-        return await cursor.fetchone()
 
     @staticmethod
-    async def _fetch_targets(db: aiosqlite.Connection, op_id: str):
-        cursor = await db.execute(
-            "SELECT id, ip_address, hostname, role FROM targets WHERE operation_id = ?",
-            (op_id,),
+    async def _fetch_targets(db: asyncpg.Connection, op_id: str):
+        return await db.fetch(
+            "SELECT id, ip_address, hostname, role FROM targets WHERE operation_id = $1",
+            op_id,
         )
-        return await cursor.fetchall()
 
     @staticmethod
-    async def _fetch_subdomain_count(db: aiosqlite.Connection, op_id: str) -> int:
-        cursor = await db.execute(
+    async def _fetch_subdomain_count(db: asyncpg.Connection, op_id: str) -> int:
+        row = await db.fetchrow(
             "SELECT COUNT(*) as cnt FROM facts "
-            "WHERE operation_id = ? AND trait = 'osint.subdomain'",
-            (op_id,),
+            "WHERE operation_id = $1 AND trait = 'osint.subdomain'",
+            op_id,
         )
-        row = await cursor.fetchone()
         return row["cnt"] if row else 0
 
     @staticmethod
-    async def _fetch_service_count(db: aiosqlite.Connection, op_id: str) -> int:
-        cursor = await db.execute(
+    async def _fetch_service_count(db: asyncpg.Connection, op_id: str) -> int:
+        row = await db.fetchrow(
             "SELECT COUNT(*) as cnt FROM facts "
-            "WHERE operation_id = ? AND category = 'service'",
-            (op_id,),
+            "WHERE operation_id = $1 AND category = 'service'",
+            op_id,
         )
-        row = await cursor.fetchone()
         return row["cnt"] if row else 0
 
     @staticmethod
-    async def _fetch_vulns(db: aiosqlite.Connection, op_id: str):
-        cursor = await db.execute(
+    async def _fetch_vulns(db: asyncpg.Connection, op_id: str):
+        return await db.fetch(
             "SELECT f.value, f.source_target_id "
             "FROM facts f "
-            "WHERE f.operation_id = ? AND f.trait = 'vuln.cve' "
+            "WHERE f.operation_id = $1 AND f.trait = 'vuln.cve' "
             "ORDER BY f.collected_at",
-            (op_id,),
+            op_id,
         )
-        return await cursor.fetchall()
 
     @staticmethod
-    async def _fetch_ooda(db: aiosqlite.Connection, op_id: str):
-        cursor = await db.execute(
+    async def _fetch_ooda(db: asyncpg.Connection, op_id: str):
+        return await db.fetch(
             "SELECT oi.iteration_number, oi.phase, oi.observe_summary, oi.act_summary, "
             "       oi.completed_at, r.recommended_technique_id "
             "FROM ooda_iterations oi "
             "LEFT JOIN recommendations r ON oi.recommendation_id = r.id "
-            "WHERE oi.operation_id = ? ORDER BY oi.iteration_number",
-            (op_id,),
+            "WHERE oi.operation_id = $1 ORDER BY oi.iteration_number",
+            op_id,
         )
-        return await cursor.fetchall()
 
     @staticmethod
-    async def _fetch_recommendations(db: aiosqlite.Connection, op_id: str):
-        cursor = await db.execute(
+    async def _fetch_recommendations(db: asyncpg.Connection, op_id: str):
+        return await db.fetch(
             "SELECT situation_assessment, recommended_technique_id, confidence, reasoning_text "
-            "FROM recommendations WHERE operation_id = ? ORDER BY created_at DESC LIMIT 5",
-            (op_id,),
+            "FROM recommendations WHERE operation_id = $1 ORDER BY created_at DESC LIMIT 5",
+            op_id,
         )
-        return await cursor.fetchall()
 
     @staticmethod
-    async def _fetch_mitre(db: aiosqlite.Connection, op_id: str):
-        cursor = await db.execute(
+    async def _fetch_mitre(db: asyncpg.Connection, op_id: str):
+        return await db.fetch(
             "SELECT t.tactic, te.technique_id "
             "FROM technique_executions te "
             "JOIN techniques t ON te.technique_id = t.mitre_id "
-            "WHERE te.operation_id = ? AND te.status = 'success'",
-            (op_id,),
+            "WHERE te.operation_id = $1 AND te.status = 'success'",
+            op_id,
         )
-        return await cursor.fetchall()
 
     @staticmethod
-    async def _fetch_access_count(db: aiosqlite.Connection, op_id: str) -> int:
-        cursor = await db.execute(
+    async def _fetch_access_count(db: asyncpg.Connection, op_id: str) -> int:
+        row = await db.fetchrow(
             "SELECT COUNT(*) as cnt FROM recon_scans "
-            "WHERE operation_id = ? AND initial_access_method != 'none' "
+            "WHERE operation_id = $1 AND initial_access_method != 'none' "
             "AND initial_access_method IS NOT NULL AND credential_found IS NOT NULL",
-            (op_id,),
+            op_id,
         )
-        row = await cursor.fetchone()
         return (row["cnt"] or 0) if row else 0
 
     # ── Main generate method ────────────────────────────────────────
 
-    async def generate(self, db: aiosqlite.Connection, operation_id: str) -> PentestReport:
+    async def generate(self, db: asyncpg.Connection, operation_id: str) -> PentestReport:
         """Assemble PentestReport from all DB tables for this operation."""
-        db.row_factory = aiosqlite.Row
         generated_at = datetime.now(timezone.utc).isoformat()
 
         # Fetch all independent data in parallel

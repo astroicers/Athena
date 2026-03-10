@@ -21,7 +21,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-import aiosqlite
+import asyncpg
 
 from app.clients._ssh_common import _parse_credential, _parse_key_credential
 from app.config import settings
@@ -82,18 +82,15 @@ class PersistenceEngine:
             logger.debug("PersistenceEngine probe failed for %s: %s", target_id, exc)
             return results
 
-        now = datetime.now(timezone.utc).isoformat()
-        async with aiosqlite.connect(db_path) as db:
-            inserted = False
-            for key, available in results.items():
-                if available:
-                    await db.execute(
-                        "INSERT OR IGNORE INTO facts "
-                        "(id, operation_id, source_target_id, trait, value, category, score, collected_at) "
-                        "VALUES (?, ?, ?, ?, ?, 'host', 1, ?)",
-                        (str(uuid.uuid4()), operation_id, target_id, "host.persistence", key, now),
-                    )
-                    inserted = True
-            if inserted:
-                await db.commit()
+        now = datetime.now(timezone.utc)
+        async with asyncpg.create_pool(db_path) as pool:
+            async with pool.acquire() as db:
+                for key, available in results.items():
+                    if available:
+                        await db.execute(
+                            "INSERT INTO facts "
+                            "(id, operation_id, source_target_id, trait, value, category, score, collected_at) "
+                            "VALUES ($1, $2, $3, $4, $5, 'host', 1, $6) ON CONFLICT DO NOTHING",
+                            str(uuid.uuid4()), operation_id, target_id, "host.persistence", key, now,
+                        )
         return results

@@ -88,6 +88,19 @@ export function AttackGraphIcon() {
   );
 }
 
+/** AI Decisions — brain / sparkles */
+export function AIDecisionsIcon() {
+  return (
+    <svg {...svgProps}>
+      <path d="M12 2a7 7 0 0 1 7 7c0 2.5-1.3 4.7-3.3 6l-.7.4V17a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-1.6l-.7-.4A7 7 0 0 1 12 2z" />
+      <path d="M9 21h6" />
+      <path d="M9 17h6" />
+      <path d="M8 7.5c0-.8.7-1.5 1.5-1.5" />
+      <path d="m15 10-2 2-1-1-2 2" />
+    </svg>
+  );
+}
+
 /** Tools — gear / settings */
 export function ToolsIcon() {
   return (

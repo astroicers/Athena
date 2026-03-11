@@ -16,11 +16,13 @@ import {
   OPSECIcon,
   AttackGraphIcon,
   ToolsIcon,
+  AIDecisionsIcon,
 } from "@/components/atoms/NavIcons";
 
 export const NAV_ITEMS = [
   { href: "/planner", icon: PlannerIcon, labelKey: "planner" },
   { href: "/warroom", icon: MonitorIcon, labelKey: "warRoom" },
+  { href: "/decisions", icon: AIDecisionsIcon, labelKey: "decisions" },
   { href: "/poc", icon: PocIcon, labelKey: "poc" },
   { href: "/vulns", icon: VulnsIcon, labelKey: "vulns" },
   { href: "/opsec", icon: OPSECIcon, labelKey: "opsec" },

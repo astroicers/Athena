@@ -10,6 +10,7 @@
 
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { DataTable, Column } from "@/components/data/DataTable";
@@ -23,6 +24,7 @@ import { AddTargetModal } from "@/components/modal/AddTargetModal";
 import { ReconResultModal } from "@/components/modal/ReconResultModal";
 import { TerminalPanel } from "@/components/terminal/TerminalPanel";
 import { SectionHeader } from "@/components/atoms/SectionHeader";
+import { TargetSummaryPanel } from "@/components/planner/TargetSummaryPanel";
 import { MissionStepStatus, RiskLevel } from "@/types/enums";
 import type { MissionStep } from "@/types/mission";
 import type { OODATimelineEntry } from "@/types/ooda";
@@ -65,6 +67,7 @@ export interface MissionTabProps {
   onReset: () => void;
   onExport: () => void;
   onReconScan: (targetId: string) => void;
+  onInitialAccess?: (targetId: string) => void;
   onSetActive: (targetId: string, active: boolean) => void;
   onDeleteRequest: (targetId: string) => void;
   onConfirmDelete: () => void;
@@ -98,6 +101,7 @@ export function MissionTab({
   onReset,
   onExport,
   onReconScan,
+  onInitialAccess,
   onSetActive,
   onDeleteRequest,
   onConfirmDelete,
@@ -111,6 +115,9 @@ export function MissionTab({
   const tEmpty = useTranslations("EmptyStates");
   const tOoda = useTranslations("OODA");
   const tStatus = useTranslations("Status");
+
+  // AI Summary panel state — tracks which target is being summarised
+  const [summaryTargetId, setSummaryTargetId] = useState<string | null>(null);
 
   const STEP_COLUMNS: Column<StepRow>[] = [
     { key: "stepNumber", header: t("colStep"), sortable: true },
@@ -263,6 +270,25 @@ export function MissionTab({
                       {t("osintDiscover")}
                     </button>
                   )}
+                  {onInitialAccess && (
+                    <button
+                      onClick={() => onInitialAccess(tgt.id)}
+                      disabled={scanState?.targetId === tgt.id}
+                      className="flex-1 text-sm font-mono text-athena-warning border border-athena-warning/40 rounded-athena-sm py-1 hover:bg-athena-warning/10 transition-colors uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {t("initialAccess")}
+                    </button>
+                  )}
+                  <button
+                    onClick={() =>
+                      setSummaryTargetId((prev) =>
+                        prev === tgt.id ? null : tgt.id,
+                      )
+                    }
+                    className="flex-1 text-sm font-mono text-athena-text-secondary border border-athena-border rounded-athena-sm py-1 hover:bg-athena-elevated hover:text-athena-text transition-colors uppercase tracking-wider"
+                  >
+                    {t("aiSummary")}
+                  </button>
                   {tgt.isCompromised && (
                     <button
                       onClick={() => onSetTerminalTarget(tgt)}
@@ -272,6 +298,16 @@ export function MissionTab({
                     </button>
                   )}
                 </div>
+                {summaryTargetId === tgt.id && (
+                  <div className="mt-2">
+                    <TargetSummaryPanel
+                      operationId={operationId}
+                      targetId={tgt.id}
+                      hostname={tgt.hostname}
+                      onClose={() => setSummaryTargetId(null)}
+                    />
+                  </div>
+                )}
               </div>
             ))
           )}

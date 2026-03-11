@@ -21,6 +21,14 @@ const SEVERITY_COLORS: Record<VulnSeverity, string> = {
   info: "#8a8a9a",
 };
 
+const STATUS_COLORS: Record<VulnStatus, string> = {
+  discovered: "#00d4ff",
+  confirmed: "#ffaa00",
+  exploited: "#ff0040",
+  reported: "#00ff88",
+  false_positive: "#8a8a9a",
+};
+
 function cvssColor(score: number): string {
   if (score >= 9.0) return "#ff0040";
   if (score >= 7.0) return "#ffaa00";
@@ -31,6 +39,40 @@ function cvssColor(score: number): string {
 interface TimelineEntry {
   label: string;
   time: string | undefined;
+}
+
+interface StatusAction {
+  label: string;
+  target: VulnStatus;
+  color: string;   // hex accent color
+  variant: "filled" | "outlined";
+}
+
+function getStatusActions(status: VulnStatus): StatusAction[] {
+  switch (status) {
+    case "discovered":
+      return [
+        { label: "markConfirmed", target: "confirmed", color: "#ffaa00", variant: "filled" },
+        { label: "markFalsePositive", target: "false_positive", color: "#8a8a9a", variant: "outlined" },
+      ];
+    case "confirmed":
+      return [
+        { label: "markExploited", target: "exploited", color: "#ff4444", variant: "filled" },
+        { label: "markFalsePositive", target: "false_positive", color: "#8a8a9a", variant: "outlined" },
+      ];
+    case "exploited":
+      return [
+        { label: "markReported", target: "reported", color: "#7c3aed", variant: "filled" },
+        { label: "markFalsePositive", target: "false_positive", color: "#8a8a9a", variant: "outlined" },
+      ];
+    case "false_positive":
+      return [
+        { label: "reopenDiscovered", target: "discovered", color: "#00d4ff", variant: "outlined" },
+      ];
+    case "reported":
+      // Terminal state — no transitions out
+      return [];
+  }
 }
 
 interface VulnDetailPanelProps {
@@ -52,30 +94,35 @@ export function VulnDetailPanel({ vuln, onClose, onStatusChange }: VulnDetailPan
   ];
 
   const sevColor = SEVERITY_COLORS[vuln.severity];
+  const statusColor = STATUS_COLORS[vuln.status];
+  const statusActions = getStatusActions(vuln.status);
 
   return (
-    <div className="fixed inset-y-0 right-0 w-96 bg-athena-surface border-l border-athena-border z-50 flex flex-col animate-in slide-in-from-right duration-200">
+    <div className="flex flex-col h-full bg-[#111827] border border-[#FFFFFF08] rounded-lg">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-athena-border">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-[#FFFFFF08] shrink-0">
         <h3 className="text-sm font-mono font-bold text-athena-text">
           {t("detail.title")}
         </h3>
         <button
           onClick={onClose}
           className="text-xs font-mono text-athena-text-secondary hover:text-athena-accent px-2 py-1 border border-athena-border rounded-athena-sm transition-colors"
+          aria-label={t("detail.close")}
         >
           {t("detail.close")}
         </button>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-5 space-y-5">
         {/* CVE ID */}
-        <div>
-          <span className="text-sm font-mono font-bold text-athena-accent">
-            {vuln.cve_id}
-          </span>
-        </div>
+        {vuln.cve_id && (
+          <div>
+            <span className="text-sm font-mono font-bold text-athena-accent">
+              {vuln.cve_id}
+            </span>
+          </div>
+        )}
 
         {/* Title */}
         <h4 className="text-sm font-mono text-athena-text leading-relaxed">
@@ -85,7 +132,7 @@ export function VulnDetailPanel({ vuln, onClose, onStatusChange }: VulnDetailPan
         {/* Severity + CVSS row */}
         <div className="flex items-center gap-3">
           <span
-            className="text-xs font-mono font-bold uppercase px-2 py-1 rounded-athena-sm"
+            className="text-xs font-mono font-bold uppercase px-2 py-1 rounded"
             style={{
               color: sevColor,
               backgroundColor: sevColor + "20",
@@ -94,44 +141,95 @@ export function VulnDetailPanel({ vuln, onClose, onStatusChange }: VulnDetailPan
           >
             {t(`severity.${vuln.severity}`)}
           </span>
-          <span className="text-xs font-mono text-athena-text-secondary">CVSS</span>
-          <span
-            className="text-sm font-mono font-bold"
-            style={{
-              color: cvssColor(vuln.cvss_score),
-              textShadow:
-                vuln.cvss_score >= 9.0
-                  ? `0 0 8px ${cvssColor(vuln.cvss_score)}60`
-                  : "none",
-            }}
-          >
-            {vuln.cvss_score.toFixed(1)}
-          </span>
+          {vuln.cvss !== null && (
+            <>
+              <span className="text-xs font-mono text-[#FFFFFF50]">CVSS</span>
+              <span
+                className="text-sm font-mono font-bold"
+                style={{
+                  color: cvssColor(vuln.cvss),
+                  textShadow:
+                    vuln.cvss >= 9.0
+                      ? `0 0 8px ${cvssColor(vuln.cvss)}60`
+                      : "none",
+                }}
+              >
+                {vuln.cvss.toFixed(1)}
+              </span>
+            </>
+          )}
         </div>
 
-        {/* Target */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-mono text-athena-text-secondary">
-            {t("columns.target")}:
-          </span>
-          <span className="text-xs font-mono text-athena-text">
-            {vuln.target_ip}
-          </span>
+        {/* Metadata rows */}
+        <div className="space-y-2">
+          {/* Status */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono text-[#FFFFFF50] w-24 shrink-0">
+              {t("columns.status")}
+            </span>
+            <span
+              className="flex items-center gap-1.5 text-xs font-mono font-bold"
+              style={{ color: statusColor }}
+            >
+              <span
+                className="inline-block w-2 h-2 rounded-full"
+                style={{ backgroundColor: statusColor, boxShadow: `0 0 6px ${statusColor}80` }}
+              />
+              {t(`status.${vuln.status}`)}
+            </span>
+          </div>
+
+          {/* Target */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono text-[#FFFFFF50] w-24 shrink-0">
+              {t("columns.target")}
+            </span>
+            <span className="text-xs font-mono text-athena-text">
+              {vuln.target_ip}
+              {vuln.target_hostname && (
+                <span className="text-athena-text-secondary ml-1">
+                  ({vuln.target_hostname})
+                </span>
+              )}
+            </span>
+          </div>
+
+          {/* Service */}
+          {vuln.service && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono text-[#FFFFFF50] w-24 shrink-0">
+                {t("detail.service")}
+              </span>
+              <span className="text-xs font-mono text-athena-text">{vuln.service}</span>
+            </div>
+          )}
+
+          {/* Discovered at */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono text-[#FFFFFF50] w-24 shrink-0">
+              {t("columns.discovered")}
+            </span>
+            <span className="text-xs font-mono text-athena-text-secondary">
+              {new Date(vuln.discovered_at).toLocaleString()}
+            </span>
+          </div>
         </div>
 
         {/* Description */}
-        <div>
-          <h5 className="text-xs font-mono font-bold text-athena-text-secondary uppercase mb-2">
-            {t("detail.description")}
-          </h5>
-          <p className="text-sm font-mono text-athena-text-secondary leading-relaxed">
-            {vuln.description}
-          </p>
-        </div>
+        {vuln.description && (
+          <div>
+            <h5 className="text-xs font-mono font-bold text-[#FFFFFF50] uppercase mb-2">
+              {t("detail.description")}
+            </h5>
+            <p className="text-xs font-mono text-athena-text-secondary leading-relaxed">
+              {vuln.description}
+            </p>
+          </div>
+        )}
 
         {/* Timeline */}
         <div>
-          <h5 className="text-xs font-mono font-bold text-athena-text-secondary uppercase mb-3">
+          <h5 className="text-xs font-mono font-bold text-[#FFFFFF50] uppercase mb-3">
             {t("detail.timeline")}
           </h5>
           <div className="space-y-0">
@@ -143,7 +241,7 @@ export function VulnDetailPanel({ vuln, onClose, onStatusChange }: VulnDetailPan
                   {/* Vertical line + dot */}
                   <div className="flex flex-col items-center">
                     <div
-                      className="w-2 h-2 rounded-full mt-1.5"
+                      className="w-2 h-2 rounded-full mt-1.5 shrink-0"
                       style={{
                         backgroundColor: isActive ? "#00ff88" : "#8a8a9a40",
                         boxShadow: isActive ? "0 0 6px #00ff8860" : "none",
@@ -167,7 +265,7 @@ export function VulnDetailPanel({ vuln, onClose, onStatusChange }: VulnDetailPan
                       {entry.label}
                     </div>
                     {entry.time && (
-                      <div className="text-xs font-mono text-athena-text-tertiary">
+                      <div className="text-xs font-mono text-athena-text-secondary">
                         {new Date(entry.time).toLocaleString()}
                       </div>
                     )}
@@ -178,61 +276,38 @@ export function VulnDetailPanel({ vuln, onClose, onStatusChange }: VulnDetailPan
           </div>
         </div>
 
-        {/* Status Actions */}
-        {onStatusChange && vuln.status !== "reported" && (
+        {/* Status transition actions */}
+        {onStatusChange && statusActions.length > 0 && (
           <div>
-            <h5 className="text-xs font-mono font-bold text-athena-text-secondary uppercase mb-3">
+            <h5 className="text-xs font-mono font-bold text-[#FFFFFF50] uppercase mb-3">
               {t("detail.actions")}
             </h5>
-            <div className="flex flex-wrap gap-2">
-              {vuln.status === "discovered" && (
-                <>
+            <div className="flex flex-col gap-2">
+              {statusActions.map((action) => {
+                const isFilled = action.variant === "filled";
+                return (
                   <button
-                    onClick={() => onStatusChange(vuln.id, "confirmed")}
-                    className="text-xs font-mono uppercase px-3 py-1.5 border border-athena-border rounded-athena-sm hover:bg-athena-elevated transition-colors text-athena-accent"
+                    key={action.target}
+                    onClick={() => onStatusChange(vuln.id, action.target)}
+                    className="w-full text-xs font-mono font-bold uppercase px-3 py-2 rounded transition-opacity hover:opacity-80 active:opacity-60"
+                    style={
+                      isFilled
+                        ? {
+                            color: action.color,
+                            backgroundColor: action.color + "20",
+                            border: `1px solid ${action.color}60`,
+                          }
+                        : {
+                            color: action.color,
+                            backgroundColor: "transparent",
+                            border: `1px solid ${action.color}40`,
+                          }
+                    }
                   >
-                    {t("detail.markConfirmed")}
+                    {t(`detail.${action.label}`)}
                   </button>
-                  <button
-                    onClick={() => onStatusChange(vuln.id, "false_positive")}
-                    className="text-xs font-mono uppercase px-3 py-1.5 border border-athena-border rounded-athena-sm hover:bg-athena-elevated transition-colors text-athena-text-secondary"
-                  >
-                    {t("detail.markFalsePositive")}
-                  </button>
-                </>
-              )}
-              {vuln.status === "confirmed" && (
-                <>
-                  <button
-                    onClick={() => onStatusChange(vuln.id, "exploited")}
-                    className="text-xs font-mono uppercase px-3 py-1.5 border border-athena-border rounded-athena-sm hover:bg-athena-elevated transition-colors text-athena-warning"
-                  >
-                    {t("detail.markExploited")}
-                  </button>
-                  <button
-                    onClick={() => onStatusChange(vuln.id, "false_positive")}
-                    className="text-xs font-mono uppercase px-3 py-1.5 border border-athena-border rounded-athena-sm hover:bg-athena-elevated transition-colors text-athena-text-secondary"
-                  >
-                    {t("detail.markFalsePositive")}
-                  </button>
-                </>
-              )}
-              {vuln.status === "exploited" && (
-                <button
-                  onClick={() => onStatusChange(vuln.id, "reported")}
-                  className="text-xs font-mono uppercase px-3 py-1.5 border border-athena-border rounded-athena-sm hover:bg-athena-elevated transition-colors text-athena-success"
-                >
-                  {t("detail.markReported")}
-                </button>
-              )}
-              {vuln.status === "false_positive" && (
-                <button
-                  onClick={() => onStatusChange(vuln.id, "discovered")}
-                  className="text-xs font-mono uppercase px-3 py-1.5 border border-athena-border rounded-athena-sm hover:bg-athena-elevated transition-colors text-athena-accent"
-                >
-                  {t("detail.reopenDiscovered")}
-                </button>
-              )}
+                );
+              })}
             </div>
           </div>
         )}

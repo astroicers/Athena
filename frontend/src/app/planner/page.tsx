@@ -209,6 +209,17 @@ export default function PlannerPage() {
     }
   }
 
+  async function handleInitialAccess(targetId: string) {
+    try {
+      await api.post(`/operations/${DEFAULT_OP_ID}/recon/initial-access`, {
+        target_id: targetId,
+      });
+      addToast(t("initialAccessStarted"), "info");
+    } catch {
+      addToast(tErrors("failedInitialAccess"), "error");
+    }
+  }
+
   async function handleOsintDiscover(targetId: string) {
     try {
       await api.post(`/operations/${DEFAULT_OP_ID}/osint/discover`, {
@@ -286,6 +297,7 @@ export default function PlannerPage() {
           onReset={handleReset}
           onExport={handleExport}
           onReconScan={handleReconScan}
+          onInitialAccess={handleInitialAccess}
           onSetActive={handleSetActive}
           onDeleteRequest={handleDeleteRequest}
           onConfirmDelete={handleConfirmDelete}

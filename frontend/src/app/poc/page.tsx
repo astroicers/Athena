@@ -37,6 +37,57 @@ function LoadingSkeleton() {
   );
 }
 
+interface EmptyPanelProps {
+  t: ReturnType<typeof useTranslations<"Poc">>;
+}
+
+function EmptyPanel({ t }: EmptyPanelProps) {
+  return (
+    <div className="flex-1 bg-[#111827] border border-[#FFFFFF08] rounded-lg p-10 flex flex-col items-center justify-center gap-4 text-center">
+      <span className="text-2xl font-mono text-athena-text-secondary">
+        {"{ . }"}
+      </span>
+      <div className="space-y-2">
+        <p className="text-sm font-mono font-bold text-athena-text">
+          {t("emptyTitle")}
+        </p>
+        <p className="text-xs font-mono text-athena-text-secondary max-w-xs">
+          {t("emptySubtitle")}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+interface ErrorPanelProps {
+  t: ReturnType<typeof useTranslations<"Poc">>;
+  onRetry: () => void;
+}
+
+function ErrorPanel({ t, onRetry }: ErrorPanelProps) {
+  return (
+    <div className="flex-1 bg-[#111827] border border-[#FFFFFF08] rounded-lg p-10 flex flex-col items-center justify-center gap-4 text-center">
+      <span className="text-2xl font-mono text-athena-error">
+        {"{ x }"}
+      </span>
+      <div className="space-y-2">
+        <p className="text-sm font-mono font-bold text-athena-error">
+          {t("errorTitle")}
+        </p>
+        <p className="text-xs font-mono text-athena-text-secondary max-w-xs">
+          {t("errorSubtitle")}
+        </p>
+      </div>
+      <button
+        onClick={onRetry}
+        className="border border-red-500/50 text-red-400 px-4 py-2 rounded text-xs font-mono uppercase hover:bg-red-500/10 transition-colors"
+      >
+        {t("retry")}
+      </button>
+    </div>
+  );
+}
+
 export default function PocPage() {
   const t = useTranslations("Poc");
   const operationId = useOperationId();
@@ -47,7 +98,7 @@ export default function PocPage() {
   const [error, setError] = useState<string | null>(null);
   const scrolledRef = useRef(false);
 
-  useEffect(() => {
+  const fetchRecords = useCallback(() => {
     setIsLoading(true);
     setError(null);
     api
@@ -60,6 +111,10 @@ export default function PocPage() {
       })
       .finally(() => setIsLoading(false));
   }, [operationId]);
+
+  useEffect(() => {
+    fetchRecords();
+  }, [fetchRecords]);
 
   const summary: PocSummary = useMemo(() => {
     const uniqueTargets = new Set(records.map((r) => r.target_ip));
@@ -147,22 +202,56 @@ export default function PocPage() {
 
   if (isLoading) return <LoadingSkeleton />;
 
-  if (error) {
+  // Empty or error state: render dual-panel layout (or single empty panel if no error)
+  if (records.length === 0 || error) {
     return (
       <div className="space-y-6 p-6 athena-grid-bg min-h-full">
-        <div>
-          <h1 className="text-2xl font-mono font-bold text-athena-text">
-            {t("title")}
-          </h1>
-          <p className="text-sm font-mono text-athena-text-secondary mt-1">
-            {t("subtitle", { operationId })}
-          </p>
+        {/* Page Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-mono font-bold text-athena-text">
+              {t("title")}
+            </h1>
+            <p className="text-sm font-mono text-athena-text-secondary mt-1">
+              {t("subtitle", { operationId })}
+            </p>
+          </div>
+          <div ref={exportRef} className="relative">
+            <button
+              onClick={() => setExportOpen((v) => !v)}
+              className="px-4 py-2 text-xs font-mono font-bold uppercase border border-athena-border rounded-athena-sm bg-athena-surface hover:bg-athena-elevated text-athena-text transition-colors"
+            >
+              {t("export")} v
+            </button>
+            {exportOpen && (
+              <div className="absolute right-0 top-full mt-1 z-20 w-48 border border-athena-border rounded-athena-sm bg-athena-surface shadow-lg">
+                <button
+                  onClick={handleExportJSON}
+                  className="w-full text-left px-3 py-2 text-xs font-mono text-athena-text hover:bg-athena-elevated transition-colors"
+                >
+                  {t("exportJSON")}
+                </button>
+                <button
+                  onClick={handleExportStructured}
+                  className="w-full text-left px-3 py-2 text-xs font-mono text-athena-text hover:bg-athena-elevated transition-colors border-t border-athena-border/50"
+                >
+                  {t("exportStructured")}
+                </button>
+                <button
+                  onClick={handleExportMarkdown}
+                  className="w-full text-left px-3 py-2 text-xs font-mono text-athena-text hover:bg-athena-elevated transition-colors border-t border-athena-border/50"
+                >
+                  {t("exportMarkdown")}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-        <div className="text-center py-12">
-          <p className="text-sm font-mono text-athena-error">{error}</p>
-          <p className="text-xs font-mono text-athena-text-secondary mt-2">
-            {t("noRecords")}
-          </p>
+
+        {/* Dual-panel empty/error state */}
+        <div className="flex gap-4">
+          <EmptyPanel t={t} />
+          {error && <ErrorPanel t={t} onRetry={fetchRecords} />}
         </div>
       </div>
     );
@@ -185,7 +274,7 @@ export default function PocPage() {
             onClick={() => setExportOpen((v) => !v)}
             className="px-4 py-2 text-xs font-mono font-bold uppercase border border-athena-border rounded-athena-sm bg-athena-surface hover:bg-athena-elevated text-athena-text transition-colors"
           >
-            {t("export")} ▾
+            {t("export")} v
           </button>
           {exportOpen && (
             <div className="absolute right-0 top-full mt-1 z-20 w-48 border border-athena-border rounded-athena-sm bg-athena-surface shadow-lg">
@@ -216,19 +305,13 @@ export default function PocPage() {
       <PocSummaryBar summary={summary} />
 
       {/* PoC Records */}
-      {records.length === 0 ? (
-        <div className="text-center py-12 text-sm font-mono text-athena-text-secondary">
-          {t("noRecords")}
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {records.map((record) => (
-            <div key={record.id} id={`poc-${record.id}`}>
-              <PocRecordCard record={record} />
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="space-y-3">
+        {records.map((record) => (
+          <div key={record.id} id={`poc-${record.id}`}>
+            <PocRecordCard record={record} />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

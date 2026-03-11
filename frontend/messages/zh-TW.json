@@ -85,6 +85,16 @@
     "reportExported": "報告已匯出",
     "reconComplete": "偵察完成 — 已寫入 {factsWritten} 個事實",
     "terminal": "終端機",
+    "osintDiscover": "OSINT",
+    "osintStarted": "OSINT 偵察已啟動",
+    "reconScan": "偵察掃描",
+    "initialAccess": "初始入場",
+    "initialAccessStarted": "初始入場已啟動",
+    "aiSummary": "AI 摘要",
+    "attackSurface": "攻擊面",
+    "recommendedTechniques": "建議技術",
+    "loadingSummary": "分析目標中...",
+    "noSummary": "無 AI 摘要可用",
     "targetActivated": "已設定攻擊目標",
     "targetDeactivated": "已取消攻擊目標",
     "targetDeleted": "{hostname} 已刪除",
@@ -374,7 +384,7 @@
     "resetView": "重置視圖至全景"
   },
   "EmptyStates": {
-    "plannerGuide": "尚未定義目標 \u2014 點擊上方 + 新增\n\n1. 點擊 [+ 新增] 新增目標主機\n2. 執行 [偵察掃描] 偵察目標\n3. 點擊 [OODA 循環] 啟動 AI 分析\n4. 執行任務",
+    "plannerGuide": "尚未定義目標 — 點擊上方 + 新增\n\n1. 點擊 [+ 新增] 新增目標主機\n2. 執行 [偵察掃描] 偵察目標\n3. 點擊 [OODA 循環] 啟動 AI 分析\n4. 執行任務",
     "monitorNoRec": "尚無 AI 建議。前往任務規劃器啟動 OODA 循環以產生建議。",
     "monitorGoToPlanner": "前往任務規劃器",
     "navigatorNoSelection": "← 從矩陣中選擇技術以查看詳情"
@@ -556,7 +566,12 @@
     "output": "輸出結果",
     "environment": "環境資訊",
     "copy": "複製",
-    "noRecords": "目前沒有 PoC 記錄"
+    "noRecords": "目前沒有 PoC 記錄",
+    "emptyTitle": "尚無 PoC 記錄",
+    "emptySubtitle": "執行 OODA 循環以產生已發現漏洞的 PoC 證據。",
+    "errorTitle": "無法載入 PoC 記錄",
+    "errorSubtitle": "擷取 PoC 資料時發生錯誤，請檢查連線狀態。",
+    "retry": "重試"
   },
   "Vulns": {
     "title": "漏洞管理儀表板",
@@ -595,7 +610,8 @@
       "markExploited": "標記已利用",
       "markReported": "標記已回報",
       "markFalsePositive": "標記誤報",
-      "reopenDiscovered": "重新開啟"
+      "reopenDiscovered": "重新開啟",
+      "service": "服務"
     }
   },
   "OPSEC": {
@@ -622,7 +638,10 @@
     "empty": "目前沒有通知",
     "sourceOpsec": "OPSEC",
     "sourceConstraint": "限制條件",
-    "constraintActive": "活躍的限制條件"
+    "constraintActive": "限制條件啟用中",
+    "pinnedConstraints": "已釘選的限制條件",
+    "opsecWarnings": "OPSEC 警告",
+    "source": "來源"
   },
   "AttackGraph": {
     "title": "攻擊圖",

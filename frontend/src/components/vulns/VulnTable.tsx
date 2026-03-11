@@ -37,7 +37,7 @@ function cvssColor(score: number): string {
   return "#00d4ff";
 }
 
-type SortField = "cve_id" | "target_ip" | "severity" | "cvss_score" | "status" | "discovered_at";
+type SortField = "cve_id" | "target_ip" | "severity" | "cvss" | "status" | "discovered_at";
 type SortDir = "asc" | "desc";
 
 const SEVERITY_RANK: Record<VulnSeverity, number> = {
@@ -56,7 +56,7 @@ interface VulnTableProps {
 
 export function VulnTable({ vulns, selectedId, onSelect }: VulnTableProps) {
   const t = useTranslations("Vulns");
-  const [sortField, setSortField] = useState<SortField>("cvss_score");
+  const [sortField, setSortField] = useState<SortField>("cvss");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const handleSort = (field: SortField) => {
@@ -74,7 +74,7 @@ export function VulnTable({ vulns, selectedId, onSelect }: VulnTableProps) {
       let cmp = 0;
       switch (sortField) {
         case "cve_id":
-          cmp = a.cve_id.localeCompare(b.cve_id);
+          cmp = (a.cve_id ?? "").localeCompare(b.cve_id ?? "");
           break;
         case "target_ip":
           cmp = a.target_ip.localeCompare(b.target_ip);
@@ -82,9 +82,12 @@ export function VulnTable({ vulns, selectedId, onSelect }: VulnTableProps) {
         case "severity":
           cmp = SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity];
           break;
-        case "cvss_score":
-          cmp = a.cvss_score - b.cvss_score;
+        case "cvss": {
+          const aScore = a.cvss ?? a.cvss_score ?? 0;
+          const bScore = b.cvss ?? b.cvss_score ?? 0;
+          cmp = aScore - bScore;
           break;
+        }
         case "status":
           cmp = a.status.localeCompare(b.status);
           break;
@@ -101,7 +104,7 @@ export function VulnTable({ vulns, selectedId, onSelect }: VulnTableProps) {
     { key: "cve_id", label: t("columns.cveId") },
     { key: "target_ip", label: t("columns.target") },
     { key: "severity", label: t("columns.severity") },
-    { key: "cvss_score", label: t("columns.cvss") },
+    { key: "cvss", label: t("columns.cvss") },
     { key: "status", label: t("columns.status") },
     { key: "discovered_at", label: t("columns.discovered") },
   ];
@@ -149,7 +152,9 @@ export function VulnTable({ vulns, selectedId, onSelect }: VulnTableProps) {
                 style={isCritical ? { borderLeft: "2px solid #ff0040" } : undefined}
                 onClick={() => onSelect(vuln)}
               >
-                <td className="px-3 py-2 text-athena-accent">{vuln.cve_id}</td>
+                <td className="px-3 py-2 text-athena-accent">
+                  {vuln.cve_id ?? <span className="text-athena-text-tertiary">—</span>}
+                </td>
                 <td className="px-3 py-2 text-athena-text-secondary">{vuln.target_ip}</td>
                 <td className="px-3 py-2">
                   <span
@@ -163,18 +168,24 @@ export function VulnTable({ vulns, selectedId, onSelect }: VulnTableProps) {
                   </span>
                 </td>
                 <td className="px-3 py-2">
-                  <span
-                    className="font-bold"
-                    style={{
-                      color: cvssColor(vuln.cvss_score),
-                      textShadow:
-                        vuln.cvss_score >= 9.0
-                          ? `0 0 8px ${cvssColor(vuln.cvss_score)}60`
-                          : "none",
-                    }}
-                  >
-                    {vuln.cvss_score.toFixed(1)}
-                  </span>
+                  {(() => {
+                    const score = vuln.cvss ?? vuln.cvss_score ?? null;
+                    if (score === null) {
+                      return <span className="text-athena-text-tertiary">—</span>;
+                    }
+                    return (
+                      <span
+                        className="font-bold"
+                        style={{
+                          color: cvssColor(score),
+                          textShadow:
+                            score >= 9.0 ? `0 0 8px ${cvssColor(score)}60` : "none",
+                        }}
+                      >
+                        {score.toFixed(1)}
+                      </span>
+                    );
+                  })()}
                 </td>
                 <td className="px-3 py-2">
                   <span className="flex items-center gap-1.5">

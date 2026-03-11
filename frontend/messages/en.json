@@ -18,6 +18,7 @@
   "Nav": {
     "planner": "Mission Planner",
     "warRoom": "War Room",
+    "decisions": "AI Decisions",
     "poc": "PoC Report",
     "vulns": "Vulns",
     "opsec": "OPSEC",
@@ -87,6 +88,14 @@
     "terminal": "Terminal",
     "osintDiscover": "OSINT",
     "osintStarted": "OSINT discovery started",
+    "reconScan": "RECON SCAN",
+    "initialAccess": "INITIAL ACCESS",
+    "initialAccessStarted": "Initial access started",
+    "aiSummary": "AI SUMMARY",
+    "attackSurface": "Attack Surface",
+    "recommendedTechniques": "Recommended Techniques",
+    "loadingSummary": "Analyzing target...",
+    "noSummary": "No AI summary available",
     "targetActivated": "Target set as active",
     "targetDeactivated": "Target deactivated",
     "targetDeleted": "{hostname} deleted",
@@ -176,6 +185,29 @@
     "actionCaution": "CAUTION",
     "actionHold": "HOLD",
     "actionAbort": "ABORT"
+  },
+  "AIDecisionPage": {
+    "title": "AI Decision Breakdown",
+    "confidenceBreakdown": "CONFIDENCE BREAKDOWN",
+    "confidenceSubtitle": "AI recommendation confidence sources for current decision",
+    "noiseRiskMatrix": "NOISE x RISK MATRIX",
+    "matrixSubtitle": "Action safety zone based on current noise level and detection risk",
+    "recommendedAction": "RECOMMENDED ACTION",
+    "currentPosition": "CURRENT POSITION",
+    "accept": "ACCEPT",
+    "override": "OVERRIDE",
+    "accepting": "ACCEPTING...",
+    "noiseLabel": "NOISE",
+    "riskLabel": "RISK",
+    "actionLabel": "ACTION",
+    "noiseAxisLabel": "NOISE LEVEL",
+    "riskAxisLabel": "DETECTION RISK",
+    "highConfidence": "HIGH CONFIDENCE",
+    "mediumConfidence": "MEDIUM CONFIDENCE",
+    "lowConfidence": "LOW CONFIDENCE",
+    "errorLoading": "Failed to load AI decision data",
+    "noTechnique": "— NO TECHNIQUE —",
+    "noAssessment": "No assessment available."
   },
   "KillChain": {
     "progress": "Kill Chain Progress",
@@ -376,7 +408,7 @@
     "resetView": "Reset view to fit all nodes"
   },
   "EmptyStates": {
-    "plannerGuide": "No targets defined \u2014 click + ADD above\n\n1. Add a target host with [+ ADD]\n2. Run [RECON SCAN] on the target\n3. Trigger [OODA CYCLE] for AI analysis\n4. Execute mission",
+    "plannerGuide": "No targets defined — click + ADD above\n\n1. Add a target host with [+ ADD]\n2. Run [RECON SCAN] on the target\n3. Trigger [OODA CYCLE] for AI analysis\n4. Execute mission",
     "monitorNoRec": "No AI recommendation yet. Go to Mission Planner to trigger an OODA cycle.",
     "monitorGoToPlanner": "Go to Mission Planner",
     "navigatorNoSelection": "← Select a technique from the matrix to view details"
@@ -565,7 +597,12 @@
     "output": "Output",
     "environment": "Environment",
     "copy": "Copy",
-    "noRecords": "No PoC records available"
+    "noRecords": "No PoC records available",
+    "emptyTitle": "No PoC records yet",
+    "emptySubtitle": "Run an OODA cycle to generate PoC evidence for discovered vulnerabilities.",
+    "errorTitle": "Failed to load PoC records",
+    "errorSubtitle": "An error occurred while fetching PoC data. Please check connectivity.",
+    "retry": "Retry"
   },
   "Vulns": {
     "title": "Vulnerability Dashboard",
@@ -604,7 +641,8 @@
       "markExploited": "Mark Exploited",
       "markReported": "Mark Reported",
       "markFalsePositive": "False Positive",
-      "reopenDiscovered": "Reopen"
+      "reopenDiscovered": "Reopen",
+      "service": "Service"
     }
   },
   "OPSEC": {
@@ -614,10 +652,20 @@
     "exposureCount": "Exposures",
     "noiseBudget": "Noise Budget",
     "noiseTrend": "Noise Score Trend",
-    "events": "OPSEC Events",
+    "events": "OPSEC EVENTS",
     "noEvents": "No OPSEC events recorded",
     "noData": "No OPSEC data available",
-    "errorLoading": "OPSEC unavailable"
+    "errorLoading": "OPSEC unavailable",
+    "moderate": "MODERATE",
+    "high": "HIGH",
+    "low": "LOW",
+    "critical": "CRITICAL",
+    "remainingBudget": "remaining budget",
+    "activeExposures": "active exposures",
+    "aboveThreshold": "above threshold",
+    "belowThreshold": "below threshold",
+    "eventCount": "{count} EVENTS",
+    "view": "VIEW"
   },
   "Threat": {
     "noise": "Noise",
@@ -631,7 +679,10 @@
     "empty": "No notifications",
     "sourceOpsec": "OPSEC",
     "sourceConstraint": "CONSTRAINT",
-    "constraintActive": "Active Constraints"
+    "constraintActive": "CONSTRAINT ACTIVE",
+    "pinnedConstraints": "Pinned Constraints",
+    "opsecWarnings": "OPSEC Warnings",
+    "source": "Source"
   },
   "AttackGraph": {
     "title": "Attack Graph",

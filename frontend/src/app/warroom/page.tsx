@@ -31,6 +31,7 @@ import type { LogEntry } from "@/types/log";
 import type { TechniqueWithStatus } from "@/types/technique";
 import type { OODATimelineEntry } from "@/types/ooda";
 import type { C5ISRStatus } from "@/types/c5isr";
+import type { ConfidenceSource } from "@/components/topology/ConfidenceBreakdown";
 import { KillChainStage } from "@/types/enums";
 
 const DEFAULT_OP_ID = "op-0001";
@@ -70,6 +71,11 @@ export default function WarRoomPage() {
 
   // SPEC-042: attack path from graph.updated WebSocket event
   const [recommendedPath, setRecommendedPath] = useState<string[]>([]);
+
+  // Decision engine results (confidence breakdown + noise/risk matrix)
+  const [confidenceSources, setConfidenceSources] = useState<ConfidenceSource[]>();
+  const [noiseLevel, setNoiseLevel] = useState<"low" | "medium" | "high">();
+  const [riskLevel, setRiskLevel] = useState<"low" | "medium" | "high" | "critical">();
 
   // War Room specific
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
@@ -214,6 +220,35 @@ export default function WarRoomPage() {
     return unsub;
   }, [ws]);
 
+  // decision.result → confidence breakdown + noise/risk levels
+  useEffect(() => {
+    const WEIGHTS: Record<string, number> = {
+      llm: 0.25, historical: 0.25, graph: 0.20, targetState: 0.15, opsecFactor: 0.15,
+    };
+    const LABELS: Record<string, string> = {
+      llm: "LLM Reasoning", historical: "Historical", graph: "Attack Graph",
+      targetState: "Target State", opsecFactor: "OPSEC Factor",
+    };
+    const unsub = ws.subscribe("decision.result", (raw: unknown) => {
+      const data = raw as Record<string, unknown>;
+      const breakdown = data.confidenceBreakdown as Record<string, number> | undefined;
+      if (breakdown) {
+        const sources: ConfidenceSource[] = (
+          ["llm", "historical", "graph", "targetState", "opsecFactor"] as const
+        ).map((key) => ({
+          key: (key === "targetState" ? "target" : key === "opsecFactor" ? "opsec" : key) as ConfidenceSource["key"],
+          label: LABELS[key] ?? key,
+          score: breakdown[key] ?? 0,
+          weight: WEIGHTS[key] ?? 0,
+        }));
+        setConfidenceSources(sources);
+      }
+      if (data.noiseLevel) setNoiseLevel(data.noiseLevel as "low" | "medium" | "high");
+      if (data.riskLevel) setRiskLevel(data.riskLevel as "low" | "medium" | "high" | "critical");
+    });
+    return unsub;
+  }, [ws]);
+
   // ── Computed ──
   const allLogs = [...initialLogs, ...liveLogs];
 
@@ -336,6 +371,9 @@ export default function WarRoomPage() {
               llmThinking={llmThinking}
               llmBackend={llmBackend}
               llmLatencyMs={llmLatencyMs}
+              confidenceSources={confidenceSources}
+              noiseLevel={noiseLevel}
+              riskLevel={riskLevel}
               recommendation={recommendation}
               oodaTimeline={oodaTimeline}
               currentOodaPhase={oodaPhase}

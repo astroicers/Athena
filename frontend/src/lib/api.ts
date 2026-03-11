@@ -97,6 +97,14 @@ export const api = {
     });
   },
 
+  put<T>(path: string, body?: unknown, options?: { timeoutMs?: number }): Promise<T> {
+    return request<T>(path, {
+      method: "PUT",
+      body: body ? JSON.stringify(toApiBody(body)) : undefined,
+      ...options,
+    });
+  },
+
   patch<T>(path: string, body?: unknown, options?: { timeoutMs?: number }): Promise<T> {
     return request<T>(path, {
       method: "PATCH",

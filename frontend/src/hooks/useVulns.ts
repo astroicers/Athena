@@ -50,12 +50,15 @@ export function useVulns(operationId: string): UseVulnsReturn {
 
   const updateStatus = useCallback(
     async (vulnId: string, newStatus: VulnStatus) => {
-      await api.patch(`/vulnerabilities/${vulnId}`, { status: newStatus });
+      await api.put(
+        `/operations/${operationId}/vulnerabilities/${vulnId}/status`,
+        { status: newStatus },
+      );
       setVulns((prev) =>
         prev.map((v) => (v.id === vulnId ? { ...v, status: newStatus } : v)),
       );
     },
-    [],
+    [operationId],
   );
 
   return { vulns, loading, error, refresh: fetchVulns, updateStatus };

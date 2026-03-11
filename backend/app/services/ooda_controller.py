@@ -157,7 +157,7 @@ class OODAController:
             "SELECT mission_profile FROM operations WHERE id = $1", operation_id,
         )
         mission_code = (op_row["mission_profile"] if op_row else None) or "SP"
-        constraints = await ce.evaluate(db, operation_id, mission_code)
+        constraints = await ce.evaluate(db, operation_id, mission_code, ws_manager=self._ws)
         if constraints.warnings or constraints.hard_limits:
             await self._write_log(db, operation_id, "warning",
                 f"OODA #{next_num} Constraints: {len(constraints.warnings)} warnings, "
@@ -201,6 +201,18 @@ class OODAController:
             "UPDATE ooda_iterations SET decide_summary = $1 WHERE id = $2",
             decide_summary[:1000], ooda_id,
         )
+        # Broadcast decision result with confidence breakdown and noise/risk levels
+        try:
+            await self._ws.broadcast(operation_id, "decision.result", {
+                "confidence_breakdown": decision.get("confidence_breakdown"),
+                "composite_confidence": decision.get("composite_confidence"),
+                "noise_level": decision.get("noise_level"),
+                "risk_level": decision.get("risk_level"),
+                "auto_approved": decision.get("auto_approved"),
+                "reason": decide_summary,
+            })
+        except Exception:
+            pass  # fire-and-forget
         await self._advance_mission_step(db, operation_id, step_index=1, status="completed")
         await self._advance_mission_step(db, operation_id, step_index=2, status="running")
         await self._write_log(db, operation_id, "info",

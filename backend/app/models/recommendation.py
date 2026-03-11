@@ -36,3 +36,8 @@ class OrientRecommendation(BaseModel):
     reasoning_text: str
     accepted: bool | None = None
     created_at: datetime
+    # Decision engine output (populated after DECIDE phase)
+    confidence_breakdown: dict | None = None
+    noise_level: str | None = None
+    risk_level: str | None = None
+    matrix_action: str | None = None

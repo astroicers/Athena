@@ -160,6 +160,7 @@ async def evaluate(
     db: asyncpg.Connection,
     operation_id: str,
     mission_code: str = "SP",
+    ws_manager: Any | None = None,
 ) -> OperationalConstraints:
     """Produce OperationalConstraints for the current OODA cycle.
 
@@ -196,6 +197,28 @@ async def evaluate(
     )
     active_overrides = {r["domain"] for r in override_rows if r["domain"]}
     constraints.active_overrides = list(active_overrides)
+
+    # Detect recently-expired overrides (expired in last 2 minutes) and broadcast
+    if ws_manager is not None:
+        try:
+            expired_rows = await db.fetch(
+                """SELECT DISTINCT payload->>'domain' AS domain
+                   FROM event_store
+                   WHERE operation_id = $1
+                     AND event_type = 'constraint.override'
+                     AND created_at <= NOW() - INTERVAL '10 minutes'
+                     AND created_at > NOW() - INTERVAL '12 minutes'""",
+                operation_id,
+            )
+            expired_domains = {r["domain"] for r in expired_rows if r["domain"]}
+            newly_expired = expired_domains - active_overrides
+            if newly_expired:
+                await ws_manager.broadcast(
+                    operation_id, "constraint.override_expired",
+                    {"domains": list(newly_expired)},
+                )
+        except Exception as exc:
+            logger.warning("Failed to check expired overrides: %s", exc)
 
     # 3. Check each domain against thresholds
     for domain in _C5ISR_DOMAINS:

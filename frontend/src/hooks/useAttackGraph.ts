@@ -89,7 +89,7 @@ export function useAttackGraph(operationId: string): UseAttackGraphReturn {
           `/operations/${operationId}/attack-graph`,
         ),
         api.get<CredentialGraphData>(
-          `/operations/${operationId}/attack-graph/credentials`,
+          `/operations/${operationId}/credential-graph`,
         ),
       ]);
       setGraph(graphData);

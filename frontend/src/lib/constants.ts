@@ -9,6 +9,7 @@
 // For commercial licensing, contact: [TODO: contact email]
 
 import {
+  OperationsIcon,
   PlannerIcon,
   MonitorIcon,
   PocIcon,
@@ -20,6 +21,7 @@ import {
 } from "@/components/atoms/NavIcons";
 
 export const NAV_ITEMS = [
+  { href: "/operations", icon: OperationsIcon, labelKey: "operations" },
   { href: "/planner", icon: PlannerIcon, labelKey: "planner" },
   { href: "/warroom", icon: MonitorIcon, labelKey: "warRoom" },
   { href: "/decisions", icon: AIDecisionsIcon, labelKey: "decisions" },

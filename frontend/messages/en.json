@@ -16,6 +16,7 @@
     "disconnected": "DISCONNECTED"
   },
   "Nav": {
+    "operations": "Operations",
     "planner": "Mission Planner",
     "warRoom": "War Room",
     "decisions": "AI Decisions",
@@ -24,6 +25,26 @@
     "opsec": "OPSEC",
     "attackGraph": "Attack Graph",
     "tools": "Tool Registry"
+  },
+  "Operations": {
+    "title": "Operations",
+    "subtitle": "Manage penetration testing operations",
+    "createOp": "CREATE OPERATION",
+    "code": "Code",
+    "name": "Name",
+    "codename": "Codename",
+    "strategicIntent": "Strategic Intent",
+    "missionProfile": "Mission Profile",
+    "status": "Status",
+    "oodaPhase": "OODA Phase",
+    "createdAt": "Created",
+    "noOperations": "No operations found. Create one to get started.",
+    "creating": "CREATING...",
+    "created": "Operation created successfully",
+    "profileSR": "SR — Stealth Recon",
+    "profileCO": "CO — Covert Ops",
+    "profileSP": "SP — Smash & Grab",
+    "selectProfile": "Select mission profile"
   },
   "PageHeader": {},
   "C5ISR": {

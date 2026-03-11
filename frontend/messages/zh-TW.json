@@ -16,6 +16,7 @@
     "disconnected": "已斷線"
   },
   "Nav": {
+    "operations": "作戰行動",
     "planner": "任務規劃器",
     "warRoom": "作戰室",
     "poc": "PoC 報告",
@@ -23,6 +24,26 @@
     "opsec": "OPSEC",
     "attackGraph": "攻擊圖",
     "tools": "工具庫"
+  },
+  "Operations": {
+    "title": "作戰行動",
+    "subtitle": "管理滲透測試作戰行動",
+    "createOp": "建立行動",
+    "code": "代碼",
+    "name": "名稱",
+    "codename": "代號",
+    "strategicIntent": "戰略意圖",
+    "missionProfile": "任務配置",
+    "status": "狀態",
+    "oodaPhase": "OODA 階段",
+    "createdAt": "建立時間",
+    "noOperations": "尚無作戰行動，請建立一個以開始。",
+    "creating": "建立中...",
+    "created": "作戰行動建立成功",
+    "profileSR": "SR — 隱匿偵察",
+    "profileCO": "CO — 秘密行動",
+    "profileSP": "SP — 快速突破",
+    "selectProfile": "選擇任務配置"
   },
   "PageHeader": {},
   "C5ISR": {

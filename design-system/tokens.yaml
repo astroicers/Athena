@@ -1,0 +1,63 @@
+# Athena Design Tokens
+# 真相來源: frontend/src/styles/globals.css
+# Pencil 設計稿: design/athena-design-system.pen (56 元件, 32+ 變數)
+
+meta:
+  version: "2.0"
+  updated: "2026-03-09"
+  source_of_truth: "frontend/src/styles/globals.css"
+  pencil_source: "design/athena-design-system.pen"
+  tailwind_config: "frontend/tailwind.config.ts"
+
+colors:
+  background:
+    bg-primary:    { value: "#0a0a1a", css: "--color-bg-primary",   tw: "athena-bg",      description: "主背景（深空黑）" }
+    bg-surface:    { value: "#1a1a2e", css: "--color-bg-surface",   tw: "athena-surface",  description: "卡片/面板背景" }
+    bg-elevated:   { value: "#25253e", css: "--color-bg-elevated",  tw: "athena-elevated", description: "浮層/下拉背景" }
+  accent:
+    accent:        { value: "#00d4ff", css: "--color-accent",       tw: "athena-accent",   description: "品牌色/主要操作（青藍）" }
+    accent-hover:  { value: "#33ddff", css: "--color-accent-hover", description: "品牌色 hover 態" }
+  text:
+    primary:       { value: "#ffffff", css: "--color-text-primary",   tw: "athena-text",           description: "主要文字" }
+    secondary:     { value: "#c0c0d0", css: "--color-text-secondary", tw: "athena-text-secondary", description: "次要文字（高對比）" }
+    tertiary:      { value: "#8a8a9a", css: "--color-text-tertiary",  tw: "athena-text-tertiary",  description: "輔助文字/標籤" }
+  border:
+    default:       { value: "#3a3a5a", css: "--color-border", tw: "athena-border", description: "預設邊框" }
+  status:
+    success:       { value: "#00ff88", css: "--color-success",    tw: "athena-success",  description: "成功/完成（綠）" }
+    warning:       { value: "#ffaa00", css: "--color-warning",    tw: "athena-warning",  description: "警告（橙）" }
+    error:         { value: "#ff4444", css: "--color-error",      tw: "athena-error",    description: "錯誤（紅）" }
+    critical:      { value: "#ff0040", css: "--color-critical",   tw: "athena-critical", description: "嚴重/Critical（洋紅）" }
+    info:          { value: "#00d4ff", css: "--color-info",       description: "資訊（= accent）" }
+    error-text:    { value: "#ff6666", css: "--color-error-text", description: "錯誤文字（高對比版）" }
+  effects:
+    grid-line:     { value: "rgba(58,58,90,0.25)",  css: "--color-grid-line",  description: "戰術網格線" }
+    scanline:      { value: "rgba(0,212,255,0.03)", css: "--color-scanline",   description: "CRT 掃描線" }
+    glow-green:    { value: "rgba(0,255,136,0.4)",  css: "--color-glow-green", description: "成功狀態光暈" }
+    glow-red:      { value: "rgba(255,68,68,0.4)",  css: "--color-glow-red",   description: "警告狀態光暈" }
+    glow-cyan:     { value: "rgba(0,212,255,0.3)",  css: "--color-glow-cyan",  description: "品牌色光暈" }
+
+typography:
+  families:
+    mono: { value: '"JetBrains Mono", "Fira Code", monospace', css: "--font-mono", tw: "font-mono", description: "主要字體（全域預設）" }
+    sans: { value: '"Inter", system-ui, sans-serif',           css: "--font-sans", tw: "font-sans", description: "輔助字體（UI 標籤）" }
+  scale:
+    floor:           { value: "12px", css: "--fs-floor",           description: "最小允許字級（投影機可讀）" }
+    caption:         { value: "12px", css: "--fs-caption",         description: "說明文字/Badge" }
+    body:            { value: "14px", css: "--fs-body",            description: "內文" }
+    heading-card:    { value: "13px", css: "--fs-heading-card",    description: "卡片標題" }
+    heading-section: { value: "15px", css: "--fs-heading-section", description: "區塊標題" }
+    heading-page:    { value: "18px", css: "--fs-heading-page",    description: "頁面標題" }
+    metric:          { value: "32px", css: "--fs-metric",          description: "大數字指標" }
+    metric-label:    { value: "11px", css: "--fs-metric-label",    description: "指標標籤（唯一例外 < 12px）" }
+
+spacing:
+  badge-x: { value: "12px", css: "--sp-badge-x", description: "Badge 水平內距" }
+  badge-y: { value: "5px",  css: "--sp-badge-y", description: "Badge 垂直內距" }
+  cell:    { value: "14px", css: "--sp-cell",     description: "表格單元格內距" }
+  card:    { value: "20px", css: "--sp-card",     description: "卡片內距" }
+
+radius:
+  sm: { value: "4px",  css: "--radius-sm", tw: "rounded-athena-sm", description: "小圓角（Badge, 輸入框）" }
+  md: { value: "8px",  css: "--radius-md", tw: "rounded-athena-md", description: "中圓角（卡片）" }
+  lg: { value: "12px", css: "--radius-lg", tw: "rounded-athena-lg", description: "大圓角（Modal）" }

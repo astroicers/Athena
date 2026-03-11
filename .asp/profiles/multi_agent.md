@@ -160,6 +160,8 @@ Worker Agent 可自行執行：
 
 ## Autonomous 模式整合（autonomous: enabled 時生效）
 
+> **Canonical source**: Worker 基礎規則定義於本檔案。Autonomous Worker 擴展規則見 `autonomous_dev.md`「Multi-Agent 整合」。任務 dispatch 路由見 `task_orchestrator.md` Part G。
+
 搭配 autonomous_dev 使用時，Worker 具備自主修復能力：
 
 ### Worker 自主能力

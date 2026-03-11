@@ -87,19 +87,19 @@ apply_preset() {
         1) # 標準模式
             ENABLE_RAG=n; ENABLE_GUARDRAIL=n; HITL_LEVEL=standard
             ENABLE_DESIGN=n; ENABLE_CODING_STYLE=n; ENABLE_OPENAPI=n
-            ENABLE_AUTONOMOUS=n; WORKFLOW=standard ;;
+            ENABLE_FRONTEND_QUALITY=n; ENABLE_AUTONOMOUS=n; ENABLE_ORCHESTRATOR=n; WORKFLOW=standard ;;
         2) # 高速自主模式
             ENABLE_RAG=n; ENABLE_GUARDRAIL=n; HITL_LEVEL=minimal
             ENABLE_DESIGN=n; ENABLE_CODING_STYLE=n; ENABLE_OPENAPI=n
-            ENABLE_AUTONOMOUS=y; WORKFLOW=vibe-coding ;;
+            ENABLE_FRONTEND_QUALITY=n; ENABLE_AUTONOMOUS=y; ENABLE_ORCHESTRATOR=y; WORKFLOW=vibe-coding ;;
         3) # 完整治理模式
             ENABLE_RAG=y; ENABLE_GUARDRAIL=y; HITL_LEVEL=strict
             ENABLE_DESIGN=y; ENABLE_CODING_STYLE=y; ENABLE_OPENAPI=y
-            ENABLE_AUTONOMOUS=n; WORKFLOW=standard ;;
+            ENABLE_FRONTEND_QUALITY=y; ENABLE_AUTONOMOUS=n; ENABLE_ORCHESTRATOR=n; WORKFLOW=standard ;;
         4) # 高速自主+多Agent模式
             ENABLE_RAG=n; ENABLE_GUARDRAIL=n; HITL_LEVEL=minimal
             ENABLE_DESIGN=n; ENABLE_CODING_STYLE=n; ENABLE_OPENAPI=n
-            ENABLE_AUTONOMOUS=y; WORKFLOW=vibe-coding; MODE=multi-agent ;;
+            ENABLE_FRONTEND_QUALITY=n; ENABLE_AUTONOMOUS=y; ENABLE_ORCHESTRATOR=y; WORKFLOW=vibe-coding; MODE=multi-agent ;;
         *) return 1 ;;
     esac
 }
@@ -244,8 +244,8 @@ if git ls-remote "$PROTOCOL_REPO" &>/dev/null 2>&1; then
             fi
             echo "🔄 Makefile 已升級 ${INSTALLED_MK_VER:-unknown} → ${NEW_MK_VER:-unknown}（APP_NAME 已保留）"
         fi
-    elif [ "$IS_UPGRADE" = true ] && ! grep -q "guardrail-log" Makefile 2>/dev/null; then
-        # ASP Makefile 但缺少新版 target（無版本標記的過渡版本）
+    elif [ "$IS_UPGRADE" = true ] && ! grep -q "audit-health" Makefile 2>/dev/null; then
+        # ASP Makefile 但缺少 v2.3.0+ target（無版本標記或過渡版本）
         echo "🔄 偵測到缺少新版目標的 Makefile，更新為新版"
         CURRENT_APP=$(grep "^APP_NAME" Makefile | head -1 || true)
         cp "$PROTOCOL_DIR/Makefile" ./Makefile
@@ -296,8 +296,14 @@ CODING_STYLE_VAL="disabled"
 OPENAPI_VAL="disabled"
 [ "${ENABLE_OPENAPI,,}" = "y" ] && OPENAPI_VAL="enabled"
 
+FRONTEND_QUALITY_VAL="disabled"
+[ "${ENABLE_FRONTEND_QUALITY,,}" = "y" ] && FRONTEND_QUALITY_VAL="enabled"
+
 AUTONOMOUS_VAL="disabled"
 [ "${ENABLE_AUTONOMOUS,,}" = "y" ] && AUTONOMOUS_VAL="enabled"
+
+ORCHESTRATOR_VAL="disabled"
+[ "${ENABLE_ORCHESTRATOR,,}" = "y" ] && ORCHESTRATOR_VAL="enabled"
 
 NEW_PROFILE="type: ${PROJECT_TYPE}
 mode: ${MODE:-single}
@@ -306,16 +312,18 @@ rag: ${RAG_VAL}
 guardrail: ${GUARDRAIL_VAL}
 hitl: ${HITL_LEVEL}
 autonomous: ${AUTONOMOUS_VAL}
+orchestrator: ${ORCHESTRATOR_VAL}
 design: ${DESIGN_VAL}
 coding_style: ${CODING_STYLE_VAL}
 openapi: ${OPENAPI_VAL}
+frontend_quality: ${FRONTEND_QUALITY_VAL}
 name: ${PROJECT_NAME}"
 
 if [ -f ".ai_profile" ]; then
     echo "ℹ️  .ai_profile 已存在，保留現有設定"
     # 僅補充缺失欄位
     ADDED_FIELDS=0
-    for FIELD in type mode workflow rag guardrail hitl autonomous design coding_style openapi name; do
+    for FIELD in type mode workflow rag guardrail hitl autonomous orchestrator design coding_style openapi frontend_quality name; do
         if ! grep -q "^${FIELD}:" .ai_profile; then
             DEFAULT_VAL=$(echo "$NEW_PROFILE" | grep "^${FIELD}:" | head -1)
             if [ -n "$DEFAULT_VAL" ]; then
@@ -438,6 +446,11 @@ if [ "$JQ_AVAILABLE" = true ]; then
     TOTAL_REMOVED=0
     for SETTINGS_FILE in .claude/settings.local.json .claude/settings.json; do
         [ -f "$SETTINGS_FILE" ] || continue
+        # 跳過非 object 的 JSON 檔案（例如損壞的 settings.local.json）
+        FILE_TYPE=$(jq -r 'type' "$SETTINGS_FILE" 2>/dev/null || echo "invalid")
+        if [ "$FILE_TYPE" != "object" ]; then
+            continue
+        fi
         BEFORE_COUNT=$(jq -r '[.permissions.allow // [] | .[] | select(startswith("Bash("))] | length' "$SETTINGS_FILE" 2>/dev/null || echo 0)
         jq --arg pattern "$DANGEROUS_PATTERNS" '
           .permissions.allow = [
@@ -509,3 +522,5 @@ if [ "${ENABLE_RAG,,}" = "y" ]; then
     echo "  pip install chromadb sentence-transformers && make rag-index"
     echo ""
 fi
+echo "💡 建議執行 make audit-health 進行專案健康檢查"
+echo ""

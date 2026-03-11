@@ -31,6 +31,10 @@ TOTAL_REMOVED=0
 for SETTINGS_FILE in "${SETTINGS_FILES[@]}"; do
   [ -f "$SETTINGS_FILE" ] || continue
 
+  # 跳過非 object 的 JSON 檔案（避免損壞檔案導致 jq 錯誤）
+  FILE_TYPE=$(jq -r 'type' "$SETTINGS_FILE" 2>/dev/null || echo "invalid")
+  [ "$FILE_TYPE" = "object" ] || continue
+
   BEFORE=$(jq -r '[.permissions.allow // [] | .[] | select(startswith("Bash("))] | length' "$SETTINGS_FILE" 2>/dev/null || echo 0)
 
   jq --arg pattern "$DANGEROUS_PATTERNS" '

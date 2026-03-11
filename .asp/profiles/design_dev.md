@@ -1,7 +1,7 @@
 # Design Development Profile — UI/UX 設計治理
 
 <!-- requires: global_core, system_dev -->
-<!-- optional: openapi -->
+<!-- optional: openapi, frontend_quality -->
 
 適用：具有使用者介面的系統開發專案，確保設計決策可量化、可驗證、一致。
 載入條件：`design: enabled`
@@ -67,6 +67,24 @@
 - Token 變更時須同步更新所有引用的設計檔和程式碼
 - 在元件中禁止寫 magic number——必須用 token
 
+### Token ↔ CSS 同步驗證
+
+```
+FUNCTION verify_token_sync(tokens_file, css_files):
+
+  defined_tokens = parse(tokens_file)  // e.g., tokens.yaml 或 design-system/MASTER.md
+  css_vars = extract_css_variables(css_files)  // grep: --color-*, --spacing-*, --font-*
+
+  FOR token IN defined_tokens:
+    IF token NOT IN css_vars:
+      WARN("Design Token '{token}' 未對應到 CSS 變數")
+  FOR var IN css_vars:
+    IF var NOT IN defined_tokens:
+      WARN("CSS 變數 '{var}' 無對應的 Design Token 定義")
+
+  INVARIANT: Design Token 與 CSS 變數必須雙向一致
+```
+
 ---
 
 ## 元件設計慣例
@@ -91,6 +109,8 @@ component-states:
 
 所有 UI 元件必須根據類型覆蓋對應的狀態集合。
 
+> 三態驗證 pseudocode 見 `frontend_quality.md`「元件三態驗證」。
+
 ---
 
 ## 設計禁止事項
@@ -108,6 +128,10 @@ component-states:
 - ❌ 未定義在 design tokens 中的顏色值
 - ❌ 無功能目的的純裝飾性動畫
 - ❌ 不遵循 grid system 的任意間距
+
+---
+
+> 前端品質驗證（i18n、顏色值、三態、Error/Loading/Empty）的完整規範和 pseudocode 見 `frontend_quality.md`。
 
 ---
 
@@ -312,6 +336,12 @@ FUNCTION before_ui_work():
 - [ ] 資訊層級清晰（5 秒法則：能否快速掌握重點）
 - [ ] 操作路徑直覺（3 步內完成常見操作）
 - [ ] Accessibility 基本合規（ARIA label、keyboard navigation）
+- [ ] 所有 `<img>` 有 `alt` 屬性（裝飾性圖片用 `alt=""`）
+- [ ] 表單元素有對應 `<label>` 或 `aria-label`
+- [ ] 色彩對比度符合 WCAG 2.1 AA（文字 4.5:1，大文字 3:1）
+- [ ] Focus 狀態可見且不被覆蓋
+
+> Accessibility 自動化驗證 pseudocode 見 `frontend_quality.md`「Accessibility 自動化驗證」。
 
 ---
 

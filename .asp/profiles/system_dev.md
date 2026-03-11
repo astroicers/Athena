@@ -1,7 +1,7 @@
 # System Development Profile
 
 <!-- requires: global_core -->
-<!-- optional: design_dev, openapi, coding_style, autonomous_dev -->
+<!-- optional: design_dev, openapi, coding_style, autonomous_dev, frontend_quality -->
 
 > 載入條件：`type: system` 或 `type: architecture`
 
@@ -97,11 +97,81 @@ ADR（為什麼）→ [Design Gate] → [OpenAPI Gate] → SDD（如何設計）
 | Bug 修復 | 🟡 可跳過，需標記 `tech-debt: test-pending` |
 | 原型驗證 | 🟡 可跳過，需標記 `tech-debt: test-pending` |
 | UI/樣式調整（CSS、排版、純視覺） | ⚪ 豁免，以人工視覺驗收為準 |
+| 前端互動元件（表單、Modal、onClick 按鈕） | 🟡 建議基本測試：提交/取消流程、狀態切換 |
 | 文件/配置變更 | ⚪ 豁免 |
 
 **其他允許的簡化路徑（需在回覆中說明）：**
 
 - 明確小功能：可跳過 BDD，直接 TDD
+
+---
+
+## 測試金字塔
+
+TDD 的預設產出是單元測試，但完整品質保證需要多層次測試：
+
+| 層級 | 何時需要 | 範圍 | 範例 |
+|------|----------|------|------|
+| **單元測試** | 所有新功能（鐵則） | 單一函數/模組 | `TestCalculateTotal` |
+| **整合測試** | 跨模組互動、DB 操作、外部 API 呼叫 | 模組間介面 | `TestUserService_CreateAndNotify` |
+| **契約測試** | 微服務間的 API 消費者-提供者關係 | API schema 相容性 | `TestAPI_ResponseMatchesSchema` |
+| **E2E 測試** | 使用者核心流程（登入→操作→結果） | 全鏈路 | `TestCheckoutFlow_GuestUser` |
+
+**規則**：
+- 單元測試覆蓋是 TDD 的預設產出（已有）
+- 涉及 DB / 外部 API 的 SPEC → Done When **必須**含整合測試條件
+- 新增 API endpoint → Done When **建議**含契約測試條件
+- 非 trivial 使用者流程 → **建議** E2E 測試
+- 測試層級的選擇應反映在 SPEC 的 Done When 清單中
+
+---
+
+## Hotfix 流程（生產環境緊急修復）
+
+適用：生產環境正在影響使用者，需要立即修復。
+
+**簡化 Gate**（與標準流程的差異）：
+
+| 步驟 | 標準流程 | Hotfix |
+|------|----------|--------|
+| SPEC | 必須 | ⏭️ 跳過（commit message 含根因一行摘要） |
+| TDD 先行 | 必須 | ⏭️ 跳過（修復後 24h 內補寫 regression test） |
+| ADR | 架構變更必須 | ⏭️ 跳過（先修後補） |
+| `make test` | 必須 | ✅ 仍需通過 |
+| `grep -r` 全專案 | 必須 | ✅ 仍需執行 |
+| `git push` 人類確認 | 鐵則 | ✅ 鐵則不豁免 |
+
+**修復後必須（24h 內）**：
+1. `make spec-new TITLE="HOTFIX-{description}"` → 補 SPEC（含根因分析）
+2. 補寫 regression test（重現測試：修復前 FAIL、修復後 PASS）
+3. `make postmortem-new TITLE="..."` → 建立 Postmortem（所有 Hotfix 強制觸發）
+4. 標記 `tech-debt: hotfix-backfill` 直到以上全部補齊
+
+**判定標準**：只有「生產環境正在影響使用者」才適用 Hotfix 流程。「想快一點」不是理由。
+
+---
+
+## 分支與合併
+
+建議策略（非強制，依專案調整）：
+
+```
+main / master     穩定可部署，受保護分支
+feature/SPEC-NNN  功能分支，從 main 建立，完成後合併回 main
+hotfix/描述        緊急修復，從 main 建立，修復後合併回 main
+```
+
+**合併前檢查**：
+- `make test` 全量通過
+- 文件已同步（CHANGELOG、相關 docs、SPEC Traceability 已回填）
+- `git push` 前列出變更摘要（鐵則）
+
+**commit message 規範**（建議）：
+- 功能：`feat: 描述 (SPEC-NNN)`
+- 修復：`fix: 描述 [bug:category] (SPEC-NNN)`
+- Hotfix：`hotfix: 描述`
+- 文件：`docs: 描述`
+- 重構：`refactor: 描述`
 
 ---
 
@@ -131,6 +201,15 @@ ADR（為什麼）→ [Design Gate] → [OpenAPI Gate] → SDD（如何設計）
        └── 設計不存在或不一致 → 建立/更新設計 → 等待人類確認
        └── 純後端需求 → 豁免（需說明理由）
        └── design_dev profile 未載入 → WARN("design: enabled 未設定，跳過 Design Gate") → 繼續
+           // ─── design: disabled 最低 UI 品質兜底 ───
+           // 即使 design_dev profile 未載入，以下規則仍然生效：
+           APPLY ui_baseline_rules:
+             1. 所有使用者可見文字必須通過 i18n（無豁免）
+             2. 所有顏色必須使用專案定義的 CSS 變數或 Tailwind semantic class
+             3. 互動元件必須處理 loading/error 狀態
+             4. 元件命名遵循 PascalCase 慣例
+           // 這些規則不需要設計稿，只需要工程紀律
+           // 完整規範見 frontend_quality.md
 
 5. OpenAPI Gate（僅 openapi: enabled 時）
    └── 需求涉及 API → CALL openapi_gate(requirement)
@@ -286,7 +365,10 @@ FUNCTION verify_stable_state(spec):
   ├── 無 debug print / console.log（搜尋 print\(|console\.log|fmt\.Print）
   ├── 無未使用的 import / variable
   ├── 無註解掉的程式碼區塊（>3 行）
-  └── 無 TODO 未標注 owner（格式：TODO(owner): description）
+  ├── 無 TODO 未標注 owner（格式：TODO(owner): description）
+  ├── 無 i18n 硬編碼（詳見 `frontend_quality.md`「i18n 工程規範」）
+  ├── 無硬編碼顏色值（詳見 `frontend_quality.md`「顏色值驗證」）
+  └── DEPRECATED 標記有對應清理計畫（詳見 `global_core.md`「DEPRECATED 程式碼追蹤」）
 
 □ 一致性
   ├── 錯誤處理風格與 codebase 既有模式一致
@@ -302,6 +384,11 @@ FUNCTION verify_stable_state(spec):
   ├── 新增 public function / method 有 docstring
   ├── CHANGELOG.md 已更新（非 trivial 變更）
   └── 相關文件已同步（architecture.md、README 等）
+
+□ 前端元件完整性（design: enabled 或 disabled 皆適用）
+  ├── 資料驅動元件覆蓋 loading / empty / error 三態
+  ├── 互動元件（表單、Modal、有 onClick 的按鈕）有基本測試
+  └── 語系檔案 key 數量一致（`make i18n-check`）
 ```
 
 ---

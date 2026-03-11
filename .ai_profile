@@ -9,3 +9,5 @@ autonomous: enabled
 design: enabled
 coding_style: disabled
 openapi: disabled
+orchestrator: disabled
+frontend_quality: disabled

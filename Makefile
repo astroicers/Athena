@@ -1,13 +1,18 @@
 # AI-SOP-Protocol — Makefile
 # 目的：封裝重複指令，節省 Token，降低操作失誤風險
 # 使用方式：依專案需求保留/修改對應區塊
+# ASP_MAKEFILE_VERSION=2.4.1
 
 APP_NAME ?= Athena
 VERSION  ?= latest
 
+# --- 條件載入：讀取 .ai_profile 的 type 欄位 ---
+# content 類型專案隱藏 Docker/Test/Lint/Deploy targets
+ASP_TYPE := $(shell grep '^type:' .ai_profile 2>/dev/null | awk '{print $$2}')
+
 .PHONY: help \
-        build clean deploy logs up down docker-clean dev dev-backend dev-frontend seed \
-        test test-backend test-frontend test-filter coverage lint \
+        build clean deploy logs \
+        test test-filter coverage lint i18n-check \
         diagram \
         adr-new adr-list \
         spec-new spec-list \
@@ -16,9 +21,8 @@ VERSION  ?= latest
         session-checkpoint session-log \
         rag-index rag-search rag-stats rag-rebuild \
         guardrail-log guardrail-reset \
-        c2-engine-init c2-engine-up c2-engine-down c2-engine-logs c2-engine-status c2-engine-backup \
-        real-mode mock-mode \
-        new-tool dev-tool dev-tool-http
+        audit-health audit-quick doc-audit tech-debt-list \
+        task-start task-status task-report
 
 #---------------------------------------------------------------------------
 # Help
@@ -26,13 +30,15 @@ VERSION  ?= latest
 
 help:
 	@echo ""
-	@echo "AI-SOP-Protocol 指令速查 — Athena"
-	@echo "==================================="
+	@echo "AI-SOP-Protocol 指令速查（type: $(or $(ASP_TYPE),未設定)）"
+	@echo "========================="
 	@echo ""
-	@echo "🚀 Dev:         dev | dev-backend | dev-frontend | seed"
+ifneq ($(ASP_TYPE),content)
 	@echo "📦 Container:   build | clean | deploy | logs"
-	@echo "🧪 Test:        test | test-backend | test-frontend | test-filter FILTER=xxx | coverage | lint"
+	@echo "🧪 Test:        test | test-filter FILTER=xxx | coverage | lint"
+	@echo "🌐 i18n:        i18n-check"
 	@echo "📐 Docs:        diagram"
+endif
 	@echo "📋 ADR:         adr-new TITLE=... | adr-list"
 	@echo "📄 Spec:        spec-new TITLE=... | spec-list"
 	@echo "🔥 Postmortem:  postmortem-new TITLE=... | postmortem-list"
@@ -40,31 +46,24 @@ help:
 	@echo "💾 Session:     session-checkpoint NEXT=... | session-log"
 	@echo "🧠 RAG:         rag-index | rag-search Q=... | rag-stats | rag-rebuild"
 	@echo "🛡  Guardrail:   guardrail-log | guardrail-reset"
+	@echo "🏥 Audit:       audit-health | audit-quick | doc-audit | tech-debt-list"
+	@echo "📌 Task:        task-start DESC=... | task-status | task-report"
 	@echo ""
 
 #---------------------------------------------------------------------------
-# Docker / Container
+# Docker / Container（type: content 時隱藏）
 #---------------------------------------------------------------------------
+ifneq ($(ASP_TYPE),content)
 
 build:
-	@echo "🔨 Building $(APP_NAME) services..."
-	docker-compose build
-
-build-mcp-base:  ## Build the shared MCP base image
-	@echo "🔨 Building MCP base image..."
-	docker build -t athena-mcp-base:latest -f tools/Dockerfile.base tools/
-
-build-mcp: build-mcp-base  ## Build all MCP tool server images
-	@echo "🔨 Building MCP tool servers..."
-	docker-compose --profile mcp build
+	@echo "🔨 Building $(APP_NAME):$(VERSION)..."
+	docker build -t $(APP_NAME):$(VERSION) .
 
 clean:
 	@echo "🧹 Cleaning..."
 	rm -rf ./tmp/* 2>/dev/null || true
-	rm -f backend/data/athena.db 2>/dev/null || true
-	rm -rf backend/__pycache__ backend/app/__pycache__ 2>/dev/null || true
-	rm -rf frontend/.next frontend/node_modules/.cache 2>/dev/null || true
 	docker-compose down --rmi local --volumes --remove-orphans 2>/dev/null || true
+	docker rmi $$(docker images '$(APP_NAME)' -q) 2>/dev/null || true
 
 deploy:
 	@echo "🚀 Deploying $(APP_NAME):$(VERSION)..."
@@ -74,81 +73,81 @@ deploy:
 logs:
 	docker-compose logs -f --tail=100
 
-up:
-	@echo "🚀 Starting Athena + MCP tools (detached)..."
-	docker-compose --profile mcp up --build -d
-	@echo "✅ Backend: http://localhost:8000/api/health"
-	@echo "✅ Frontend: http://localhost:3000"
-	@echo "📋 Logs: make logs"
-
-down:
-	@echo "⏹  Stopping Athena..."
-	docker-compose --profile mcp down
-
-docker-clean:
-	@echo "🧹 Cleaning Docker (images + volumes)..."
-	docker-compose down -v --rmi local
-
 #---------------------------------------------------------------------------
-# Development
-#---------------------------------------------------------------------------
-
-dev:
-	@echo "🚀 Starting full development environment..."
-	docker-compose up --build
-
-dev-backend:
-	@echo "🐍 Starting backend (Python/FastAPI)..."
-	cd backend && uvicorn app.main:app --reload --port 8000
-
-dev-frontend:
-	@echo "⚛️  Starting frontend (Next.js)..."
-	cd frontend && npm run dev
-
-seed:
-	@echo "🌱 Loading demo seed data (OP-2024-017)..."
-	cd backend && python3 -m app.seed.demo_scenario
-
-#---------------------------------------------------------------------------
-# Test
+# Test（type: content 時隱藏）
 #---------------------------------------------------------------------------
 
 test:
-	@echo "🧪 Running all tests..."
-	@echo "── Backend (pytest) ──"
-	cd backend && python3 -m pytest tests/ -v --tb=short
-	@echo ""
-	@echo "── Frontend (npm test) ──"
-	cd frontend && npm test
-
-test-backend:
-	@echo "🧪 Running backend tests..."
-	cd backend && python3 -m pytest tests/ -v
-
-test-frontend:
-	@echo "🧪 Running frontend tests..."
-	cd frontend && npm test
+	@echo "🧪 Running tests..."
+	@if [ -f "go.mod" ]; then go test ./... -v -race -coverprofile=coverage.out; \
+	elif command -v pytest >/dev/null 2>&1 && { [ -f "pytest.ini" ] || [ -f "pyproject.toml" ] || [ -d "tests" ]; }; then pytest ./tests -v --cov=.; \
+	elif [ -f "package.json" ] && grep -q '"test"' package.json 2>/dev/null; then npm test; \
+	else echo "⚠️  未偵測到測試框架（go.mod / pytest / package.json）"; exit 1; fi
 
 test-filter:
 	@if [ -z "$(FILTER)" ]; then echo "使用方式：make test-filter FILTER=xxx"; exit 1; fi
 	@echo "🧪 Running filtered: $(FILTER)"
-	cd backend && python3 -m pytest tests/ -k "$(FILTER)" -v
+	@if [ -f "go.mod" ]; then go test ./... -run $(FILTER) -v; \
+	elif command -v pytest >/dev/null 2>&1 && { [ -f "pytest.ini" ] || [ -f "pyproject.toml" ] || [ -d "tests" ]; }; then pytest ./tests -k $(FILTER) -v; \
+	elif [ -f "package.json" ] && grep -q '"test"' package.json 2>/dev/null; then npm test -- --grep "$(FILTER)"; \
+	else echo "⚠️  未偵測到測試框架"; exit 1; fi
 
 coverage:
-	@echo "📊 Running coverage report..."
-	cd backend && python3 -m pytest tests/ --cov=app --cov-report=html --cov-report=term
-	@echo "Coverage HTML report: backend/htmlcov/index.html"
+	@go tool cover -html=coverage.out 2>/dev/null || \
+	coverage html && open htmlcov/index.html 2>/dev/null || \
+	echo "⚠️  請先執行 make test"
 
 lint:
 	@echo "🔍 Linting..."
-	@echo "── Backend (ruff) ──"
-	@cd backend && python3 -m ruff check . 2>/dev/null || (cd backend && python3 -m flake8 . 2>/dev/null) || echo "⚠️  請安裝 ruff 或 flake8"
-	@echo ""
-	@echo "── Frontend (next lint) ──"
-	@cd frontend && npm run lint 2>/dev/null || echo "⚠️  前端 lint 尚未配置"
+	@golangci-lint run ./... 2>/dev/null && exit 0 || true
+	@flake8 . 2>/dev/null && exit 0 || true
+	@npm run lint 2>/dev/null && exit 0 || true
+	@echo "⚠️  未偵測到 Lint 工具"
 
 #---------------------------------------------------------------------------
-# Architecture Diagram
+# i18n Check（type: content 時隱藏）
+#---------------------------------------------------------------------------
+
+i18n-check:
+	@echo "🌐 Checking i18n consistency..."
+	@LOCALE_DIR=$$(find . -maxdepth 4 -type d \( -name "locales" -o -name "i18n" -o -name "messages" -o -name "translations" -o -name "lang" \) ! -path '*/node_modules/*' ! -path '*/.git/*' | head -1); \
+	if [ -z "$$LOCALE_DIR" ]; then \
+		echo "⚠️  未偵測到語系目錄（locales/i18n/messages/translations/lang）"; \
+		exit 0; \
+	fi; \
+	echo "  語系目錄：$$LOCALE_DIR"; \
+	BASE_FILE=$$(ls $$LOCALE_DIR/*.json 2>/dev/null | head -1); \
+	if [ -z "$$BASE_FILE" ]; then \
+		echo "⚠️  語系目錄中未找到 JSON 檔案"; \
+		exit 0; \
+	fi; \
+	BASE_COUNT=$$(python3 -c "import json; print(len(json.load(open('$$BASE_FILE'))))" 2>/dev/null || echo "ERR"); \
+	if [ "$$BASE_COUNT" = "ERR" ]; then \
+		echo "⚠️  無法解析 $$BASE_FILE（需要 python3）"; \
+		exit 0; \
+	fi; \
+	echo "  基準檔案：$$BASE_FILE ($$BASE_COUNT keys)"; \
+	FAIL=0; \
+	for f in $$LOCALE_DIR/*.json; do \
+		COUNT=$$(python3 -c "import json; print(len(json.load(open('$$f'))))" 2>/dev/null); \
+		if [ "$$COUNT" != "$$BASE_COUNT" ]; then \
+			echo "  ❌ $$f: $$COUNT keys (expected $$BASE_COUNT)"; \
+			FAIL=1; \
+		else \
+			echo "  ✅ $$f: $$COUNT keys"; \
+		fi; \
+	done; \
+	if [ "$$FAIL" = "1" ]; then \
+		echo ""; \
+		echo "❌ i18n key 數量不一致，請同步所有語系檔案"; \
+		exit 1; \
+	else \
+		echo ""; \
+		echo "✅ 所有語系檔案 key 數量一致"; \
+	fi
+
+#---------------------------------------------------------------------------
+# Architecture Diagram（type: content 時隱藏）
 #---------------------------------------------------------------------------
 
 diagram:
@@ -157,6 +156,12 @@ diagram:
 	@awk '/```mermaid/{flag=1;next}/```/{flag=0}flag' docs/architecture.md > /tmp/arch.mmd 2>/dev/null || true
 	@mmdc -i /tmp/arch.mmd -o docs/architecture.png 2>/dev/null || \
 	echo "⚠️  請安裝 mermaid-cli: npm install -g @mermaid-js/mermaid-cli"
+
+else
+# --- content 類型的 stub targets（避免 make: *** No rule to make target 錯誤）---
+build clean deploy logs test test-filter coverage lint i18n-check diagram:
+	@echo "⚠️  此指令不適用於 content 類型專案（目前 type: $(ASP_TYPE)）"
+endif
 
 #---------------------------------------------------------------------------
 # ADR 管理
@@ -203,27 +208,14 @@ spec-new:
 
 spec-list:
 	@echo "📋 Spec 列表："; \
-	ls docs/specs/SPEC-*.md 2>/dev/null | while read f; do \
-		STATUS=$$(grep -m1 '| \*\*狀態\*\*' $$f 2>/dev/null | awk -F'|' '{gsub(/^ +| +$$/,"",$$3); print $$3}'); \
-		if [ -z "$$STATUS" ]; then \
-			DONE=$$(grep -c '\- \[x\]' $$f 2>/dev/null; true); \
-			TODO=$$(grep -c '\- \[ \]' $$f 2>/dev/null; true); \
-			DONE=$${DONE:-0}; TODO=$${TODO:-0}; \
-			TOTAL=$$((DONE + TODO)); \
-			if [ "$$TOTAL" -eq 0 ]; then STATUS="Draft"; \
-			elif [ "$$TODO" -eq 0 ]; then STATUS="Done"; \
-			else STATUS="$$DONE/$$TOTAL"; fi; \
-		fi; \
-		TITLE=$$(head -1 $$f | sed 's/# //'); \
-		echo "  $$TITLE [$$STATUS]"; \
-	done || echo "  (無 Spec)"
+	ls docs/specs/SPEC-*.md 2>/dev/null | while read f; do echo "  $$f"; done || echo "  (無 Spec)"
 
 #---------------------------------------------------------------------------
-# Postmortem 管理
+# Postmortem
 #---------------------------------------------------------------------------
 
 postmortem-new:
-	@if [ -z "$(TITLE)" ]; then read -p "事後分析標題: " TITLE; fi; \
+	@if [ -z "$(TITLE)" ]; then read -p "Postmortem 標題: " TITLE; fi; \
 	mkdir -p docs/postmortems; \
 	COUNT=$$(ls docs/postmortems/PM-*.md 2>/dev/null | wc -l | tr -d ' '); \
 	NUM=$$(printf "%03d" $$((COUNT + 1))); \
@@ -237,14 +229,12 @@ postmortem-new:
 	echo "✅ 已建立: $$FILE"
 
 postmortem-list:
-	@echo "📋 Postmortem 列表："; \
-	FILES=$$(ls docs/postmortems/PM-*.md 2>/dev/null); \
-	if [ -z "$$FILES" ]; then echo "  (無 Postmortem)"; else \
-	echo "$$FILES" | while read f; do \
-		SEVERITY=$$(grep -m1 "嚴重等級" $$f | grep -oE 'P[0-9]+' | head -1); \
-		TITLE=$$(head -1 $$f | sed 's/# \[PM-[0-9]*\]: //'); \
-		echo "  $$(basename $$f .md) [$$SEVERITY] $$TITLE"; \
-	done; fi
+	@echo "🔥 Postmortem 列表："; \
+	ls docs/postmortems/PM-*.md 2>/dev/null | while read f; do \
+		SEVERITY=$$(grep -m1 "嚴重等級" $$f | grep -o '`[^`]*`' | tr -d '`'); \
+		TITLE=$$(head -1 $$f | sed 's/# //'); \
+		echo "  $$TITLE [$$SEVERITY]"; \
+	done || echo "  (無 Postmortem)"
 
 #---------------------------------------------------------------------------
 # Multi-Agent
@@ -306,12 +296,13 @@ session-log:
 #---------------------------------------------------------------------------
 
 rag-index:
-	@echo "🔍 Building RAG index..."
+	@echo "🔍 Building RAG index (incremental)..."
 	@python3 .asp/scripts/rag/build_index.py \
 		--source docs/ \
 		--source .asp/profiles/ \
 		--output .rag/index \
-		--model all-MiniLM-L6-v2 2>/dev/null || \
+		--model all-MiniLM-L6-v2 \
+		--incremental 2>/dev/null || \
 	echo "⚠️  請先執行: pip install chromadb sentence-transformers"
 
 rag-search:
@@ -343,82 +334,231 @@ guardrail-reset:
 	@echo "🧹 護欄紀錄已清除"
 
 #---------------------------------------------------------------------------
-# Vendor / 外部專案管理
+# 專案健康審計
 #---------------------------------------------------------------------------
 
-C2_ENGINE_COMPOSE := infra/c2-engine/docker-compose.c2-engine.yml
-
-c2-engine-init:  ## 初始化 C2 引擎配置
-	@mkdir -p infra/c2-engine
-	@echo "C2 engine config directory ready."
-
-
-
-c2-engine-up:  ## 啟動 C2 引擎容器
-	@echo "Starting C2 engine..."
-	docker compose --profile c2-engine up -d c2-engine
-	@echo "C2 engine: http://localhost:58888"
-
-c2-engine-down:  ## 停止 C2 引擎容器
-	@echo "Stopping C2 engine..."
-	docker compose --profile c2-engine stop c2-engine
-
-c2-engine-logs:  ## 查看 C2 引擎日誌
-	docker compose --profile c2-engine logs -f --tail=100 c2-engine
-
-c2-engine-status:  ## 檢查 C2 引擎健康 + 版本
-	@echo "=== C2 Engine Status ==="
-	@docker compose --profile c2-engine ps c2-engine 2>/dev/null || echo "  Container: not running"
+audit-health:
 	@echo ""
-	@curl -sf http://localhost:58888/api/v2/health > /dev/null 2>&1 \
-		&& echo "  Health: OK" \
-		|| echo "  Health: unreachable"
+	@echo "🏥 專案健康審計（完整掃描）"
+	@echo "================================="
+	@echo ""
+	@BLOCKERS=0; WARNINGS=0; INFOS=0; \
+	\
+	echo "── 1. 測試覆蓋 ──"; \
+	SRC_COUNT=0; TEST_COUNT=0; \
+	for ext in go ts tsx js jsx py java rb; do \
+		SRC_COUNT=$$((SRC_COUNT + $$(find . -name "*.$$ext" ! -path '*/node_modules/*' ! -path '*/.git/*' ! -path '*/vendor/*' ! -name '*_test.*' ! -name '*.test.*' ! -name '*.spec.*' ! -name 'test_*' ! -path '*/test*/*' 2>/dev/null | wc -l))); \
+		TEST_COUNT=$$((TEST_COUNT + $$(find . \( -name "*_test.$$ext" -o -name "*.test.$$ext" -o -name "*.spec.$$ext" -o -name "test_*.$$ext" \) ! -path '*/node_modules/*' ! -path '*/.git/*' 2>/dev/null | wc -l))); \
+	done; \
+	if [ $$SRC_COUNT -gt 0 ]; then \
+		RATIO=$$(echo "scale=0; $$TEST_COUNT * 100 / $$SRC_COUNT" | bc 2>/dev/null || echo "?"); \
+		echo "  Source files: $$SRC_COUNT | Test files: $$TEST_COUNT | Coverage ratio: $${RATIO}%"; \
+		if [ $$TEST_COUNT -eq 0 ] && [ $$SRC_COUNT -gt 5 ]; then \
+			echo "  🔴 BLOCKER: 專案有 $$SRC_COUNT 個 source files 但無任何測試"; \
+			BLOCKERS=$$((BLOCKERS + 1)); \
+		elif [ "$$RATIO" != "?" ] && [ $$RATIO -lt 30 ]; then \
+			echo "  🟡 WARNING: 測試覆蓋率低於 30%"; \
+			WARNINGS=$$((WARNINGS + 1)); \
+		else \
+			echo "  ✅ OK"; \
+		fi; \
+	else echo "  ⚪ 無 source files"; fi; \
+	echo ""; \
+	\
+	echo "── 2. SPEC 覆蓋 ──"; \
+	SPEC_COUNT=$$(ls docs/specs/SPEC-*.md 2>/dev/null | wc -l | tr -d ' '); \
+	echo "  SPEC 數量: $$SPEC_COUNT"; \
+	if [ $$SPEC_COUNT -eq 0 ] && [ $$SRC_COUNT -gt 5 ]; then \
+		echo "  🟡 WARNING: 專案有代碼但無任何 SPEC"; \
+		WARNINGS=$$((WARNINGS + 1)); \
+	else echo "  ✅ OK"; fi; \
+	echo ""; \
+	\
+	echo "── 3. ADR 覆蓋 ──"; \
+	ADR_COUNT=$$(ls docs/adr/ADR-*.md 2>/dev/null | wc -l | tr -d ' '); \
+	DRAFT_WITH_CODE=0; \
+	for f in docs/adr/ADR-*.md; do \
+		[ -f "$$f" ] || continue; \
+		STATUS=$$(grep -m1 "狀態" "$$f" 2>/dev/null | grep -o '`[^`]*`' | tr -d '`'); \
+		if [ "$$STATUS" = "Draft" ]; then \
+			ADR_ID=$$(basename "$$f" .md | grep -o 'ADR-[0-9]*'); \
+			if grep -r "$$ADR_ID" --include="*.go" --include="*.ts" --include="*.py" --include="*.java" . >/dev/null 2>&1; then \
+				echo "  🔴 BLOCKER: $$ADR_ID 狀態為 Draft 但已有實作代碼（鐵則違反）"; \
+				BLOCKERS=$$((BLOCKERS + 1)); \
+				DRAFT_WITH_CODE=$$((DRAFT_WITH_CODE + 1)); \
+			fi; \
+		fi; \
+	done; \
+	echo "  ADR 數量: $$ADR_COUNT"; \
+	if [ $$DRAFT_WITH_CODE -eq 0 ]; then echo "  ✅ OK"; fi; \
+	echo ""; \
+	\
+	echo "── 4. 文件完整性 ──"; \
+	for doc in README.md CHANGELOG.md; do \
+		if [ ! -f "$$doc" ]; then \
+			echo "  🟡 WARNING: 缺少 $$doc"; \
+			WARNINGS=$$((WARNINGS + 1)); \
+		else echo "  ✅ $$doc exists"; fi; \
+	done; \
+	if [ ! -f "docs/architecture.md" ] && [ "$(ASP_TYPE)" != "content" ] && [ $$SRC_COUNT -gt 10 ]; then \
+		echo "  🟡 WARNING: 缺少 docs/architecture.md（系統專案建議有架構文件）"; \
+		WARNINGS=$$((WARNINGS + 1)); \
+	fi; \
+	echo ""; \
+	\
+	echo "── 5. 程式碼衛生 ──"; \
+	DEP_COUNT=$$(grep -r "DEPRECATED\|@deprecated" --include="*.go" --include="*.ts" --include="*.py" --include="*.java" --include="*.js" . 2>/dev/null | grep -v node_modules | grep -v .git | wc -l | tr -d ' '); \
+	TODO_NO_OWNER=$$(grep -rn "TODO[^(]" --include="*.go" --include="*.ts" --include="*.py" --include="*.java" --include="*.js" . 2>/dev/null | grep -v node_modules | grep -v .git | wc -l | tr -d ' '); \
+	FIXME_COUNT=$$(grep -rn "FIXME" --include="*.go" --include="*.ts" --include="*.py" --include="*.java" --include="*.js" . 2>/dev/null | grep -v node_modules | grep -v .git | wc -l | tr -d ' '); \
+	TECH_DEBT=$$(grep -rn "tech-debt:" . 2>/dev/null | grep -v node_modules | grep -v .git | grep -v .asp/profiles | wc -l | tr -d ' '); \
+	if [ $$DEP_COUNT -gt 0 ]; then echo "  🟡 WARNING: $$DEP_COUNT 個 DEPRECATED 標記待清理"; WARNINGS=$$((WARNINGS + 1)); fi; \
+	if [ $$TODO_NO_OWNER -gt 0 ]; then echo "  🟡 WARNING: $$TODO_NO_OWNER 個 TODO 無 owner"; WARNINGS=$$((WARNINGS + 1)); fi; \
+	if [ $$FIXME_COUNT -gt 0 ]; then echo "  🟢 INFO: $$FIXME_COUNT 個 FIXME"; INFOS=$$((INFOS + 1)); fi; \
+	if [ $$TECH_DEBT -gt 0 ]; then echo "  🟢 INFO: $$TECH_DEBT 個 tech-debt 標記"; INFOS=$$((INFOS + 1)); fi; \
+	if [ $$DEP_COUNT -eq 0 ] && [ $$TODO_NO_OWNER -eq 0 ]; then echo "  ✅ OK"; fi; \
+	echo ""; \
+	\
+	echo "── 6. 依賴健康 ──"; \
+	LOCK_OK=1; \
+	if [ -f "package.json" ] && [ ! -f "package-lock.json" ] && [ ! -f "yarn.lock" ] && [ ! -f "pnpm-lock.yaml" ]; then \
+		echo "  🟡 WARNING: 有 package.json 但無 lock file"; WARNINGS=$$((WARNINGS + 1)); LOCK_OK=0; \
+	fi; \
+	if [ -f "pyproject.toml" ] && [ ! -f "poetry.lock" ] && [ ! -f "requirements.txt" ]; then \
+		echo "  🟡 WARNING: 有 pyproject.toml 但無 lock file"; WARNINGS=$$((WARNINGS + 1)); LOCK_OK=0; \
+	fi; \
+	if [ -f "go.mod" ] && [ ! -f "go.sum" ]; then \
+		echo "  🟡 WARNING: 有 go.mod 但無 go.sum"; WARNINGS=$$((WARNINGS + 1)); LOCK_OK=0; \
+	fi; \
+	if [ $$LOCK_OK -eq 1 ]; then echo "  ✅ OK"; fi; \
+	echo ""; \
+	\
+	echo "── 7. 文件新鮮度 ──"; \
+	STALE=0; \
+	for spec in docs/specs/SPEC-*.md; do \
+		[ -f "$$spec" ] || continue; \
+		IMPL=$$(grep -A5 "追溯性\|Traceability" "$$spec" 2>/dev/null | grep -oE '[a-zA-Z0-9_/.-]+\.(go|ts|py|java|js)' | head -5); \
+		for impl_file in $$IMPL; do \
+			if [ -f "$$impl_file" ]; then \
+				SPEC_DATE=$$(git log -1 --format=%at -- "$$spec" 2>/dev/null || echo 0); \
+				IMPL_DATE=$$(git log -1 --format=%at -- "$$impl_file" 2>/dev/null || echo 0); \
+				if [ "$$IMPL_DATE" -gt "$$SPEC_DATE" ] 2>/dev/null; then \
+					SPEC_NAME=$$(basename "$$spec"); \
+					echo "  🟡 WARNING: $$SPEC_NAME 的實作檔案 $$impl_file 較新（doc-stale）"; \
+					WARNINGS=$$((WARNINGS + 1)); \
+					STALE=$$((STALE + 1)); \
+				fi; \
+			fi; \
+		done; \
+	done; \
+	if [ $$STALE -eq 0 ]; then \
+		SPEC_COUNT=$$(ls docs/specs/SPEC-*.md 2>/dev/null | wc -l | tr -d ' '); \
+		if [ "$$SPEC_COUNT" -gt 0 ]; then \
+			HAS_TRACE=$$(grep -rl "追溯性\|Traceability" docs/specs/SPEC-*.md 2>/dev/null | wc -l | tr -d ' '); \
+			if [ "$$HAS_TRACE" = "0" ]; then \
+				echo "  🟡 WARNING: $$SPEC_COUNT 個 SPEC 均無 Traceability 資料，無法驗證新鮮度"; \
+				WARNINGS=$$((WARNINGS + 1)); \
+			else \
+				echo "  ✅ OK"; \
+			fi; \
+		else \
+			echo "  ✅ OK（無 SPEC）"; \
+		fi; \
+	fi; \
+	echo ""; \
+	\
+	echo "=================================" ; \
+	echo "🏥 審計摘要：🔴 $$BLOCKERS blocker | 🟡 $$WARNINGS warning | 🟢 $$INFOS info"; \
+	if [ $$BLOCKERS -gt 0 ]; then \
+		echo "⚠️  有 blocker 需先修復才能開始主任務"; \
+	fi; \
+	echo ""
 
-c2-engine-backup:  ## 備份 C2 引擎 data volume
-	@mkdir -p backups
-	@BACKUP_FILE="backups/c2-engine-data-$$(date +%Y-%m-%d).tar.gz"; \
-	docker run --rm \
-		-v athena_c2-engine-data:/data:ro \
-		-v $$(pwd)/backups:/backup \
-		alpine tar czf /backup/$$(basename $$BACKUP_FILE) -C /data . && \
-	echo "Backup saved: $$BACKUP_FILE"
+audit-quick:
+	@echo "🏥 快速審計（僅 blocker）..."
+	@BLOCKERS=0; \
+	for f in docs/adr/ADR-*.md; do \
+		[ -f "$$f" ] || continue; \
+		STATUS=$$(grep -m1 "狀態" "$$f" 2>/dev/null | grep -o '`[^`]*`' | tr -d '`'); \
+		if [ "$$STATUS" = "Draft" ]; then \
+			ADR_ID=$$(basename "$$f" .md | grep -o 'ADR-[0-9]*'); \
+			if grep -r "$$ADR_ID" --include="*.go" --include="*.ts" --include="*.py" --include="*.java" . >/dev/null 2>&1; then \
+				echo "  🔴 BLOCKER: $$ADR_ID Draft 但有實作代碼"; \
+				BLOCKERS=$$((BLOCKERS + 1)); \
+			fi; \
+		fi; \
+	done; \
+	SRC_COUNT=$$(find . -name "*.go" -o -name "*.ts" -o -name "*.py" -o -name "*.java" | grep -v node_modules | grep -v .git | grep -v vendor | wc -l); \
+	TEST_COUNT=$$(find . \( -name "*_test.*" -o -name "*.test.*" -o -name "*.spec.*" -o -name "test_*" \) | grep -v node_modules | grep -v .git | wc -l); \
+	if [ $$TEST_COUNT -eq 0 ] && [ $$SRC_COUNT -gt 5 ]; then \
+		echo "  🔴 BLOCKER: $$SRC_COUNT source files, 0 test files"; \
+		BLOCKERS=$$((BLOCKERS + 1)); \
+	fi; \
+	if [ $$BLOCKERS -eq 0 ]; then echo "  ✅ 無 blocker"; fi
+
+doc-audit:
+	@echo "📄 文件新鮮度掃描..."
+	@STALE=0; \
+	for spec in docs/specs/SPEC-*.md; do \
+		[ -f "$$spec" ] || continue; \
+		IMPL=$$(grep -A5 "追溯性\|Traceability" "$$spec" 2>/dev/null | grep -oE '[a-zA-Z0-9_/.-]+\.(go|ts|py|java|js)' | head -5); \
+		for impl_file in $$IMPL; do \
+			if [ -f "$$impl_file" ]; then \
+				SPEC_DATE=$$(git log -1 --format=%at -- "$$spec" 2>/dev/null || echo 0); \
+				IMPL_DATE=$$(git log -1 --format=%at -- "$$impl_file" 2>/dev/null || echo 0); \
+				if [ "$$IMPL_DATE" -gt "$$SPEC_DATE" ] 2>/dev/null; then \
+					SPEC_NAME=$$(basename "$$spec"); \
+					echo "  🟡 STALE: $$SPEC_NAME ← $$impl_file (impl newer)"; \
+					STALE=$$((STALE + 1)); \
+				fi; \
+			fi; \
+		done; \
+	done; \
+	if [ $$STALE -eq 0 ]; then echo "  ✅ 所有 SPEC 文件同步（或無 Traceability 資料）"; fi
+
+tech-debt-list:
+	@echo "🔧 Tech Debt 彙總"
+	@echo "================================="
+	@echo ""
+	@echo "── tech-debt: 標記 ──"
+	@grep -rn "tech-debt:" --include="*.go" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --include="*.py" --include="*.java" --include="*.md" . 2>/dev/null | grep -v node_modules | grep -v .git | grep -v '.asp/profiles/' | grep -v '.asp/templates/' || echo "  (none)"
+	@echo ""
+	@echo "── TODO 無 owner ──"
+	@grep -rn "TODO[^(]" --include="*.go" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --include="*.py" --include="*.java" . 2>/dev/null | grep -v node_modules | grep -v .git || echo "  (none)"
+	@echo ""
+	@echo "── FIXME ──"
+	@grep -rn "FIXME" --include="*.go" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --include="*.py" --include="*.java" . 2>/dev/null | grep -v node_modules | grep -v .git || echo "  (none)"
+	@echo ""
+	@echo "── DEPRECATED ──"
+	@grep -rn "DEPRECATED\|@deprecated" --include="*.go" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --include="*.py" --include="*.java" . 2>/dev/null | grep -v node_modules | grep -v .git || echo "  (none)"
+	@echo ""
 
 #---------------------------------------------------------------------------
-# 模式切換
+# 任務協調
 #---------------------------------------------------------------------------
 
-real-mode:  ## .env 切為真實模式（MOCK_*=false）
-	@if [ ! -f .env ]; then cp .env.example .env; fi
-	@sed -i '/^MOCK_CALDERA=/d' .env
-	@grep -q '^MOCK_C2_ENGINE=' .env && sed -i 's/^MOCK_C2_ENGINE=.*/MOCK_C2_ENGINE=false/' .env || echo 'MOCK_C2_ENGINE=false' >> .env
-	@grep -q '^MOCK_LLM=' .env && sed -i 's/^MOCK_LLM=.*/MOCK_LLM=false/' .env || echo 'MOCK_LLM=false' >> .env
-	@grep -q '^MOCK_METASPLOIT=' .env && sed -i 's/^MOCK_METASPLOIT=.*/MOCK_METASPLOIT=false/' .env || echo 'MOCK_METASPLOIT=false' >> .env
-	@echo "✅ Real mode enabled. Restart Athena to apply."
-	@echo "   確認 C2 引擎運行中: make c2-engine-status"
-	@echo "   確認 LLM API key 已設定: grep API_KEY .env"
+task-start:
+	@if [ -z "$(DESC)" ]; then echo "使用方式：make task-start DESC=\"任務描述\""; exit 1; fi
+	@mkdir -p docs
+	@echo "{\"desc\":\"$(DESC)\",\"ts\":\"$$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"status\":\"started\"}" \
+		>> docs/task-log.jsonl
+	@echo "📌 任務已記錄：$(DESC)"
 
-mock-mode:  ## .env 切為 mock 模式（MOCK_*=true）
-	@if [ ! -f .env ]; then cp .env.example .env; fi
-	@sed -i '/^MOCK_CALDERA=/d' .env
-	@grep -q '^MOCK_C2_ENGINE=' .env && sed -i 's/^MOCK_C2_ENGINE=.*/MOCK_C2_ENGINE=true/' .env || echo 'MOCK_C2_ENGINE=true' >> .env
-	@grep -q '^MOCK_LLM=' .env && sed -i 's/^MOCK_LLM=.*/MOCK_LLM=true/' .env || echo 'MOCK_LLM=true' >> .env
-	@grep -q '^MOCK_METASPLOIT=' .env && sed -i 's/^MOCK_METASPLOIT=.*/MOCK_METASPLOIT=true/' .env || echo 'MOCK_METASPLOIT=true' >> .env
-	@echo "✅ Mock mode enabled. Restart Athena to apply."
+task-status:
+	@echo "📋 最近任務："
+	@if [ -f docs/task-log.jsonl ]; then \
+		tail -10 docs/task-log.jsonl | python3 -c "import sys,json; \
+[print(f'  [{l[\"status\"]}] {l[\"desc\"][:60]} @ {l[\"ts\"]}') \
+for l in (json.loads(x) for x in sys.stdin)]" 2>/dev/null || \
+		tail -10 docs/task-log.jsonl; \
+	else echo "  (無任務紀錄)"; fi
 
-#---------------------------------------------------------------------------
-# MCP Tool Scaffolding
-#---------------------------------------------------------------------------
-
-new-tool:  ## 建立新的 MCP tool server（用法: make new-tool NAME=my-scanner）— 自動 scaffold + 註冊
-	@if [ -z "$(NAME)" ]; then echo "Usage: make new-tool NAME=my-scanner"; exit 1; fi
-	@python3 scripts/scaffold_tool.py $(NAME)
-
-dev-tool:  ## 本地 stdio 模式啟動 MCP tool（用法: make dev-tool NAME=my-scanner）
-	@if [ -z "$(NAME)" ]; then echo "Usage: make dev-tool NAME=my-scanner"; exit 1; fi
-	@if [ ! -d "tools/$(NAME)" ]; then echo "❌ tools/$(NAME)/ not found"; exit 1; fi
-	cd tools/$(NAME) && pip install -q -e . 2>/dev/null; python -m server
-
-dev-tool-http:  ## 本地 HTTP 模式啟動 MCP tool（用法: make dev-tool-http NAME=my-scanner [PORT=8090]）
-	@if [ -z "$(NAME)" ]; then echo "Usage: make dev-tool-http NAME=my-scanner"; exit 1; fi
-	@if [ ! -d "tools/$(NAME)" ]; then echo "❌ tools/$(NAME)/ not found"; exit 1; fi
-	cd tools/$(NAME) && pip install -q -e . 2>/dev/null; python -m server --transport streamable-http --port $(or $(PORT),8090)
+task-report:
+	@echo "📊 任務統計："
+	@if [ -f docs/task-log.jsonl ]; then \
+		python3 -c "import json; \
+tasks=[json.loads(l) for l in open('docs/task-log.jsonl')]; \
+total=len(tasks); \
+started=sum(1 for t in tasks if t.get('status')=='started'); \
+completed=sum(1 for t in tasks if t.get('status')=='completed'); \
+print(f'  Total: {total} | Started: {started} | Completed: {completed}')" 2>/dev/null; \
+	else echo "  (無任務紀錄)"; fi

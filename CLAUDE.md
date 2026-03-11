@@ -8,9 +8,11 @@
 
 1. 讀取 `.ai_profile`，依欄位載入對應 profile
 2. **Profile 依賴與衝突驗證**：每個 profile 頂部有 `<!-- requires: ... -->` 和 `<!-- conflicts: ... -->` 註解。載入時確認依賴已載入、衝突 Profile 未同時啟用。缺少依賴 → WARN 並建議補充。衝突 → WARN 並說明哪兩個 Profile 互斥
-3. **若 `autonomous: enabled`，或 `workflow: vibe-coding` + `hitl: minimal`**：額外載入 `autonomous_dev.md`（同時確保 `vibe_coding.md` 已載入，未設定時自動補載）。若同時 `mode: multi-agent`，autonomous 規則分層套用（見 `autonomous_dev.md`「Multi-Agent 整合」）
-4. **RAG 已啟用時**：回答任何專案架構/規格問題前，先執行 `make rag-search Q="..."`
-5. 無 `.ai_profile` 時：只套用本檔案鐵則，詢問使用者專案類型
+3. **自動載入規則**：`design: enabled` 時自動載入 `frontend_quality.md`（不需額外設定）
+4. **若 `autonomous: enabled`，或 `workflow: vibe-coding` + `hitl: minimal`**：額外載入 `autonomous_dev.md`（同時確保 `vibe_coding.md` 已載入，未設定時自動補載）。若同時 `mode: multi-agent`，autonomous 規則分層套用（見 `autonomous_dev.md`「Multi-Agent 整合」）
+4a. **若 `orchestrator: enabled`，或 `autonomous: enabled`**：額外載入 `task_orchestrator.md`。首次介入專案時自動執行專案健康審計（`project_health_audit()`），偵測缺失的測試、SPEC、ADR、文件並強制補齊
+5. **RAG 已啟用時**：回答任何專案架構/規格問題前，先執行 `make rag-search Q="..."`
+6. 無 `.ai_profile` 時：只套用本檔案鐵則，詢問使用者專案類型
 
 ```yaml
 # .ai_profile 完整欄位參考
@@ -21,7 +23,9 @@ rag:          enabled | disabled               # 預設 disabled
 guardrail:    enabled | disabled               # 預設 disabled
 hitl:         minimal | standard | strict      # 預設 standard
 autonomous:   enabled | disabled               # 預設 disabled（AI 全自動開發模式）
+orchestrator: enabled | disabled               # 預設 disabled（autonomous: enabled 時自動載入）
 design:       enabled | disabled               # 預設 disabled
+frontend_quality: enabled | disabled           # 預設 disabled（design: enabled 時自動載入）
 coding_style: enabled | disabled               # 預設 disabled
 openapi:      enabled | disabled               # 預設 disabled
 name:         your-project-name
@@ -42,7 +46,10 @@ name:         your-project-name
 | `design: enabled` | + `.asp/profiles/design_dev.md` |
 | `coding_style: enabled` | + `.asp/profiles/coding_style.md` |
 | `openapi: enabled` | + `.asp/profiles/openapi.md` |
-| `autonomous: enabled` | + `.asp/profiles/autonomous_dev.md` |
+| `autonomous: enabled` | + `.asp/profiles/autonomous_dev.md` + `.asp/profiles/task_orchestrator.md`（自動） |
+| `orchestrator: enabled` | + `.asp/profiles/task_orchestrator.md` |
+| `frontend_quality: enabled` | + `.asp/profiles/frontend_quality.md` |
+| `design: enabled`（自動） | + `.asp/profiles/frontend_quality.md` |
 | `workflow: vibe-coding` + `hitl: minimal` | + `.asp/profiles/autonomous_dev.md` |
 
 ---
@@ -90,12 +97,29 @@ name:         your-project-name
 | 重新部署 | `make deploy` |
 | 執行測試 | `make test` |
 | 局部測試 | `make test-filter FILTER=xxx` |
+| 測試覆蓋率 | `make coverage` |
+| 程式碼檢查 | `make lint` |
+| i18n 檢查 | `make i18n-check` |
+| 架構圖 | `make diagram` |
 | 新增 ADR | `make adr-new TITLE="..."` |
+| ADR 列表 | `make adr-list` |
 | 新增規格書 | `make spec-new TITLE="..."` |
+| SPEC 列表 | `make spec-list` |
 | 新增事後分析 | `make postmortem-new TITLE="..."` |
-| 查詢知識庫 | `make rag-search Q="..."` |
 | Agent 完成回報 | `make agent-done TASK=xxx STATUS=success` |
+| Agent 狀態 | `make agent-status` / `make agent-locks` |
+| Agent 鎖定管理 | `make agent-unlock FILE=...` / `make agent-lock-gc` |
 | 儲存 Session | `make session-checkpoint NEXT="..."` |
+| 查詢知識庫 | `make rag-search Q="..."` |
+| RAG 統計 | `make rag-stats` / `make rag-index` / `make rag-rebuild` |
+| 護欄紀錄 | `make guardrail-log` / `make guardrail-reset` |
+| 專案健康審計 | `make audit-health`（完整 7 維度） |
+| 快速審計 | `make audit-quick`（僅 blocker） |
+| 文件新鮮度 | `make doc-audit` |
+| Tech Debt 彙總 | `make tech-debt-list` |
+| 記錄任務 | `make task-start DESC="..."` |
+| 任務狀態 | `make task-status` |
+| 任務統計 | `make task-report` |
 
 > 以上為常用指令，完整列表請執行 `make help`
 

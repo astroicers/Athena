@@ -103,6 +103,17 @@ async def health_check(db: asyncpg.Connection = Depends(get_db)):
 
         services["mcp_servers"] = mcp_list
 
+    # Mock mode indicators for frontend awareness
+    mock_modes = {}
+    if settings.MOCK_LLM:
+        mock_modes["llm"] = True
+    if settings.MOCK_C2_ENGINE:
+        mock_modes["c2"] = True
+    if settings.MOCK_METASPLOIT:
+        mock_modes["metasploit"] = True
+    if mock_modes:
+        services["mock_mode"] = mock_modes
+
     return HealthStatus(
         status="ok",
         version="0.1.0",

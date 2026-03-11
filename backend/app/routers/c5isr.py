@@ -10,6 +10,7 @@
 
 """C5ISR domain status endpoints."""
 
+import json
 from datetime import datetime, timezone
 
 import asyncpg
@@ -20,6 +21,7 @@ from app.models import C5ISRStatus
 from app.models.api_schemas import C5ISRUpdate
 from app.models.enums import C5ISRDomain
 from app.routers._deps import ensure_operation
+from app.services.c5isr_mapper import DomainReport
 
 router = APIRouter()
 
@@ -107,3 +109,49 @@ async def update_c5isr(
         operation_id, domain,
     )
     return _row_to_c5isr(row)
+
+
+@router.get("/operations/{operation_id}/c5isr/{domain}/report")
+
+
+async def get_c5isr_report(
+    operation_id: str,
+    domain: str,
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Return full structured DomainReport for a C5ISR domain.
+
+    The detail column stores the complete DomainReport JSON (metrics,
+    asset_roster, risk_vectors, tactical_assessment, recommended_actions,
+    cross_domain_impacts) produced by C5ISRMapper.
+    """
+    await ensure_operation(db, operation_id)
+
+    valid_domains = {d.value for d in C5ISRDomain}
+    if domain not in valid_domains:
+        raise HTTPException(status_code=400, detail="Invalid domain")
+
+    row = await db.fetchrow(
+        "SELECT detail, health_pct, status FROM c5isr_statuses "
+        "WHERE operation_id = $1 AND domain = $2",
+        operation_id, domain,
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="C5ISR status not found for domain")
+
+    detail_raw = row["detail"] or ""
+    try:
+        report = DomainReport.from_json(detail_raw)
+    except Exception:
+        report = DomainReport(
+            executive_summary=detail_raw,
+            health_pct=float(row["health_pct"] or 0),
+            status=row["status"] or "critical",
+        )
+
+    from dataclasses import asdict
+    return {
+        "domain": domain,
+        "operation_id": operation_id,
+        **asdict(report),
+    }

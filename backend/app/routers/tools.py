@@ -205,6 +205,66 @@ async def delete_tool(
     )
 
 
+@router.post("/{tool_id}/execute")
+
+
+async def execute_tool(
+    tool_id: str,
+    request: Request,
+    body: dict,
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Manually execute an MCP tool outside the OODA loop.
+
+    Looks up the tool in the registry, resolves the MCP server/tool names
+    from config_json, then delegates to MCPClientManager.call_tool().
+    """
+    row = await db.fetchrow(
+        "SELECT tool_id, name, enabled, config_json FROM tool_registry WHERE tool_id = $1",
+        tool_id,
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Tool not found")
+
+    if not row["enabled"]:
+        raise HTTPException(status_code=409, detail="Tool is disabled")
+
+    config = json.loads(row["config_json"] or "{}")
+    mcp_server = config.get("mcp_server")
+    mcp_tool = config.get("mcp_tool")
+
+    if not mcp_server or not mcp_tool:
+        raise HTTPException(
+            status_code=400,
+            detail="Tool is not backed by an MCP server (missing mcp_server/mcp_tool in config)",
+        )
+
+    if not hasattr(request.app.state, "mcp_manager") or request.app.state.mcp_manager is None:
+        raise HTTPException(status_code=503, detail="MCP subsystem is not available")
+
+    manager = request.app.state.mcp_manager
+    arguments = body.get("arguments", {})
+
+    try:
+        result = await manager.call_tool(mcp_server, mcp_tool, arguments)
+    except ConnectionError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except TimeoutError:
+        raise HTTPException(
+            status_code=504, detail=f"Tool execution timed out ({mcp_tool}@{mcp_server})"
+        )
+    except Exception:
+        logger.exception("Unexpected error executing tool %s on %s", mcp_tool, mcp_server)
+        raise HTTPException(status_code=500, detail="Tool execution failed")
+
+    return {
+        "tool_id": tool_id,
+        "name": row["name"],
+        "mcp_server": mcp_server,
+        "result": result,
+    }
+
+
 @router.post("/{tool_id}/check")
 
 

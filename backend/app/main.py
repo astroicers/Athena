@@ -18,11 +18,29 @@ Lifespan:
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import settings
+
+
+class MockModeMiddleware(BaseHTTPMiddleware):
+    """Inject X-Athena-Mock header when any mock mode is active."""
+
+    async def dispatch(self, request: Request, call_next):
+        response: Response = await call_next(request)
+        mock_flags = []
+        if settings.MOCK_LLM:
+            mock_flags.append("llm")
+        if settings.MOCK_C2_ENGINE:
+            mock_flags.append("c2")
+        if settings.MOCK_METASPLOIT:
+            mock_flags.append("metasploit")
+        if mock_flags:
+            response.headers["X-Athena-Mock"] = ",".join(mock_flags)
+        return response
 from app.database import db_manager, get_db, init_db
 from app.services.ooda_scheduler import start_scheduler, stop_scheduler
 from app.routers import (
@@ -107,7 +125,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
     allow_credentials=True,
+    expose_headers=["X-Athena-Mock"],
 )
+
+# ── Mock Mode indicator ──────────────────────────────────────────────────
+app.add_middleware(MockModeMiddleware)
 
 # ── Routers (all prefixed with /api) ─────────────────────────────────────
 app.include_router(health.router, prefix="/api", tags=["Health"])

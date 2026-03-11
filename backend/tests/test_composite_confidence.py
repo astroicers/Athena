@@ -169,11 +169,13 @@ async def test_tc_a1_all_four_sources(tmp_db: asyncpg.Connection):
     assert breakdown["historical"] == pytest.approx(0.60)
     assert breakdown["graph"] == pytest.approx(0.70)
     assert breakdown["target_state"] == pytest.approx(0.65)
+    assert breakdown["opsec_factor"] == pytest.approx(1.0)  # no OPSEC events
     assert breakdown["kc_penalty"] == pytest.approx(0.0)
 
-    expected = 0.30 * 0.80 + 0.30 * 0.60 + 0.25 * 0.70 + 0.15 * 0.65
+    # SPEC-048: 5-source weights = 0.25 LLM + 0.25 hist + 0.20 graph + 0.15 target + 0.15 opsec
+    expected = 0.25 * 0.80 + 0.25 * 0.60 + 0.20 * 0.70 + 0.15 * 0.65 + 0.15 * 1.0
     assert composite == pytest.approx(expected)
-    assert composite == pytest.approx(0.6925)
+    assert composite == pytest.approx(0.7375)
 
 
 # ---------------------------------------------------------------------------
@@ -310,10 +312,10 @@ async def test_tc_a5_target_id_none(tmp_db: asyncpg.Connection):
     assert breakdown["graph"] == pytest.approx(0.5)
     assert breakdown["target_state"] == pytest.approx(0.5)
 
-    # 0.30*0.80 + 0.30*0.5 + 0.25*0.5 + 0.15*0.5 = 0.24 + 0.15 + 0.125 + 0.075 = 0.59
-    expected = 0.30 * 0.80 + 0.30 * 0.5 + 0.25 * 0.5 + 0.15 * 0.5
+    # SPEC-048: 0.25*0.80 + 0.25*0.5 + 0.20*0.5 + 0.15*0.5 + 0.15*1.0 = 0.65
+    expected = 0.25 * 0.80 + 0.25 * 0.5 + 0.20 * 0.5 + 0.15 * 0.5 + 0.15 * 1.0
     assert composite == pytest.approx(expected)
-    assert composite == pytest.approx(0.59)
+    assert composite == pytest.approx(0.65)
 
 
 # ---------------------------------------------------------------------------

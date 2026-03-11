@@ -259,6 +259,21 @@ async def _run_scan_background(
                 },
             )
 
+            # R1: Auto-trigger OODA cycle after recon completion
+            try:
+                from app.services.ooda_trigger import auto_trigger_ooda
+                asyncio.create_task(
+                    auto_trigger_ooda(
+                        op_id,
+                        reason=f"recon.completed:scan-{scan_id[:8]}",
+                        delay_sec=5,
+                    )
+                )
+            except Exception as ooda_exc:
+                logger.warning(
+                    "Failed to auto-trigger OODA after recon: %s", ooda_exc,
+                )
+
         except Exception as exc:
             logger.exception("Background recon scan %s failed: %s", scan_id, exc)
             try:
@@ -603,6 +618,40 @@ async def _run_osint_background(op_id: str, domain: str, max_subdomains: int) ->
                 "domain": domain,
                 "subdomains_found": result.subdomains_found,
             })
+
+            # R1: Auto-trigger recon on newly discovered targets, then OODA
+            try:
+                new_targets = await db.fetch(
+                    "SELECT id, ip_address FROM targets "
+                    "WHERE operation_id = $1 AND is_active = TRUE "
+                    "ORDER BY created_at DESC LIMIT 5",
+                    op_id,
+                )
+                recon = ReconEngine()
+                for t in new_targets:
+                    if not t["ip_address"]:
+                        continue
+                    try:
+                        await recon.scan(db, op_id, t["id"])
+                    except Exception as recon_exc:
+                        logger.warning(
+                            "Auto-recon after OSINT failed for target %s: %s",
+                            t["id"], recon_exc,
+                        )
+                # Trigger OODA after recon chain completes
+                from app.services.ooda_trigger import auto_trigger_ooda
+                asyncio.create_task(
+                    auto_trigger_ooda(
+                        op_id,
+                        reason=f"osint.completed:{domain}",
+                        delay_sec=5,
+                    )
+                )
+            except Exception as chain_exc:
+                logger.warning(
+                    "OSINT->Recon->OODA chain failed: %s", chain_exc,
+                )
+
         except Exception as exc:
             logger.exception(
                 "Background OSINT discover for domain %s failed: %s", domain, exc

@@ -23,6 +23,7 @@ class ConstraintLimit(BaseModel):
     health_pct: float
     rule: str
     effect: dict = Field(default_factory=dict)
+    suggested_action: str = ""  # What the operator should do to resolve this
 
 
 class OperationalConstraints(BaseModel):

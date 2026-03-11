@@ -46,6 +46,7 @@ def _react_command_critical(c: OperationalConstraints, health: float) -> None:
         domain="command", health_pct=health,
         rule="orient_single_option",
         effect={"orient_max_options": 1, "medium_risk_auto_approve": True},
+        suggested_action="Review and accept/reject pending recommendations to restore decision throughput",
     ))
 
 
@@ -62,6 +63,7 @@ def _react_control_critical(c: OperationalConstraints, health: float) -> None:
         domain="control", health_pct=health,
         rule="forced_recovery_mode",
         effect={"forced_mode": "recovery", "block_lost_targets": True},
+        suggested_action="Re-establish access to lost targets via persistence or new initial access",
     ))
 
 
@@ -78,6 +80,7 @@ def _react_comms_critical(c: OperationalConstraints, health: float) -> None:
         domain="comms", health_pct=health,
         rule="single_execution_mode",
         effect={"max_parallel": 1},
+        suggested_action="Check MCP server connectivity and restart failed engine containers",
     ))
 
 
@@ -94,6 +97,7 @@ def _react_computers_critical(c: OperationalConstraints, health: float) -> None:
         domain="computers", health_pct=health,
         rule="recon_first_mode",
         effect={"forced_mode": "recon_first"},
+        suggested_action="Run recon on new targets or try alternative attack vectors on failed targets",
     ))
 
 
@@ -113,6 +117,7 @@ def _react_cyber_critical(c: OperationalConstraints, health: float) -> None:
         domain="cyber", health_pct=health,
         rule="high_confidence_only",
         effect={"min_confidence": 0.75},
+        suggested_action="Focus on high-confidence techniques; review failed executions for root cause",
     ))
 
 
@@ -128,6 +133,7 @@ def _react_isr_critical(c: OperationalConstraints, health: float) -> None:
         domain="isr", health_pct=health,
         rule="block_low_intel_targets",
         effect={"min_facts_per_target": 3},
+        suggested_action="Run recon/OSINT on blocked targets to collect at least 3 intelligence facts",
     ))
 
 

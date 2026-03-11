@@ -764,9 +764,18 @@ class C5ISRMapper:
             C5ISRDomain.ISR: await self._build_isr_report(db, operation_id),
         }
 
+        # SPEC-048: Apply OPSEC cross-domain penalty to all C5ISR health values
+        from app.services.opsec_monitor import compute_opsec_penalty, compute_status
+
+        try:
+            opsec_st = await compute_status(db, operation_id)
+            opsec_multiplier = compute_opsec_penalty(opsec_st.detection_risk)
+        except Exception:
+            opsec_multiplier = 1.0  # graceful degradation
+
         now = datetime.now(timezone.utc)
         for domain, report in reports.items():
-            health = report.health_pct
+            health = report.health_pct * opsec_multiplier
             status = self._health_to_status(health)
 
             # Use first metric for backward-compatible numerator/denominator

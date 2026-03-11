@@ -88,13 +88,13 @@ async def test_primary_success_no_fallback():
 
 @pytest.mark.asyncio
 async def test_fallback_success():
-    """mcp_ssh fails (non-terminal) -> metasploit succeeds."""
+    """mcp_ssh fails (non-terminal) -> c2 succeeds (same-category: credential/access-based)."""
     router = _make_router()
 
     async def side_effect(db, tech, tgt, engine, op, ooda=None):
         if engine == "mcp_ssh":
             return _failed_result("mcp_ssh", "connection timed out")
-        return _success_result("metasploit")
+        return _success_result("c2")
 
     with patch.object(router, "_execute_single", new_callable=AsyncMock,
                       side_effect=side_effect):
@@ -104,7 +104,7 @@ async def test_fallback_success():
         )
 
     assert result["status"] == "success"
-    assert result["final_engine"] == "metasploit"
+    assert result["final_engine"] == "c2"
     assert len(result["fallback_history"]) == 1
     assert result["fallback_history"][0]["engine"] == "mcp_ssh"
     assert result["fallback_history"][0]["error"] == "connection timed out"
@@ -140,7 +140,7 @@ async def test_terminal_error_no_fallback():
 
 @pytest.mark.asyncio
 async def test_all_engines_fail():
-    """mcp_ssh -> metasploit -> c2 all fail."""
+    """mcp_ssh -> c2 all fail (same-category only; metasploit not attempted)."""
     router = _make_router()
     call_count = 0
 
@@ -157,13 +157,12 @@ async def test_all_engines_fail():
         )
 
     assert result["status"] == "failed"
-    # Primary (mcp_ssh) + 2 fallbacks (metasploit, c2) = 3 calls
-    assert call_count == 3
-    # fallback_history has all three failures (primary + both fallbacks)
-    assert len(result["fallback_history"]) == 3
+    # Primary (mcp_ssh) + 1 fallback (c2) = 2 calls
+    assert call_count == 2
+    # fallback_history has both failures (primary + fallback)
+    assert len(result["fallback_history"]) == 2
     assert result["fallback_history"][0]["engine"] == "mcp_ssh"
-    assert result["fallback_history"][1]["engine"] == "metasploit"
-    assert result["fallback_history"][2]["engine"] == "c2"
+    assert result["fallback_history"][1]["engine"] == "c2"
     assert result["final_engine"] == "c2"
 
 
@@ -173,28 +172,28 @@ async def test_all_engines_fail():
 
 @pytest.mark.asyncio
 async def test_fallback_terminal_error_stops_chain():
-    """mcp_ssh fails (non-terminal) -> metasploit returns terminal error -> c2 not tried."""
+    """c2 fails (non-terminal) -> mcp_ssh returns terminal error -> chain stops."""
     router = _make_router()
     engines_tried = []
 
     async def side_effect(db, tech, tgt, engine, op, ooda=None):
         engines_tried.append(engine)
+        if engine == "c2":
+            return _failed_result("c2", "connection timed out")
         if engine == "mcp_ssh":
-            return _failed_result("mcp_ssh", "connection timed out")
-        if engine == "metasploit":
-            return _failed_result("metasploit", "platform mismatch: Windows required")
+            return _failed_result("mcp_ssh", "platform mismatch: Windows required")
         return _success_result(engine)
 
     with patch.object(router, "_execute_single", new_callable=AsyncMock,
                       side_effect=side_effect):
         db = AsyncMock()
         result = await router.execute(
-            db, "T1059.004", "tgt-1", "mcp_ssh", "op-1"
+            db, "T1059.004", "tgt-1", "c2", "op-1"
         )
 
-    assert "c2" not in engines_tried
-    assert len(result["fallback_history"]) == 1  # only mcp_ssh failure recorded
-    assert result["final_engine"] == "metasploit"
+    assert engines_tried == ["c2", "mcp_ssh"]
+    assert len(result["fallback_history"]) == 1  # only c2 failure recorded
+    assert result["final_engine"] == "mcp_ssh"
 
 
 # ---------------------------------------------------------------------------
@@ -209,7 +208,7 @@ async def test_fallback_websocket_event():
     async def side_effect(db, tech, tgt, engine, op, ooda=None):
         if engine == "mcp_ssh":
             return _failed_result("mcp_ssh", "connection timed out")
-        return _success_result("metasploit")
+        return _success_result("c2")
 
     with patch.object(router, "_execute_single", new_callable=AsyncMock,
                       side_effect=side_effect):
@@ -226,10 +225,39 @@ async def test_fallback_websocket_event():
 
     payload = call_args[0][2]
     assert payload["failed_engine"] == "mcp_ssh"
-    assert payload["fallback_engine"] == "metasploit"
+    assert payload["fallback_engine"] == "c2"
     assert payload["failed_error"] == "connection timed out"
     assert payload["attempt"] == 1
-    assert payload["max_attempts"] == 2  # mcp_ssh has 2 fallbacks
+    assert payload["max_attempts"] == 1  # mcp_ssh has 1 same-category fallback
+
+
+# ---------------------------------------------------------------------------
+# TC-B6b: Metasploit has no same-category fallback
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_metasploit_no_fallback():
+    """metasploit (exploit-based) fails -> no fallback attempted."""
+    router = _make_router()
+    call_count = 0
+
+    async def side_effect(db, tech, tgt, engine, op, ooda=None):
+        nonlocal call_count
+        call_count += 1
+        return _failed_result(engine, f"error from {engine}")
+
+    with patch.object(router, "_execute_single", new_callable=AsyncMock,
+                      side_effect=side_effect):
+        db = AsyncMock()
+        result = await router.execute(
+            db, "T1059.004", "tgt-1", "metasploit", "op-1"
+        )
+
+    assert result["status"] == "failed"
+    assert call_count == 1  # only primary, no fallback
+    assert len(result["fallback_history"]) == 1
+    assert result["fallback_history"][0]["engine"] == "metasploit"
+    assert result["final_engine"] == "metasploit"
 
 
 # ---------------------------------------------------------------------------

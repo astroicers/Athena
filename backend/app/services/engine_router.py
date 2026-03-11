@@ -58,9 +58,12 @@ def _is_auth_failure(error: str | None) -> bool:
 
 # -- Engine fallback chain (SPEC-040) --
 
+# Fallback only to engines of the same technical category:
+#   credential/access-based: mcp_ssh <-> c2  (both require existing access)
+#   exploit-based: metasploit  (standalone; no same-category fallback)
 _FALLBACK_CHAIN: dict[str, list[str]] = {
-    "mcp_ssh":    ["metasploit", "c2"],
-    "metasploit": ["mcp_ssh", "c2"],
+    "mcp_ssh":    ["c2"],
+    "metasploit": [],
     "c2":         ["mcp_ssh"],
 }
 
@@ -164,7 +167,20 @@ class EngineRouter:
                 "error": result.get("error"),
             })
 
-        # All engines failed
+        # All engines failed — log why no further fallback is possible
+        tried = [h["engine"] for h in fallback_history]
+        if fallback_engines:
+            logger.warning(
+                "All same-category fallback engines exhausted for technique %s "
+                "(tried: %s). No cross-category fallback attempted.",
+                technique_id, " -> ".join(tried),
+            )
+        else:
+            logger.warning(
+                "Engine '%s' has no same-category fallback for technique %s. "
+                "Execution failed without fallback attempt.",
+                engine, technique_id,
+            )
         result["fallback_history"] = fallback_history
         result["final_engine"] = result.get(
             "engine",

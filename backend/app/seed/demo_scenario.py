@@ -273,14 +273,29 @@ async def seed() -> None:
              "Credential Access", "TA0006", None, "exploit", "medium", None,
              '["linux","windows"]'),
         ]
+        # Map technique noise_level by risk_level + kill chain stage
+        _NOISE_MAP = {
+            ("recon", "low"): "low",
+            ("recon", "medium"): "low",
+            ("exploit", "low"): "medium",
+            ("exploit", "medium"): "medium",
+            ("exploit", "high"): "high",
+            ("c2", "medium"): "medium",
+            ("c2", "high"): "high",
+        }
         for t in techniques:
+            # t has 10 elements: id, mitre_id, name, tactic, tactic_id, desc,
+            # kill_chain_stage, risk_level, c2_ability_id, platforms
+            kc_stage = t[6] or "exploit"
+            risk = t[7] or "medium"
+            noise = _NOISE_MAP.get((kc_stage, risk), "medium")
             await db.execute(
                 "INSERT INTO techniques "
                 "(id, mitre_id, name, tactic, tactic_id, description, "
-                "kill_chain_stage, risk_level, c2_ability_id, platforms) "
-                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) "
+                "kill_chain_stage, risk_level, c2_ability_id, platforms, noise_level) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) "
                 "ON CONFLICT DO NOTHING",
-                *t,
+                *t, noise,
             )
 
         # ==================================================================
@@ -386,6 +401,70 @@ async def seed() -> None:
                 "ON CONFLICT DO NOTHING",
                 *c,
             )
+
+        # ==================================================================
+        # 13. facts (intelligence items for demo richness)
+        # ==================================================================
+        facts = [
+            ("fact-0001", "host.os", "Windows Server 2019", "host",
+             TECH_T1046, TGT_DC01, OP_PHANTOM, 1, TS_EXEC_START),
+            ("fact-0002", "service.smb", "445/tcp open", "service",
+             TECH_T1046, TGT_DC01, OP_PHANTOM, 1, TS_EXEC_START),
+            ("fact-0003", "service.ssh", "22/tcp open", "service",
+             TECH_T1046, TGT_WSPC01, OP_PHANTOM, 1, TS_EXEC_START),
+            ("fact-0004", "credential.ntlm_hash", "Administrator:aad3b435...", "credential",
+             TECH_T1003, TGT_DC01, OP_PHANTOM, 1, TS_EXEC_START),
+            ("fact-0005", "host.os", "Ubuntu 20.04", "host",
+             TECH_T1046, TGT_DB01, OP_PHANTOM, 1, TS_BEACON),
+            ("fact-0006", "service.mysql", "3306/tcp open MySQL 5.7", "service",
+             TECH_T1046, TGT_DB01, OP_PHANTOM, 1, TS_BEACON),
+            ("fact-0007", "network.subnet", "10.0.1.0/24", "network",
+             TECH_T1046, TGT_DC01, OP_PHANTOM, 1, TS_EXEC_START),
+            ("fact-0008", "host.os", "Windows 10 Pro", "host",
+             TECH_T1046, TGT_WSPC02, OP_PHANTOM, 1, TS_EXEC_START),
+        ]
+        for f in facts:
+            await db.execute(
+                "INSERT INTO facts "
+                "(id, trait, value, category, source_technique_id, "
+                "source_target_id, operation_id, score, collected_at) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) "
+                "ON CONFLICT DO NOTHING",
+                *f,
+            )
+
+        # ==================================================================
+        # 14. ooda_iterations (2 demo cycles)
+        # ==================================================================
+        ooda_iters = [
+            ("ooda-0001", OP_PHANTOM, 1,
+             "Collected 5 facts from initial recon",
+             "Recommend T1003 credential dumping on DC-01 (confidence: 0.82)",
+             "Auto-approved: risk=medium within threshold",
+             "Executed T1003 on DC-01: 4 NTLM hashes extracted",
+             TS_EXEC_START),
+            ("ooda-0002", OP_PHANTOM, 2,
+             "Collected 3 new facts including credential hashes",
+             "Recommend T1021.002 lateral movement to WS-PC01 (confidence: 0.75)",
+             "Approved by commander: risk=high requires confirmation",
+             "Executed T1021.002 on WS-PC01: lateral movement successful",
+             TS_BEACON),
+        ]
+        for o in ooda_iters:
+            await db.execute(
+                "INSERT INTO ooda_iterations "
+                "(id, operation_id, iteration_number, observe_summary, "
+                "orient_summary, decide_summary, act_summary, created_at) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8) "
+                "ON CONFLICT DO NOTHING",
+                *o,
+            )
+
+        # Update operation ooda_iteration_count
+        await db.execute(
+            "UPDATE operations SET ooda_iteration_count = 2 WHERE id = $1",
+            OP_PHANTOM,
+        )
 
     print("Seed data inserted successfully for OP-2024-017 PHANTOM-EYE.")
 

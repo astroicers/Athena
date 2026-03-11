@@ -104,6 +104,54 @@ class OODAController:
         await self._write_log(db, operation_id, "info",
             f"OODA #{next_num} Observe: collected {len(new_facts)} new facts")
 
+        # -- 1.1. AUTO-RECON for sparse-intel targets --
+        try:
+            sparse_targets = await db.fetch(
+                """SELECT t.id, t.hostname, t.ip_address
+                   FROM targets t
+                   LEFT JOIN facts f ON f.source_target_id = t.id
+                       AND f.operation_id = $1
+                   WHERE t.operation_id = $1 AND t.is_active = TRUE
+                   GROUP BY t.id, t.hostname, t.ip_address
+                   HAVING COUNT(f.id) < 3""",
+                operation_id,
+            )
+            if sparse_targets:
+                from app.services.recon_engine import ReconEngine
+                recon = ReconEngine(self._ws)
+                for st in sparse_targets[:3]:  # limit to 3 targets per cycle
+                    target_addr = st["ip_address"] or st["hostname"]
+                    if not target_addr:
+                        continue
+                    try:
+                        recon_result = await recon.scan(
+                            db, operation_id, st["id"],
+                        )
+                        logger.info(
+                            "OODA[%s] Auto-recon on %s: %d services found",
+                            ooda_id[:8], target_addr,
+                            len(recon_result.services) if recon_result else 0,
+                        )
+                    except Exception as recon_exc:
+                        logger.warning(
+                            "OODA[%s] Auto-recon failed for %s: %s",
+                            ooda_id[:8], target_addr, recon_exc,
+                        )
+                # Re-collect facts after auto-recon to include new findings
+                new_facts_2 = await self._fact_collector.collect(db, operation_id)
+                if new_facts_2:
+                    observe_summary = await self._fact_collector.summarize(
+                        db, operation_id,
+                    )
+                    await db.execute(
+                        "UPDATE ooda_iterations SET observe_summary = $1 WHERE id = $2",
+                        observe_summary[:1000], ooda_id,
+                    )
+                    await self._write_log(db, operation_id, "info",
+                        f"OODA #{next_num} Auto-recon: collected {len(new_facts_2)} additional facts")
+        except Exception as auto_recon_exc:
+            logger.warning("Auto-recon step failed: %s", auto_recon_exc)
+
         # -- PRE-ORIENT: Evaluate constraints (SPEC-047) --
         op_row = await db.fetchrow(
             "SELECT mission_profile FROM operations WHERE id = $1", operation_id,
@@ -147,7 +195,7 @@ class OODAController:
         # -- 3. DECIDE --
         await self._update_phase(db, operation_id, ooda_id, OODAPhase.DECIDE)
         logger.info("OODA[%s] Decide phase", ooda_id[:8])
-        decision = await self._decision.evaluate(db, operation_id, recommendation)
+        decision = await self._decision.evaluate(db, operation_id, recommendation, constraints=constraints)
         decide_summary = decision.get("reason", "")
         await db.execute(
             "UPDATE ooda_iterations SET decide_summary = $1 WHERE id = $2",
@@ -162,6 +210,46 @@ class OODAController:
         await self._update_phase(db, operation_id, ooda_id, OODAPhase.ACT)
         execution_result = None
         act_summary = ""
+
+        # -- PRE-ACT: OPSEC noise budget pre-check --
+        noise_map = {"low": 2, "medium": 5, "high": 8}
+        try:
+            noise_budget_remaining = getattr(constraints, "noise_budget_remaining", None)
+            if noise_budget_remaining is not None and decision.get("technique_id"):
+                pre_noise_row = await db.fetchrow(
+                    "SELECT noise_level FROM techniques WHERE mitre_id = $1",
+                    decision["technique_id"],
+                )
+                pre_noise_level = (
+                    pre_noise_row["noise_level"]
+                    if pre_noise_row and pre_noise_row["noise_level"]
+                    else "medium"
+                )
+                noise_points = noise_map.get(pre_noise_level, 5)
+                if noise_budget_remaining - noise_points < 0:
+                    logger.warning(
+                        "OODA[%s] PRE-ACT OPSEC: technique %s noise=%s (%d pts) "
+                        "exceeds remaining budget (%d) -- requiring confirmation",
+                        ooda_id[:8],
+                        decision["technique_id"],
+                        pre_noise_level,
+                        noise_points,
+                        noise_budget_remaining,
+                    )
+                    decision["needs_confirmation"] = True
+                    decision["auto_approved"] = False
+                    decision["reason"] = (
+                        f"OPSEC noise budget exceeded: technique {decision['technique_id']} "
+                        f"costs {noise_points} pts but only {noise_budget_remaining} pts remaining"
+                    )
+                    await self._write_log(
+                        db, operation_id, "warning",
+                        f"OODA #{next_num} PRE-ACT OPSEC: noise budget would be exceeded "
+                        f"({pre_noise_level}={noise_points} pts, remaining={noise_budget_remaining}) "
+                        f"-- requiring commander confirmation",
+                    )
+        except Exception as pre_opsec_exc:
+            logger.warning("PRE-ACT OPSEC check failed: %s", pre_opsec_exc)
 
         parallel_tasks = decision.get("parallel_tasks", [])
 
@@ -259,6 +347,30 @@ class OODAController:
                 )
                 await self._write_log(db, operation_id, "success",
                     f"OODA #{next_num} Act: {decision['technique_id']} executed successfully on {decision.get('target_id', 'unknown')}")
+
+                # SPEC-044: Update vulnerability status on successful exploitation
+                try:
+                    from app.services.vulnerability_manager import VulnerabilityManager
+                    vuln_mgr = VulnerabilityManager()
+                    # Look up CVEs associated with this technique on this target
+                    vuln_cve_rows = await db.fetch(
+                        "SELECT DISTINCT cve_id FROM vulnerabilities "
+                        "WHERE operation_id = $1 AND target_id = $2 "
+                        "AND status IN ('discovered', 'confirmed')",
+                        operation_id, decision["target_id"],
+                    )
+                    for vcr in vuln_cve_rows:
+                        await vuln_mgr.mark_exploited_by_cve(
+                            db, operation_id, vcr["cve_id"], decision["target_id"],
+                        )
+                    if vuln_cve_rows:
+                        logger.info(
+                            "OODA[%s] SPEC-044: marked %d vulnerabilities as exploited on target %s",
+                            ooda_id[:8], len(vuln_cve_rows), decision["target_id"],
+                        )
+                except Exception as vuln_exc:
+                    logger.warning("Failed to update vulnerability status: %s", vuln_exc)
+
             elif execution_result:
                 await self._write_log(db, operation_id, "warning",
                     f"OODA #{next_num} Act: {decision['technique_id']} returned {execution_result.get('status', 'unknown')}")

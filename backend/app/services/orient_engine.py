@@ -143,8 +143,8 @@ If a prerequisite is unverified, flag it and suggest a Discovery technique to ve
 ### 4. Engine Routing
 - SSH Engine ("ssh"): standard execution via DirectSSH -- default for most techniques.
 - C2 Engine ("c2"): agent-based execution requiring a live C2 agent on target.
-- MCP Engine ("mcp"): stateless recon/OSINT/vuln-lookup tools via MCP protocol. Prefer for reconnaissance, OSINT, and vulnerability scanning when MCP tools are listed in Section 7.8.
-- Default to SSH Engine unless there is a specific reason for C2 or MCP Engine.
+{mcp_engine_section}\
+- Default to SSH Engine unless there is a specific reason for C2{mcp_or_note} Engine.
 - When recommending techniques, PREFER techniques listed in AVAILABLE TECHNIQUE PLAYBOOKS (Section 7.6). Only suggest techniques outside that list if there is a compelling tactical reason.
 
 ### 5. Risk Calibration
@@ -154,15 +154,28 @@ Assess risk based on DETECTION LIKELIHOOD, not just impact:
 - high: noisy or easily signatured (e.g., PsExec lateral movement)
 - critical: destructive or highly detectable (e.g., DCSync, data exfiltration)
 
+### 6. No Redundant Recommendations
+NEVER recommend a technique that already appears in Section 7 "Completed Techniques". \
+Those techniques have already been executed successfully. Instead, recommend the NEXT logical \
+technique in the kill chain that builds on the results of completed techniques. \
+If a technique was completed on Target A but not on Target B, you MAY recommend it for Target B.
+
+### 7. Attack Graph Awareness
+When Section 10 contains an attack graph summary with a recommended_path, PRIORITIZE techniques \
+on that path. The attack graph represents validated prerequisite chains — following it reduces \
+risk of skipping critical steps. If the graph shows a technique with EXPLORED status, treat it \
+as already completed. UNREACHABLE nodes should be avoided unless you have new intelligence that \
+changes their feasibility.
+
 ## Output Contract
 Respond with ONLY valid JSON (no markdown, no extra text). The JSON must match this schema exactly:
-{
+{{
   "situation_assessment": "brief situation analysis citing kill chain position",
   "recommended_technique_id": "TXXXX.XXX",
   "confidence": 0.0-1.0,
   "reasoning_text": "detailed reasoning referencing collected intelligence",
   "options": [
-    {
+    {{
       "technique_id": "TXXXX.XXX",
       "technique_name": "Full MITRE Name",
       "reasoning": "why this technique NOW, citing prerequisites and intelligence",
@@ -170,16 +183,16 @@ Respond with ONLY valid JSON (no markdown, no extra text). The JSON must match t
       "recommended_engine": "ssh|c2|mcp|metasploit",
       "confidence": 0.0-1.0,
       "prerequisites": ["list of prerequisites with verification status"]
-    }
+    }}
   ]
-}
+}}
 Provide exactly 3 options, ordered by confidence (highest first). \
 When credential facts are available (category=credential), prioritize techniques that leverage \
 those credentials for lateral movement before attempting new credential harvesting.
 
 Engine selection guide:
 - "ssh": Execute commands via SSH on a compromised host (requires valid credential.ssh fact)
-- "mcp": Run MCP reconnaissance/enumeration tools (nmap, vuln-lookup, credential-checker)
+{mcp_engine_guide}
 - "metasploit": Exploit vulnerable services (vsftpd backdoor, Samba RCE, etc.) -- use when a known-exploitable service is detected in service.open_port facts and you need to gain initial/root access WITHOUT existing credentials
 - "c2": Use C2 agent for stealth operations
 
@@ -246,8 +259,16 @@ Next Logical Stage: {next_stage}
 ## 8. LATEST OBSERVE SUMMARY
 {observe_summary}
 
+## 8.9. OPSEC STATUS
+- Detection Risk: {opsec_detection_risk}%
+- Noise Budget Remaining: {opsec_noise_budget_remaining} pts
+- Exposure Count: {opsec_exposure_count}
+
 ## 10. ATTACK GRAPH STATUS
 {attack_graph_summary}
+
+## 11. KNOWN VULNERABILITIES
+{known_vulnerabilities}
 
 Based on the above intelligence, provide your tactical analysis and 3 options as specified."""
 
@@ -379,12 +400,25 @@ class OrientEngine:
                 )
 
         if not filtered:
-            # All options were filtered — keep the lowest-noise one as fallback
-            logger.warning(
-                "All Orient options exceeded noise limit for %s — keeping original",
-                mission_code,
+            # All options exceeded noise limit — keep only the lowest-noise one
+            lowest = min(
+                options,
+                key=lambda o: NOISE_RANKS.get(
+                    noise_map.get(o.get("technique_id", ""), "medium"), 2
+                ),
             )
-            return parsed
+            lowest["noise_override"] = True
+            logger.warning(
+                "All Orient options exceeded noise limit for %s — "
+                "falling back to lowest-noise option %s (needs confirmation)",
+                mission_code,
+                lowest.get("technique_id", "unknown"),
+            )
+            result = dict(parsed)
+            result["options"] = [lowest]
+            result["recommended_technique_id"] = lowest.get("technique_id")
+            result["confidence"] = lowest.get("confidence", result.get("confidence", 0.0))
+            return result
 
         result = dict(parsed)
         result["options"] = filtered
@@ -449,8 +483,11 @@ class OrientEngine:
             trait = r["trait"]
             cat = r["category"].upper()
 
-            # SPEC-043: Exclude PoC records from Orient prompt
+            # SPEC-043: Show PoC records in separate category for feedback loop
             if trait.startswith("poc."):
+                by_cat.setdefault("PROOF_OF_CONCEPT", []).append(
+                    f"  - {trait}: {r['value']}"
+                )
                 continue
 
             # SPEC-037: Exclude invalidated credentials from prompt
@@ -746,6 +783,35 @@ class OrientEngine:
             except Exception:
                 mcp_tools_summary = "(MCP unavailable)"
 
+        # SPEC-048: Query OPSEC status for prompt injection
+        opsec_detection_risk = 0
+        opsec_noise_budget_remaining = 999
+        opsec_exposure_count = 0
+        try:
+            from app.services.opsec_monitor import compute_status
+            opsec_st = await compute_status(db, operation_id)
+            opsec_detection_risk = round(opsec_st.detection_risk)
+            opsec_noise_budget_remaining = opsec_st.noise_budget_remaining
+            opsec_exposure_count = opsec_st.exposure_count
+        except Exception:
+            pass  # graceful degradation
+
+        # SPEC-044: Query known vulnerabilities for Orient context
+        vuln_rows = await db.fetch(
+            "SELECT cve_id, severity, target_id, status FROM vulnerabilities "
+            "WHERE operation_id = $1 AND status IN ('confirmed', 'discovered') "
+            "ORDER BY severity DESC LIMIT 10",
+            operation_id,
+        )
+        if vuln_rows:
+            vuln_lines = [
+                f"  - {r['cve_id']} ({r['severity']}) on target {r['target_id']} [{r['status']}]"
+                for r in vuln_rows
+            ]
+            known_vulnerabilities_str = "\n".join(vuln_lines)
+        else:
+            known_vulnerabilities_str = "No confirmed vulnerabilities yet."
+
         # --- Assemble user prompt ---
         mission_code = (op["mission_profile"] if op else None) or "SP"
         mission_prof = get_profile(mission_code)
@@ -776,6 +842,10 @@ class OrientEngine:
             lateral_opportunities=lateral_str,
             mcp_tools_summary=mcp_tools_summary,
             attack_graph_summary=attack_graph_summary or "Not available.",
+            known_vulnerabilities=known_vulnerabilities_str,
+            opsec_detection_risk=opsec_detection_risk,
+            opsec_noise_budget_remaining=opsec_noise_budget_remaining,
+            opsec_exposure_count=opsec_exposure_count,
         )
 
         # --- Section 8.5: Security Skills injection (SPEC-043 A3) ---
@@ -815,7 +885,36 @@ class OrientEngine:
                 directive_row["id"],
             )
 
-        return _ORIENT_SYSTEM_PROMPT, user_prompt
+        # Dynamically include/exclude MCP Engine sections based on availability
+        _mcp_available = mcp_tools_summary not in (
+            "(MCP disabled)",
+            "(MCP unavailable)",
+            "(MCP manager not initialized)",
+            "(no MCP tools connected)",
+        )
+        if _mcp_available:
+            _mcp_engine_section = (
+                '- MCP Engine ("mcp"): stateless recon/OSINT/vuln-lookup tools '
+                "via MCP protocol. Prefer for reconnaissance, OSINT, and "
+                "vulnerability scanning when MCP tools are listed in Section 7.8.\n"
+            )
+            _mcp_or_note = " or MCP"
+            _mcp_engine_guide = (
+                '- "mcp": Run MCP reconnaissance/enumeration tools '
+                "(nmap, vuln-lookup, credential-checker)"
+            )
+        else:
+            _mcp_engine_section = ""
+            _mcp_or_note = ""
+            _mcp_engine_guide = ""
+
+        system_prompt = _ORIENT_SYSTEM_PROMPT.format(
+            mcp_engine_section=_mcp_engine_section,
+            mcp_or_note=_mcp_or_note,
+            mcp_engine_guide=_mcp_engine_guide,
+        )
+
+        return system_prompt, user_prompt
 
     async def _call_llm(self, system_prompt: str, user_prompt: str) -> str:
         """LLM API call via shared LLMClient (API Key / OAuth / OpenAI / mock)."""

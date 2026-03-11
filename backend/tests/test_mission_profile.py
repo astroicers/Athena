@@ -189,7 +189,7 @@ class TestOrientNoiseFiltering:
 
     @pytest.mark.asyncio
     async def test_filter_fallback_when_all_excluded(self):
-        """If all options exceed noise limit, keep original."""
+        """If all options exceed noise limit, keep only the lowest-noise option."""
         from app.services.orient_engine import OrientEngine
 
         ws = AsyncMock()
@@ -212,7 +212,9 @@ class TestOrientNoiseFiltering:
         }
 
         result = await engine._filter_options_by_noise(db, parsed, "SR")
-        assert len(result["options"]) == 2  # kept original as fallback
+        # NR4 fix: fallback keeps only 1 lowest-noise option (not all)
+        assert len(result["options"]) == 1
+        assert result["options"][0].get("noise_override") is True
 
 
 # ---------------------------------------------------------------------------

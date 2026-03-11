@@ -14,7 +14,7 @@ import logging
 
 import asyncpg
 
-from app.models.enums import AutomationMode, RiskLevel
+from app.models.enums import AutomationMode, NoiseLevel, RiskLevel
 from app.services.kill_chain_enforcer import KillChainEnforcer
 from app.services.validation_engine import ValidationEngine
 
@@ -28,6 +28,50 @@ _RISK_ORDER = {
     RiskLevel.CRITICAL: 3,
 }
 
+# Noise points per noise_level for budget tracking (NR2)
+_NOISE_POINTS: dict[str, int] = {
+    "low": 2,
+    "medium": 5,
+    "high": 8,
+}
+
+# Noise x Risk decision matrix per mission profile (NR1)
+# True = auto-approvable, False = needs_confirmation, None = needs_manual
+_NOISE_RISK_MATRIX: dict[str, dict[tuple[str, str], bool | None]] = {
+    "SR": {  # Stealth Recon — only low noise + low risk auto-approved
+        ("low", "low"): True, ("low", "medium"): False,
+        ("low", "high"): None, ("low", "critical"): None,
+        ("medium", "low"): False, ("medium", "medium"): None,
+        ("medium", "high"): None, ("medium", "critical"): None,
+        ("high", "low"): None, ("high", "medium"): None,
+        ("high", "high"): None, ("high", "critical"): None,
+    },
+    "CO": {  # Covert Operation
+        ("low", "low"): True, ("low", "medium"): True,
+        ("low", "high"): False, ("low", "critical"): None,
+        ("medium", "low"): True, ("medium", "medium"): False,
+        ("medium", "high"): None, ("medium", "critical"): None,
+        ("high", "low"): False, ("high", "medium"): None,
+        ("high", "high"): None, ("high", "critical"): None,
+    },
+    "SP": {  # Standard Pentest
+        ("low", "low"): True, ("low", "medium"): True,
+        ("low", "high"): False, ("low", "critical"): None,
+        ("medium", "low"): True, ("medium", "medium"): True,
+        ("medium", "high"): False, ("medium", "critical"): None,
+        ("high", "low"): True, ("high", "medium"): False,
+        ("high", "high"): False, ("high", "critical"): None,
+    },
+    "FA": {  # Full Assault
+        ("low", "low"): True, ("low", "medium"): True,
+        ("low", "high"): True, ("low", "critical"): False,
+        ("medium", "low"): True, ("medium", "medium"): True,
+        ("medium", "high"): True, ("medium", "critical"): False,
+        ("high", "low"): True, ("high", "medium"): True,
+        ("high", "high"): False, ("high", "critical"): None,
+    },
+}
+
 
 class DecisionEngine:
     """Decide phase: apply ADR-004 risk threshold rules to PentestGPT recommendation."""
@@ -37,7 +81,8 @@ class DecisionEngine:
         self._validation_engine = ValidationEngine()
 
     async def evaluate(
-        self, db: asyncpg.Connection, operation_id: str, recommendation: dict
+        self, db: asyncpg.Connection, operation_id: str, recommendation: dict,
+        constraints=None,
     ) -> dict:
         """
         Decision logic per ADR-004:
@@ -118,13 +163,124 @@ class DecisionEngine:
         )
         confidence = composite
 
+        # SPEC-047: Apply constraint overrides
+        blocked_targets: set[str] = set()
+        if constraints is not None:
+            if constraints.min_confidence_override is not None:
+                # Override the default 0.5 confidence floor
+                pass  # Applied below in threshold checks
+            blocked_targets = set(constraints.blocked_targets or [])
+
+        # If target is blocked by constraints, reject immediately
+        if target_id and target_id in blocked_targets:
+            return {
+                "technique_id": rec_technique_id,
+                "target_id": target_id,
+                "engine": engine,
+                "risk_level": technique_risk.value,
+                "composite_confidence": composite,
+                "confidence_breakdown": confidence_breakdown,
+                "validation_result": {
+                    "outcome": validation_result.outcome,
+                    "checks": validation_result.checks,
+                    "delta": validation_result.delta,
+                },
+                "auto_approved": False,
+                "needs_confirmation": False,
+                "needs_manual": True,
+                "reason": "Target blocked by C5ISR constraints",
+                "parallel_tasks": [],
+            }
+
+        # Effective confidence floor from constraints
+        min_confidence_floor = 0.5
+        if constraints is not None and constraints.min_confidence_override is not None:
+            min_confidence_floor = constraints.min_confidence_override
+
+        # -- NR1: Noise×Risk cross-matrix check --
+        technique_noise = await self._get_technique_noise_level(db, rec_technique_id)
+        mission_code = await self._get_mission_code(db, operation_id)
+        matrix = _NOISE_RISK_MATRIX.get(mission_code, _NOISE_RISK_MATRIX["SP"])
+        nr_decision = matrix.get(
+            (technique_noise, technique_risk.value), False
+        )
+        noise_points = _NOISE_POINTS.get(technique_noise, 5)
+
+        # -- NR2: Noise budget enforcement --
+        noise_budget_remaining = 999  # default unlimited
+        if constraints is not None:
+            noise_budget_remaining = constraints.noise_budget_remaining
+
+        if noise_budget_remaining <= 0:
+            logger.warning(
+                "Noise budget exhausted for operation %s — blocking auto-approve",
+                operation_id,
+            )
+            return {
+                **{
+                    "technique_id": rec_technique_id,
+                    "target_id": target_id,
+                    "engine": engine,
+                    "risk_level": technique_risk.value,
+                    "noise_level": technique_noise,
+                    "composite_confidence": composite,
+                    "confidence_breakdown": confidence_breakdown,
+                    "validation_result": {
+                        "outcome": validation_result.outcome,
+                        "checks": validation_result.checks,
+                        "delta": validation_result.delta,
+                    },
+                },
+                "auto_approved": False,
+                "needs_confirmation": True,
+                "needs_manual": False,
+                "reason": "Noise budget exhausted — requires commander approval to proceed",
+                "parallel_tasks": [],
+            }
+
+        if noise_budget_remaining < noise_points:
+            logger.warning(
+                "Noise budget low (%d remaining, technique needs %d) for %s",
+                noise_budget_remaining, noise_points, operation_id,
+            )
+            # Don't block but force confirmation
+            nr_decision = False
+
+        # NR1: Apply matrix decision override
+        if nr_decision is None:
+            return {
+                **{
+                    "technique_id": rec_technique_id,
+                    "target_id": target_id,
+                    "engine": engine,
+                    "risk_level": technique_risk.value,
+                    "noise_level": technique_noise,
+                    "composite_confidence": composite,
+                    "confidence_breakdown": confidence_breakdown,
+                    "validation_result": {
+                        "outcome": validation_result.outcome,
+                        "checks": validation_result.checks,
+                        "delta": validation_result.delta,
+                    },
+                },
+                "auto_approved": False,
+                "needs_confirmation": False,
+                "needs_manual": True,
+                "reason": (
+                    f"Noise×Risk matrix ({mission_code}): "
+                    f"noise={technique_noise}, risk={technique_risk.value} "
+                    f"— requires manual authorization"
+                ),
+                "parallel_tasks": [],
+            }
+
         # Semi-auto: apply risk threshold rules
         tech_level = _RISK_ORDER.get(technique_risk, 1)
         threshold_level = _RISK_ORDER.get(RiskLevel(risk_threshold), 1)
 
         # Build parallel_tasks from all auto-approvable options (SPEC-030)
         parallel_tasks: list[dict] = []
-        if automation_mode != AutomationMode.MANUAL and confidence >= 0.5:
+        if automation_mode != AutomationMode.MANUAL and confidence >= min_confidence_floor:
             for opt in options:
                 opt_risk = RiskLevel(opt.get("risk_level", "medium"))
                 opt_level = _RISK_ORDER.get(opt_risk, 1)
@@ -134,6 +290,9 @@ class DecisionEngine:
                     continue
                 opt_target = opt.get("target_id") or target_id
                 if not opt_target:
+                    continue
+                # SPEC-047: Skip blocked targets
+                if opt_target in blocked_targets:
                     continue
                 parallel_tasks.append({
                     "technique_id": opt.get("technique_id"),
@@ -156,6 +315,7 @@ class DecisionEngine:
             "target_id": target_id,
             "engine": engine,
             "risk_level": technique_risk.value,
+            "noise_level": technique_noise,
             "composite_confidence": composite,
             "confidence_breakdown": confidence_breakdown,
             "validation_result": {
@@ -176,14 +336,14 @@ class DecisionEngine:
                 "parallel_tasks": [],
             }
 
-        # Low confidence -> force manual
-        if confidence < 0.5:
+        # Low confidence -> force manual (threshold from constraints or default 0.5)
+        if confidence < min_confidence_floor:
             return {
                 **base,
                 "auto_approved": False,
                 "needs_confirmation": True,
                 "needs_manual": False,
-                "reason": f"Low confidence ({confidence:.0%}) -- requires manual review",
+                "reason": f"Low confidence ({confidence:.0%}, floor={min_confidence_floor:.0%}) -- requires manual review",
                 "parallel_tasks": [],
             }
 
@@ -206,6 +366,21 @@ class DecisionEngine:
                 "needs_confirmation": True,
                 "needs_manual": False,
                 "reason": "High risk -- requires HexConfirmModal confirmation",
+                "parallel_tasks": [],
+            }
+
+        # NR1: Matrix says needs_confirmation — override auto-approve
+        if nr_decision is False:
+            return {
+                **base,
+                "auto_approved": False,
+                "needs_confirmation": True,
+                "needs_manual": False,
+                "reason": (
+                    f"Noise×Risk matrix ({mission_code}): "
+                    f"noise={technique_noise}, risk={technique_risk.value} "
+                    f"— requires confirmation"
+                ),
                 "parallel_tasks": [],
             }
 
@@ -244,7 +419,7 @@ class DecisionEngine:
         raw_confidence: float,
         tactic_id: str | None,
     ) -> tuple[float, dict]:
-        """Four-source composite confidence + Kill Chain penalty."""
+        """Five-source composite confidence + Kill Chain penalty (SPEC-048)."""
         raw_confidence = max(0.0, min(1.0, raw_confidence))
 
         hist_rate = await self._get_historical_success_rate(db, technique_id)
@@ -253,15 +428,27 @@ class DecisionEngine:
         )
         target_score = await self._get_target_state_score(db, target_id)
 
+        # SPEC-048: OPSEC confidence factor
+        try:
+            from app.services.opsec_monitor import (
+                compute_opsec_confidence_factor,
+                compute_status as _opsec_status,
+            )
+            _ost = await _opsec_status(db, operation_id)
+            opsec_factor = compute_opsec_confidence_factor(_ost.detection_risk)
+        except Exception:
+            opsec_factor = 1.0  # graceful degradation
+
         kc_result = await self._enforcer.evaluate_skip(
             db, operation_id, tactic_id, target_id
         )
 
         composite = (
-            0.30 * raw_confidence
-            + 0.30 * hist_rate
-            + 0.25 * graph_conf
+            0.25 * raw_confidence
+            + 0.25 * hist_rate
+            + 0.20 * graph_conf
             + 0.15 * target_score
+            + 0.15 * opsec_factor
             - kc_result.penalty
         )
         composite = max(0.0, min(1.0, composite))
@@ -271,6 +458,7 @@ class DecisionEngine:
             "historical": hist_rate,
             "graph": graph_conf,
             "target_state": target_score,
+            "opsec_factor": opsec_factor,
             "kc_penalty": kc_result.penalty,
         }
         return composite, breakdown
@@ -349,6 +537,30 @@ class DecisionEngine:
             score -= 0.2
 
         return max(0.0, min(1.0, score))
+
+    async def _get_technique_noise_level(
+        self, db: asyncpg.Connection, technique_id: str,
+    ) -> str:
+        """Look up noise_level from techniques table, default 'medium'."""
+        row = await db.fetchrow(
+            "SELECT noise_level FROM techniques WHERE id = $1",
+            technique_id,
+        )
+        if row and row["noise_level"]:
+            return row["noise_level"]
+        return "medium"
+
+    async def _get_mission_code(
+        self, db: asyncpg.Connection, operation_id: str,
+    ) -> str:
+        """Look up mission_profile from operations table, default 'SP'."""
+        row = await db.fetchrow(
+            "SELECT mission_profile FROM operations WHERE id = $1",
+            operation_id,
+        )
+        if row and row["mission_profile"]:
+            return row["mission_profile"]
+        return "SP"
 
     async def _resolve_tactic_id(
         self, db: asyncpg.Connection,

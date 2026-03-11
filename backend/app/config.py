@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     # Must be reachable from the target network, e.g. http://192.168.0.18:58888
     # Defaults to C2_ENGINE_URL when not set.
     C2_AGENT_CALLBACK_URL: str = ""
-    C2_ENGINE_API_KEY: str = ""
+    C2_ENGINE_API_KEY: str = ""  # Set via .env or C2_ENGINE_API_KEY env var
     MOCK_C2_ENGINE: bool = True
     # "mcp_ssh" | "c2" | "mock"
     EXECUTION_ENGINE: str = "mcp_ssh"

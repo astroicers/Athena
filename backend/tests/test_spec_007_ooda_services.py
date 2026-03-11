@@ -106,8 +106,10 @@ async def test_decision_low_confidence_forces_manual(seeded_db):
     )
 
     engine = DecisionEngine()
+    # Use non-existent technique so all DB lookups return defaults
     result = await engine.evaluate(
-        seeded_db, "test-op-1", _mock_recommendation(confidence=0.3),
+        seeded_db, "test-op-1",
+        _mock_recommendation(confidence=0.0, technique_id="T9999.999"),
     )
     assert result["auto_approved"] is False
     assert result["needs_confirmation"] is True

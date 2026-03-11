@@ -10,7 +10,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
@@ -82,24 +82,68 @@ export default function PocPage() {
     }
   }, [searchParams, records]);
 
-  const handleExport = () => {
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
+        setExportOpen(false);
+      }
+    }
+    if (exportOpen) document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [exportOpen]);
+
+  const downloadBlob = useCallback((blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
+
+  const handleExportJSON = useCallback(() => {
+    setExportOpen(false);
     api
       .get<unknown>(`/operations/${operationId}/report`)
       .then((data) => {
-        const blob = new Blob([JSON.stringify(data, null, 2)], {
-          type: "application/json",
-        });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `athena-poc-${operationId}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
+        downloadBlob(
+          new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
+          `athena-report-${operationId}.json`,
+        );
       })
-      .catch(() => {
-        /* silently fail export */
-      });
-  };
+      .catch(() => {});
+  }, [operationId, downloadBlob]);
+
+  const handleExportStructured = useCallback(() => {
+    setExportOpen(false);
+    api
+      .get<unknown>(`/operations/${operationId}/report/structured`)
+      .then((data) => {
+        downloadBlob(
+          new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
+          `athena-report-structured-${operationId}.json`,
+        );
+      })
+      .catch(() => {});
+  }, [operationId, downloadBlob]);
+
+  const handleExportMarkdown = useCallback(() => {
+    setExportOpen(false);
+    // Markdown endpoint returns text with Content-Disposition header
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/operations/${operationId}/report/markdown`)
+      .then((res) => res.text())
+      .then((text) => {
+        downloadBlob(
+          new Blob([text], { type: "text/markdown" }),
+          `athena-report-${operationId}.md`,
+        );
+      })
+      .catch(() => {});
+  }, [operationId, downloadBlob]);
 
   if (isLoading) return <LoadingSkeleton />;
 
@@ -136,12 +180,36 @@ export default function PocPage() {
             {t("subtitle", { operationId })}
           </p>
         </div>
-        <button
-          onClick={handleExport}
-          className="px-4 py-2 text-xs font-mono font-bold uppercase border border-athena-border rounded-athena-sm bg-athena-surface hover:bg-athena-elevated text-athena-text transition-colors"
-        >
-          {t("export")}
-        </button>
+        <div ref={exportRef} className="relative">
+          <button
+            onClick={() => setExportOpen((v) => !v)}
+            className="px-4 py-2 text-xs font-mono font-bold uppercase border border-athena-border rounded-athena-sm bg-athena-surface hover:bg-athena-elevated text-athena-text transition-colors"
+          >
+            {t("export")} ▾
+          </button>
+          {exportOpen && (
+            <div className="absolute right-0 top-full mt-1 z-20 w-48 border border-athena-border rounded-athena-sm bg-athena-surface shadow-lg">
+              <button
+                onClick={handleExportJSON}
+                className="w-full text-left px-3 py-2 text-xs font-mono text-athena-text hover:bg-athena-elevated transition-colors"
+              >
+                {t("exportJSON")}
+              </button>
+              <button
+                onClick={handleExportStructured}
+                className="w-full text-left px-3 py-2 text-xs font-mono text-athena-text hover:bg-athena-elevated transition-colors border-t border-athena-border/50"
+              >
+                {t("exportStructured")}
+              </button>
+              <button
+                onClick={handleExportMarkdown}
+                className="w-full text-left px-3 py-2 text-xs font-mono text-athena-text hover:bg-athena-elevated transition-colors border-t border-athena-border/50"
+              >
+                {t("exportMarkdown")}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Summary Bar */}

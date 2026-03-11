@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 export interface ConstraintData {
   active: boolean;
   messages: string[];
+  domains?: string[];
 }
 
 /**
@@ -22,14 +23,18 @@ export interface ConstraintData {
  * are active (e.g., ROE violations, OPSEC limits, time windows).
  *
  * Dismissible, but re-appears when new constraints arrive.
+ * Provides per-domain override buttons when domain info is available.
  */
 export function ConstraintBanner({
   constraints,
+  onOverride,
 }: {
   constraints: ConstraintData;
+  onOverride?: (domain: string) => void;
 }) {
   const [dismissed, setDismissed] = useState(false);
   const [lastMessages, setLastMessages] = useState<string>("");
+  const [overriding, setOverriding] = useState<string | null>(null);
 
   // Re-show banner when messages change
   useEffect(() => {
@@ -50,6 +55,17 @@ export function ConstraintBanner({
   );
 
   const bgClass = isCritical ? "bg-red-500/90" : "bg-amber-600/90";
+  const domains = constraints.domains ?? [];
+
+  async function handleOverride(domain: string) {
+    if (!onOverride || overriding) return;
+    setOverriding(domain);
+    try {
+      onOverride(domain);
+    } finally {
+      setTimeout(() => setOverriding(null), 1000);
+    }
+  }
 
   return (
     <div
@@ -58,6 +74,21 @@ export function ConstraintBanner({
       <span className="font-bold">CONSTRAINT ACTIVE</span>
       <span>|</span>
       <span>{constraints.messages.join(", ")}</span>
+      {onOverride && domains.length > 0 && (
+        <>
+          <span>|</span>
+          {domains.map((domain) => (
+            <button
+              key={domain}
+              onClick={() => handleOverride(domain)}
+              disabled={overriding === domain}
+              className="px-1.5 py-0.5 bg-white/20 hover:bg-white/30 rounded text-[10px] uppercase font-bold tracking-wider transition-colors disabled:opacity-50"
+            >
+              {overriding === domain ? "..." : `Override ${domain}`}
+            </button>
+          ))}
+        </>
+      )}
       <button
         onClick={() => setDismissed(true)}
         className="ml-2 hover:text-white/70 transition-colors"

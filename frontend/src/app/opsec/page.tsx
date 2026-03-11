@@ -10,16 +10,23 @@
 
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useOperationId } from "@/contexts/OperationContext";
 import { useOPSEC } from "@/hooks/useOPSEC";
+import { api } from "@/lib/api";
 import { OPSECMiniBar } from "@/components/opsec/OPSECMiniBar";
 import {
   TimeSeriesChart,
   type TimeSeriesLine,
 } from "@/components/ui/TimeSeriesChart";
 import { PageHeader } from "@/components/layout/PageHeader";
+
+interface OpsecTimeSeriesPoint {
+  ts: string;
+  totalNoise: number;
+  eventCount: number;
+}
 
 /* ── Skeleton ── */
 
@@ -49,10 +56,41 @@ export default function OpsecPage() {
   const t = useTranslations("OPSEC");
   const operationId = useOperationId();
   const { opsec, loading, error } = useOPSEC(operationId);
+  const [timeSeriesData, setTimeSeriesData] = useState<OpsecTimeSeriesPoint[]>([]);
 
-  // Build time series data from current OPSEC value
-  // When historical data becomes available this can be replaced with real series
+  const fetchTimeSeries = useCallback(async () => {
+    if (!operationId) return;
+    try {
+      const data = await api.get<OpsecTimeSeriesPoint[]>(
+        `/operations/${operationId}/metrics/time-series?metric=opsec&granularity=1min`,
+      );
+      if (Array.isArray(data)) setTimeSeriesData(data);
+    } catch {
+      // fall back to single-point display
+    }
+  }, [operationId]);
+
+  useEffect(() => {
+    fetchTimeSeries();
+    const timer = setInterval(fetchTimeSeries, 30_000);
+    return () => clearInterval(timer);
+  }, [fetchTimeSeries]);
+
   const noiseTrendLines: TimeSeriesLine[] = useMemo(() => {
+    // Use historical time-series data when available, otherwise fall back to current value
+    if (timeSeriesData.length > 0) {
+      return [
+        {
+          id: "noise",
+          label: t("noiseTrend"),
+          data: timeSeriesData.map((p) => ({
+            timestamp: p.ts,
+            value: p.totalNoise,
+          })),
+          color: "var(--color-accent)",
+        },
+      ];
+    }
     if (!opsec) return [];
     const now = new Date().toISOString();
     return [
@@ -63,7 +101,7 @@ export default function OpsecPage() {
         color: "var(--color-accent)",
       },
     ];
-  }, [opsec, t]);
+  }, [timeSeriesData, opsec, t]);
 
   /* ── Error state ── */
   if (error && !opsec) {

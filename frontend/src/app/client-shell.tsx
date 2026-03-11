@@ -10,7 +10,7 @@
 
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useCallback, useState } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { MockBanner } from "@/components/layout/MockBanner";
@@ -18,6 +18,7 @@ import { ConstraintBanner } from "@/components/layout/ConstraintBanner";
 import { NotificationCenter } from "@/components/layout/NotificationCenter";
 import { useGlobalAlerts } from "@/hooks/useGlobalAlerts";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { api } from "@/lib/api";
 
 import { ToastProvider } from "@/contexts/ToastContext";
 import { SidebarProvider } from "@/contexts/SidebarContext";
@@ -32,12 +33,21 @@ function ShellInner({ children }: { children: ReactNode }) {
 
   const alertCount = opsecAlerts.length + (constraints.active ? 1 : 0);
 
+  const handleConstraintOverride = useCallback(
+    (domain: string) => {
+      api
+        .post(`/operations/${operationId}/constraints/override`, { domain })
+        .catch(() => {});
+    },
+    [operationId],
+  );
+
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <MockBanner />
-        <ConstraintBanner constraints={constraints} />
+        <ConstraintBanner constraints={constraints} onOverride={handleConstraintOverride} />
         <PageHeader
           title="Athena"
           operationCode="PHANTOM-EYE"

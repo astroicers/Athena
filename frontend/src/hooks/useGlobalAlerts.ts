@@ -16,6 +16,7 @@ import type { UseWebSocketReturn } from "@/hooks/useWebSocket";
 export interface ConstraintAlert {
   active: boolean;
   messages: string[];
+  domains: string[];
 }
 
 export interface GlobalAlerts {
@@ -36,17 +37,19 @@ export function useGlobalAlerts(ws: UseWebSocketReturn | null): GlobalAlerts {
   const [constraints, setConstraints] = useState<ConstraintAlert>({
     active: false,
     messages: [],
+    domains: [],
   });
   const [opsecAlerts, setOpsecAlerts] = useState<OpsecAlert[]>([]);
 
   const handleConstraintActive = useCallback((data: unknown) => {
-    const d = data as { constraints?: string[]; message?: string };
+    const d = data as { constraints?: string[]; message?: string; domains?: string[] };
     const messages = d.constraints ?? (d.message ? [d.message] : []);
-    setConstraints({ active: true, messages });
+    const domains = d.domains ?? [];
+    setConstraints({ active: true, messages, domains });
   }, []);
 
   const handleConstraintExpired = useCallback(() => {
-    setConstraints({ active: false, messages: [] });
+    setConstraints({ active: false, messages: [], domains: [] });
   }, []);
 
   const handleOpsecAlert = useCallback((data: unknown) => {

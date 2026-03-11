@@ -85,6 +85,8 @@
     "reportExported": "Report exported",
     "reconComplete": "Recon complete — {factsWritten} facts written",
     "terminal": "Terminal",
+    "osintDiscover": "OSINT",
+    "osintStarted": "OSINT discovery started",
     "targetActivated": "Target set as active",
     "targetDeactivated": "Target deactivated",
     "targetDeleted": "{hostname} deleted",
@@ -658,6 +660,7 @@
     "failedTriggerOoda": "Failed to trigger OODA cycle",
     "failedExportReport": "Failed to export report",
     "failedReconScan": "Failed to start recon scan",
+    "failedOsint": "Failed to start OSINT discovery",
     "oodaFailed": "OODA cycle failed",
     "failedRefreshTechniques": "Failed to refresh techniques",
     "failedSetActive": "Failed to set active target",
@@ -666,5 +669,16 @@
     "failedRecon": "Failed to start recon scan",
     "failedInitialAccess": "Failed to start initial access",
     "failedLoadWarRoom": "Failed to load War Room data"
+  },
+  "Engagement": {
+    "title": "Rules of Engagement",
+    "noEngagement": "No ROE defined for this operation",
+    "client": "Client",
+    "contact": "Contact",
+    "inScope": "In Scope",
+    "outOfScope": "Out of Scope",
+    "emergency": "Emergency Contact",
+    "activate": "Activate",
+    "suspend": "Suspend"
   }
 }

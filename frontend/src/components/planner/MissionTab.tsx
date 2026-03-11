@@ -15,6 +15,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { DataTable, Column } from "@/components/data/DataTable";
 import { OODATimeline } from "@/components/ooda/OODATimeline";
 import { HostNodeCard } from "@/components/cards/HostNodeCard";
+import { EngagementPanel } from "@/components/planner/EngagementPanel";
 import { Button } from "@/components/atoms/Button";
 import { Badge } from "@/components/atoms/Badge";
 import { HexConfirmModal } from "@/components/modal/HexConfirmModal";
@@ -68,6 +69,7 @@ export interface MissionTabProps {
   onDeleteRequest: (targetId: string) => void;
   onConfirmDelete: () => void;
   onAddTargetSuccess: () => void;
+  onOsintDiscover?: (targetId: string) => void;
 }
 
 export function MissionTab({
@@ -100,6 +102,7 @@ export function MissionTab({
   onDeleteRequest,
   onConfirmDelete,
   onAddTargetSuccess,
+  onOsintDiscover,
 }: MissionTabProps) {
   const t = useTranslations("Planner");
   const tCommon = useTranslations("Common");
@@ -251,19 +254,32 @@ export function MissionTab({
                   onDelete={onDeleteRequest}
                   onViewScanResult={targetScans[tgt.id] ? () => onSetReconResult(targetScans[tgt.id]) : undefined}
                 />
-                {tgt.isCompromised && (
-                  <button
-                    onClick={() => onSetTerminalTarget(tgt)}
-                    className="mt-1 w-full text-sm font-mono text-athena-success border border-athena-success/40 rounded-athena-sm py-1 hover:bg-athena-success/10 transition-colors uppercase tracking-wider"
-                  >
-                    {t("terminal")}
-                  </button>
-                )}
+                <div className="flex gap-1 mt-1">
+                  {onOsintDiscover && (
+                    <button
+                      onClick={() => onOsintDiscover(tgt.id)}
+                      className="flex-1 text-sm font-mono text-athena-accent border border-athena-accent/40 rounded-athena-sm py-1 hover:bg-athena-accent/10 transition-colors uppercase tracking-wider"
+                    >
+                      {t("osintDiscover")}
+                    </button>
+                  )}
+                  {tgt.isCompromised && (
+                    <button
+                      onClick={() => onSetTerminalTarget(tgt)}
+                      className="flex-1 text-sm font-mono text-athena-success border border-athena-success/40 rounded-athena-sm py-1 hover:bg-athena-success/10 transition-colors uppercase tracking-wider"
+                    >
+                      {t("terminal")}
+                    </button>
+                  )}
+                </div>
               </div>
             ))
           )}
         </div>
       </div>
+
+      {/* Engagement / ROE */}
+      <EngagementPanel operationId={operationId} />
 
       <HexConfirmModal
         isOpen={showOodaConfirm}

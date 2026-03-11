@@ -10,8 +10,11 @@
 
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useOperationId } from "@/contexts/OperationContext";
 import type { C5ISRStatus } from "@/types/c5isr";
+import { DomainReportModal } from "@/components/warroom/DomainReportModal";
 
 // ── Health color ──
 
@@ -74,14 +77,16 @@ const TACTICAL_KEY_MAP: Record<string, string> = {
   isr: "tacticalIsr",
 };
 
-function DomainCell({ domain }: { domain: C5ISRStatus }) {
+function DomainCell({ domain, onClick }: { domain: C5ISRStatus; onClick: () => void }) {
   const t = useTranslations("C5ISR");
   const tStatus = useTranslations("Status");
   const color = getHealthColor(domain.healthPct);
   const primary = formatPrimaryMetric(domain, t as (key: string) => string);
 
   return (
-    <div className="flex flex-col items-center justify-center gap-0.5 px-1 h-full">
+    <button
+      onClick={onClick}
+      className="flex flex-col items-center justify-center gap-0.5 px-1 h-full cursor-pointer hover:bg-athena-elevated/40 rounded transition-colors">
       {/* 1. Domain code */}
       <span className="text-xs font-mono font-bold text-athena-text-secondary uppercase tracking-wider">
         {CODE_MAP[domain.domain] ?? domain.domain}
@@ -101,7 +106,7 @@ function DomainCell({ domain }: { domain: C5ISRStatus }) {
       <span className="text-xs font-mono uppercase text-athena-text-secondary">
         {tStatus(domain.status as Parameters<typeof tStatus>[0])}
       </span>
-    </div>
+    </button>
   );
 }
 
@@ -114,17 +119,30 @@ interface TacticalDashboardProps {
 const DOMAIN_ORDER = ["command", "control", "comms", "computers", "cyber", "isr"];
 
 export function TacticalDashboard({ c5isrDomains }: TacticalDashboardProps) {
+  const operationId = useOperationId();
+  const [reportDomain, setReportDomain] = useState<C5ISRStatus | null>(null);
+
   const sortedDomains = DOMAIN_ORDER
     .map((d) => c5isrDomains.find((cd) => cd.domain === d))
     .filter(Boolean) as C5ISRStatus[];
 
   return (
-    <div className="shrink-0 flex items-stretch border-b border-athena-border bg-athena-surface h-[140px]">
-      <div className="flex-1 grid grid-cols-6 gap-1 items-stretch py-1 px-2">
-        {sortedDomains.map((d) => (
-          <DomainCell key={d.domain} domain={d} />
-        ))}
+    <>
+      <div className="shrink-0 flex items-stretch border-b border-athena-border bg-athena-surface h-[140px]">
+        <div className="flex-1 grid grid-cols-6 gap-1 items-stretch py-1 px-2">
+          {sortedDomains.map((d) => (
+            <DomainCell key={d.domain} domain={d} onClick={() => setReportDomain(d)} />
+          ))}
+        </div>
       </div>
-    </div>
+      {reportDomain && (
+        <DomainReportModal
+          operationId={operationId}
+          domain={reportDomain.domain}
+          domainLabel={CODE_MAP[reportDomain.domain] ?? reportDomain.domain}
+          onClose={() => setReportDomain(null)}
+        />
+      )}
+    </>
   );
 }

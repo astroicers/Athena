@@ -209,6 +209,17 @@ export default function PlannerPage() {
     }
   }
 
+  async function handleOsintDiscover(targetId: string) {
+    try {
+      await api.post(`/operations/${DEFAULT_OP_ID}/osint/discover`, {
+        target_id: targetId,
+      });
+      addToast(t("osintStarted"), "info");
+    } catch {
+      addToast(tErrors("failedOsint"), "error");
+    }
+  }
+
   async function handleSetActive(targetId: string, active: boolean) {
     try {
       const updated = await api.patch<Target[]>(
@@ -282,6 +293,7 @@ export default function PlannerPage() {
             setShowAddTarget(false);
             refreshTargets();
           }}
+          onOsintDiscover={handleOsintDiscover}
         />
       )}
 

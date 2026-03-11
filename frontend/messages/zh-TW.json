@@ -20,6 +20,8 @@
     "warRoom": "作戰室",
     "poc": "PoC 報告",
     "vulns": "漏洞",
+    "opsec": "OPSEC",
+    "attackGraph": "攻擊圖",
     "tools": "工具庫"
   },
   "PageHeader": {},
@@ -153,7 +155,25 @@
     "noActiveTechnique": "— 無進行中技術 —",
     "running": "● 執行中",
     "analyzing": "● 分析中...",
-    "llm": "LLM"
+    "llm": "LLM",
+    "confidenceBreakdown": "信心度分解",
+    "sourceLlm": "LLM 分析",
+    "sourceHistorical": "歷史資料",
+    "sourceGraph": "攻擊圖",
+    "sourceTarget": "目標概況",
+    "sourceOpsec": "OPSEC 因子",
+    "noiseRiskMatrix": "噪音 x 風險矩陣",
+    "noiseLow": "低",
+    "noiseMedium": "中",
+    "noiseHigh": "高",
+    "riskLow": "低",
+    "riskMedium": "中",
+    "riskHigh": "高",
+    "riskCritical": "嚴重",
+    "actionGo": "執行",
+    "actionCaution": "注意",
+    "actionHold": "暫停",
+    "actionAbort": "中止"
   },
   "KillChain": {
     "progress": "殺傷鏈進度",
@@ -411,7 +431,11 @@
     "guideStep4Title": "測試與部署",
     "guideStep4Cmd": "make dev-tool NAME=my-scanner\nmake build-mcp",
     "guideStep4Desc": "MCPClientManager 啟動時自動發現工具並同步至工具庫。",
-    "guideClose": "關閉"
+    "guideClose": "關閉",
+    "colActions": "操作",
+    "execute": "執行",
+    "arguments": "參數 (JSON)",
+    "invalidJson": "JSON 格式無效，請檢查輸入內容。"
   },
   "WarRoom": {
     "title": "作戰室",
@@ -565,8 +589,56 @@
       "title": "漏洞詳情",
       "description": "描述",
       "timeline": "時間軸",
-      "close": "關閉"
+      "close": "關閉",
+      "actions": "狀態操作",
+      "markConfirmed": "確認",
+      "markExploited": "標記已利用",
+      "markReported": "標記已回報",
+      "markFalsePositive": "標記誤報",
+      "reopenDiscovered": "重新開啟"
     }
+  },
+  "OPSEC": {
+    "title": "OPSEC 儀表板",
+    "noiseScore": "噪音分數",
+    "detectionRisk": "偵測風險",
+    "exposureCount": "暴露數",
+    "noiseBudget": "噪音預算",
+    "noiseTrend": "噪音分數趨勢",
+    "events": "OPSEC 事件",
+    "noEvents": "目前無 OPSEC 事件",
+    "noData": "無 OPSEC 資料",
+    "errorLoading": "OPSEC 不可用"
+  },
+  "Threat": {
+    "noise": "噪音",
+    "auth_failures": "認證失敗",
+    "detection_events": "偵測事件",
+    "dwell": "停留時間"
+  },
+  "Notifications": {
+    "title": "通知中心",
+    "clearAll": "清除全部",
+    "empty": "目前沒有通知",
+    "sourceOpsec": "OPSEC",
+    "sourceConstraint": "限制條件",
+    "constraintActive": "活躍的限制條件"
+  },
+  "AttackGraph": {
+    "title": "攻擊圖",
+    "tabGraph": "攻擊圖",
+    "tabCredentials": "憑證重用",
+    "rebuild": "重建",
+    "rebuilding": "重建中...",
+    "totalNodes": "節點",
+    "exploredNodes": "已探索",
+    "coverage": "覆蓋率",
+    "noData": "無攻擊圖資料",
+    "noCredentials": "未偵測到憑證重用",
+    "statusExplored": "已探索",
+    "statusPending": "等待中",
+    "statusFailed": "失敗",
+    "statusUnreachable": "不可達"
   },
   "Errors": {
     "failedLoadC5isr": "載入 C5ISR 資料失敗",

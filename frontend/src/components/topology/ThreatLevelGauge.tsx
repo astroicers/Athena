@@ -13,12 +13,28 @@
 import { useTranslations } from "next-intl";
 import { SectionHeader } from "@/components/atoms/SectionHeader";
 
-interface ThreatLevelGaugeProps {
-  level: number;
+interface ThreatBreakdown {
+  noise: number;
+  auth_failures: number;
+  detection_events: number;
+  dwell: number;
 }
 
-export function ThreatLevelGauge({ level }: ThreatLevelGaugeProps) {
+interface ThreatLevelGaugeProps {
+  level: number;
+  breakdown?: ThreatBreakdown;
+}
+
+const BREAKDOWN_FACTORS = [
+  { key: "noise" as const, color: "var(--color-warning)", fallback: "Noise" },
+  { key: "auth_failures" as const, color: "var(--color-error)", fallback: "Auth Failures" },
+  { key: "detection_events" as const, color: "var(--color-critical)", fallback: "Detection" },
+  { key: "dwell" as const, color: "var(--color-accent)", fallback: "Dwell" },
+] as const;
+
+export function ThreatLevelGauge({ level, breakdown }: ThreatLevelGaugeProps) {
   const t = useTranslations("C5ISR");
+  const tThreat = useTranslations("Threat");
 
   const clamped = Math.max(0, Math.min(10, level));
   // Needle angle: 0 → left (180° in math), 10 → right (0° in math)
@@ -82,6 +98,53 @@ export function ThreatLevelGauge({ level }: ThreatLevelGaugeProps) {
         <text x="100" y="20" textAnchor="middle" fill="var(--color-text-secondary)" fontSize="9" fontFamily="var(--font-mono)">5</text>
         <text x="180" y="116" textAnchor="middle" fill="var(--color-text-secondary)" fontSize="9" fontFamily="var(--font-mono)">10</text>
       </svg>
+
+      {breakdown && (() => {
+        const total = breakdown.noise + breakdown.auth_failures + breakdown.detection_events + breakdown.dwell;
+        if (total === 0) return null;
+        return (
+          <div className="w-full mt-3">
+            {/* Stacked horizontal bar */}
+            <div className="flex w-full h-3 rounded-athena-sm overflow-hidden">
+              {BREAKDOWN_FACTORS.map(({ key, color }) => {
+                const pct = (breakdown[key] / total) * 100;
+                if (pct <= 0) return null;
+                return (
+                  <div
+                    key={key}
+                    style={{ width: `${pct}%`, backgroundColor: color }}
+                  />
+                );
+              })}
+            </div>
+            {/* Labels */}
+            <div className="flex justify-between mt-1.5 gap-1">
+              {BREAKDOWN_FACTORS.map(({ key, color, fallback }) => {
+                const pct = (breakdown[key] / total) * 100;
+                let label: string;
+                try {
+                  label = tThreat(key);
+                } catch {
+                  label = fallback;
+                }
+                return (
+                  <div key={key} className="flex flex-col items-center flex-1 min-w-0">
+                    <span
+                      className="font-mono text-xs truncate"
+                      style={{ color }}
+                    >
+                      {label}
+                    </span>
+                    <span className="font-mono text-xs text-athena-text-secondary">
+                      {pct.toFixed(0)}%
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

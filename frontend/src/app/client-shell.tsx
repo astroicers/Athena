@@ -10,29 +10,76 @@
 
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { MockBanner } from "@/components/layout/MockBanner";
+import { ConstraintBanner } from "@/components/layout/ConstraintBanner";
+import { NotificationCenter } from "@/components/layout/NotificationCenter";
+import { useGlobalAlerts } from "@/hooks/useGlobalAlerts";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 import { ToastProvider } from "@/contexts/ToastContext";
 import { SidebarProvider } from "@/contexts/SidebarContext";
+import { OperationProvider, useOperationId } from "@/contexts/OperationContext";
 import { ToastContainer } from "@/components/ui/Toast";
+
+function ShellInner({ children }: { children: ReactNode }) {
+  const operationId = useOperationId();
+  const ws = useWebSocket(operationId);
+  const { constraints, opsecAlerts } = useGlobalAlerts(ws);
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  const alertCount = opsecAlerts.length + (constraints.active ? 1 : 0);
+
+  return (
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar />
+      <div className="flex-1 flex flex-col min-w-0">
+        <MockBanner />
+        <ConstraintBanner constraints={constraints} />
+        <PageHeader
+          title="Athena"
+          operationCode="PHANTOM-EYE"
+          trailing={
+            <button
+              onClick={() => setNotifOpen(true)}
+              className="relative p-1.5 text-athena-text-secondary hover:text-athena-accent transition-colors"
+              aria-label="Notifications"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M8 1.5a4 4 0 0 1 4 4v2.5l1.5 2H2.5L4 8V5.5a4 4 0 0 1 4-4z" />
+                <path d="M6 12.5a2 2 0 0 0 4 0" />
+              </svg>
+              {alertCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-athena-error rounded-full text-[8px] font-mono font-bold text-white flex items-center justify-center">
+                  {alertCount > 9 ? "9+" : alertCount}
+                </span>
+              )}
+            </button>
+          }
+        />
+        <main className="flex-1 overflow-auto p-4">{children}</main>
+      </div>
+      <NotificationCenter
+        isOpen={notifOpen}
+        onClose={() => setNotifOpen(false)}
+        opsecAlerts={opsecAlerts}
+        constraintAlert={constraints}
+      />
+    </div>
+  );
+}
 
 export function ClientShell({ children }: { children: ReactNode }) {
   return (
     <ToastProvider>
-      <SidebarProvider>
-        <div className="flex h-screen overflow-hidden">
-          <Sidebar />
-          <div className="flex-1 flex flex-col min-w-0">
-            <MockBanner />
-            <PageHeader title="Athena" operationCode="PHANTOM-EYE" />
-            <main className="flex-1 overflow-auto p-4">{children}</main>
-          </div>
-        </div>
-      </SidebarProvider>
-      <ToastContainer />
+      <OperationProvider>
+        <SidebarProvider>
+          <ShellInner>{children}</ShellInner>
+        </SidebarProvider>
+        <ToastContainer />
+      </OperationProvider>
     </ToastProvider>
   );
 }

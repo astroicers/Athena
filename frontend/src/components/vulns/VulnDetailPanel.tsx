@@ -11,7 +11,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import type { Vulnerability, VulnSeverity } from "@/types/vulnerability";
+import type { Vulnerability, VulnSeverity, VulnStatus } from "@/types/vulnerability";
 
 const SEVERITY_COLORS: Record<VulnSeverity, string> = {
   critical: "#ff0040",
@@ -36,9 +36,10 @@ interface TimelineEntry {
 interface VulnDetailPanelProps {
   vuln: Vulnerability | null;
   onClose: () => void;
+  onStatusChange?: (vulnId: string, newStatus: VulnStatus) => void;
 }
 
-export function VulnDetailPanel({ vuln, onClose }: VulnDetailPanelProps) {
+export function VulnDetailPanel({ vuln, onClose, onStatusChange }: VulnDetailPanelProps) {
   const t = useTranslations("Vulns");
 
   if (!vuln) return null;
@@ -176,6 +177,65 @@ export function VulnDetailPanel({ vuln, onClose }: VulnDetailPanelProps) {
             })}
           </div>
         </div>
+
+        {/* Status Actions */}
+        {onStatusChange && vuln.status !== "reported" && (
+          <div>
+            <h5 className="text-xs font-mono font-bold text-athena-text-secondary uppercase mb-3">
+              {t("detail.actions")}
+            </h5>
+            <div className="flex flex-wrap gap-2">
+              {vuln.status === "discovered" && (
+                <>
+                  <button
+                    onClick={() => onStatusChange(vuln.id, "confirmed")}
+                    className="text-xs font-mono uppercase px-3 py-1.5 border border-athena-border rounded-athena-sm hover:bg-athena-elevated transition-colors text-athena-accent"
+                  >
+                    {t("detail.markConfirmed")}
+                  </button>
+                  <button
+                    onClick={() => onStatusChange(vuln.id, "false_positive")}
+                    className="text-xs font-mono uppercase px-3 py-1.5 border border-athena-border rounded-athena-sm hover:bg-athena-elevated transition-colors text-athena-text-secondary"
+                  >
+                    {t("detail.markFalsePositive")}
+                  </button>
+                </>
+              )}
+              {vuln.status === "confirmed" && (
+                <>
+                  <button
+                    onClick={() => onStatusChange(vuln.id, "exploited")}
+                    className="text-xs font-mono uppercase px-3 py-1.5 border border-athena-border rounded-athena-sm hover:bg-athena-elevated transition-colors text-athena-warning"
+                  >
+                    {t("detail.markExploited")}
+                  </button>
+                  <button
+                    onClick={() => onStatusChange(vuln.id, "false_positive")}
+                    className="text-xs font-mono uppercase px-3 py-1.5 border border-athena-border rounded-athena-sm hover:bg-athena-elevated transition-colors text-athena-text-secondary"
+                  >
+                    {t("detail.markFalsePositive")}
+                  </button>
+                </>
+              )}
+              {vuln.status === "exploited" && (
+                <button
+                  onClick={() => onStatusChange(vuln.id, "reported")}
+                  className="text-xs font-mono uppercase px-3 py-1.5 border border-athena-border rounded-athena-sm hover:bg-athena-elevated transition-colors text-athena-success"
+                >
+                  {t("detail.markReported")}
+                </button>
+              )}
+              {vuln.status === "false_positive" && (
+                <button
+                  onClick={() => onStatusChange(vuln.id, "discovered")}
+                  className="text-xs font-mono uppercase px-3 py-1.5 border border-athena-border rounded-athena-sm hover:bg-athena-elevated transition-colors text-athena-accent"
+                >
+                  {t("detail.reopenDiscovered")}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

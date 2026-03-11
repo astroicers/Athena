@@ -14,6 +14,9 @@ import { useTranslations } from "next-intl";
 import { SectionHeader } from "@/components/atoms/SectionHeader";
 import { KillChainStage } from "@/types/enums";
 import { KILL_CHAIN_COLORS } from "./NetworkTopology";
+import { ConfidenceBreakdown } from "./ConfidenceBreakdown";
+import { NoiseRiskMatrix } from "./NoiseRiskMatrix";
+import type { ConfidenceSource } from "./ConfidenceBreakdown";
 
 interface AIDecisionPanelProps {
   activeTechniqueId: string | null;
@@ -25,6 +28,9 @@ interface AIDecisionPanelProps {
   llmThinking?: boolean;
   llmBackend?: string | null;
   llmLatencyMs?: number | null;
+  confidenceSources?: ConfidenceSource[];
+  noiseLevel?: "low" | "medium" | "high";
+  riskLevel?: "low" | "medium" | "high" | "critical";
 }
 
 export function AIDecisionPanel({
@@ -37,6 +43,9 @@ export function AIDecisionPanel({
   llmThinking,
   llmBackend,
   llmLatencyMs,
+  confidenceSources,
+  noiseLevel,
+  riskLevel,
 }: AIDecisionPanelProps) {
   const t = useTranslations("AIDecision");
   const tHints = useTranslations("Hints");
@@ -152,6 +161,22 @@ export function AIDecisionPanel({
                   </span>
                 )}
               </div>
+            </div>
+          )}
+          {/* Confidence Breakdown — visible when sources available */}
+          {confidenceSources && confidenceSources.length > 0 && activeConfidence !== null && (
+            <div className="mt-2 pt-2 border-t border-athena-border/50">
+              <ConfidenceBreakdown
+                sources={confidenceSources}
+                totalConfidence={activeConfidence}
+              />
+            </div>
+          )}
+
+          {/* Noise x Risk Matrix — visible when levels available */}
+          {noiseLevel && riskLevel && (
+            <div className="mt-2 pt-2 border-t border-athena-border/50">
+              <NoiseRiskMatrix noiseLevel={noiseLevel} riskLevel={riskLevel} />
             </div>
           )}
         </div>

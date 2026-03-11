@@ -13,6 +13,8 @@ import {
   MonitorIcon,
   PocIcon,
   VulnsIcon,
+  OPSECIcon,
+  AttackGraphIcon,
   ToolsIcon,
 } from "@/components/atoms/NavIcons";
 
@@ -21,6 +23,8 @@ export const NAV_ITEMS = [
   { href: "/warroom", icon: MonitorIcon, labelKey: "warRoom" },
   { href: "/poc", icon: PocIcon, labelKey: "poc" },
   { href: "/vulns", icon: VulnsIcon, labelKey: "vulns" },
+  { href: "/opsec", icon: OPSECIcon, labelKey: "opsec" },
+  { href: "/attack-graph", icon: AttackGraphIcon, labelKey: "attackGraph" },
   { href: "/tools", icon: ToolsIcon, labelKey: "tools" },
 ] as const;
 

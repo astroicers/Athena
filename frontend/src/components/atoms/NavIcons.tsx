@@ -64,6 +64,30 @@ export function VulnsIcon() {
   );
 }
 
+/** OPSEC — shield + eye */
+export function OPSECIcon() {
+  return (
+    <svg {...svgProps}>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <circle cx="12" cy="11" r="3" />
+    </svg>
+  );
+}
+
+/** Attack Graph — node connections */
+export function AttackGraphIcon() {
+  return (
+    <svg {...svgProps}>
+      <circle cx="5" cy="6" r="2" />
+      <circle cx="19" cy="6" r="2" />
+      <circle cx="12" cy="18" r="2" />
+      <line x1="7" y1="6" x2="17" y2="6" />
+      <line x1="5" y1="8" x2="12" y2="16" />
+      <line x1="19" y1="8" x2="12" y2="16" />
+    </svg>
+  );
+}
+
 /** Tools — gear / settings */
 export function ToolsIcon() {
   return (

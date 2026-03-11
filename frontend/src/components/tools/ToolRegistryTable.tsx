@@ -16,6 +16,7 @@ import { Toggle } from "@/components/atoms/Toggle";
 import { Badge } from "@/components/atoms/Badge";
 import { Button } from "@/components/atoms/Button";
 
+import { ToolExecuteModal } from "@/components/tools/ToolExecuteModal";
 import type { ToolRegistryEntry } from "@/types/tool";
 
 const RISK_VARIANT: Record<string, "success" | "warning" | "error" | "info"> = {
@@ -51,6 +52,7 @@ export function ToolRegistryTable({
   const tRisk = useTranslations("Risk");
   const tCategory = useTranslations("ToolCategory");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selectedTool, setSelectedTool] = useState<ToolRegistryEntry | null>(null);
 
   async function handleDelete(toolId: string) {
     setDeletingId(toolId);
@@ -93,6 +95,9 @@ export function ToolRegistryTable({
             </th>
             <th className="px-3 py-2 text-center text-athena-text-secondary font-medium uppercase tracking-wider w-24">
               {t("colContainer")}
+            </th>
+            <th className="px-3 py-2 text-center text-athena-text-secondary font-medium uppercase tracking-wider w-24">
+              {t("colActions")}
             </th>
           </tr>
         </thead>
@@ -197,11 +202,29 @@ export function ToolRegistryTable({
                     <span className="text-sm text-athena-text-secondary">{t("containerNA")}</span>
                   )}
                 </td>
+
+                {/* Actions */}
+                <td className="px-3 py-2 text-center w-24">
+                  {tool.enabled && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => setSelectedTool(tool)}
+                    >
+                      {t("execute")}
+                    </Button>
+                  )}
+                </td>
               </tr>
             );
           })}
         </tbody>
       </table>
+
+      <ToolExecuteModal
+        tool={selectedTool}
+        onClose={() => setSelectedTool(null)}
+      />
     </div>
   );
 }

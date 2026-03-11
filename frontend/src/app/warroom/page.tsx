@@ -19,6 +19,7 @@ import { useLiveLog } from "@/hooks/useLiveLog";
 import { useOODA } from "@/hooks/useOODA";
 import { useExecutionUpdate } from "@/hooks/useExecutionUpdate";
 import { useToast } from "@/contexts/ToastContext";
+import { OPSECMiniBar } from "@/components/opsec/OPSECMiniBar";
 import { MonitorPageSkeleton } from "@/components/ui/Skeleton";
 import { NetworkTopology } from "@/components/topology/NetworkTopology";
 import { TacticalDashboard } from "@/components/warroom/TacticalDashboard";
@@ -291,6 +292,9 @@ export default function WarRoomPage() {
     <div className="-m-4 h-[calc(100vh-48px)] flex flex-col overflow-hidden athena-grid-bg">
       {/* Tactical Dashboard */}
       <TacticalDashboard c5isrDomains={c5isrDomains} />
+
+      {/* OPSEC Mini Bar */}
+      <OPSECMiniBar operationId={DEFAULT_OP_ID} />
 
       {/* Main area: Topology + Side Panel */}
       <div className="flex-1 flex min-h-0">

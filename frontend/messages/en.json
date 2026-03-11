@@ -20,6 +20,8 @@
     "warRoom": "War Room",
     "poc": "PoC Report",
     "vulns": "Vulns",
+    "opsec": "OPSEC",
+    "attackGraph": "Attack Graph",
     "tools": "Tool Registry"
   },
   "PageHeader": {},
@@ -153,7 +155,25 @@
     "noActiveTechnique": "— NO ACTIVE TECHNIQUE —",
     "running": "● RUNNING",
     "analyzing": "● ANALYZING...",
-    "llm": "LLM"
+    "llm": "LLM",
+    "confidenceBreakdown": "Confidence Breakdown",
+    "sourceLlm": "LLM Analysis",
+    "sourceHistorical": "Historical Data",
+    "sourceGraph": "Attack Graph",
+    "sourceTarget": "Target Profile",
+    "sourceOpsec": "OPSEC Factor",
+    "noiseRiskMatrix": "Noise x Risk Matrix",
+    "noiseLow": "Low",
+    "noiseMedium": "Med",
+    "noiseHigh": "High",
+    "riskLow": "Low",
+    "riskMedium": "Med",
+    "riskHigh": "High",
+    "riskCritical": "Crit",
+    "actionGo": "GO",
+    "actionCaution": "CAUTION",
+    "actionHold": "HOLD",
+    "actionAbort": "ABORT"
   },
   "KillChain": {
     "progress": "Kill Chain Progress",
@@ -411,7 +431,11 @@
     "guideStep4Title": "TEST & DEPLOY",
     "guideStep4Cmd": "make dev-tool NAME=my-scanner\nmake build-mcp",
     "guideStep4Desc": "MCPClientManager auto-discovers tools on startup and syncs to the registry.",
-    "guideClose": "CLOSE"
+    "guideClose": "CLOSE",
+    "colActions": "Actions",
+    "execute": "Execute",
+    "arguments": "Arguments (JSON)",
+    "invalidJson": "Invalid JSON. Please check your input."
   },
   "WarRoom": {
     "title": "War Room",
@@ -565,8 +589,56 @@
       "title": "Vulnerability Detail",
       "description": "Description",
       "timeline": "Timeline",
-      "close": "Close"
+      "close": "Close",
+      "actions": "Status Actions",
+      "markConfirmed": "Confirm",
+      "markExploited": "Mark Exploited",
+      "markReported": "Mark Reported",
+      "markFalsePositive": "False Positive",
+      "reopenDiscovered": "Reopen"
     }
+  },
+  "OPSEC": {
+    "title": "OPSEC Dashboard",
+    "noiseScore": "Noise Score",
+    "detectionRisk": "Detection Risk",
+    "exposureCount": "Exposures",
+    "noiseBudget": "Noise Budget",
+    "noiseTrend": "Noise Score Trend",
+    "events": "OPSEC Events",
+    "noEvents": "No OPSEC events recorded",
+    "noData": "No OPSEC data available",
+    "errorLoading": "OPSEC unavailable"
+  },
+  "Threat": {
+    "noise": "Noise",
+    "auth_failures": "Auth Failures",
+    "detection_events": "Detection",
+    "dwell": "Dwell"
+  },
+  "Notifications": {
+    "title": "Notifications",
+    "clearAll": "Clear All",
+    "empty": "No notifications",
+    "sourceOpsec": "OPSEC",
+    "sourceConstraint": "CONSTRAINT",
+    "constraintActive": "Active Constraints"
+  },
+  "AttackGraph": {
+    "title": "Attack Graph",
+    "tabGraph": "Attack Graph",
+    "tabCredentials": "Credentials",
+    "rebuild": "Rebuild",
+    "rebuilding": "Rebuilding...",
+    "totalNodes": "Nodes",
+    "exploredNodes": "Explored",
+    "coverage": "Coverage",
+    "noData": "No attack graph data available",
+    "noCredentials": "No credential reuse detected",
+    "statusExplored": "Explored",
+    "statusPending": "Pending",
+    "statusFailed": "Failed",
+    "statusUnreachable": "Unreachable"
   },
   "Errors": {
     "failedLoadC5isr": "Failed to load C5ISR data",

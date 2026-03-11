@@ -20,6 +20,7 @@ import { AgentBeacon } from "@/components/data/AgentBeacon";
 import { LogEntryRow } from "@/components/data/LogEntryRow";
 import { AccordionSection } from "./AccordionSection";
 import { LLMDirectiveInput } from "./LLMDirectiveInput";
+import type { ConfidenceSource } from "@/components/topology/ConfidenceBreakdown";
 import type { OODAPhase, AgentStatus, KillChainStage } from "@/types/enums";
 import type { OrientRecommendation } from "@/types/recommendation";
 import type { OODATimelineEntry } from "@/types/ooda";
@@ -37,6 +38,9 @@ interface WarRoomSidePanelProps {
   llmThinking: boolean;
   llmBackend: string | null;
   llmLatencyMs: number | null;
+  confidenceSources?: ConfidenceSource[];
+  noiseLevel?: "low" | "medium" | "high";
+  riskLevel?: "low" | "medium" | "high" | "critical";
   // Recommendation
   recommendation: OrientRecommendation | null;
   // OODA
@@ -62,6 +66,9 @@ export function WarRoomSidePanel({
   llmThinking,
   llmBackend,
   llmLatencyMs,
+  confidenceSources,
+  noiseLevel,
+  riskLevel,
   recommendation,
   oodaTimeline,
   currentOodaPhase,
@@ -103,6 +110,9 @@ export function WarRoomSidePanel({
             llmThinking={llmThinking}
             llmBackend={llmBackend}
             llmLatencyMs={llmLatencyMs}
+            confidenceSources={confidenceSources}
+            noiseLevel={noiseLevel}
+            riskLevel={riskLevel}
           />
         </AccordionSection>
 

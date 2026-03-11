@@ -10,12 +10,13 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { api } from "@/lib/api";
 import { Badge } from "@/components/atoms/Badge";
 import { ProgressBar } from "@/components/atoms/ProgressBar";
 import { C5ISRDomainStatus } from "@/types/enums";
-import type { C5ISRStatus, RiskSeverity } from "@/types/c5isr";
+import type { C5ISRStatus, DomainReport, RiskSeverity } from "@/types/c5isr";
 
 const STATUS_VARIANT: Record<string, "success" | "warning" | "error" | "info"> = {
   [C5ISRDomainStatus.OPERATIONAL]: "success",
@@ -99,19 +100,34 @@ function HexGauge({ value, color }: { value: number; color: string }) {
 
 interface DomainCardProps {
   domain: C5ISRStatus;
+  operationId?: string;
 }
 
-export function DomainCard({ domain }: DomainCardProps) {
+export function DomainCard({ domain, operationId }: DomainCardProps) {
   const t = useTranslations("C5ISR");
   const tStatus = useTranslations("Status");
   const color = healthColor(domain.healthPct);
   const borderClass = healthBorderClass(domain.healthPct);
   const [expanded, setExpanded] = useState(false);
-  const report = domain.report;
-  const canExpand = report !== null && report !== undefined;
+  const [fetchedReport, setFetchedReport] = useState<DomainReport | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+
+  const report = domain.report ?? fetchedReport;
+  const canExpand = true; // always allow expand — lazy-fetch if needed
+
+  useEffect(() => {
+    if (expanded && !report && operationId && !reportLoading) {
+      setReportLoading(true);
+      api
+        .get<DomainReport>(`/operations/${operationId}/c5isr/${domain.domain}/report`)
+        .then(setFetchedReport)
+        .catch(() => { /* report not available */ })
+        .finally(() => setReportLoading(false));
+    }
+  }, [expanded, report, operationId, domain.domain, reportLoading]);
 
   const handleClick = () => {
-    if (canExpand) setExpanded((prev) => !prev);
+    setExpanded((prev) => !prev);
   };
 
   return (
@@ -152,8 +168,15 @@ export function DomainCard({ domain }: DomainCardProps) {
         </div>
       </div>
 
+      {/* Loading state */}
+      {expanded && reportLoading && (
+        <div className="mt-3 border-t border-athena-border pt-3 text-center">
+          <span className="text-xs font-mono text-athena-text-secondary animate-pulse">Loading report...</span>
+        </div>
+      )}
+
       {/* Expanded report sections */}
-      {expanded && report && (
+      {expanded && report && !reportLoading && (
         <div className="mt-3 border-t border-athena-border pt-3 space-y-3" onClick={(e) => e.stopPropagation()}>
           {/* Metrics table */}
           {report.metrics.length > 0 && (

@@ -10,88 +10,17 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { SeverityHeatStrip } from "@/components/vulns/SeverityHeatStrip";
 import { VulnStatusPipeline } from "@/components/vulns/VulnStatusPipeline";
 import { VulnTable } from "@/components/vulns/VulnTable";
 import { VulnDetailPanel } from "@/components/vulns/VulnDetailPanel";
-import type { Vulnerability, VulnSeverity, VulnStatus, VulnSummary } from "@/types/vulnerability";
-
-const MOCK_VULNS: Vulnerability[] = [
-  {
-    id: "v-001",
-    cve_id: "CVE-2024-21351",
-    target_id: "t-001",
-    target_ip: "10.0.1.5",
-    severity: "critical",
-    status: "exploited",
-    cvss_score: 9.8,
-    title: "Windows SmartScreen Security Feature Bypass",
-    description:
-      "Windows SmartScreen Security Feature Bypass Vulnerability allowing remote code execution.",
-    discovered_at: "2026-03-08T10:00:00Z",
-    confirmed_at: "2026-03-08T11:30:00Z",
-    exploited_at: "2026-03-08T14:32:07Z",
-  },
-  {
-    id: "v-002",
-    cve_id: "CVE-2024-1709",
-    target_id: "t-002",
-    target_ip: "10.0.1.10",
-    severity: "critical",
-    status: "confirmed",
-    cvss_score: 10.0,
-    title: "ConnectWise ScreenConnect Authentication Bypass",
-    description:
-      "Authentication bypass using an alternate path or channel in ConnectWise ScreenConnect.",
-    discovered_at: "2026-03-08T09:15:00Z",
-    confirmed_at: "2026-03-08T12:00:00Z",
-  },
-  {
-    id: "v-003",
-    cve_id: "CVE-2024-3400",
-    target_id: "t-003",
-    target_ip: "10.0.1.1",
-    severity: "high",
-    status: "discovered",
-    cvss_score: 8.1,
-    title: "PAN-OS: OS Command Injection in GlobalProtect Gateway",
-    description:
-      "A command injection as a result of arbitrary file creation vulnerability in the GlobalProtect feature.",
-    discovered_at: "2026-03-08T08:45:00Z",
-  },
-  {
-    id: "v-004",
-    cve_id: "CVE-2023-44487",
-    target_id: "t-001",
-    target_ip: "10.0.1.5",
-    severity: "high",
-    status: "reported",
-    cvss_score: 7.5,
-    title: "HTTP/2 Rapid Reset Attack",
-    description:
-      "HTTP/2 protocol allows a denial of service via rapid stream resets.",
-    discovered_at: "2026-03-07T16:00:00Z",
-    confirmed_at: "2026-03-07T18:00:00Z",
-    exploited_at: "2026-03-08T09:00:00Z",
-    reported_at: "2026-03-08T15:00:00Z",
-  },
-  {
-    id: "v-005",
-    cve_id: "CVE-2024-0012",
-    target_id: "t-003",
-    target_ip: "10.0.1.1",
-    severity: "medium",
-    status: "false_positive",
-    cvss_score: 5.3,
-    title: "PAN-OS Management Interface Information Disclosure",
-    description:
-      "Information disclosure vulnerability in PAN-OS management interface.",
-    discovered_at: "2026-03-08T11:00:00Z",
-  },
-];
+import { useVulns } from "@/hooks/useVulns";
+import { useOperationId } from "@/contexts/OperationContext";
+import type { VulnSeverity, VulnStatus, VulnSummary, Vulnerability } from "@/types/vulnerability";
 
 function computeSummary(vulns: Vulnerability[]): VulnSummary {
   const bySeverity: Record<VulnSeverity, number> = {
@@ -117,13 +46,59 @@ function computeSummary(vulns: Vulnerability[]): VulnSummary {
 
 export default function VulnsPage() {
   const t = useTranslations("Vulns");
+  const operationId = useOperationId();
+  const searchParams = useSearchParams();
+  const { vulns, loading, error, updateStatus } = useVulns(operationId);
   const [selectedVuln, setSelectedVuln] = useState<Vulnerability | null>(null);
 
-  const summary = useMemo(() => computeSummary(MOCK_VULNS), []);
+  // Deep link: auto-select vuln from ?id= query param
+  useEffect(() => {
+    const vulnId = searchParams.get("id");
+    if (vulnId && vulns.length > 0 && !selectedVuln) {
+      const match = vulns.find((v) => v.id === vulnId || v.cve_id === vulnId);
+      if (match) setSelectedVuln(match);
+    }
+  }, [searchParams, vulns, selectedVuln]);
+
+  const summary = useMemo(() => computeSummary(vulns), [vulns]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6 p-6 animate-pulse athena-grid-bg min-h-full">
+        <div className="h-8 w-64 bg-athena-surface rounded" />
+        <div className="grid grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-24 bg-athena-surface rounded-athena-md" />
+          ))}
+        </div>
+        <div className="space-y-3">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-14 bg-athena-surface rounded-athena-sm" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col h-full athena-grid-bg">
+        <PageHeader title={t("title")} operationCode={operationId} />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-3">
+            <p className="text-sm font-mono text-athena-error">{error}</p>
+            <p className="text-xs font-mono text-athena-text-secondary">
+              {t("noRecords")}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full athena-grid-bg">
-      <PageHeader title={t("title")} operationCode={t("subtitle", { operationId: "ALPHA-7" })} />
+      <PageHeader title={t("title")} operationCode={t("subtitle", { operationId })} />
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Total count */}
@@ -147,7 +122,7 @@ export default function VulnsPage() {
         {/* Vulnerability table */}
         <div className="bg-athena-surface border border-athena-border rounded-athena-sm">
           <VulnTable
-            vulns={MOCK_VULNS}
+            vulns={vulns}
             selectedId={selectedVuln?.id ?? null}
             onSelect={setSelectedVuln}
           />
@@ -155,7 +130,16 @@ export default function VulnsPage() {
       </div>
 
       {/* Detail panel */}
-      <VulnDetailPanel vuln={selectedVuln} onClose={() => setSelectedVuln(null)} />
+      <VulnDetailPanel
+        vuln={selectedVuln}
+        onClose={() => setSelectedVuln(null)}
+        onStatusChange={async (vulnId, newStatus) => {
+          await updateStatus(vulnId, newStatus);
+          if (selectedVuln && selectedVuln.id === vulnId) {
+            setSelectedVuln({ ...selectedVuln, status: newStatus });
+          }
+        }}
+      />
     </div>
   );
 }

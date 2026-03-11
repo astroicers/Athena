@@ -13,11 +13,13 @@
 interface PageHeaderProps {
   title: string;
   operationCode?: string;
+  trailing?: React.ReactNode;
 }
 
 export function PageHeader({
   title,
   operationCode,
+  trailing,
 }: PageHeaderProps) {
   return (
     <header className="h-12 px-4 flex items-center justify-between bg-athena-surface border-b border-athena-border">
@@ -31,6 +33,7 @@ export function PageHeader({
           </span>
         )}
       </div>
+      {trailing && <div className="flex items-center gap-2">{trailing}</div>}
     </header>
   );
 }

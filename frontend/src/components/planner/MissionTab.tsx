@@ -129,7 +129,7 @@ export function MissionTab({
   // Create Step modal state
   const [showCreateStep, setShowCreateStep] = useState(false);
   const [newStep, setNewStep] = useState({
-    stepNumber: 1,
+    stepNumber: steps.length > 0 ? Math.max(...steps.map((s) => s.stepNumber)) + 1 : 1,
     techniqueId: "",
     techniqueName: "",
     targetId: "",
@@ -159,7 +159,7 @@ export function MissionTab({
       );
       addToast(t("stepCreated"), "success");
       setShowCreateStep(false);
-      setNewStep({ stepNumber: 1, techniqueId: "", techniqueName: "", targetId: "", engine: ExecutionEngine.SSH });
+      setNewStep({ stepNumber: (steps.length > 0 ? Math.max(...steps.map((s) => s.stepNumber)) + 1 : 1) + 1, techniqueId: "", techniqueName: "", targetId: "", engine: ExecutionEngine.SSH });
       onRefreshSteps?.();
     } catch {
       addToast(t("failedCreateStep"), "error");
@@ -204,7 +204,7 @@ export function MissionTab({
           <select
             value={r.status}
             onChange={(e) => handleStepStatusChange(r.id, e.target.value)}
-            onBlur={() => setEditingStepId(null)}
+            onBlur={() => setTimeout(() => setEditingStepId(null), 150)}
             autoFocus
             className="bg-athena-bg border border-athena-accent rounded-athena-sm px-2 py-1 text-xs font-mono text-athena-text focus:outline-none"
           >

@@ -42,8 +42,8 @@ export const C5ISR_DOMAINS = [
 ] as const;
 
 export const RISK_COLORS = {
-  low: "#00ff88",
-  medium: "#ffaa00",
-  high: "#ff4444",
-  critical: "#ff0040",
+  low: "#22C55E",
+  medium: "#F59E0B",
+  high: "#EF4444",
+  critical: "#DC2626",
 } as const;

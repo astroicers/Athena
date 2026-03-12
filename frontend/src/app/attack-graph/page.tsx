@@ -27,9 +27,9 @@ const STATUS_COLORS: Record<
   string,
   { fill: string; glow: string; text: string }
 > = {
-  explored: { fill: "#00FF88", glow: "#00FF8812", text: "#00FF8870" },
-  pending: { fill: "#FFA500", glow: "#FFA50010", text: "#FFA50080" },
-  failed: { fill: "#FF4444", glow: "#FF333312", text: "#FF444480" },
+  explored: { fill: "#22C55E", glow: "#22C55E12", text: "#22C55E70" },
+  pending: { fill: "#F59E0B", glow: "#F59E0B10", text: "#F59E0B80" },
+  failed: { fill: "#EF4444", glow: "#EF444412", text: "#EF444480" },
   unreachable: { fill: "#6A6A6A", glow: "#6A6A6A0C", text: "#6A6A6A60" },
 };
 
@@ -42,7 +42,7 @@ const DEFAULT_STATUS_COLOR = {
 /* ── Edge Color Map ── */
 
 const EDGE_COLORS: Record<string, string> = {
-  enables: "#00FF8830",
+  enables: "#22C55E30",
   lateral: "#A855F730",
   alternative: "#FF880030",
 };
@@ -521,7 +521,7 @@ function GraphStatsPanel({
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <StatRow label={t("totalNodes")} value={String(totalNodes)} color="#FFFFFFCC" />
-        <StatRow label={t("exploredNodes")} value={String(exploredNodes)} color="#00FF88" />
+        <StatRow label={t("exploredNodes")} value={String(exploredNodes)} color="#22C55E" />
         <StatRow
           label={t("coverage")}
           value={`${Math.round(coverageScore * 100)}%`}
@@ -766,7 +766,7 @@ function AttackGraphContent() {
         }}
       >
         <span
-          style={{ fontFamily: "monospace", fontSize: 12, color: "#FF4444" }}
+          style={{ fontFamily: "monospace", fontSize: 12, color: "#EF4444" }}
         >
           {error}
         </span>

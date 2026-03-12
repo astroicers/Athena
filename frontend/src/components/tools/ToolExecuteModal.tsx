@@ -142,7 +142,7 @@ export function ToolExecuteModal({ tool, onClose }: ToolExecuteModalProps) {
           {/* Result display */}
           {result && (
             <div className="bg-athena-bg border border-athena-border rounded-athena-md p-3 max-h-80 overflow-y-auto">
-              <pre className="font-mono text-xs text-[#00ff88] whitespace-pre-wrap break-words">
+              <pre className="font-mono text-xs text-[#22C55E] whitespace-pre-wrap break-words">
                 {result}
               </pre>
             </div>

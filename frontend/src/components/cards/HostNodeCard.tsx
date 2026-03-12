@@ -41,7 +41,7 @@ interface HostNodeCardProps {
 
 function ShieldIcon({ isCompromised, isScanning }: { isCompromised: boolean; isScanning: boolean }) {
   const bgColor = isScanning
-    ? "bg-[#00d4ff]/10"
+    ? "bg-[#3B82F6]/10"
     : isCompromised
       ? "bg-athena-error/10"
       : "bg-athena-success/10";
@@ -50,8 +50,8 @@ function ShieldIcon({ isCompromised, isScanning }: { isCompromised: boolean; isS
     <div className={`shrink-0 w-8 h-8 rounded-athena-sm flex items-center justify-center ${bgColor}`}>
       {isScanning ? (
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="animate-spin" style={{ animationDuration: "3s" }}>
-          <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5" strokeDasharray="22 22" className="text-[#00d4ff]" />
-          <circle cx="10" cy="10" r="2" fill="currentColor" className="text-[#00d4ff]" />
+          <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5" strokeDasharray="22 22" className="text-[#3B82F6]" />
+          <circle cx="10" cy="10" r="2" fill="currentColor" className="text-[#3B82F6]" />
         </svg>
       ) : isCompromised ? (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-athena-error">
@@ -190,7 +190,7 @@ export function HostNodeCard({
           {isScanning && (
             <div className="mt-2 space-y-1">
               <div className="flex items-center justify-between text-sm font-mono">
-                <span className="text-[#00d4ff] animate-pulse">
+                <span className="text-[#3B82F6] animate-pulse">
                   {scanPhase
                     ? t(`phase_${scanPhase}` as Parameters<typeof t>[0])
                     : t("scanning")}

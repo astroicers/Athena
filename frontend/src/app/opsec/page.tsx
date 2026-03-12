@@ -415,7 +415,7 @@ function OpsecContent() {
                   {/* Message */}
                   <span
                     className="font-mono text-xs truncate flex-1"
-                    style={{ color: "#C0C0D0" }}
+                    style={{ color: "#9CA3AF" }}
                   >
                     {event.message}
                   </span>

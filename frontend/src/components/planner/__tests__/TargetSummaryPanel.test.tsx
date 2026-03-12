@@ -35,22 +35,22 @@ const defaultProps = {
 };
 
 const fullSummaryData = {
-  target_id: "target-1",
+  targetId: "target-1",
   hostname: "dc01.corp.local",
   summary: "Domain controller running Windows Server 2019. Multiple services exposed.",
-  attack_surface: [
+  attackSurface: [
     "SMB (445) - signing not required",
     "LDAP (389) - anonymous bind allowed",
     "RDP (3389) - NLA disabled",
   ],
-  recommended_techniques: [
+  recommendedTechniques: [
     {
-      technique_id: "T1003.001",
+      techniqueId: "T1003.001",
       name: "LSASS Memory",
       rationale: "Domain controller with admin access enables credential dump",
     },
     {
-      technique_id: "T1021.002",
+      techniqueId: "T1021.002",
       name: "SMB/Windows Admin Shares",
       rationale: "SMB signing not required allows relay attacks",
     },
@@ -153,7 +153,7 @@ describe("TargetSummaryPanel", () => {
   });
 
   it("does not render attack surface section when array is empty", async () => {
-    mockGet.mockResolvedValue({ ...fullSummaryData, attack_surface: [] });
+    mockGet.mockResolvedValue({ ...fullSummaryData, attackSurface: [] });
     renderPanel();
     await waitFor(() => {
       expect(
@@ -164,7 +164,7 @@ describe("TargetSummaryPanel", () => {
   });
 
   it("does not render techniques section when array is empty", async () => {
-    mockGet.mockResolvedValue({ ...fullSummaryData, recommended_techniques: [] });
+    mockGet.mockResolvedValue({ ...fullSummaryData, recommendedTechniques: [] });
     renderPanel();
     await waitFor(() => {
       expect(

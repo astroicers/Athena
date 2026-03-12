@@ -109,16 +109,16 @@ function PocCard({ record, index }: { record: PocRecord; index: number }) {
             {reproducibleLabel(record.reproducible)}
           </span>
         </div>
-        {record.technique_id && (
+        {record.techniqueId && (
           <span className="font-mono text-[9px]" style={{ color: "#FFFFFF40" }}>
-            {record.technique_id}
+            {record.techniqueId}
           </span>
         )}
       </div>
 
       {/* Title */}
       <span className="font-mono text-[13px] font-bold" style={{ color: "#FFFFFF" }}>
-        {record.technique_name || record.technique_id}
+        {record.techniqueName || record.techniqueId}
       </span>
 
       {/* Metadata row */}
@@ -128,7 +128,7 @@ function PocCard({ record, index }: { record: PocRecord; index: number }) {
             Target:
           </span>
           <span className="font-mono text-[9px]" style={{ color: "#FFFFFF80" }}>
-            {record.target_ip}
+            {record.targetIp}
           </span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -136,7 +136,7 @@ function PocCard({ record, index }: { record: PocRecord; index: number }) {
             Technique:
           </span>
           <span className="font-mono text-[9px]" style={{ color: "#FFFFFF80" }}>
-            {record.technique_id} - {record.technique_name}
+            {record.techniqueId} - {record.techniqueName}
           </span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -156,12 +156,12 @@ function PocCard({ record, index }: { record: PocRecord; index: number }) {
       </div>
 
       {/* Description / output snippet */}
-      {record.output_snippet && (
+      {record.outputSnippet && (
         <p
           className="font-mono text-[9px] leading-relaxed"
           style={{ color: "#FFFFFF60" }}
         >
-          {record.output_snippet}
+          {record.outputSnippet}
         </p>
       )}
     </div>
@@ -402,8 +402,8 @@ function PocContent() {
     total: records.length,
     reproducible: records.filter((r) => r.reproducible === "reproducible")
       .length,
-    targets: new Set(records.map((r) => r.target_ip)).size,
-    techniques: new Set(records.map((r) => r.technique_id)).size,
+    targets: new Set(records.map((r) => r.targetIp)).size,
+    techniques: new Set(records.map((r) => r.techniqueId)).size,
   };
 
   // Loading

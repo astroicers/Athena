@@ -48,10 +48,10 @@ const STATUS_LIST: VulnStatus[] = [
 /* ── Severity Heat Strip ── */
 
 function SeverityHeatStrip({
-  by_severity,
+  bySeverity,
   total,
 }: {
-  by_severity: Record<VulnSeverity, number>;
+  bySeverity: Record<VulnSeverity, number>;
   total: number;
 }) {
   return (
@@ -64,7 +64,7 @@ function SeverityHeatStrip({
       </span>
       <div className="flex gap-0.5" style={{ height: 24 }}>
         {SEVERITY_ORDER.map((sev) => {
-          const count = by_severity[sev] ?? 0;
+          const count = bySeverity[sev] ?? 0;
           if (count === 0) return null;
           const widthPct = total > 0 ? (count / total) * 100 : 0;
           return (
@@ -104,10 +104,10 @@ function SeverityHeatStrip({
 /* ── Status Pipeline ── */
 
 function StatusPipeline({
-  by_status,
+  byStatus,
   t,
 }: {
-  by_status: Record<VulnStatus, number>;
+  byStatus: Record<VulnStatus, number>;
   t: (key: string) => string;
 }) {
   return (
@@ -128,7 +128,7 @@ function StatusPipeline({
               className="font-mono font-bold text-lg athena-tabular-nums"
               style={{ color: "#E5E7EB" }}
             >
-              {by_status[status] ?? 0}
+              {byStatus[status] ?? 0}
             </span>
             <span
               className="font-mono uppercase tracking-wider"
@@ -269,7 +269,7 @@ function VulnTable({
                   className="font-mono text-xs w-[120px] shrink-0 truncate"
                   style={{ color: "#3B82F6" }}
                 >
-                  {vuln.cve_id ?? "N/A"}
+                  {vuln.cveId ?? "N/A"}
                 </span>
 
                 {/* Title */}
@@ -351,7 +351,7 @@ function DetailPanel({
             className="font-mono text-sm font-bold truncate"
             style={{ color: "#3B82F6" }}
           >
-            {vuln.cve_id ?? "N/A"}
+            {vuln.cveId ?? "N/A"}
           </span>
           <SeverityBadge severity={vuln.severity} />
         </div>
@@ -440,7 +440,7 @@ function DetailPanel({
           className="font-mono text-xs"
           style={{ color: "#9CA3AF" }}
         >
-          {vuln.target_hostname ?? vuln.target_ip}
+          {vuln.targetHostname ?? vuln.targetIp}
         </span>
       </div>
 
@@ -473,24 +473,24 @@ function DetailPanel({
         <div className="flex flex-col gap-0.5">
           <TimelineEntry
             label={t("status.discovered")}
-            date={vuln.discovered_at}
+            date={vuln.discoveredAt}
           />
-          {vuln.confirmed_at && (
+          {vuln.confirmedAt && (
             <TimelineEntry
               label={t("status.confirmed")}
-              date={vuln.confirmed_at}
+              date={vuln.confirmedAt}
             />
           )}
-          {vuln.exploited_at && (
+          {vuln.exploitedAt && (
             <TimelineEntry
               label={t("status.exploited")}
-              date={vuln.exploited_at}
+              date={vuln.exploitedAt}
             />
           )}
-          {vuln.reported_at && (
+          {vuln.reportedAt && (
             <TimelineEntry
               label={t("status.reported")}
-              date={vuln.reported_at}
+              date={vuln.reportedAt}
             />
           )}
         </div>
@@ -610,14 +610,14 @@ function VulnsContent() {
   // Client-side computed summary as fallback
   const computedSummary = useMemo((): VulnSummary => {
     if (summary) return summary;
-    const by_severity: Record<VulnSeverity, number> = {
+    const bySeverity: Record<VulnSeverity, number> = {
       critical: 0,
       high: 0,
       medium: 0,
       low: 0,
       info: 0,
     };
-    const by_status: Record<VulnStatus, number> = {
+    const byStatus: Record<VulnStatus, number> = {
       discovered: 0,
       confirmed: 0,
       exploited: 0,
@@ -625,10 +625,10 @@ function VulnsContent() {
       false_positive: 0,
     };
     for (const v of vulns) {
-      by_severity[v.severity] = (by_severity[v.severity] ?? 0) + 1;
-      by_status[v.status] = (by_status[v.status] ?? 0) + 1;
+      bySeverity[v.severity] = (bySeverity[v.severity] ?? 0) + 1;
+      byStatus[v.status] = (byStatus[v.status] ?? 0) + 1;
     }
-    return { total: vulns.length, by_severity, by_status };
+    return { total: vulns.length, bySeverity, byStatus };
   }, [summary, vulns]);
 
   const handleSelect = useCallback((v: Vulnerability) => {
@@ -684,7 +684,7 @@ function VulnsContent() {
           {/* Severity Heat Strip */}
           <div className="flex-1 min-w-0">
             <SeverityHeatStrip
-              by_severity={computedSummary.by_severity}
+              bySeverity={computedSummary.bySeverity}
               total={computedSummary.total}
             />
           </div>
@@ -698,7 +698,7 @@ function VulnsContent() {
           {/* Status Pipeline */}
           <div className="flex-1 min-w-0">
             <StatusPipeline
-              by_status={computedSummary.by_status}
+              byStatus={computedSummary.byStatus}
               t={t}
             />
           </div>

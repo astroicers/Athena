@@ -15,17 +15,17 @@ import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 
 interface RecommendedTechnique {
-  technique_id: string;
+  techniqueId: string;
   name: string;
   rationale: string;
 }
 
 interface TargetSummaryData {
-  target_id: string;
+  targetId: string;
   hostname: string;
   summary: string;
-  attack_surface: string[];
-  recommended_techniques: RecommendedTechnique[];
+  attackSurface: string[];
+  recommendedTechniques: RecommendedTechnique[];
 }
 
 interface TargetSummaryPanelProps {
@@ -109,13 +109,13 @@ export function TargetSummaryPanel({
           )}
 
           {/* Attack Surface */}
-          {data.attack_surface && data.attack_surface.length > 0 && (
+          {data.attackSurface && data.attackSurface.length > 0 && (
             <div>
               <p className="text-athena-text-secondary uppercase tracking-wider mb-1">
                 {t("attackSurface")}
               </p>
               <ul className="space-y-0.5 pl-2">
-                {data.attack_surface.map((item, idx) => (
+                {data.attackSurface.map((item, idx) => (
                   <li key={idx} className="text-athena-text before:content-['>_'] before:text-athena-accent/60">
                     {item}
                   </li>
@@ -125,19 +125,19 @@ export function TargetSummaryPanel({
           )}
 
           {/* Recommended Techniques */}
-          {data.recommended_techniques && data.recommended_techniques.length > 0 && (
+          {data.recommendedTechniques && data.recommendedTechniques.length > 0 && (
             <div>
               <p className="text-athena-text-secondary uppercase tracking-wider mb-1">
                 {t("recommendedTechniques")}
               </p>
               <div className="space-y-2">
-                {data.recommended_techniques.map((tech) => (
+                {data.recommendedTechniques.map((tech) => (
                   <div
-                    key={tech.technique_id}
+                    key={tech.techniqueId}
                     className="border border-athena-border/50 rounded-athena-sm p-2 space-y-0.5"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="text-athena-accent">{tech.technique_id}</span>
+                      <span className="text-athena-accent">{tech.techniqueId}</span>
                       <span className="text-athena-text font-semibold">{tech.name}</span>
                     </div>
                     {tech.rationale && (

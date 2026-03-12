@@ -10,12 +10,12 @@
 
 export interface PocRecord {
   id: string;
-  technique_id: string;
-  technique_name: string;
-  target_ip: string;
-  commands_executed: string[];
-  input_params: Record<string, string>;
-  output_snippet: string;
+  techniqueId: string;
+  techniqueName: string;
+  targetIp: string;
+  commandsExecuted: string[];
+  inputParams: Record<string, string>;
+  outputSnippet: string;
   environment: Record<string, string>;
   reproducible: "reproducible" | "partial" | "not_reproducible";
   timestamp: string;

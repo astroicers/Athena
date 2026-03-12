@@ -10,7 +10,7 @@
 
 "use client";
 
-import { ReactNode, useCallback, useState } from "react";
+import { ReactNode, useCallback, useEffect, useState } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { MockBanner } from "@/components/layout/MockBanner";
@@ -29,6 +29,15 @@ function ShellInner({ children }: { children: ReactNode }) {
   const ws = useWebSocket(operationId);
   const { constraints, opsecAlerts } = useGlobalAlerts(ws);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [opCodename, setOpCodename] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!operationId) return;
+    api
+      .get<{ codename?: string }>(`/operations/${operationId}`)
+      .then((op) => setOpCodename(op?.codename ?? null))
+      .catch(() => setOpCodename(null));
+  }, [operationId]);
 
   const alertCount = opsecAlerts.length + (constraints.active ? 1 : 0);
 
@@ -49,7 +58,7 @@ function ShellInner({ children }: { children: ReactNode }) {
         <ConstraintBanner constraints={constraints} onOverride={handleConstraintOverride} />
         <PageHeader
           title="Athena"
-          operationCode="PHANTOM-EYE"
+          operationCode={opCodename ?? undefined}
           trailing={
             <button
               onClick={() => setNotifOpen(true)}

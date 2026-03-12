@@ -27,6 +27,7 @@ export interface Operation {
   dataExfiltratedBytes: number;
   automationMode: AutomationMode;
   riskThreshold: RiskLevel;
+  missionProfile: string;
   operatorId: string | null;
   createdAt: string;
   updatedAt: string;

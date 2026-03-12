@@ -165,7 +165,7 @@ function WarRoomContent() {
         api.get<OodaDashboard>(
           `/operations/${operationId}/ooda/dashboard`,
         ),
-        api.get<LogEntry[]>(
+        api.get<{ items: LogEntry[] }>(
           `/operations/${operationId}/logs?page_size=${LOG_PAGE_SIZE}`,
         ),
       ]);
@@ -173,8 +173,8 @@ function WarRoomContent() {
       if (dashData.status === "fulfilled" && dashData.value) {
         setDashboard(dashData.value);
       }
-      if (logData.status === "fulfilled" && Array.isArray(logData.value)) {
-        setLogs(logData.value);
+      if (logData.status === "fulfilled" && logData.value?.items) {
+        setLogs(Array.isArray(logData.value.items) ? logData.value.items : []);
       }
     } catch {
       // silent

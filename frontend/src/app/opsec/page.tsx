@@ -54,8 +54,8 @@ function noiseScoreLabel(
 }
 
 function detectionRiskColor(risk: number): string {
-  if (risk >= 0.7) return "#EF4444";
-  if (risk >= 0.4) return "#FFA500";
+  if (risk >= 70) return "#EF4444";
+  if (risk >= 40) return "#FFA500";
   return "#22C55E";
 }
 
@@ -167,11 +167,11 @@ function OpsecContent() {
   const fetchTrend = useCallback(async () => {
     if (!operationId) return;
     try {
-      const data = await api.get<TimeSeriesDataPoint[]>(
+      const raw = await api.get<Array<{ ts: string; totalNoise: number }>>(
         `/operations/${operationId}/metrics/time-series?metric=opsec&granularity=1min`,
       );
-      if (Array.isArray(data)) {
-        setTrendData(data);
+      if (Array.isArray(raw)) {
+        setTrendData(raw.map((r) => ({ timestamp: r.ts, value: r.totalNoise })));
       }
     } catch {
       // Silently fail -- trend chart simply stays empty
@@ -205,10 +205,11 @@ function OpsecContent() {
   const fetchEvents = useCallback(async () => {
     if (!operationId) return;
     try {
-      const data = await api.get<LogEntry[]>(
+      const resp = await api.get<{ items: LogEntry[] }>(
         `/operations/${operationId}/logs?page_size=${EVENTS_PAGE_SIZE}`,
       );
-      if (Array.isArray(data)) {
+      const data = resp?.items ?? [];
+      if (data.length > 0) {
         // Filter for OPSEC-related events
         const opsecEvents = data.filter(
           (e) =>
@@ -299,14 +300,14 @@ function OpsecContent() {
           />
           <MetricCard
             label={t("detectionRisk")}
-            value={opsec.detectionRisk.toFixed(2)}
+            value={opsec.detectionRisk.toFixed(1)}
             subLabel={
-              opsec.detectionRisk >= 0.5
+              opsec.detectionRisk >= 50
                 ? t("aboveThreshold")
                 : t("belowThreshold")
             }
             color={riskColor}
-            progressValue={opsec.detectionRisk * 100}
+            progressValue={opsec.detectionRisk}
             progressMax={100}
           />
           <MetricCard

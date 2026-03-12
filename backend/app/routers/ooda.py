@@ -21,7 +21,7 @@ from fastapi import APIRouter, Depends
 
 from app.database import db_manager, get_db
 from app.models import OODAIteration
-from app.models.ooda import OodaTriggerQueued, OODADirectiveCreate
+from app.models.ooda import OodaTriggerQueued, OODADirectiveCreate, OodaDashboardResponse
 from app.models.api_schemas import OODATimelineEntry
 from app.routers._deps import ensure_operation
 from app.services.ooda_controller import OODAController
@@ -110,6 +110,35 @@ async def _run_ooda_background(iteration_id: str, op_id: str) -> None:
                 "iteration_id": iteration_id,
                 "error": str(exc),
             })
+
+
+@router.get(
+    "/operations/{operation_id}/ooda/dashboard",
+    response_model=OodaDashboardResponse,
+)
+async def get_ooda_dashboard(
+    operation_id: str,
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Aggregated OODA dashboard data for the War Room."""
+    await ensure_operation(db, operation_id)
+    total = await db.fetchval(
+        "SELECT COUNT(*) FROM ooda_iterations WHERE operation_id = $1",
+        operation_id,
+    )
+    rows = await db.fetch(
+        "SELECT * FROM ooda_iterations WHERE operation_id = $1 "
+        "ORDER BY iteration_number DESC LIMIT 10",
+        operation_id,
+    )
+    iterations = [_row_to_ooda(r) for r in rows]
+    latest = iterations[0] if iterations else None
+    return OodaDashboardResponse(
+        current_phase=latest.phase if latest else "idle",
+        iteration_count=total,
+        latest_iteration=latest,
+        recent_iterations=iterations,
+    )
 
 
 @router.get("/operations/{operation_id}/ooda/current", response_model=OODAIteration | None)

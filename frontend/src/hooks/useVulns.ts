@@ -31,10 +31,10 @@ export function useVulns(operationId: string): UseVulnsReturn {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.get<Vulnerability[]>(
+      const resp = await api.get<{ vulnerabilities: Vulnerability[] }>(
         `/operations/${operationId}/vulnerabilities`,
       );
-      setVulns(data);
+      setVulns(resp.vulnerabilities ?? []);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to load vulnerabilities";
       setError(msg);

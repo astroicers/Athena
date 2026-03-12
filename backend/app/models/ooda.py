@@ -41,6 +41,13 @@ class OODADirectiveCreate(BaseModel):
     scope: Literal["next_cycle"] = "next_cycle"
 
 
+class OodaDashboardResponse(BaseModel):
+    current_phase: str
+    iteration_count: int
+    latest_iteration: OODAIteration | None = None
+    recent_iterations: list[OODAIteration] = []
+
+
 class OODADirective(BaseModel):
     id: str
     operation_id: str

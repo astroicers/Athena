@@ -70,7 +70,7 @@ export function PlaybookBrowser() {
       const data = await api.get<Playbook[]>("/playbooks");
       setPlaybooks(data);
     } catch {
-      addToast("Failed to load playbooks", "error");
+      addToast(t("loadError"), "error");
     } finally {
       setLoading(false);
     }
@@ -151,7 +151,7 @@ export function PlaybookBrowser() {
       }
       closeForm();
     } catch {
-      addToast(editingId ? "Failed to update playbook" : "Failed to create playbook", "error");
+      addToast(editingId ? t("updateError") : t("createError"), "error");
     } finally {
       setSubmitting(false);
     }
@@ -164,7 +164,7 @@ export function PlaybookBrowser() {
       setPlaybooks((prev) => prev.filter((p) => p.id !== id));
       addToast(t("deleted"), "success");
     } catch {
-      addToast("Failed to delete playbook", "error");
+      addToast(t("deleteError"), "error");
     }
   }
 
@@ -172,7 +172,7 @@ export function PlaybookBrowser() {
     return (
       <div className="bg-athena-surface border border-athena-border rounded-athena-md p-6 text-center">
         <span className="text-xs font-mono text-athena-text-secondary">
-          Loading...
+          {t("loading")}
         </span>
       </div>
     );
@@ -284,7 +284,7 @@ export function PlaybookBrowser() {
           </div>
           <div className="flex items-center gap-2 justify-end">
             <Button variant="secondary" size="sm" onClick={closeForm}>
-              CANCEL
+              {t("cancel")}
             </Button>
             <Button
               variant="primary"
@@ -292,7 +292,7 @@ export function PlaybookBrowser() {
               onClick={handleSubmit}
               disabled={submitting || !form.mitreId.trim() || !form.command.trim()}
             >
-              {submitting ? t("creating") : editingId ? t("editing") : t("addPlaybook")}
+              {submitting ? (editingId ? t("saving") : t("creating")) : editingId ? t("editing") : t("addPlaybook")}
             </Button>
           </div>
         </div>
@@ -326,7 +326,7 @@ export function PlaybookBrowser() {
                   {t("tags")}
                 </th>
                 <th className="px-3 py-2 text-center text-athena-text-secondary font-medium uppercase tracking-wider w-28">
-                  Actions
+                  {t("actions")}
                 </th>
               </tr>
             </thead>
@@ -377,7 +377,7 @@ export function PlaybookBrowser() {
                         size="sm"
                         onClick={() => handleDelete(pb.id)}
                       >
-                        DEL
+                        {t("delete")}
                       </Button>
                     )}
                   </td>

@@ -473,7 +473,16 @@
     "search": "Search by MITRE ID or command...",
     "linux": "LINUX",
     "windows": "WINDOWS",
-    "darwin": "DARWIN"
+    "darwin": "DARWIN",
+    "loadError": "Failed to load playbooks",
+    "createError": "Failed to create playbook",
+    "updateError": "Failed to update playbook",
+    "deleteError": "Failed to delete playbook",
+    "loading": "Loading...",
+    "cancel": "CANCEL",
+    "saving": "SAVING...",
+    "actions": "Actions",
+    "delete": "DEL"
   },
   "Tools": {
     "title": "Tool Registry",
@@ -551,7 +560,7 @@
       "waitingForLogs": "Waiting for logs...",
       "oodaCurrent": "OODA Current",
       "oodaHistory": "OODA History",
-      "iteration": "Iteration",
+      "iteration": "iteration(s)",
       "noCurrentIteration": "No current iteration",
       "noHistory": "No history",
       "observeSummary": "Observe:",

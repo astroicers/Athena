@@ -124,9 +124,15 @@ export function WarRoomSidePanel({
   }, [operationId]);
 
   useEffect(() => {
+    if (!operationId) return;
     fetchOodaCurrent();
     fetchOodaHistory();
-  }, [fetchOodaCurrent, fetchOodaHistory]);
+    const timer = setInterval(() => {
+      fetchOodaCurrent();
+      fetchOodaHistory();
+    }, 30_000);
+    return () => clearInterval(timer);
+  }, [fetchOodaCurrent, fetchOodaHistory, operationId]);
 
   function toggle(id: string) {
     setOpenSection((prev) => (prev === id ? null : id));
@@ -310,7 +316,7 @@ export function WarRoomSidePanel({
         <AccordionSection
           id="oodaHistory"
           title={t("sidePanel.oodaHistory")}
-          summary={`${oodaHistory.length} ${t("sidePanel.iteration")}s`}
+          summary={`${oodaHistory.length} ${t("sidePanel.iteration")}`}
           isOpen={openSection === "oodaHistory"}
           onToggle={() => toggle("oodaHistory")}
         >

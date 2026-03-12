@@ -22,6 +22,7 @@
     "poc": "PoC 報告",
     "vulns": "漏洞",
     "opsec": "OPSEC",
+    "decisions": "AI 決策",
     "attackGraph": "攻擊圖",
     "tools": "工具庫"
   },
@@ -237,6 +238,29 @@
     "actionCaution": "注意",
     "actionHold": "暫停",
     "actionAbort": "中止"
+  },
+  "AIDecisionPage": {
+    "title": "AI 決策分析",
+    "confidenceBreakdown": "信心度分解",
+    "confidenceSubtitle": "當前決策的 AI 建議信心來源",
+    "noiseRiskMatrix": "噪音 x 風險矩陣",
+    "matrixSubtitle": "基於當前噪音等級與偵測風險的行動安全區",
+    "recommendedAction": "建議行動",
+    "currentPosition": "當前位置",
+    "accept": "接受",
+    "override": "覆寫",
+    "accepting": "接受中...",
+    "noiseLabel": "噪音",
+    "riskLabel": "風險",
+    "actionLabel": "行動",
+    "noiseAxisLabel": "噪音等級",
+    "riskAxisLabel": "偵測風險",
+    "highConfidence": "高信心度",
+    "mediumConfidence": "中信心度",
+    "lowConfidence": "低信心度",
+    "errorLoading": "載入 AI 決策資料失敗",
+    "noTechnique": "— 無技術 —",
+    "noAssessment": "無可用評估。"
   },
   "KillChain": {
     "progress": "殺傷鏈進度",
@@ -574,7 +598,11 @@
     "viewFullLogs": "查看完整日誌",
     "reconStarted": "偵察掃描已啟動",
     "initialAccessStarted": "初始入場已啟動",
-    "battleRhythm": "作戰節奏"
+    "battleRhythm": "作戰節奏",
+    "autoLoopStart": "自動",
+    "autoLoopStop": "停止自動",
+    "autoLoopStartHint": "啟動自動 OODA 循環（30 秒間隔）",
+    "autoLoopStopHint": "停止自動 OODA 循環"
   },
   "Legend": {
     "title": "圖例",
@@ -726,7 +754,17 @@
     "events": "OPSEC 事件",
     "noEvents": "目前無 OPSEC 事件",
     "noData": "無 OPSEC 資料",
-    "errorLoading": "OPSEC 不可用"
+    "errorLoading": "OPSEC 不可用",
+    "moderate": "中等",
+    "high": "高",
+    "low": "低",
+    "critical": "嚴重",
+    "remainingBudget": "剩餘預算",
+    "activeExposures": "活躍暴露",
+    "aboveThreshold": "超過閾值",
+    "belowThreshold": "低於閾值",
+    "eventCount": "{count} 筆事件",
+    "view": "檢視"
   },
   "Threat": {
     "noise": "噪音",
@@ -820,6 +858,7 @@
     "failedTriggerOoda": "觸發 OODA 循環失敗",
     "failedExportReport": "匯出報告失敗",
     "failedReconScan": "啟動偵察掃描失敗",
+    "failedOsint": "OSINT 探索啟動失敗",
     "oodaFailed": "OODA 循環失敗",
     "failedRefreshTechniques": "重新整理技術失敗",
     "failedSetActive": "設定攻擊目標失敗",
@@ -828,5 +867,16 @@
     "failedRecon": "偵察掃描啟動失敗",
     "failedInitialAccess": "初始入場啟動失敗",
     "failedLoadWarRoom": "載入作戰室資料失敗"
+  },
+  "Engagement": {
+    "title": "交戰規則",
+    "noEngagement": "此作戰行動未定義交戰規則",
+    "client": "客戶",
+    "contact": "聯絡人",
+    "inScope": "範圍內",
+    "outOfScope": "範圍外",
+    "emergency": "緊急聯絡人",
+    "activate": "啟用",
+    "suspend": "暫停"
   }
 }

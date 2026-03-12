@@ -111,6 +111,8 @@ export function FloatingNodeCard({
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [killChainStages, setKillChainStages] = useState<Record<string, boolean> | null>(null);
+  const [killChainLoading, setKillChainLoading] = useState(false);
 
   const node = topologyData.nodes.find((n) => n.id === nodeId) ?? null;
   const isC2 = node?.type === "c2";
@@ -123,6 +125,16 @@ export function FloatingNodeCard({
       .then(setFacts)
       .catch(() => setFacts([]))
       .finally(() => setLoadingFacts(false));
+
+    // Fetch kill chain progress for this target
+    setKillChainLoading(true);
+    api
+      .get<{ stages: Record<string, boolean> }>(
+        `/operations/${operationId}/targets/${nodeId}/kill-chain`,
+      )
+      .then((data) => setKillChainStages(data.stages ?? null))
+      .catch(() => setKillChainStages(null))
+      .finally(() => setKillChainLoading(false));
   }, [nodeId, operationId]);
 
   // Lazy-load AI summary only when tab is activated
@@ -425,6 +437,47 @@ export function FloatingNodeCard({
                   >
                     {tKC(kcStage as any)}
                   </span>
+                </div>
+              )}
+
+              {/* Kill Chain Progress Bar */}
+              {!killChainLoading && killChainStages && (
+                <div className="border-t border-athena-border/30 pt-1 mt-1">
+                  <span className="text-[12px] font-mono text-athena-text-secondary mb-1 block">
+                    {tKC("progress")}
+                  </span>
+                  <div className="flex gap-0.5">
+                    {(["recon", "weaponize", "deliver", "exploit", "install", "c2", "action"] as const).map((stage) => {
+                      const reached = !!killChainStages[stage];
+                      const color = reached
+                        ? KILL_CHAIN_COLORS[stage as KillChainStage]
+                        : undefined;
+                      return (
+                        <div key={stage} className="flex-1 flex flex-col items-center gap-0.5">
+                          <div
+                            className="w-full h-2 rounded-sm"
+                            style={{
+                              background: reached ? color : "var(--color-border)",
+                              opacity: reached ? 1 : 0.3,
+                            }}
+                          />
+                          <span
+                            className="text-[8px] font-mono leading-none"
+                            style={{ color: reached ? color : "var(--color-text-secondary)" }}
+                          >
+                            {tKC(stage as "recon" | "weaponize" | "deliver" | "exploit" | "install" | "c2" | "action")}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {killChainLoading && (
+                <div className="border-t border-athena-border/30 pt-1 mt-1">
+                  <div className="text-[12px] font-mono text-athena-text-secondary animate-pulse">
+                    {tKC("progress")}...
+                  </div>
                 </div>
               )}
 

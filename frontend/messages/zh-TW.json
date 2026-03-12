@@ -46,7 +46,17 @@
     "selectProfile": "選擇任務配置",
     "loadError": "無法載入作戰行動",
     "requiredFields": "代碼、名稱和代號為必填",
-    "createError": "無法建立作戰行動"
+    "createError": "無法建立作戰行動",
+    "editOp": "編輯行動",
+    "editStatus": "狀態",
+    "automationMode": "自動化模式",
+    "riskThreshold": "風險門檻",
+    "saved": "作戰行動已更新",
+    "saveError": "無法更新作戰行動",
+    "saving": "儲存中...",
+    "manual": "手動",
+    "semiAuto": "半自動",
+    "autoFull": "全自動"
   },
   "PageHeader": {},
   "C5ISR": {
@@ -235,7 +245,8 @@
     "exploit": "利用",
     "install": "植入",
     "c2": "C2",
-    "action": "行動"
+    "action": "行動",
+    "noData": "無殺傷鏈資料"
   },
   "Status": {
     "success": "成功",
@@ -542,7 +553,9 @@
       "observeSummary": "觀察：",
       "orientSummary": "分析：",
       "decideSummary": "決策：",
-      "actSummary": "行動："
+      "actSummary": "行動：",
+      "attackSurface": "攻擊面",
+      "constraints": "限制條件"
     },
     "directivePlaceholder": "輸入下一輪 OODA 循環的指令...",
     "directiveSend": "傳送",
@@ -760,6 +773,26 @@
     "adding": "新增中...",
     "failedAdd": "新增目標失敗",
     "failedUpdate": "更新目標失敗"
+  },
+  "AttackSurface": {
+    "title": "攻擊面",
+    "noData": "無攻擊面資料",
+    "total": "總計"
+  },
+  "Agents": {
+    "sync": "同步",
+    "syncing": "同步中...",
+    "synced": "代理同步成功"
+  },
+  "Recommendations": {
+    "history": "建議歷史",
+    "noHistory": "無建議歷史紀錄"
+  },
+  "Constraints": {
+    "title": "限制條件",
+    "noConstraints": "無活躍限制條件",
+    "domain": "網域",
+    "rule": "規則"
   },
   "Errors": {
     "failedLoadC5isr": "載入 C5ISR 資料失敗",

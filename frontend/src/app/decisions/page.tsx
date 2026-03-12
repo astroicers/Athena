@@ -415,8 +415,19 @@ function RightPanel({ noiseLevel, riskLevel, noiseScore, detectionRisk }: RightP
 
 // ── Page ───────────────────────────────────────────────────────────────────
 
+interface RecommendationHistoryItem {
+  id: string;
+  techniqueId: string;
+  techniqueName: string;
+  confidence: number;
+  situationAssessment: string;
+  timestamp?: string;
+  createdAt?: string;
+}
+
 export default function DecisionsPage() {
   const t = useTranslations("AIDecisionPage");
+  const tRec = useTranslations("Recommendations");
   const operationId = useOperationId();
 
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
@@ -424,19 +435,24 @@ export default function DecisionsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [accepting, setAccepting] = useState(false);
+  const [recHistory, setRecHistory] = useState<RecommendationHistoryItem[]>([]);
 
   const fetchData = useCallback(async () => {
     try {
-      const [rec, dash] = await Promise.all([
+      const [rec, dash, history] = await Promise.all([
         api
           .get<Recommendation>(`/operations/${operationId}/recommendations/latest`)
           .catch(() => null),
         api
           .get<DashboardData>(`/operations/${operationId}/dashboard`)
           .catch(() => null),
+        api
+          .get<RecommendationHistoryItem[]>(`/operations/${operationId}/recommendations`)
+          .catch(() => [] as RecommendationHistoryItem[]),
       ]);
       setRecommendation(rec);
       setDashboard(dash);
+      setRecHistory(history ?? []);
       setError(null);
     } catch {
       setError(t("errorLoading"));
@@ -511,6 +527,53 @@ export default function DecisionsPage() {
                 noiseScore={noiseScore}
                 detectionRisk={detectionRisk}
               />
+            </div>
+          </div>
+
+          {/* Recommendation History */}
+          <div className="px-4 pb-4">
+            <div className="rounded border border-athena-border bg-athena-surface p-4">
+              <p className="text-[10px] font-mono tracking-widest text-athena-text-secondary uppercase mb-3">
+                {tRec("history")}
+              </p>
+              {recHistory.length === 0 ? (
+                <p className="text-xs font-mono text-athena-text-secondary">
+                  {tRec("noHistory")}
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {recHistory.map((item) => {
+                    const ts = item.timestamp || item.createdAt;
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-3 bg-athena-bg border border-athena-border/50 rounded-athena-sm px-3 py-2"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono font-bold text-athena-accent truncate">
+                              {item.techniqueName || item.techniqueId}
+                            </span>
+                            <span className="text-[10px] font-mono text-green-400">
+                              {Math.round(item.confidence * 100)}%
+                            </span>
+                          </div>
+                          {item.situationAssessment && (
+                            <p className="text-[10px] font-mono text-athena-text-secondary truncate mt-0.5">
+                              {item.situationAssessment}
+                            </p>
+                          )}
+                        </div>
+                        {ts && (
+                          <span className="text-[10px] font-mono text-athena-text-secondary shrink-0">
+                            {new Date(ts).toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>

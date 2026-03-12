@@ -77,6 +77,7 @@ export default function OperationsPage() {
   const [operations, setOperations] = useState<Operation[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [editingOp, setEditingOp] = useState<Operation | null>(null);
 
   /* -- Fetch operations -------------------------------------------- */
   const fetchOperations = useCallback(async () => {
@@ -167,6 +168,17 @@ export default function OperationsPage() {
                     {op.currentOodaPhase}
                   </span>
 
+                  {/* Edit button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingOp(op);
+                    }}
+                    className="text-[10px] font-mono font-bold text-athena-accent border border-athena-accent/40 rounded-athena-sm px-1.5 py-0.5 hover:bg-athena-accent/10 transition-colors"
+                  >
+                    {t("editOp")}
+                  </button>
+
                   {/* Created date */}
                   <span className="text-[10px] font-mono text-athena-text-secondary ml-auto">
                     {new Date(op.createdAt).toLocaleDateString()}
@@ -187,6 +199,21 @@ export default function OperationsPage() {
             addToast(t("created"), "success");
           }}
           onCancel={() => setShowCreate(false)}
+        />
+      )}
+
+      {/* -- Edit operation modal ------------------------------------ */}
+      {editingOp && (
+        <EditOperationModal
+          operation={editingOp}
+          onSaved={(updated) => {
+            setOperations((prev) =>
+              prev.map((o) => (o.id === updated.id ? updated : o)),
+            );
+            setEditingOp(null);
+            addToast(t("saved"), "success");
+          }}
+          onCancel={() => setEditingOp(null)}
         />
       )}
     </div>
@@ -340,6 +367,147 @@ function CreateOperationModal({ onCreated, onCancel }: CreateModalProps) {
             </Button>
             <Button variant="primary" type="submit" disabled={submitting}>
               {submitting ? t("creating") : t("createOp")}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Edit Operation Modal                                               */
+/* ------------------------------------------------------------------ */
+
+interface EditModalProps {
+  operation: Operation;
+  onSaved: (op: Operation) => void;
+  onCancel: () => void;
+}
+
+function EditOperationModal({ operation, onSaved, onCancel }: EditModalProps) {
+  const t = useTranslations("Operations");
+  const tCommon = useTranslations("Common");
+
+  const [status, setStatus] = useState(operation.status);
+  const [automationMode, setAutomationMode] = useState(operation.automationMode);
+  const [riskThreshold, setRiskThreshold] = useState(String(operation.riskThreshold));
+  const [missionProfile, setMissionProfile] = useState(operation.missionProfile);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      const updated = await api.patch<Operation>(`/operations/${operation.id}`, {
+        status,
+        automationMode,
+        riskThreshold,
+        missionProfile,
+      });
+      onSaved(updated);
+    } catch (err) {
+      const detail = (err as { detail?: string })?.detail;
+      setError(detail || t("saveError"));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const inputClass =
+    "w-full bg-athena-bg border border-athena-border rounded-athena-sm px-3 py-2 text-sm font-mono text-athena-text placeholder-athena-text-secondary/50 focus:outline-none focus:border-athena-accent";
+  const labelClass =
+    "block text-sm font-mono text-athena-text-secondary uppercase tracking-wider mb-1";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
+      <div className="bg-athena-surface border-2 border-athena-border rounded-athena-lg p-6 max-w-md w-full mx-4">
+        <div className="mb-4">
+          <h2 className="text-lg font-mono font-bold text-athena-text">
+            {t("editOp")}
+          </h2>
+          <p className="text-xs font-mono text-athena-text-secondary mt-1">
+            {operation.codename}
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-3">
+          {/* Status */}
+          <div>
+            <label className={labelClass}>{t("editStatus")}</label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as Operation["status"])}
+              className={inputClass}
+            >
+              <option value="planning">planning</option>
+              <option value="active">active</option>
+              <option value="paused">paused</option>
+              <option value="completed">completed</option>
+              <option value="failed">failed</option>
+            </select>
+          </div>
+
+          {/* Automation Mode */}
+          <div>
+            <label className={labelClass}>{t("automationMode")}</label>
+            <select
+              value={automationMode}
+              onChange={(e) => setAutomationMode(e.target.value)}
+              className={inputClass}
+            >
+              <option value="manual">{t("manual")}</option>
+              <option value="semi_auto">{t("semiAuto")}</option>
+              <option value="auto_full">{t("autoFull")}</option>
+            </select>
+          </div>
+
+          {/* Risk Threshold */}
+          <div>
+            <label className={labelClass}>{t("riskThreshold")}</label>
+            <select
+              value={riskThreshold}
+              onChange={(e) => setRiskThreshold(e.target.value)}
+              className={inputClass}
+            >
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="critical">Critical</option>
+            </select>
+          </div>
+
+          {/* Mission Profile */}
+          <div>
+            <label className={labelClass}>{t("missionProfile")}</label>
+            <select
+              value={missionProfile}
+              onChange={(e) => setMissionProfile(e.target.value as "SR" | "CO" | "SP")}
+              className={inputClass}
+            >
+              <option value="SR">{t("profileSR")}</option>
+              <option value="CO">{t("profileCO")}</option>
+              <option value="SP">{t("profileSP")}</option>
+            </select>
+          </div>
+
+          {error && (
+            <p className="text-xs font-mono text-athena-error">{error}</p>
+          )}
+
+          <div className="flex gap-3 justify-end pt-2">
+            <Button
+              variant="secondary"
+              type="button"
+              onClick={onCancel}
+              disabled={submitting}
+            >
+              {tCommon("cancel")}
+            </Button>
+            <Button variant="primary" type="submit" disabled={submitting}>
+              {submitting ? t("saving") : t("editOp")}
             </Button>
           </div>
         </form>

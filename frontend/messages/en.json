@@ -47,7 +47,17 @@
     "selectProfile": "Select mission profile",
     "loadError": "Failed to load operations",
     "requiredFields": "Code, name, and codename are required",
-    "createError": "Failed to create operation"
+    "createError": "Failed to create operation",
+    "editOp": "EDIT OPERATION",
+    "editStatus": "Status",
+    "automationMode": "Automation Mode",
+    "riskThreshold": "Risk Threshold",
+    "saved": "Operation updated successfully",
+    "saveError": "Failed to update operation",
+    "saving": "SAVING...",
+    "manual": "Manual",
+    "semiAuto": "Semi-Auto",
+    "autoFull": "Full Auto"
   },
   "PageHeader": {},
   "C5ISR": {
@@ -259,7 +269,8 @@
     "exploit": "EXPLOIT",
     "install": "INSTALL",
     "c2": "C2",
-    "action": "ACTION"
+    "action": "ACTION",
+    "noData": "No kill chain data"
   },
   "Status": {
     "success": "SUCCESS",
@@ -566,7 +577,9 @@
       "observeSummary": "Observe:",
       "orientSummary": "Orient:",
       "decideSummary": "Decide:",
-      "actSummary": "Act:"
+      "actSummary": "Act:",
+      "attackSurface": "Attack Surface",
+      "constraints": "Constraints"
     },
     "directivePlaceholder": "Enter directive for next OODA cycle...",
     "directiveSend": "Send",
@@ -833,5 +846,25 @@
     "emergency": "Emergency Contact",
     "activate": "Activate",
     "suspend": "Suspend"
+  },
+  "AttackSurface": {
+    "title": "Attack Surface",
+    "noData": "No attack surface data available",
+    "total": "Total"
+  },
+  "Agents": {
+    "sync": "SYNC",
+    "syncing": "SYNCING...",
+    "synced": "Agents synced successfully"
+  },
+  "Recommendations": {
+    "history": "Recommendation History",
+    "noHistory": "No recommendation history available"
+  },
+  "Constraints": {
+    "title": "Constraints",
+    "noConstraints": "No active constraints",
+    "domain": "Domain",
+    "rule": "Rule"
   }
 }

@@ -14,6 +14,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { useToast } from "@/contexts/ToastContext";
 import { Badge } from "@/components/atoms/Badge";
 import { AIDecisionPanel } from "@/components/topology/AIDecisionPanel";
 import { RecommendationPanel } from "@/components/ooda/RecommendationPanel";
@@ -28,6 +29,18 @@ import type { OrientRecommendation } from "@/types/recommendation";
 import type { OODATimelineEntry } from "@/types/ooda";
 import type { Agent } from "@/types/agent";
 import type { LogEntry } from "@/types/log";
+
+interface AttackSurfaceData {
+  total: number;
+  categories: Record<string, number>;
+}
+
+interface ConstraintItem {
+  id: string;
+  domain: string;
+  rule: string;
+  active: boolean;
+}
 
 interface OODAIteration {
   id: string;
@@ -96,10 +109,17 @@ export function WarRoomSidePanel({
   onOodaTrigger,
 }: WarRoomSidePanelProps) {
   const t = useTranslations("WarRoom");
+  const tAS = useTranslations("AttackSurface");
+  const tAg = useTranslations("Agents");
+  const tCon = useTranslations("Constraints");
+  const { addToast } = useToast();
   const [openSection, setOpenSection] = useState<string | null>("aiDecision");
   const [oodaCurrent, setOodaCurrent] = useState<OODAIteration | null>(null);
   const [oodaHistory, setOodaHistory] = useState<OODAIteration[]>([]);
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
+  const [attackSurface, setAttackSurface] = useState<AttackSurfaceData | null>(null);
+  const [constraints, setConstraints] = useState<ConstraintItem[]>([]);
+  const [syncing, setSyncing] = useState(false);
 
   const fetchOodaCurrent = useCallback(async () => {
     try {
@@ -123,19 +143,55 @@ export function WarRoomSidePanel({
     }
   }, [operationId]);
 
+  const fetchAttackSurface = useCallback(async () => {
+    try {
+      const data = await api.get<AttackSurfaceData>(
+        `/operations/${operationId}/attack-surface`,
+      );
+      setAttackSurface(data);
+    } catch {
+      // silently ignore
+    }
+  }, [operationId]);
+
+  const fetchConstraints = useCallback(async () => {
+    try {
+      const data = await api.get<ConstraintItem[]>(
+        `/operations/${operationId}/constraints`,
+      );
+      setConstraints(data);
+    } catch {
+      // silently ignore
+    }
+  }, [operationId]);
+
   useEffect(() => {
     if (!operationId) return;
     fetchOodaCurrent();
     fetchOodaHistory();
+    fetchAttackSurface();
+    fetchConstraints();
     const timer = setInterval(() => {
       fetchOodaCurrent();
       fetchOodaHistory();
     }, 30_000);
     return () => clearInterval(timer);
-  }, [fetchOodaCurrent, fetchOodaHistory, operationId]);
+  }, [fetchOodaCurrent, fetchOodaHistory, fetchAttackSurface, fetchConstraints, operationId]);
 
   function toggle(id: string) {
     setOpenSection((prev) => (prev === id ? null : id));
+  }
+
+  async function handleAgentSync() {
+    setSyncing(true);
+    try {
+      await api.post(`/operations/${operationId}/agents/sync`);
+      addToast(tAg("synced"), "success");
+    } catch {
+      // silently ignore
+    } finally {
+      setSyncing(false);
+    }
   }
 
   const activeAgentCount = agents.filter(
@@ -197,6 +253,15 @@ export function WarRoomSidePanel({
           onToggle={() => toggle("agents")}
         >
           <div className="space-y-2">
+            <div className="flex justify-end mb-1">
+              <button
+                onClick={handleAgentSync}
+                disabled={syncing}
+                className="px-2 py-0.5 text-[10px] font-mono font-bold text-athena-accent bg-athena-accent/10 border border-athena-accent rounded-athena-sm hover:bg-athena-accent/20 transition-colors disabled:opacity-50"
+              >
+                {syncing ? tAg("syncing") : tAg("sync")}
+              </button>
+            </div>
             {agents.length === 0 ? (
               <span className="text-sm font-mono text-athena-text-secondary">
                 {t("sidePanel.noAgents")}
@@ -393,6 +458,79 @@ export function WarRoomSidePanel({
                       )}
                     </div>
                   )}
+                </div>
+              ))}
+            </div>
+          )}
+        </AccordionSection>
+
+        {/* Attack Surface */}
+        <AccordionSection
+          id="attackSurface"
+          title={t("sidePanel.attackSurface")}
+          summary={attackSurface ? `${attackSurface.total} total` : "---"}
+          isOpen={openSection === "attackSurface"}
+          onToggle={() => toggle("attackSurface")}
+        >
+          {!attackSurface ? (
+            <span className="text-sm font-mono text-athena-text-secondary">
+              {tAS("noData")}
+            </span>
+          ) : (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="text-athena-text-secondary">{tAS("total")}</span>
+                <span className="text-athena-accent font-bold">{attackSurface.total}</span>
+              </div>
+              {Object.entries(attackSurface.categories).map(([category, count]) => {
+                const pct = attackSurface.total > 0 ? (count / attackSurface.total) * 100 : 0;
+                return (
+                  <div key={category}>
+                    <div className="flex justify-between text-xs font-mono mb-0.5">
+                      <span className="text-athena-text">{category}</span>
+                      <span className="text-athena-text-secondary">{count}</span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-athena-border/40 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-athena-accent/70 transition-all duration-300"
+                        style={{ width: `${Math.round(pct)}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </AccordionSection>
+
+        {/* Constraints */}
+        <AccordionSection
+          id="constraints"
+          title={t("sidePanel.constraints")}
+          summary={`${constraints.length}`}
+          isOpen={openSection === "constraints"}
+          onToggle={() => toggle("constraints")}
+        >
+          {constraints.length === 0 ? (
+            <span className="text-sm font-mono text-athena-text-secondary">
+              {tCon("noConstraints")}
+            </span>
+          ) : (
+            <div className="space-y-1.5">
+              {constraints.map((c) => (
+                <div
+                  key={c.id}
+                  className="bg-athena-bg border border-athena-border/50 rounded-athena-sm px-2 py-1.5"
+                >
+                  <div className="flex items-center gap-2 text-xs font-mono">
+                    <Badge variant={c.active ? "success" : "warning"}>
+                      {c.active ? "ON" : "OFF"}
+                    </Badge>
+                    <span className="text-athena-accent font-bold">{c.domain}</span>
+                  </div>
+                  <p className="text-xs font-mono text-athena-text mt-0.5 pl-1">
+                    {c.rule}
+                  </p>
                 </div>
               ))}
             </div>

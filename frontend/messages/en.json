@@ -797,7 +797,13 @@
     "statusExplored": "Explored",
     "statusPending": "Pending",
     "statusFailed": "Failed",
-    "statusUnreachable": "Unreachable"
+    "statusUnreachable": "Unreachable",
+    "credCount": "Credentials",
+    "credTypes": "Types",
+    "credSources": "Sources",
+    "legendTitle": "Legend",
+    "statsTitle": "Stats",
+    "entry": "Entry"
   },
   "Errors": {
     "failedLoadC5isr": "Failed to load C5ISR data",

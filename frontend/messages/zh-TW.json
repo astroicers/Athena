@@ -756,7 +756,13 @@
     "statusExplored": "已探索",
     "statusPending": "等待中",
     "statusFailed": "失敗",
-    "statusUnreachable": "不可達"
+    "statusUnreachable": "不可達",
+    "credCount": "憑證數",
+    "credTypes": "類型",
+    "credSources": "來源",
+    "legendTitle": "圖例",
+    "statsTitle": "統計",
+    "entry": "入口"
   },
   "Objectives": {
     "title": "任務目標",

@@ -306,6 +306,9 @@ export default function PlannerPage() {
             refreshTargets();
           }}
           onOsintDiscover={handleOsintDiscover}
+          onRefreshSteps={() => {
+            api.get<MissionStep[]>(`/operations/${DEFAULT_OP_ID}/mission/steps`).then(setSteps).catch(() => addToast(tErrors("failedLoadSteps"), "error"));
+          }}
         />
       )}
 

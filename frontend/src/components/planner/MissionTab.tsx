@@ -12,11 +12,14 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { api } from "@/lib/api";
+import { useToast } from "@/contexts/ToastContext";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { DataTable, Column } from "@/components/data/DataTable";
 import { OODATimeline } from "@/components/ooda/OODATimeline";
 import { HostNodeCard } from "@/components/cards/HostNodeCard";
 import { EngagementPanel } from "@/components/planner/EngagementPanel";
+import { ObjectivesPanel } from "@/components/planner/ObjectivesPanel";
 import { Button } from "@/components/atoms/Button";
 import { Badge } from "@/components/atoms/Badge";
 import { HexConfirmModal } from "@/components/modal/HexConfirmModal";
@@ -25,7 +28,7 @@ import { ReconResultModal } from "@/components/modal/ReconResultModal";
 import { TerminalPanel } from "@/components/terminal/TerminalPanel";
 import { SectionHeader } from "@/components/atoms/SectionHeader";
 import { TargetSummaryPanel } from "@/components/planner/TargetSummaryPanel";
-import { MissionStepStatus, RiskLevel } from "@/types/enums";
+import { ExecutionEngine, MissionStepStatus, RiskLevel } from "@/types/enums";
 import type { MissionStep } from "@/types/mission";
 import type { OODATimelineEntry } from "@/types/ooda";
 import type { Target } from "@/types/target";
@@ -73,6 +76,7 @@ export interface MissionTabProps {
   onConfirmDelete: () => void;
   onAddTargetSuccess: () => void;
   onOsintDiscover?: (targetId: string) => void;
+  onRefreshSteps?: () => void;
 }
 
 export function MissionTab({
@@ -107,6 +111,7 @@ export function MissionTab({
   onConfirmDelete,
   onAddTargetSuccess,
   onOsintDiscover,
+  onRefreshSteps,
 }: MissionTabProps) {
   const t = useTranslations("Planner");
   const tCommon = useTranslations("Common");
@@ -116,8 +121,72 @@ export function MissionTab({
   const tOoda = useTranslations("OODA");
   const tStatus = useTranslations("Status");
 
+  const { addToast } = useToast();
+
   // AI Summary panel state — tracks which target is being summarised
   const [summaryTargetId, setSummaryTargetId] = useState<string | null>(null);
+
+  // Create Step modal state
+  const [showCreateStep, setShowCreateStep] = useState(false);
+  const [newStep, setNewStep] = useState({
+    stepNumber: 1,
+    techniqueId: "",
+    techniqueName: "",
+    targetId: "",
+    engine: ExecutionEngine.SSH as string,
+  });
+  const [creatingStep, setCreatingStep] = useState(false);
+
+  // Inline status edit state
+  const [editingStepId, setEditingStepId] = useState<string | null>(null);
+
+  async function handleCreateStep(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newStep.techniqueId.trim() || !newStep.techniqueName.trim() || !newStep.targetId) return;
+    setCreatingStep(true);
+    const selectedTarget = targets.find((tgt) => tgt.id === newStep.targetId);
+    try {
+      await api.post(
+        `/operations/${operationId}/mission/steps`,
+        {
+          stepNumber: newStep.stepNumber,
+          techniqueId: newStep.techniqueId.trim(),
+          techniqueName: newStep.techniqueName.trim(),
+          targetId: newStep.targetId,
+          targetLabel: selectedTarget?.hostname || selectedTarget?.ipAddress || newStep.targetId,
+          engine: newStep.engine,
+        },
+      );
+      addToast(t("stepCreated"), "success");
+      setShowCreateStep(false);
+      setNewStep({ stepNumber: 1, techniqueId: "", techniqueName: "", targetId: "", engine: ExecutionEngine.SSH });
+      onRefreshSteps?.();
+    } catch {
+      addToast(t("failedCreateStep"), "error");
+    } finally {
+      setCreatingStep(false);
+    }
+  }
+
+  async function handleStepStatusChange(stepId: string, newStatus: string) {
+    try {
+      await api.patch(
+        `/operations/${operationId}/mission/steps/${stepId}`,
+        { status: newStatus },
+      );
+      addToast(t("stepUpdated"), "success");
+      setEditingStepId(null);
+      onRefreshSteps?.();
+    } catch {
+      addToast(t("failedUpdateStep"), "error");
+    }
+  }
+
+  const inputStyles =
+    "w-full bg-athena-bg border border-athena-border rounded-athena-sm px-3 py-2 text-sm font-mono text-athena-text placeholder-athena-text-secondary/50 focus:outline-none focus:border-athena-accent";
+
+  const labelStyles =
+    "block text-sm font-mono text-athena-text-secondary uppercase tracking-wider mb-1";
 
   const STEP_COLUMNS: Column<StepRow>[] = [
     { key: "stepNumber", header: t("colStep"), sortable: true },
@@ -131,9 +200,25 @@ export function MissionTab({
       header: t("colStatus"),
       sortable: true,
       render: (r) => (
-        <Badge variant={STEP_VARIANT[r.status] || "info"}>
-          {tStatus(String(r.status) as any)}
-        </Badge>
+        editingStepId === r.id ? (
+          <select
+            value={r.status}
+            onChange={(e) => handleStepStatusChange(r.id, e.target.value)}
+            onBlur={() => setEditingStepId(null)}
+            autoFocus
+            className="bg-athena-bg border border-athena-accent rounded-athena-sm px-2 py-1 text-xs font-mono text-athena-text focus:outline-none"
+          >
+            {Object.values(MissionStepStatus).map((s) => (
+              <option key={s} value={s}>{tStatus(s as any)}</option>
+            ))}
+          </select>
+        ) : (
+          <button onClick={() => setEditingStepId(r.id)} className="cursor-pointer">
+            <Badge variant={STEP_VARIANT[r.status] || "info"}>
+              {tStatus(String(r.status) as any)}
+            </Badge>
+          </button>
+        )
       ),
     },
   ];
@@ -146,6 +231,18 @@ export function MissionTab({
           {t("missionSteps")} — {codename || "PHANTOM-EYE"}
         </SectionHeader>
         <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowCreateStep(true)}
+            icon={
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            }
+          >
+            {t("createStep")}
+          </Button>
           {resetStatus === "done" && (
             <span className="text-sm font-mono text-athena-success">{t("resetOk")}</span>
           )}
@@ -203,6 +300,9 @@ export function MissionTab({
       </div>
       <p className="text-sm font-mono text-athena-text-secondary -mt-3 ml-1">{tHints("missionSteps")}</p>
       <DataTable columns={STEP_COLUMNS} data={steps as StepRow[]} keyField="id" emptyMessage={t("noSteps")} />
+
+      {/* Objectives */}
+      <ObjectivesPanel operationId={operationId} />
 
       {/* OODA Timeline + Host Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -363,6 +463,97 @@ export function MissionTab({
           targetIp={terminalTarget.ipAddress}
           onClose={() => onSetTerminalTarget(null)}
         />
+      )}
+
+      {/* Create Step Modal */}
+      {showCreateStep && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-athena-bg/80 backdrop-blur-sm">
+          <div className="bg-athena-surface border-2 border-athena-border rounded-athena-lg p-6 max-w-md w-full mx-4">
+            <div className="mb-4">
+              <span className="text-xs font-mono text-athena-text-secondary">{t("missionSteps")}</span>
+              <h2 className="text-lg font-mono font-bold text-athena-text mt-1">{t("createStep")}</h2>
+            </div>
+            <form onSubmit={handleCreateStep} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelStyles}>{t("stepNumber")}</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={newStep.stepNumber}
+                    onChange={(e) => setNewStep((s) => ({ ...s, stepNumber: Number(e.target.value) }))}
+                    className={inputStyles}
+                  />
+                </div>
+                <div>
+                  <label className={labelStyles}>{t("engine")}</label>
+                  <select
+                    value={newStep.engine}
+                    onChange={(e) => setNewStep((s) => ({ ...s, engine: e.target.value }))}
+                    className={inputStyles}
+                  >
+                    <option value={ExecutionEngine.SSH}>{t("engineSsh")}</option>
+                    <option value={ExecutionEngine.PERSISTENT_SSH}>{t("enginePersistentSsh")}</option>
+                    <option value={ExecutionEngine.C2}>{t("engineC2")}</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className={labelStyles}>
+                  {t("techniqueId")} <span className="text-athena-error">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newStep.techniqueId}
+                  onChange={(e) => setNewStep((s) => ({ ...s, techniqueId: e.target.value }))}
+                  placeholder="T1059.001"
+                  className={inputStyles}
+                />
+              </div>
+              <div>
+                <label className={labelStyles}>
+                  {t("techniqueName")} <span className="text-athena-error">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newStep.techniqueName}
+                  onChange={(e) => setNewStep((s) => ({ ...s, techniqueName: e.target.value }))}
+                  placeholder="PowerShell"
+                  className={inputStyles}
+                />
+              </div>
+              <div>
+                <label className={labelStyles}>
+                  {t("targetId")} <span className="text-athena-error">*</span>
+                </label>
+                <select
+                  value={newStep.targetId}
+                  onChange={(e) => setNewStep((s) => ({ ...s, targetId: e.target.value }))}
+                  className={inputStyles}
+                >
+                  <option value="">--</option>
+                  {targets.map((tgt) => (
+                    <option key={tgt.id} value={tgt.id}>
+                      {tgt.hostname || tgt.ipAddress}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-3 justify-end pt-2">
+                <Button variant="secondary" type="button" onClick={() => setShowCreateStep(false)} disabled={creatingStep}>
+                  {tCommon("cancel")}
+                </Button>
+                <Button
+                  variant="primary"
+                  type="submit"
+                  disabled={creatingStep || !newStep.techniqueId.trim() || !newStep.techniqueName.trim() || !newStep.targetId}
+                >
+                  {creatingStep ? t("creating") : t("createStep")}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

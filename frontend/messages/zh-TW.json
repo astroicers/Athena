@@ -655,7 +655,10 @@
   "Poc": {
     "title": "概念驗證報告",
     "subtitle": "作戰行動 {operationId}",
-    "export": "匯出 PDF",
+    "export": "匯出",
+    "exportJSON": "JSON（原始資料）",
+    "exportStructured": "結構化報告",
+    "exportMarkdown": "Markdown 報告",
     "totalPocs": "PoC 總數",
     "reproducible": "可重現",
     "targets": "目標數",

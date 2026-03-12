@@ -17,7 +17,7 @@ import { OODAPhase } from "@/types/enums";
 describe("OODAIndicator", () => {
   it("highlights the active phase", () => {
     render(<OODAIndicator currentPhase={OODAPhase.ORIENT} />, { wrapper: IntlWrapper });
-    const orient = screen.getByText("ORIENT");
+    const orient = screen.getByText("Orient");
     expect(orient.closest("div")).toHaveClass("bg-athena-accent/20");
   });
 });

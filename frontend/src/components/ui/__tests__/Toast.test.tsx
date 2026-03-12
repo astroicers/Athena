@@ -11,39 +11,49 @@
 import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { useEffect } from "react";
+import { NextIntlClientProvider } from "next-intl";
+import messages from "../../../../messages/en.json";
 import { ToastProvider, useToast } from "@/contexts/ToastContext";
 import { ToastContainer } from "@/components/ui/Toast";
 import type { ToastSeverity } from "@/contexts/ToastContext";
 
+function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <NextIntlClientProvider locale="en" messages={messages}>
+      <ToastProvider>{children}</ToastProvider>
+    </NextIntlClientProvider>
+  );
+}
+
 // Helper: renders ToastContainer inside provider and injects toasts
 function ToastHarness({
-  messages,
+  messages: msgs,
 }: {
   messages: Array<{ msg: string; sev: ToastSeverity }>;
 }) {
   const { addToast } = useToast();
   useEffect(() => {
-    messages.forEach(({ msg, sev }) => addToast(msg, sev));
+    msgs.forEach(({ msg, sev }) => addToast(msg, sev));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return <ToastContainer />;
 }
 
 function renderWithProvider(
-  messages: Array<{ msg: string; sev: ToastSeverity }>,
+  msgs: Array<{ msg: string; sev: ToastSeverity }>,
 ) {
   return render(
-    <ToastProvider>
-      <ToastHarness messages={messages} />
-    </ToastProvider>,
+    <Providers>
+      <ToastHarness messages={msgs} />
+    </Providers>,
   );
 }
 
 describe("ToastContainer", () => {
   it("renders nothing when no toasts", () => {
     const { container } = render(
-      <ToastProvider>
+      <Providers>
         <ToastContainer />
-      </ToastProvider>,
+      </Providers>,
     );
     expect(container.innerHTML).toBe("");
   });

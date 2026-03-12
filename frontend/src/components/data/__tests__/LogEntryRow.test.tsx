@@ -10,6 +10,7 @@
 
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { IntlWrapper } from "@/test/intl-wrapper";
 import { LogEntryRow } from "@/components/data/LogEntryRow";
 import { LogSeverity } from "@/types/enums";
 import type { LogEntry } from "@/types/log";
@@ -25,8 +26,8 @@ describe("LogEntryRow", () => {
       operationId: "op-1",
       techniqueId: null,
     };
-    render(<LogEntryRow entry={entry} />);
-    expect(screen.getByText("[error]")).toBeInTheDocument();
+    render(<LogEntryRow entry={entry} />, { wrapper: IntlWrapper });
+    expect(screen.getByText("[ERROR]")).toBeInTheDocument();
     expect(screen.getByText("Connection failed")).toBeInTheDocument();
   });
 });

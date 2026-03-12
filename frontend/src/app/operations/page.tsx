@@ -84,11 +84,11 @@ export default function OperationsPage() {
       const data = await api.get<Operation[]>("/operations");
       setOperations(data);
     } catch {
-      addToast("Failed to load operations", "error");
+      addToast(t("loadError"), "error");
     } finally {
       setLoading(false);
     }
-  }, [addToast]);
+  }, [addToast, t]);
 
   useEffect(() => {
     fetchOperations();
@@ -217,7 +217,7 @@ function CreateOperationModal({ onCreated, onCancel }: CreateModalProps) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!code.trim() || !name.trim() || !codename.trim()) {
-      setError("Code, name, and codename are required.");
+      setError(t("requiredFields"));
       return;
     }
     setError(null);
@@ -233,7 +233,7 @@ function CreateOperationModal({ onCreated, onCancel }: CreateModalProps) {
       onCreated(created);
     } catch (err) {
       const detail = (err as { detail?: string })?.detail;
-      setError(detail || "Failed to create operation.");
+      setError(detail || t("createError"));
     } finally {
       setSubmitting(false);
     }

@@ -44,7 +44,10 @@
     "profileSR": "SR — Stealth Recon",
     "profileCO": "CO — Covert Ops",
     "profileSP": "SP — Smash & Grab",
-    "selectProfile": "Select mission profile"
+    "selectProfile": "Select mission profile",
+    "loadError": "Failed to load operations",
+    "requiredFields": "Code, name, and codename are required",
+    "createError": "Failed to create operation"
   },
   "PageHeader": {},
   "C5ISR": {

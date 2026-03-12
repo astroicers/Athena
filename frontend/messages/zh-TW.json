@@ -43,7 +43,10 @@
     "profileSR": "SR — 隱匿偵察",
     "profileCO": "CO — 秘密行動",
     "profileSP": "SP — 快速突破",
-    "selectProfile": "選擇任務配置"
+    "selectProfile": "選擇任務配置",
+    "loadError": "無法載入作戰行動",
+    "requiredFields": "代碼、名稱和代號為必填",
+    "createError": "無法建立作戰行動"
   },
   "PageHeader": {},
   "C5ISR": {

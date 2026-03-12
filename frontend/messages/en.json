@@ -57,7 +57,11 @@
     "saving": "SAVING...",
     "manual": "Manual",
     "semiAuto": "Semi-Auto",
-    "autoFull": "Full Auto"
+    "autoFull": "Full Auto",
+    "riskLow": "Low",
+    "riskMedium": "Medium",
+    "riskHigh": "High",
+    "riskCritical": "Critical"
   },
   "PageHeader": {},
   "C5ISR": {
@@ -865,6 +869,8 @@
     "title": "Constraints",
     "noConstraints": "No active constraints",
     "domain": "Domain",
-    "rule": "Rule"
+    "rule": "Rule",
+    "active": "ON",
+    "inactive": "OFF"
   }
 }

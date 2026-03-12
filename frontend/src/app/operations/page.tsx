@@ -39,7 +39,7 @@ interface Operation {
   techniquesTotal: number;
   activeAgents: number;
   automationMode: string;
-  riskThreshold: number;
+  riskThreshold: "low" | "medium" | "high" | "critical";
   missionProfile: "SR" | "CO" | "SP";
   operatorId: string;
   createdAt: string;
@@ -391,7 +391,7 @@ function EditOperationModal({ operation, onSaved, onCancel }: EditModalProps) {
 
   const [status, setStatus] = useState(operation.status);
   const [automationMode, setAutomationMode] = useState(operation.automationMode);
-  const [riskThreshold, setRiskThreshold] = useState(String(operation.riskThreshold));
+  const [riskThreshold, setRiskThreshold] = useState(operation.riskThreshold);
   const [missionProfile, setMissionProfile] = useState(operation.missionProfile);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -469,13 +469,13 @@ function EditOperationModal({ operation, onSaved, onCancel }: EditModalProps) {
             <label className={labelClass}>{t("riskThreshold")}</label>
             <select
               value={riskThreshold}
-              onChange={(e) => setRiskThreshold(e.target.value)}
+              onChange={(e) => setRiskThreshold(e.target.value as Operation["riskThreshold"])}
               className={inputClass}
             >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="critical">Critical</option>
+              <option value="low">{t("riskLow")}</option>
+              <option value="medium">{t("riskMedium")}</option>
+              <option value="high">{t("riskHigh")}</option>
+              <option value="critical">{t("riskCritical")}</option>
             </select>
           </div>
 

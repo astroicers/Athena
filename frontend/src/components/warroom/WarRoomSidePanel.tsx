@@ -174,6 +174,8 @@ export function WarRoomSidePanel({
     const timer = setInterval(() => {
       fetchOodaCurrent();
       fetchOodaHistory();
+      fetchAttackSurface();
+      fetchConstraints();
     }, 30_000);
     return () => clearInterval(timer);
   }, [fetchOodaCurrent, fetchOodaHistory, fetchAttackSurface, fetchConstraints, operationId]);
@@ -524,7 +526,7 @@ export function WarRoomSidePanel({
                 >
                   <div className="flex items-center gap-2 text-xs font-mono">
                     <Badge variant={c.active ? "success" : "warning"}>
-                      {c.active ? "ON" : "OFF"}
+                      {c.active ? tCon("active") : tCon("inactive")}
                     </Badge>
                     <span className="text-athena-accent font-bold">{c.domain}</span>
                   </div>

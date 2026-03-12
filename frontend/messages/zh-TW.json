@@ -56,7 +56,11 @@
     "saving": "儲存中...",
     "manual": "手動",
     "semiAuto": "半自動",
-    "autoFull": "全自動"
+    "autoFull": "全自動",
+    "riskLow": "低",
+    "riskMedium": "中",
+    "riskHigh": "高",
+    "riskCritical": "嚴重"
   },
   "PageHeader": {},
   "C5ISR": {
@@ -792,7 +796,9 @@
     "title": "限制條件",
     "noConstraints": "無活躍限制條件",
     "domain": "網域",
-    "rule": "規則"
+    "rule": "規則",
+    "active": "啟用",
+    "inactive": "停用"
   },
   "Errors": {
     "failedLoadC5isr": "載入 C5ISR 資料失敗",

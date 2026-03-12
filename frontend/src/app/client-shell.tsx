@@ -21,7 +21,6 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import { api } from "@/lib/api";
 
 import { ToastProvider } from "@/contexts/ToastContext";
-import { SidebarProvider } from "@/contexts/SidebarContext";
 import { OperationProvider, useOperationId } from "@/contexts/OperationContext";
 import { ToastContainer } from "@/components/ui/Toast";
 
@@ -85,9 +84,7 @@ export function ClientShell({ children }: { children: ReactNode }) {
   return (
     <ToastProvider>
       <OperationProvider>
-        <SidebarProvider>
-          <ShellInner>{children}</ShellInner>
-        </SidebarProvider>
+        <ShellInner>{children}</ShellInner>
         <ToastContainer />
       </OperationProvider>
     </ToastProvider>

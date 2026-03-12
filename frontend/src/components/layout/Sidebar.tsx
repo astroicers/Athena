@@ -13,64 +13,24 @@
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { NavItem } from "@/components/nav/NavItem";
-import { LocaleSwitcher } from "@/components/layout/LocaleSwitcher";
-import { useSidebar } from "@/contexts/SidebarContext";
-
 import { NAV_ITEMS } from "@/lib/constants";
 
 export function Sidebar() {
   const pathname = usePathname();
-  const t = useTranslations("Common");
   const tNav = useTranslations("Nav");
-  const { state, toggle } = useSidebar();
-
-  const collapsed = state === "collapsed";
 
   return (
-    <aside
-      className={`${collapsed ? "w-16" : "w-56"} h-full bg-athena-surface border-r border-athena-border flex flex-col transition-all duration-200`}
-    >
-      {/* Logo + Toggle */}
-      <div className="px-4 py-4 border-b border-athena-border flex items-center justify-between">
-        {collapsed ? (
-          <h1 className="text-lg font-mono font-bold text-athena-accent tracking-wider">
-            A
-          </h1>
-        ) : (
-          <div>
-            <h1 className="text-lg font-mono font-bold text-athena-accent tracking-wider">
-              {t("appName")}
-            </h1>
-            <p className="text-sm font-mono text-athena-text-secondary mt-0.5">
-              {t("subtitle")}
-            </p>
-          </div>
-        )}
-        <button
-          onClick={toggle}
-          className="p-1 text-athena-text-secondary hover:text-athena-text transition-colors"
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            {collapsed ? (
-              <polyline points="9 18 15 12 9 6" />
-            ) : (
-              <polyline points="15 18 9 12 15 6" />
-            )}
-          </svg>
-        </button>
+    <aside className="w-14 h-full bg-[#111827] flex flex-col shrink-0">
+      {/* Logo */}
+      <div className="pt-4 pb-3 flex justify-center">
+        <span className="text-xl font-mono font-bold text-[#3B82F6]">A</span>
       </div>
 
+      {/* Separator */}
+      <div className="mx-2 border-b border-[#1f2937]" />
+
       {/* Navigation */}
-      <nav className="flex-1 px-2 py-3 space-y-1">
+      <nav className="flex-1 pt-4 flex flex-col gap-5 items-center">
         {NAV_ITEMS.map((item) => (
           <NavItem
             key={item.href}
@@ -78,42 +38,21 @@ export function Sidebar() {
             icon={item.icon}
             label={tNav(item.labelKey)}
             isActive={pathname === item.href}
-            collapsed={collapsed}
           />
         ))}
       </nav>
 
-      {/* Project Info */}
-      <div className="px-4 py-3 border-t border-athena-border">
-        {collapsed ? (
-          <div className="flex justify-center">
-            <a
-              href="https://github.com/astroicers/Athena"
-              target="_blank"
-              rel="noopener noreferrer"
-              title="astroicers/Athena"
-              className="text-yellow-400 hover:scale-125 transition-transform"
-            >
-              ★
-            </a>
-          </div>
-        ) : (
-          <div className="text-xs font-mono flex items-center justify-between">
-            <div>
-              <a
-                href="https://github.com/astroicers/Athena"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex items-center gap-1.5 text-athena-text-secondary hover:text-athena-accent transition-colors"
-              >
-                <span className="text-yellow-400 group-hover:scale-125 transition-transform">★</span>
-                astroicers/Athena
-              </a>
-              <p className="text-athena-text-secondary mt-1">⚖️ BSL-1.1</p>
-            </div>
-            <LocaleSwitcher />
-          </div>
-        )}
+      {/* Bottom star link */}
+      <div className="pb-4 flex justify-center">
+        <a
+          href="https://github.com/astroicers/Athena"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="astroicers/Athena"
+          className="text-yellow-400 hover:scale-125 transition-transform"
+        >
+          ★
+        </a>
       </div>
     </aside>
   );

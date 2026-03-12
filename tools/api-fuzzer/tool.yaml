@@ -1,0 +1,19 @@
+# Athena MCP Tool Metadata
+tool_id: "api-fuzzer"
+name: "API Fuzzer"
+description: "API security testing — schema discovery, endpoint enumeration, auth bypass, and parameter fuzzing"
+category: "reconnaissance"
+risk_level: "high"
+mitre_techniques: ["T1190", "T1059.009"]
+output_traits: ["api.schema", "api.endpoint", "api.auth_bypass", "api.vuln"]
+
+mcp:
+  transport: "stdio"
+  command: "python"
+  args: ["-m", "server"]
+  http_url: "http://mcp-api-fuzzer:8080/mcp"
+  tool_prefix: "api"
+
+docker:
+  port: 58096
+  environment: {}

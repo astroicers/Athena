@@ -10,6 +10,7 @@
 
 """Tests: Windows AD technique playbooks — DB seeds + MCP executor mapping."""
 
+import importlib.util
 import sys
 import uuid
 from pathlib import Path
@@ -21,15 +22,19 @@ import pytest
 AD_TECHNIQUE_IDS = ["T1069.002", "T1558.003", "T1003.001", "T1003.003", "T1018"]
 
 
+def _load_attack_executor_server():
+    """Load attack-executor server.py via importlib to avoid sys.modules collision."""
+    server_path = Path(__file__).resolve().parent.parent.parent / "tools" / "attack-executor" / "server.py"
+    spec = importlib.util.spec_from_file_location("attack_executor_server", server_path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def test_mcp_attack_executor_has_ad_techniques():
     """MCP attack-executor WINRM_TECHNIQUE_EXECUTORS should contain AD technique IDs."""
-    # Add the tools directory to path to import the MCP server module
-    tools_dir = Path(__file__).resolve().parent.parent.parent / "tools" / "attack-executor"
-    sys.path.insert(0, str(tools_dir))
-    try:
-        from server import WINRM_TECHNIQUE_EXECUTORS
-    finally:
-        sys.path.pop(0)
+    mod = _load_attack_executor_server()
+    WINRM_TECHNIQUE_EXECUTORS = mod.WINRM_TECHNIQUE_EXECUTORS
 
     for tid in AD_TECHNIQUE_IDS:
         # T1003.001 is mapped as T1003.001_win in WinRM executors

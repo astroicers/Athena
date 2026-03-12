@@ -22,14 +22,17 @@ async def test_persistence_probe_disabled_by_default():
 
 def test_technique_executors_has_persistence_techniques():
     """MCP attack-executor TECHNIQUE_EXECUTORS should contain persistence techniques."""
-    import sys
-    sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent.parent.parent / "tools" / "attack-executor"))
-    from server import TECHNIQUE_EXECUTORS, TECHNIQUE_FACT_TRAITS
-    assert "T1053.003" in TECHNIQUE_EXECUTORS
-    assert "T1543.002" in TECHNIQUE_EXECUTORS
-    assert "T1136.001" in TECHNIQUE_EXECUTORS
-    assert TECHNIQUE_FACT_TRAITS["T1053.003"] == ["host.persistence"]
-    assert TECHNIQUE_FACT_TRAITS["T1543.002"] == ["host.service"]
+    import importlib.util
+    from pathlib import Path
+    server_path = Path(__file__).resolve().parent.parent.parent / "tools" / "attack-executor" / "server.py"
+    spec = importlib.util.spec_from_file_location("attack_executor_server", server_path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert "T1053.003" in mod.TECHNIQUE_EXECUTORS
+    assert "T1543.002" in mod.TECHNIQUE_EXECUTORS
+    assert "T1136.001" in mod.TECHNIQUE_EXECUTORS
+    assert mod.TECHNIQUE_FACT_TRAITS["T1053.003"] == ["host.persistence"]
+    assert mod.TECHNIQUE_FACT_TRAITS["T1543.002"] == ["host.service"]
 
 
 async def test_persistence_playbooks_in_seed(client):

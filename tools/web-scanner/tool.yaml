@@ -1,0 +1,19 @@
+# Athena MCP Tool Metadata
+tool_id: "web-scanner"
+name: "Web Scanner"
+description: "HTTP probing, vulnerability scanning, directory enumeration, and screenshotting"
+category: "reconnaissance"
+risk_level: "medium"
+mitre_techniques: ["T1595.002", "T1190"]
+output_traits: ["web.http_service", "web.vuln", "web.directory", "web.screenshot"]
+
+mcp:
+  transport: "stdio"
+  command: "python"
+  args: ["-m", "server"]
+  http_url: "http://mcp-web-scanner:8080/mcp"
+  tool_prefix: "web"
+
+docker:
+  port: 58094
+  environment: {}

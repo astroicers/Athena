@@ -106,30 +106,35 @@ async def test_get_nonexistent_playbook_returns_404(client: AsyncClient):
     assert resp.status_code == 404
 
 
+def _load_attack_executor_server():
+    """Load attack-executor server.py via importlib to avoid sys.modules collision."""
+    import importlib.util
+    from pathlib import Path
+    server_path = Path(__file__).resolve().parent.parent.parent / "tools" / "attack-executor" / "server.py"
+    spec = importlib.util.spec_from_file_location("attack_executor_server", server_path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def test_parse_stdout_first_line_default():
     """Default output_parser takes first non-empty line."""
-    import sys
-    sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent.parent.parent / "tools" / "attack-executor"))
-    from server import _parse_stdout_to_facts
-    facts = _parse_stdout_to_facts("T1592", "hostname\nsome other line", source="test")
+    mod = _load_attack_executor_server()
+    facts = mod._parse_stdout_to_facts("T1592", "hostname\nsome other line", source="test")
     assert facts[0]["value"] == "hostname"
 
 
 def test_parse_stdout_json_parser():
     """output_parser='json' parses JSON output."""
-    import sys
-    sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent.parent.parent / "tools" / "attack-executor"))
-    from server import _parse_stdout_to_facts
-    facts = _parse_stdout_to_facts("T1592", '{"user": "root"}', source="test", output_parser="json")
+    mod = _load_attack_executor_server()
+    facts = mod._parse_stdout_to_facts("T1592", '{"user": "root"}', source="test", output_parser="json")
     assert facts[0]["value"].startswith("{")
 
 
 def test_parse_stdout_regex_parser():
     """output_parser as regex extracts first capture group."""
-    import sys
-    sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent.parent.parent / "tools" / "attack-executor"))
-    from server import _parse_stdout_to_facts
-    facts = _parse_stdout_to_facts("T1592", "uid=0(root) gid=0(root)", source="test", output_parser=r"uid=(\d+)")
+    mod = _load_attack_executor_server()
+    facts = mod._parse_stdout_to_facts("T1592", "uid=0(root) gid=0(root)", source="test", output_parser=r"uid=(\d+)")
     assert facts[0]["value"] == "0"
 
 

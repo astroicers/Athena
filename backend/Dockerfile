@@ -20,6 +20,7 @@ RUN pip install --no-cache-dir .
 
 # Copy application source code
 COPY app/ app/
+COPY alembic/ alembic/
 
 # Create data directory for SQLite
 RUN mkdir -p /app/data

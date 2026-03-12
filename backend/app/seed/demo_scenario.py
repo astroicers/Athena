@@ -84,14 +84,16 @@ C5_CYB = "c5-0005"
 C5_ISR = "c5-0006"
 
 # ---------------------------------------------------------------------------
-# Timestamps (explicit ISO format)
+# Timestamps (datetime objects required by asyncpg for PostgreSQL)
 # ---------------------------------------------------------------------------
-TS_BASE = "2024-11-15T08:00:00"
-TS_SCAN_START = "2024-11-15T08:05:00"
-TS_SCAN_END = "2024-11-15T08:12:00"
-TS_EXEC_START = "2024-11-15T08:30:00"
-TS_BEACON = "2024-11-15T09:00:00"
-TS_NOW = "2024-11-15T09:15:00"
+from datetime import datetime as _dt
+
+TS_BASE = _dt.fromisoformat("2024-11-15T08:00:00")
+TS_SCAN_START = _dt.fromisoformat("2024-11-15T08:05:00")
+TS_SCAN_END = _dt.fromisoformat("2024-11-15T08:12:00")
+TS_EXEC_START = _dt.fromisoformat("2024-11-15T08:30:00")
+TS_BEACON = _dt.fromisoformat("2024-11-15T09:00:00")
+TS_NOW = _dt.fromisoformat("2024-11-15T09:15:00")
 
 
 async def seed() -> None:

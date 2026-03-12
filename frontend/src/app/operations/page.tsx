@@ -10,7 +10,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
@@ -51,17 +51,17 @@ interface Operation {
 /* ------------------------------------------------------------------ */
 
 const STATUS_COLORS: Record<string, string> = {
-  planning: "text-yellow-400 border-yellow-400/40",
-  active: "text-green-400 border-green-400/40",
-  paused: "text-orange-400 border-orange-400/40",
-  completed: "text-blue-400 border-blue-400/40",
-  failed: "text-red-400 border-red-400/40",
+  planning: "#FBBF24",
+  active: "#22C55E",
+  paused: "#FB923C",
+  completed: "#3B82F6",
+  failed: "#EF4444",
 };
 
 const PROFILE_COLORS: Record<string, string> = {
-  SR: "text-cyan-400 border-cyan-400/40",
-  CO: "text-purple-400 border-purple-400/40",
-  SP: "text-red-400 border-red-400/40",
+  SR: "#22D3EE",
+  CO: "#A78BFA",
+  SP: "#EF4444",
 };
 
 /* ------------------------------------------------------------------ */
@@ -69,6 +69,14 @@ const PROFILE_COLORS: Record<string, string> = {
 /* ------------------------------------------------------------------ */
 
 export default function OperationsPage() {
+  return (
+    <Suspense fallback={<PageLoading />}>
+      <OperationsContent />
+    </Suspense>
+  );
+}
+
+function OperationsContent() {
   const t = useTranslations("Operations");
   const router = useRouter();
   const { addToast } = useToast();
@@ -105,7 +113,7 @@ export default function OperationsPage() {
   if (loading) return <PageLoading />;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full athena-grid-bg">
       <PageHeader
         title={t("title")}
         trailing={
@@ -143,7 +151,8 @@ export default function OperationsPage() {
                     {op.codename}
                   </span>
                   <span
-                    className={`text-[10px] font-mono font-bold uppercase border rounded-athena-sm px-1.5 py-0.5 ${STATUS_COLORS[op.status] ?? "text-athena-text-secondary border-athena-border"}`}
+                    className="text-[10px] font-mono font-bold uppercase border rounded-athena-sm px-1.5 py-0.5"
+                    style={STATUS_COLORS[op.status] ? { color: STATUS_COLORS[op.status], borderColor: STATUS_COLORS[op.status] + "66" } : undefined}
                   >
                     {op.status}
                   </span>
@@ -158,7 +167,8 @@ export default function OperationsPage() {
                 <div className="flex items-center gap-2 flex-wrap">
                   {/* Mission profile badge */}
                   <span
-                    className={`text-[10px] font-mono font-bold border rounded-athena-sm px-1.5 py-0.5 ${PROFILE_COLORS[op.missionProfile] ?? "text-athena-text-secondary border-athena-border"}`}
+                    className="text-[10px] font-mono font-bold border rounded-athena-sm px-1.5 py-0.5"
+                    style={PROFILE_COLORS[op.missionProfile] ? { color: PROFILE_COLORS[op.missionProfile], borderColor: PROFILE_COLORS[op.missionProfile] + "66" } : undefined}
                   >
                     {op.missionProfile}
                   </span>

@@ -112,6 +112,7 @@
     "expandView": "EXPAND"
   },
   "Planner": {
+    "title": "Mission Planner",
     "missionSteps": "Mission Steps",
     "noSteps": "No mission steps defined",
     "targetHosts": "Target Hosts",

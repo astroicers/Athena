@@ -183,8 +183,8 @@ export function ToolRegistryTable({
                   {status === "online" && (
                     <Badge variant="success">
                       <span className="relative inline-flex h-2.5 w-2.5 mr-1.5">
-                        <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping bg-[#22C55E]" />
-                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#22C55E]" />
+                        <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping" style={{ backgroundColor: "#22C55E" }} />
+                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "#22C55E" }} />
                       </span>
                       {t("containerOnline")}
                     </Badge>
@@ -192,8 +192,8 @@ export function ToolRegistryTable({
                   {status === "offline" && (
                     <Badge variant="error">
                       <span className="relative inline-flex h-2.5 w-2.5 mr-1.5">
-                        <span className="absolute inline-flex h-full w-full rounded-full opacity-50 animate-pulse bg-[#EF4444]" />
-                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#EF4444]" />
+                        <span className="absolute inline-flex h-full w-full rounded-full opacity-50 animate-pulse" style={{ backgroundColor: "#EF4444" }} />
+                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "#EF4444" }} />
                       </span>
                       {t("containerOffline")}
                     </Badge>

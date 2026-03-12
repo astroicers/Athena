@@ -445,7 +445,7 @@ function DetailPanel({
       </div>
 
       {/* CVSS */}
-      {vuln.cvss !== null && vuln.cvss !== undefined && (
+      {vuln.cvssScore !== null && vuln.cvssScore !== undefined && (
         <div className="flex flex-col gap-1">
           <span
             className="font-mono text-[10px] uppercase tracking-wider"
@@ -457,7 +457,7 @@ function DetailPanel({
             className="font-mono text-xs font-bold athena-tabular-nums"
             style={{ color: SEVERITY_COLORS[vuln.severity] }}
           >
-            {vuln.cvss.toFixed(1)}
+            {vuln.cvssScore.toFixed(1)}
           </span>
         </div>
       )}

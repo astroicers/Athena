@@ -10,7 +10,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { useOperation } from "@/hooks/useOperation";
@@ -19,6 +19,7 @@ import { useOODA } from "@/hooks/useOODA";
 import { useReconScan } from "@/hooks/useReconScan";
 import { useToast } from "@/contexts/ToastContext";
 import { PlannerPageSkeleton } from "@/components/ui/Skeleton";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { TabBar } from "@/components/nav/TabBar";
 import { MissionTab } from "@/components/planner/MissionTab";
 import { AttackTab } from "@/components/planner/AttackTab";
@@ -33,7 +34,7 @@ import type { AttackPathResponse } from "@/types/attackPath";
 
 const DEFAULT_OP_ID = "op-0001";
 
-export default function PlannerPage() {
+function PlannerContent() {
   const t = useTranslations("Planner");
   const tErrors = useTranslations("Errors");
 
@@ -268,6 +269,7 @@ export default function PlannerPage() {
 
   return (
     <div className="flex flex-col h-full space-y-3 athena-grid-bg">
+      <PageHeader title={t("title")} operationCode={operation?.code} />
       <TabBar tabs={PLANNER_TABS} activeTab={activeTab} onChange={setActiveTab} />
 
       {activeTab === "mission" && (
@@ -324,5 +326,13 @@ export default function PlannerPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function PlannerPage() {
+  return (
+    <Suspense fallback={<PlannerPageSkeleton />}>
+      <PlannerContent />
+    </Suspense>
   );
 }

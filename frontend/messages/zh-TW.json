@@ -112,6 +112,7 @@
     "expandView": "展開"
   },
   "Planner": {
+    "title": "任務規劃器",
     "missionSteps": "任務步驟",
     "noSteps": "尚未定義任務步驟",
     "targetHosts": "目標主機",

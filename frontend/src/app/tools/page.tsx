@@ -10,7 +10,7 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useTools } from "@/hooks/useTools";
 import { useMCPServers } from "@/hooks/useMCPServers";
@@ -18,12 +18,21 @@ import { Button } from "@/components/atoms/Button";
 import { ToolRegistryTable } from "@/components/tools/ToolRegistryTable";
 import { PlaybookBrowser } from "@/components/tools/PlaybookBrowser";
 import { OnboardingGuide } from "@/components/tools/OnboardingGuide";
-import { SectionHeader } from "@/components/atoms/SectionHeader";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { PageLoading } from "@/components/ui/PageLoading";
+import { TabBar } from "@/components/nav/TabBar";
 
 type ToolsTab = "registry" | "playbooks";
 
 export default function ToolsPage() {
+  return (
+    <Suspense fallback={<PageLoading />}>
+      <ToolsContent />
+    </Suspense>
+  );
+}
+
+function ToolsContent() {
   const t = useTranslations("Tools");
   const [showGuide, setShowGuide] = useState(false);
   const [activeTab, setActiveTab] = useState<ToolsTab>("registry");
@@ -47,9 +56,10 @@ export default function ToolsPage() {
   if (loading) return <PageLoading />;
 
   return (
-    <div className="space-y-4">
+    <div className="athena-grid-bg flex flex-col h-full space-y-4">
       {/* Page Header */}
-      <SectionHeader
+      <PageHeader
+        title={t("title")}
         trailing={
           <Button
             variant="primary"
@@ -59,33 +69,17 @@ export default function ToolsPage() {
             {t("howToAdd")}
           </Button>
         }
-      >
-        {t("title")}
-      </SectionHeader>
+      />
 
       {/* Tab Bar */}
-      <div className="flex items-center gap-0 border-b border-athena-border">
-        <button
-          onClick={() => setActiveTab("registry")}
-          className={`px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider transition-colors
-            ${activeTab === "registry"
-              ? "text-athena-accent border-b-2 border-athena-accent"
-              : "text-athena-text-secondary hover:text-athena-text"
-            }`}
-        >
-          {t("registryTab")}
-        </button>
-        <button
-          onClick={() => setActiveTab("playbooks")}
-          className={`px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider transition-colors
-            ${activeTab === "playbooks"
-              ? "text-athena-accent border-b-2 border-athena-accent"
-              : "text-athena-text-secondary hover:text-athena-text"
-            }`}
-        >
-          {t("playbooksTab")}
-        </button>
-      </div>
+      <TabBar
+        tabs={[
+          { id: "registry", label: t("registryTab") },
+          { id: "playbooks", label: t("playbooksTab") },
+        ]}
+        activeTab={activeTab}
+        onChange={(tabId) => setActiveTab(tabId as ToolsTab)}
+      />
 
       {/* Tab Content */}
       {activeTab === "registry" ? (

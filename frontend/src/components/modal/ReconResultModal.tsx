@@ -138,7 +138,7 @@ export function ReconResultModal({
 
         <div className="flex gap-3 justify-end pt-2 border-t border-[#1f2937]">
           {ia.agentDeployed && !triggered && (
-            <Button variant="primary" onClick={handleTriggerOoda} disabled={triggering}>
+            <Button variant="secondary" onClick={handleTriggerOoda} disabled={triggering}>
               {triggering ? t("triggering") : t("triggerOoda")}
             </Button>
           )}

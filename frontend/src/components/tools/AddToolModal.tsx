@@ -208,7 +208,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
             >
               {tCommon("cancel")}
             </Button>
-            <Button variant="primary" type="submit" disabled={submitting}>
+            <Button variant="secondary" type="submit" disabled={submitting}>
               {submitting ? t("registering") : t("registerBtn")}
             </Button>
           </div>

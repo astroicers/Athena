@@ -113,7 +113,7 @@ export function EngagementPanel({ operationId }: { operationId: string }) {
             </Badge>
             {engagement.status === "draft" && (
               <Button
-                variant="primary"
+                variant="secondary"
                 size="sm"
                 onClick={handleActivate}
                 disabled={toggling}

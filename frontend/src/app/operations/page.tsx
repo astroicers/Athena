@@ -117,7 +117,7 @@ function OperationsContent() {
       <PageHeader
         title={t("title")}
         trailing={
-          <Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>
+          <Button variant="secondary" size="sm" onClick={() => setShowCreate(true)}>
             {t("createOp")}
           </Button>
         }
@@ -131,7 +131,7 @@ function OperationsContent() {
               <div className="text-sm font-mono text-[#9ca3af]">
                 {t("noOperations")}
               </div>
-              <Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>
+              <Button variant="secondary" size="sm" onClick={() => setShowCreate(true)}>
                 {t("createOp")}
               </Button>
             </div>
@@ -384,7 +384,7 @@ function CreateOperationModal({ onCreated, onCancel }: CreateModalProps) {
             >
               {tCommon("cancel")}
             </Button>
-            <Button variant="primary" type="submit" disabled={submitting}>
+            <Button variant="secondary" type="submit" disabled={submitting}>
               {submitting ? t("creating") : t("createOp")}
             </Button>
           </div>
@@ -525,7 +525,7 @@ function EditOperationModal({ operation, onSaved, onCancel }: EditModalProps) {
             >
               {tCommon("cancel")}
             </Button>
-            <Button variant="primary" type="submit" disabled={submitting}>
+            <Button variant="secondary" type="submit" disabled={submitting}>
               {submitting ? t("saving") : t("editOp")}
             </Button>
           </div>

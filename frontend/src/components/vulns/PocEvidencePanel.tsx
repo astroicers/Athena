@@ -221,7 +221,7 @@ function ExportDropdown({
   return (
     <div className="relative" ref={ref}>
       <Button
-        variant="primary"
+        variant="secondary"
         size="sm"
         onClick={() => setOpen(!open)}
         className="text-[10px] font-bold"

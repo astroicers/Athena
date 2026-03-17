@@ -553,7 +553,7 @@ export function MissionTab({
                   {tCommon("cancel")}
                 </Button>
                 <Button
-                  variant="primary"
+                  variant="secondary"
                   type="submit"
                   disabled={creatingStep || !newStep.techniqueId.trim() || !newStep.techniqueName.trim() || !newStep.targetId}
                 >

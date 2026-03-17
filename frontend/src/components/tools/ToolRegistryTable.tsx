@@ -281,7 +281,7 @@ export function ToolRegistryTable({
             >
               {tool.enabled ? (
                 <Button
-                  variant="primary"
+                  variant="secondary"
                   size="sm"
                   onClick={() => setSelectedTool(tool)}
                   className="text-[10px]"

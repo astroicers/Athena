@@ -189,7 +189,7 @@ export function PlaybookBrowser() {
           placeholder={t("search")}
           className="flex-1 bg-[#0A0E17] border border-[#1f2937] rounded-athena-sm px-3 py-1.5 text-xs font-mono text-[#e5e7eb] placeholder:text-[#9ca3af] focus:outline-none focus:ring-1 focus:ring-[#3b82f6]"
         />
-        <Button variant="primary" size="sm" onClick={openCreateForm}>
+        <Button variant="secondary" size="sm" onClick={openCreateForm}>
           {t("addPlaybook")}
         </Button>
       </div>
@@ -287,7 +287,7 @@ export function PlaybookBrowser() {
               {t("cancel")}
             </Button>
             <Button
-              variant="primary"
+              variant="secondary"
               size="sm"
               onClick={handleSubmit}
               disabled={submitting || !form.mitreId.trim() || !form.command.trim()}

@@ -186,17 +186,19 @@ export function AddTargetModal({
         {/* Tab buttons */}
         <div className="flex gap-2 mb-4">
           <Button
-            variant={mode === "single" ? "primary" : "secondary"}
+            variant="secondary"
             size="sm"
             type="button"
             onClick={() => setMode("single")}
+            className={mode === "single" ? "border-[#3b82f6] text-white" : ""}
           >
             {t("single")}
           </Button>
           <Button
-            variant={mode === "batch" ? "primary" : "secondary"}
+            variant="secondary"
             size="sm"
             type="button"
+            className={mode === "batch" ? "border-[#3b82f6] text-white" : ""}
             onClick={() => {
               setMode("batch");
               setBatchPreview(null);
@@ -273,7 +275,7 @@ export function AddTargetModal({
               <Button variant="secondary" type="button" onClick={onCancel} disabled={submitting}>
                 {tCommon("cancel")}
               </Button>
-              <Button variant="primary" type="submit" disabled={submitting}>
+              <Button variant="secondary" type="submit" disabled={submitting}>
                 {submitting ? t("adding") : t("addTarget")}
               </Button>
             </div>
@@ -356,7 +358,7 @@ export function AddTargetModal({
                     {tCommon("cancel")}
                   </Button>
                   <Button
-                    variant="primary"
+                    variant="secondary"
                     type="button"
                     onClick={handlePreview}
                     disabled={!batchText.trim()}
@@ -405,7 +407,7 @@ export function AddTargetModal({
                     {t("backToEdit")}
                   </Button>
                   <Button
-                    variant="primary"
+                    variant="secondary"
                     type="button"
                     onClick={handleBatchImport}
                   >

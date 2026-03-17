@@ -408,7 +408,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
             {/* Buttons */}
             <div className="flex gap-2 mt-2">
               <Button
-                variant="primary"
+                variant="secondary"
                 size="sm"
                 onClick={handleAccept}
                 disabled={

@@ -206,7 +206,7 @@ export function ObjectivesPanel({ operationId }: { operationId: string }) {
             <Button variant="secondary" type="button" size="sm" onClick={() => setShowForm(false)} disabled={submitting}>
               {tCommon("cancel")}
             </Button>
-            <Button variant="primary" type="submit" size="sm" disabled={submitting || !objective.trim()}>
+            <Button variant="secondary" type="submit" size="sm" disabled={submitting || !objective.trim()}>
               {submitting ? t("adding") : t("addObjective")}
             </Button>
           </div>

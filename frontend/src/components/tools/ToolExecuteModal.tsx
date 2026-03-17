@@ -120,7 +120,7 @@ export function ToolExecuteModal({ tool, onClose }: ToolExecuteModalProps) {
           {/* Execute button */}
           <div className="flex justify-end">
             <Button
-              variant="primary"
+              variant="secondary"
               size="sm"
               onClick={handleExecute}
               disabled={loading}

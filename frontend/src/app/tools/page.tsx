@@ -62,7 +62,7 @@ function ToolsContent() {
         title={t("title")}
         trailing={
           <Button
-            variant="primary"
+            variant="secondary"
             size="sm"
             onClick={() => setShowGuide(true)}
           >

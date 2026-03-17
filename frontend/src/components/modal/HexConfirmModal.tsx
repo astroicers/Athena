@@ -69,7 +69,7 @@ export function HexConfirmModal({
             {tCommon("abort")}
           </Button>
           <Button
-            variant={isCritical ? "danger" : "primary"}
+            variant={isCritical ? "danger" : "secondary"}
             onClick={onConfirm}
           >
             {isCritical ? t("confirmExecute") : tCommon("execute")}

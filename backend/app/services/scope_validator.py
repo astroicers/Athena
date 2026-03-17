@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """ScopeValidator — enforces Rules of Engagement constraints on target selection."""
 
@@ -174,3 +174,18 @@ class ScopeValidator:
 
         # Exact domain match (case-insensitive)
         return address.lower() == entry.lower()
+
+    async def check(self, db: asyncpg.Connection, context: dict) -> "CheckResult":
+        """PreActionValidator interface.
+
+        Context keys:
+            operation_id (str): The active operation.
+            target_address (str): IP or hostname to check.
+        """
+        from app.services.validation_protocol import CheckResult
+        result = await self.validate_target(
+            db, context["operation_id"], context["target_address"]
+        )
+        if result.in_scope:
+            return CheckResult.ok(result.reason or "in scope")
+        return CheckResult.fail(result.reason or "out of scope")

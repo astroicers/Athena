@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """SPEC-044: Dynamic Validation Engine — pre-checks before exploit recommendations."""
 
@@ -318,3 +318,22 @@ class ValidationEngine:
             if match:
                 return match.group(1)
         return None
+
+    async def check(self, db: asyncpg.Connection, context: dict) -> "CheckResult":
+        """PreActionValidator interface.
+
+        Context keys:
+            operation_id (str): The active operation.
+            recommendation (dict): The recommendation being validated.
+        """
+        from app.services.validation_protocol import CheckResult
+        result = await self.validate(
+            db, context["recommendation"], context["operation_id"]
+        )
+        passed = getattr(result, "outcome", "passed") != "failed"
+        delta = float(getattr(result, "delta", 0.0))
+        return CheckResult(
+            passed=passed,
+            reason=getattr(result, "outcome", "validated"),
+            confidence_delta=delta,
+        )

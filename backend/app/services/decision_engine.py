@@ -55,9 +55,13 @@ _NOISE_RISK_MATRIX = _build_noise_matrix()
 class DecisionEngine:
     """Decide phase: apply ADR-004 risk threshold rules to PentestGPT recommendation."""
 
-    def __init__(self):
-        self._enforcer = KillChainEnforcer()
-        self._validation_engine = ValidationEngine()
+    def __init__(
+        self,
+        enforcer: "KillChainEnforcer | None" = None,
+        validation_engine: "ValidationEngine | None" = None,
+    ):
+        self._enforcer = enforcer or KillChainEnforcer()
+        self._validation_engine = validation_engine or ValidationEngine()
 
     async def evaluate(
         self, db: asyncpg.Connection, operation_id: str, recommendation: dict,

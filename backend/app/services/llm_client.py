@@ -26,15 +26,9 @@ from app.config import settings, get_task_model_map
 
 logger = logging.getLogger(__name__)
 
-_client: "LLMClient | None" = None
-
-
 def get_llm_client() -> "LLMClient":
-    """Return the singleton LLMClient instance."""
-    global _client
-    if _client is None:
-        _client = LLMClient()
-    return _client
+    """Return fresh LLMClient. OAuthTokenManager handles token caching internally."""
+    return LLMClient()
 
 
 class LLMClient:
@@ -56,7 +50,7 @@ class LLMClient:
             self._oauth_manager = OAuthTokenManager()
         if self._oauth_manager.is_available():
             return "oauth"
-        return "api_key"  # will fall through to OpenAI or empty
+        return "none"
 
     async def call(
         self,
@@ -74,6 +68,10 @@ class LLMClient:
         Returns empty string if all backends fail (caller should handle).
         """
         backend = self._resolve_backend()
+
+        if backend == "none":
+            logger.warning("No LLM backend configured — orient cycle will be skipped")
+            return ""
 
         if model:
             effective_model = model

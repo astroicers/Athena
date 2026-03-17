@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """
 Athena C5ISR API — FastAPI entry point.
@@ -23,7 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.config import settings
+from app.config import settings, _init_task_model_map
 
 
 class MockModeMiddleware(BaseHTTPMiddleware):
@@ -73,6 +73,7 @@ from app.routers.playbooks import router as playbooks_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialise DB and optionally seed demo data on startup."""
+    _init_task_model_map()
     await init_db()
     start_scheduler()
 

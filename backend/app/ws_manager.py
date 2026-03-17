@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """WebSocket connection manager — standalone module to avoid circular imports.
 
@@ -60,7 +60,7 @@ class WebSocketManager:
             "event": event,
             "data": data,
             "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
+        }, default=str)
         connections = self._connections.get(operation_id, set()).copy()
         any_success = False
         for ws in connections:
@@ -78,7 +78,7 @@ class WebSocketManager:
             "event": event,
             "data": data,
             "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
+        }, default=str)
         for op_id, connections in list(self._connections.items()):
             for ws in connections.copy():
                 try:

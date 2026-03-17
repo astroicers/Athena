@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 from pathlib import Path
 
@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     CLAUDE_MODEL_OPUS: str = "claude-opus-4-6"
     CLAUDE_MODEL_SONNET: str = "claude-sonnet-4-20250514"
     CLAUDE_MODEL_HAIKU: str = "claude-haiku-4-5-20251001"
-    NODE_SUMMARY_MODEL: str = "claude-sonnet-4-20250514"  # DEPRECATED: use TASK_MODEL_MAP["node_summary"]
+    NODE_SUMMARY_MODEL: str = "claude-sonnet-4-20250514"  # Legacy: superseded by TASK_MODEL_MAP["node_summary"]
     NMAP_SCAN_TIMEOUT_SEC: int = 60
     # Exploit validation (SPEC-028)
     EXPLOIT_VALIDATION_ENABLED: bool = True
@@ -82,10 +82,19 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-TASK_MODEL_MAP: dict[str, str] = {
-    "orient_analysis": settings.CLAUDE_MODEL_OPUS,
-    "fact_summary": settings.CLAUDE_MODEL_SONNET,
-    "node_summary": settings.CLAUDE_MODEL_HAIKU,
-    "format_report": settings.CLAUDE_MODEL_HAIKU,
-    "classify_vulnerability": settings.CLAUDE_MODEL_HAIKU,
-}
+def get_task_model_map() -> dict[str, str]:
+    """Return task->model mapping, evaluated at call time for runtime override."""
+    return {
+        "orient_analysis":        settings.CLAUDE_MODEL_HAIKU,
+        "fact_summary":           settings.CLAUDE_MODEL_HAIKU,
+        "node_summary":           settings.CLAUDE_MODEL_HAIKU,
+        "format_report":          settings.CLAUDE_MODEL_HAIKU,
+        "classify_vulnerability": settings.CLAUDE_MODEL_HAIKU,
+    }
+
+# Backward-compat alias populated at startup
+TASK_MODEL_MAP: dict[str, str] = {}
+
+def _init_task_model_map() -> None:
+    TASK_MODEL_MAP.clear()
+    TASK_MODEL_MAP.update(get_task_model_map())

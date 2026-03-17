@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """Admin endpoints — operation reset and maintenance utilities."""
 
@@ -122,6 +122,48 @@ async def reset_operation(
     # ── Broadcast reset event via WebSocket ──────────────────────────────
     await ws_manager.broadcast(
         operation_id, "operation.reset", {"operation_id": operation_id}
+    )
+
+    return Response(status_code=204)
+
+
+@router.post("/operations/{operation_id}/reset/soft", status_code=204)
+async def soft_reset_operation(
+    operation_id: str,
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Soft reset: clear OODA/execution state, preserve targets/facts/recon_scans."""
+    await ensure_operation(db, operation_id)
+
+    async with db.transaction():
+        for table in [
+            "log_entries",
+            "recommendations",
+            "technique_executions",
+            "ooda_iterations",
+            "attack_graph_edges",
+            "attack_graph_nodes",
+            "swarm_tasks",
+            "ooda_directives",
+        ]:
+            await db.execute(
+                f"DELETE FROM {table} WHERE operation_id = $1", operation_id
+            )
+        await db.execute(
+            "UPDATE operations SET "
+            "status = 'active', "
+            "current_ooda_phase = 'observe', "
+            "ooda_iteration_count = 0, "
+            "threat_level = 0.0, "
+            "success_rate = 0.0, "
+            "techniques_executed = 0 "
+            "WHERE id = $1",
+            operation_id,
+        )
+
+    # Broadcast soft reset event
+    await ws_manager.broadcast(
+        operation_id, "operation.soft_reset", {"operation_id": operation_id}
     )
 
     return Response(status_code=204)

@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """Per-node AI tactical intelligence summary.
 
@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 
 import asyncpg
 
-from app.config import settings, TASK_MODEL_MAP
+from app.config import settings, get_task_model_map
 from app.services.llm_client import get_llm_client
 
 logger = logging.getLogger(__name__)
@@ -269,7 +269,7 @@ async def get_node_summary(
     _last_call[rate_key] = now
 
     # Mock mode
-    model_name = TASK_MODEL_MAP.get("node_summary", settings.CLAUDE_MODEL)
+    model_name = get_task_model_map().get("node_summary", settings.CLAUDE_MODEL)
     if settings.MOCK_LLM:
         generated_at = datetime.now(timezone.utc).isoformat()
         _cache.put(cache_key, _MOCK_SUMMARY, generated_at, "mock")

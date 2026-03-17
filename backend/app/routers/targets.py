@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """Target and topology endpoints."""
 
@@ -25,6 +25,7 @@ from app.models.api_schemas import (
     NodeSummaryResponse,
     TargetBatchCreate,
     TargetCreate,
+    TargetPatch,
     TargetSetActive,
     TopologyData,
     TopologyEdge,
@@ -220,6 +221,41 @@ async def delete_target(
     # FK CASCADE will handle agents referencing this target
     await db.execute("DELETE FROM targets WHERE id = $1", target_id)
     return Response(status_code=204)
+
+
+@router.patch("/operations/{operation_id}/targets/{target_id}", response_model=Target)
+async def patch_target(
+    operation_id: str,
+    target_id: str,
+    body: TargetPatch,
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Manually update target compromise status and metadata."""
+    row = await db.fetchrow(
+        "SELECT id FROM targets WHERE id = $1 AND operation_id = $2",
+        target_id, operation_id,
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Target not found")
+
+    updates, params, idx = [], [], 1
+    for field in ["is_compromised", "privilege_level", "access_status", "os", "role", "network_segment"]:
+        val = getattr(body, field, None)
+        if val is not None:
+            updates.append(f"{field} = ${idx}")
+            params.append(val)
+            idx += 1
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    params.extend([target_id, operation_id])
+    await db.execute(
+        f"UPDATE targets SET {', '.join(updates)} "
+        f"WHERE id = ${idx} AND operation_id = ${idx + 1}",
+        *params,
+    )
+    row = await db.fetchrow("SELECT * FROM targets WHERE id = $1", target_id)
+    return _row_to_target(row)
 
 
 @router.get(

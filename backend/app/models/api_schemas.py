@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """
 API-specific request/response schemas.
@@ -137,6 +137,15 @@ class TargetCreate(BaseModel):
         raise ValueError(
             f"{v!r} is not a valid IPv4 address, IPv6 address, CIDR range, or hostname"
         )
+
+
+class TargetPatch(BaseModel):
+    is_compromised: bool | None = None
+    privilege_level: str | None = None   # "Root" | "User"
+    access_status: str | None = None
+    os: str | None = None
+    role: str | None = None
+    network_segment: str | None = None
 
 
 class TargetSetActive(BaseModel):
@@ -398,3 +407,16 @@ class SwarmBatchResponse(BaseModel):
     failed: int
     timed_out: int
     tasks: list[SwarmTaskSchema]
+
+
+# ---------------------------------------------------------------------------
+# Fact (manual injection)
+# ---------------------------------------------------------------------------
+
+class FactCreate(BaseModel):
+    trait: str
+    value: str
+    category: str
+    source_target_id: str | None = None
+    source_technique_id: str | None = None
+    score: int = 1

@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """Shared LLM client with multi-backend fallback.
 
@@ -22,7 +22,7 @@ import logging
 import anthropic
 import httpx
 
-from app.config import settings, TASK_MODEL_MAP
+from app.config import settings, get_task_model_map
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ class LLMClient:
         if model:
             effective_model = model
         elif task_type:
-            effective_model = TASK_MODEL_MAP.get(task_type)
+            effective_model = get_task_model_map().get(task_type)
             if effective_model is None:
                 logger.warning("Unknown task_type '%s', falling back to default model %s", task_type, settings.CLAUDE_MODEL)
                 effective_model = settings.CLAUDE_MODEL

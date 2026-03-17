@@ -1128,4 +1128,20 @@ class EngineRouter:
         return "mcp_ssh"
 
     def _select_client(self, engine: str) -> BaseEngineClient:
-        return self._c2_engine
+        """Select execution client by engine name.
+
+        Bug fix: previously always returned self._c2_engine regardless of engine arg.
+        """
+        from app.clients.metasploit_client import MetasploitEngineAdapter
+        clients: dict[str, BaseEngineClient | None] = {
+            "c2":         self._c2_engine,
+            "mock":       self._c2_engine,
+            "mcp":        self._mcp_engine,
+            "mcp_ssh":    self._mcp_engine,
+            "metasploit": MetasploitEngineAdapter(),
+        }
+        client = clients.get(engine)
+        if client is None:
+            logger.warning("No client registered for engine '%s', falling back to c2", engine)
+            return self._c2_engine
+        return client

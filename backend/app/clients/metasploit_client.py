@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """Metasploit RPC engine for Non-SSH initial access (ADR-019).
 
@@ -257,3 +257,56 @@ class MetasploitRPCEngine:
             "",
             {"RHOSTS": target_ip, "USERNAME": username, "PASSWORD": password},
         )
+
+
+import uuid as _uuid_mod
+
+from app.clients import BaseEngineClient, ExecutionResult
+
+
+class MetasploitEngineAdapter(BaseEngineClient):
+    """Adapts MetasploitRPCEngine to the standard BaseEngineClient interface.
+
+    Allows EngineRouter to treat Metasploit uniformly alongside C2/MCP clients.
+    """
+
+    def __init__(self) -> None:
+        self._engine = MetasploitRPCEngine()
+
+    async def execute(
+        self,
+        ability_id: str,
+        target: str,
+        params: dict | None = None,
+        output_parser: str | None = None,
+    ) -> ExecutionResult:
+        exec_id = str(_uuid_mod.uuid4())
+        service_name = (params or {}).get("service_name", ability_id)
+        method = self._engine.get_exploit_for_service(service_name)
+        if method is None:
+            return ExecutionResult(
+                success=False,
+                execution_id=exec_id,
+                error=f"no exploit method for service: {service_name}",
+            )
+        result_dict = await method(target)
+        return ExecutionResult(
+            success=result_dict.get("status") == "success",
+            execution_id=exec_id,
+            output=result_dict.get("output", ""),
+            error=result_dict.get("reason") if result_dict.get("status") != "success" else None,
+        )
+
+    async def is_available(self) -> bool:
+        from app.config import settings
+        return settings.MOCK_METASPLOIT or bool(settings.MSF_RPC_PASSWORD)
+
+    async def list_abilities(self) -> list[dict]:
+        return [
+            {"id": name.replace("exploit_", "")}
+            for name in dir(self._engine)
+            if name.startswith("exploit_") and callable(getattr(self._engine, name))
+        ]
+
+    async def get_status(self, execution_id: str) -> str:
+        return "unknown"

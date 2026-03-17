@@ -1,0 +1,101 @@
+# ROADMAP.yaml — Autopilot 任務清單
+# 使用方式：make autopilot-init → 編輯此檔 → .ai_profile 設定 autopilot: enabled → 開始執行
+# Autopilot 會根據 stack 和 requires 欄位自動載入對應 profile 並動態探測必要的前置文件。
+
+version: "1.0"
+project: PROJECT_NAME
+last_updated: YYYY-MM-DD
+
+# ═══ 專案元資料 ═══
+
+# ── 技術棧（autopilot 據此判斷需要哪些前置文件）──
+stack:
+  frontend: none           # react | vue | next | svelte | none
+  backend: none            # go | python | node | java | rust | none
+  database: none           # postgres | mysql | mongo | redis | none
+  infra: none              # kubernetes | docker | serverless | none
+
+# ── 功能需求（autopilot 據此自動載入 profile + 動態探測前置文件）──
+requires:
+  uiux: false              # true → 自動載入 design_dev + frontend_quality，要求 docs/UIUX_SPEC.md
+  api: false               # true → 自動載入 openapi，要求 docs/SDS.md API 段落
+  multi_agent: false        # true → 自動載入 multi_agent（並行執行獨立任務）
+  rag: false                # true → 自動載入 rag_context
+  coding_style: false       # true → 自動載入 coding_style
+
+# ── 技術約束與規範 ──
+conventions:
+  language: zh-TW            # 程式碼註解語言：zh-TW | en | ja | ...
+  naming: snake_case         # snake_case | camelCase | PascalCase
+  error_handling: exception  # exception | result_type | error_code
+  commit_format: conventional # conventional | angular | custom
+  branch_strategy: github-flow # gitflow | trunk | github-flow
+
+# ── 架構與整合約束 ──
+architecture:
+  style: monolith            # monolith | microservices | modular-monolith | serverless
+  api_style: rest            # rest | graphql | grpc
+  auth: jwt                  # jwt | oauth2 | oidc | session | none
+  message_queue: none        # rabbitmq | kafka | sqs | none
+  cache: none                # redis | memcached | none
+  search: none               # elasticsearch | meilisearch | none
+
+integrations: []
+  # - name: stripe
+  #   purpose: payment
+  #   sdk: stripe-go
+  # - name: sendgrid
+  #   purpose: email
+  #   sdk: sendgrid-python
+
+# ── 品質與安全要求 ──
+quality:
+  test_coverage_target: 80%  # 最低測試覆蓋率
+  e2e_required: false         # 是否需要端對端測試
+  performance_budget: false   # 是否設定效能預算
+  accessibility: none         # WCAG-2.1-AA | WCAG-2.1-A | none
+
+security:
+  compliance: []              # OWASP-Top-10, SOC2-Type-II, HIPAA, GDPR
+  auth_requirements:
+    mfa: false
+    session_timeout: 30m
+    password_policy: standard # standard | strong | custom
+
+observability:
+  logging: structured         # structured | plain | none
+  metrics: none               # prometheus | datadog | none
+  tracing: none               # opentelemetry | jaeger | none
+  alerting: none              # pagerduty | opsgenie | none
+
+# ── 前置文件（autopilot 會根據 stack/requires 動態驗證哪些是必要的）──
+documents:
+  srs: docs/SRS.md              # 軟體需求規格書（永遠必要）
+  sds: docs/SDS.md              # 軟體設計規格書（backend/database/api 時必要）
+  uiux_spec: docs/UIUX_SPEC.md  # UI/UX 規格書（uiux/frontend 時必要）
+  deploy_spec: docs/DEPLOY_SPEC.md # 部署規格書（infra != none 時必要）
+
+# ═══ Milestones & Tasks ═══
+# 每個 task 的 type 對應 task_orchestrator 的 5 種工作流：
+#   NEW_FEATURE | BUGFIX | MODIFICATION | REMOVAL | GENERAL
+
+milestones:
+  - id: M1
+    title: "Milestone Title"
+    target_date: YYYY-MM-DD
+    status: pending              # pending | in_progress | completed | blocked
+
+    tasks:
+      - id: T001
+        title: "Task title"
+        type: NEW_FEATURE        # NEW_FEATURE | BUGFIX | MODIFICATION | REMOVAL | GENERAL
+        priority: 1              # 數字越小越優先
+        adr: null                # ADR-NNN（有架構影響時填入，必須為 Accepted 狀態）
+        spec: null               # SPEC-NNN（選填，autopilot 可自動建立）
+        srs_ref: null            # FR-NNN（引用 SRS 中的 Functional Requirement）
+        depends_on: []           # 前置任務 ID 列表（如 [T001, T002]）
+        status: pending          # pending | in_progress | completed | failed | blocked | skipped
+        estimated_complexity: medium  # low | medium | high
+        description: |
+          任務描述。autopilot 會將此內容傳入 task_orchestrator，
+          若有 srs_ref 會交叉引用 SRS 中對應的需求細節來填充 SPEC。

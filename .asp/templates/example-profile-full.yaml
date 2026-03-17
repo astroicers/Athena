@@ -11,6 +11,7 @@ design: enabled
 coding_style: enabled
 openapi: enabled
 frontend_quality: enabled
+autopilot: disabled
 name: full-stack-platform
 
 # committee 角色（mode: committee 時生效）

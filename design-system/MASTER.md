@@ -36,7 +36,8 @@
 | athena-c5isr-board.pen | C5ISR 指揮板 | 2026-02-22 |
 | athena-mitre-navigator.pen | MITRE ATT&CK 導航器 | 2026-02-22 |
 | athena-mission-planner.pen | 任務規劃器 | 2026-02-22 |
-| pencil-new.pen | PoC 報告 + 漏洞儀表板 | 2026-03-09 |
+| **pencil-new-v2.pen** | **全頁面統一設計稿（當前活躍）** | 2026-03-17 |
+| ~~pencil-new.pen~~ | legacy — 已由 v2 取代 | 2026-03-09 |
 
 ---
 

@@ -100,3 +100,5 @@ CLAUDE.md.pre-upgrade
 .asp-tmp/
 *.out
 *.zip
+.asp-autopilot-state.json
+Makefile.pre-asp-upgrade

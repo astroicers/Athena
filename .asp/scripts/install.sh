@@ -87,19 +87,19 @@ apply_preset() {
         1) # 標準模式
             ENABLE_RAG=n; ENABLE_GUARDRAIL=n; HITL_LEVEL=standard
             ENABLE_DESIGN=n; ENABLE_CODING_STYLE=n; ENABLE_OPENAPI=n
-            ENABLE_FRONTEND_QUALITY=n; ENABLE_AUTONOMOUS=n; ENABLE_ORCHESTRATOR=n; WORKFLOW=standard ;;
+            ENABLE_FRONTEND_QUALITY=n; ENABLE_AUTONOMOUS=n; ENABLE_ORCHESTRATOR=n; ENABLE_AUTOPILOT=n; WORKFLOW=standard ;;
         2) # 高速自主模式
             ENABLE_RAG=n; ENABLE_GUARDRAIL=n; HITL_LEVEL=minimal
             ENABLE_DESIGN=n; ENABLE_CODING_STYLE=n; ENABLE_OPENAPI=n
-            ENABLE_FRONTEND_QUALITY=n; ENABLE_AUTONOMOUS=y; ENABLE_ORCHESTRATOR=y; WORKFLOW=vibe-coding ;;
+            ENABLE_FRONTEND_QUALITY=n; ENABLE_AUTONOMOUS=y; ENABLE_ORCHESTRATOR=y; ENABLE_AUTOPILOT=n; WORKFLOW=vibe-coding ;;
         3) # 完整治理模式
             ENABLE_RAG=y; ENABLE_GUARDRAIL=y; HITL_LEVEL=strict
             ENABLE_DESIGN=y; ENABLE_CODING_STYLE=y; ENABLE_OPENAPI=y
-            ENABLE_FRONTEND_QUALITY=y; ENABLE_AUTONOMOUS=n; ENABLE_ORCHESTRATOR=n; WORKFLOW=standard ;;
+            ENABLE_FRONTEND_QUALITY=y; ENABLE_AUTONOMOUS=n; ENABLE_ORCHESTRATOR=n; ENABLE_AUTOPILOT=n; WORKFLOW=standard ;;
         4) # 高速自主+多Agent模式
             ENABLE_RAG=n; ENABLE_GUARDRAIL=n; HITL_LEVEL=minimal
             ENABLE_DESIGN=n; ENABLE_CODING_STYLE=n; ENABLE_OPENAPI=n
-            ENABLE_FRONTEND_QUALITY=n; ENABLE_AUTONOMOUS=y; ENABLE_ORCHESTRATOR=y; WORKFLOW=vibe-coding; MODE=multi-agent ;;
+            ENABLE_FRONTEND_QUALITY=n; ENABLE_AUTONOMOUS=y; ENABLE_ORCHESTRATOR=y; ENABLE_AUTOPILOT=n; WORKFLOW=vibe-coding; MODE=multi-agent ;;
         *) return 1 ;;
     esac
 }
@@ -220,38 +220,29 @@ if git ls-remote "$PROTOCOL_REPO" &>/dev/null 2>&1; then
         cp "$PROTOCOL_DIR/.asp/VERSION" ./.asp/VERSION
     fi
 
-    # --- Makefile 升級偵測（多層策略）---
+    # --- Makefile 處理（include-based，非破壞性）---
+    # ASP targets 放在 .asp/Makefile.inc，專案 Makefile 只需 include
+    if [ -f "$PROTOCOL_DIR/.asp/Makefile.inc" ]; then
+        cp "$PROTOCOL_DIR/.asp/Makefile.inc" ./.asp/Makefile.inc
+    fi
+
+    ASP_INCLUDE_LINE='-include .asp/Makefile.inc'
     if [ ! -f "Makefile" ]; then
-        # 全新安裝
+        # 全新安裝：使用 stub 範本
         cp "$PROTOCOL_DIR/Makefile" ./Makefile
-    elif grep -q "cp templates/ADR_Template" Makefile 2>/dev/null; then
-        # 舊版格式（pre-.asp/ 目錄結構）
-        echo "🔄 偵測到舊版 Makefile（legacy 格式），更新為新版"
+    elif grep -q "AI-SOP-Protocol" Makefile 2>/dev/null; then
+        # ASP 產生的 Makefile（舊版完整式或 stub）：替換為 stub（保留 APP_NAME）
+        cp Makefile Makefile.pre-asp-upgrade
         CURRENT_APP=$(grep "^APP_NAME" Makefile | head -1 || true)
         cp "$PROTOCOL_DIR/Makefile" ./Makefile
         if [ -n "${CURRENT_APP:-}" ]; then
             SED_INPLACE "s/^APP_NAME.*/$CURRENT_APP/" Makefile
         fi
-    elif grep -q "ASP_MAKEFILE_VERSION" Makefile 2>/dev/null; then
-        # 有版本標記：比對版本
-        INSTALLED_MK_VER=$(grep "ASP_MAKEFILE_VERSION" Makefile | sed 's/.*=//' || true)
-        NEW_MK_VER=$(grep "ASP_MAKEFILE_VERSION" "$PROTOCOL_DIR/Makefile" | sed 's/.*=//' || true)
-        if [ "${INSTALLED_MK_VER:-}" != "${NEW_MK_VER:-}" ]; then
-            CURRENT_APP=$(grep "^APP_NAME" Makefile | head -1 || true)
-            cp "$PROTOCOL_DIR/Makefile" ./Makefile
-            if [ -n "${CURRENT_APP:-}" ]; then
-                SED_INPLACE "s/^APP_NAME.*/$CURRENT_APP/" Makefile
-            fi
-            echo "🔄 Makefile 已升級 ${INSTALLED_MK_VER:-unknown} → ${NEW_MK_VER:-unknown}（APP_NAME 已保留）"
-        fi
-    elif [ "$IS_UPGRADE" = true ] && ! grep -q "audit-health" Makefile 2>/dev/null; then
-        # ASP Makefile 但缺少 v2.3.0+ target（無版本標記或過渡版本）
-        echo "🔄 偵測到缺少新版目標的 Makefile，更新為新版"
-        CURRENT_APP=$(grep "^APP_NAME" Makefile | head -1 || true)
-        cp "$PROTOCOL_DIR/Makefile" ./Makefile
-        if [ -n "${CURRENT_APP:-}" ]; then
-            SED_INPLACE "s/^APP_NAME.*/$CURRENT_APP/" Makefile
-        fi
+        echo "🔄 Makefile 已轉換為 include 模式（ASP targets 移至 .asp/Makefile.inc，舊版備份於 Makefile.pre-asp-upgrade）"
+    elif ! grep -qF "$ASP_INCLUDE_LINE" Makefile 2>/dev/null; then
+        # 非 ASP Makefile：僅追加 include 指令（不覆蓋原有內容）
+        printf '\n# ASP targets（勿刪除此行）\n%s\n' "$ASP_INCLUDE_LINE" >> Makefile
+        echo "✅ 已在現有 Makefile 追加 ASP include 指令（原有內容完整保留）"
     fi
 
     # --- .gitignore 增量合併 ---
@@ -305,6 +296,9 @@ AUTONOMOUS_VAL="disabled"
 ORCHESTRATOR_VAL="disabled"
 [ "${ENABLE_ORCHESTRATOR,,}" = "y" ] && ORCHESTRATOR_VAL="enabled"
 
+AUTOPILOT_VAL="disabled"
+[ "${ENABLE_AUTOPILOT,,}" = "y" ] && AUTOPILOT_VAL="enabled"
+
 NEW_PROFILE="type: ${PROJECT_TYPE}
 mode: ${MODE:-single}
 workflow: ${WORKFLOW:-standard}
@@ -313,6 +307,7 @@ guardrail: ${GUARDRAIL_VAL}
 hitl: ${HITL_LEVEL}
 autonomous: ${AUTONOMOUS_VAL}
 orchestrator: ${ORCHESTRATOR_VAL}
+autopilot: ${AUTOPILOT_VAL}
 design: ${DESIGN_VAL}
 coding_style: ${CODING_STYLE_VAL}
 openapi: ${OPENAPI_VAL}
@@ -323,7 +318,7 @@ if [ -f ".ai_profile" ]; then
     echo "ℹ️  .ai_profile 已存在，保留現有設定"
     # 僅補充缺失欄位
     ADDED_FIELDS=0
-    for FIELD in type mode workflow rag guardrail hitl autonomous orchestrator design coding_style openapi frontend_quality name; do
+    for FIELD in type mode workflow rag guardrail hitl autonomous orchestrator autopilot design coding_style openapi frontend_quality name; do
         if ! grep -q "^${FIELD}:" .ai_profile; then
             DEFAULT_VAL=$(echo "$NEW_PROFILE" | grep "^${FIELD}:" | head -1)
             if [ -n "$DEFAULT_VAL" ]; then
@@ -365,7 +360,7 @@ if [ ! -f "docs/architecture.md" ]; then
     echo "✅ 已建立 docs/architecture.md"
 fi
 
-# 設定 Claude Code Hooks（SessionStart: 清理危險 allow 規則）
+# 設定 Claude Code Hooks（SessionStart: 設定權限 — allow all + deny 危險指令）
 HOOKS_JSON='{
   "hooks": {
     "SessionStart": [
@@ -377,6 +372,15 @@ HOOKS_JSON='{
           }
         ]
       }
+    ]
+  },
+  "permissions": {
+    "allow": ["Bash(*)"],
+    "deny": [
+      "Bash(git push *)", "Bash(git push)",
+      "Bash(git rebase *)", "Bash(git rebase)",
+      "Bash(docker push *)", "Bash(docker deploy *)",
+      "Bash(rm -rf *)", "Bash(rm -r *)"
     ]
   }
 }'
@@ -415,6 +419,18 @@ if [ "$JQ_AVAILABLE" = true ]; then
         echo "$HOOKS_JSON" | jq '.' > .claude/settings.json
         echo "✅ 已建立 .claude/settings.json（含 ASP SessionStart Hook）"
     fi
+
+    # --- 設定 deny 規則（從 denied-commands.json 讀取）---
+    DENIED_FILE=".asp/hooks/denied-commands.json"
+    if [ -f "$DENIED_FILE" ] && [ -f ".claude/settings.json" ]; then
+        DENY_JSON=$(cat "$DENIED_FILE")
+        jq --argjson deny "$DENY_JSON" '
+            .permissions.allow = ((.permissions.allow // []) + ["Bash(*)"] | unique) |
+            .permissions.deny = ((.permissions.deny // []) + $deny | unique)
+        ' .claude/settings.json > .claude/settings.json.tmp \
+            && mv .claude/settings.json.tmp .claude/settings.json
+        echo "✅ 已設定權限 — allow: Bash(*), deny: $(echo "$DENY_JSON" | jq length) 條危險指令"
+    fi
 else
     if [ ! -f ".claude/settings.json" ]; then
         cat > .claude/settings.json << 'HOOKJSON'
@@ -430,6 +446,15 @@ else
         ]
       }
     ]
+  },
+  "permissions": {
+    "allow": ["Bash(*)"],
+    "deny": [
+      "Bash(git push *)", "Bash(git push)",
+      "Bash(git rebase *)", "Bash(git rebase)",
+      "Bash(docker push *)", "Bash(docker deploy *)",
+      "Bash(rm -rf *)", "Bash(rm -r *)"
+    ]
   }
 }
 HOOKJSON
@@ -440,30 +465,31 @@ HOOKJSON
     fi
 fi
 
-# --- 清理 settings 中的危險 allow 規則（安裝時執行一次）---
+# --- 清理 allow list 中的具體危險指令 + 確保 deny 規則存在（安裝時執行一次）---
+# 舊版 ASP 可能在 allow list 中有具體危險指令，需要清理
+# 新版只需 Bash(*) 在 allow + deny 列表阻擋危險指令
 if [ "$JQ_AVAILABLE" = true ]; then
     DANGEROUS_PATTERNS='git\s+rebase|git\s+push|docker\s+(push|deploy)|rm\s+-[a-z]*r|find\s+.*-delete'
     TOTAL_REMOVED=0
     for SETTINGS_FILE in .claude/settings.local.json .claude/settings.json; do
         [ -f "$SETTINGS_FILE" ] || continue
-        # 跳過非 object 的 JSON 檔案（例如損壞的 settings.local.json）
         FILE_TYPE=$(jq -r 'type' "$SETTINGS_FILE" 2>/dev/null || echo "invalid")
         if [ "$FILE_TYPE" != "object" ]; then
             continue
         fi
-        BEFORE_COUNT=$(jq -r '[.permissions.allow // [] | .[] | select(startswith("Bash("))] | length' "$SETTINGS_FILE" 2>/dev/null || echo 0)
+        BEFORE_COUNT=$(jq -r '[.permissions.allow // [] | .[] | select(startswith("Bash(") and . != "Bash(*)")] | length' "$SETTINGS_FILE" 2>/dev/null || echo 0)
         jq --arg pattern "$DANGEROUS_PATTERNS" '
           .permissions.allow = [
             (.permissions.allow // [])[] |
-            select((startswith("Bash(") and test($pattern)) | not)
+            select((startswith("Bash(") and . != "Bash(*)" and test($pattern)) | not)
           ]
         ' "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" \
             && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
-        AFTER_COUNT=$(jq -r '[.permissions.allow // [] | .[] | select(startswith("Bash("))] | length' "$SETTINGS_FILE" 2>/dev/null || echo 0)
+        AFTER_COUNT=$(jq -r '[.permissions.allow // [] | .[] | select(startswith("Bash(") and . != "Bash(*)")] | length' "$SETTINGS_FILE" 2>/dev/null || echo 0)
         TOTAL_REMOVED=$((TOTAL_REMOVED + BEFORE_COUNT - AFTER_COUNT))
     done
     if [ "$TOTAL_REMOVED" -gt 0 ]; then
-        echo "🔒 已從 allow list 移除 ${TOTAL_REMOVED} 條危險規則（git rebase/push, docker push, rm -r 等）"
+        echo "🔒 已從 allow list 移除 ${TOTAL_REMOVED} 條舊版危險規則"
     fi
 fi
 

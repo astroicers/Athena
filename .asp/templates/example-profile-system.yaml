@@ -9,4 +9,5 @@ autonomous: disabled
 design: disabled
 coding_style: disabled
 openapi: disabled
+autopilot: disabled
 name: your-project-name

@@ -28,7 +28,7 @@ async def example_scan(target: str) -> str:
     Returns:
         JSON string with Athena-compatible facts.
     """
-    # TODO: Replace with real implementation
+    # TODO(developer): Replace with real implementation
     facts = [
         {"trait": "network.host.ip", "value": target},
     ]

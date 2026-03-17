@@ -1,60 +1,66 @@
 #!/usr/bin/env bash
 # ASP SessionStart Hook: clean-allow-list.sh
-# 每次 session 啟動時，清理 allow list 中的危險指令
-# 確保 Claude Code 內建權限系統能對危險操作彈出確認框
+# 每次 session 啟動時，確保權限設定正確：
+#   1. allow: Bash(*) — 允許所有 Bash 指令
+#   2. deny: 危險指令 — 從 denied-commands.json 讀取
+#   3. 清理 allow list 中被使用者手動加入的危險指令（防止繞過 deny）
 #
-# 清理對象（Bash allow 規則）：
-#   - git rebase（改寫歷史）
-#   - git push（推送到遠端）
+# 危險指令（deny）：
+#   - git push / git rebase（推送/改寫歷史）
 #   - docker push / docker deploy（推送/部署）
-#   - rm -r* / find -delete（破壞性刪除）
-#
-# 不清理：
-#   - Read / WebFetch / Edit / Write 等非 Bash 規則
-#   - 不含危險指令的 Bash 規則（如 echo, git status 等）
+#   - rm -rf / rm -r（破壞性刪除）
 
 set -euo pipefail
 
 command -v jq &>/dev/null || exit 0
 
-# 危險模式：匹配這些 pattern 的 Bash(...) allow 規則會被移除
-DANGEROUS_PATTERNS='git\s+rebase|git\s+push|docker\s+(push|deploy)|rm\s+-[a-z]*r|find\s+.*-delete'
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
+DENIED_FILE="${PROJECT_DIR}/.asp/hooks/denied-commands.json"
 
 # 同時處理 settings.local.json 和 settings.json
 SETTINGS_FILES=(
-  "${CLAUDE_PROJECT_DIR:-.}/.claude/settings.local.json"
-  "${CLAUDE_PROJECT_DIR:-.}/.claude/settings.json"
+  "${PROJECT_DIR}/.claude/settings.local.json"
+  "${PROJECT_DIR}/.claude/settings.json"
 )
 
-TOTAL_REMOVED=0
+# 讀取 deny 規則
+if [ -f "$DENIED_FILE" ]; then
+    DENY_JSON=$(cat "$DENIED_FILE")
+else
+    # 預設 deny 規則（fallback）
+    DENY_JSON='[
+        "Bash(git push *)", "Bash(git push)",
+        "Bash(git rebase *)", "Bash(git rebase)",
+        "Bash(docker push *)", "Bash(docker deploy *)",
+        "Bash(rm -rf *)", "Bash(rm -r *)"
+    ]'
+fi
+
+# 危險模式：用於清理 allow list 中的危險規則
+DANGEROUS_PATTERNS='git\s+rebase|git\s+push|docker\s+(push|deploy)|rm\s+-[a-z]*r|find\s+.*-delete'
 
 for SETTINGS_FILE in "${SETTINGS_FILES[@]}"; do
-  [ -f "$SETTINGS_FILE" ] || continue
+    [ -f "$SETTINGS_FILE" ] || continue
 
-  # 跳過非 object 的 JSON 檔案（避免損壞檔案導致 jq 錯誤）
-  FILE_TYPE=$(jq -r 'type' "$SETTINGS_FILE" 2>/dev/null || echo "invalid")
-  [ "$FILE_TYPE" = "object" ] || continue
+    FILE_TYPE=$(jq -r 'type' "$SETTINGS_FILE" 2>/dev/null || echo "invalid")
+    [ "$FILE_TYPE" = "object" ] || continue
 
-  BEFORE=$(jq -r '[.permissions.allow // [] | .[] | select(startswith("Bash("))] | length' "$SETTINGS_FILE" 2>/dev/null || echo 0)
-
-  jq --arg pattern "$DANGEROUS_PATTERNS" '
-    .permissions.allow = [
-      (.permissions.allow // [])[] |
-      select(
-        (startswith("Bash(") and test($pattern)) | not
-      )
-    ]
-  ' "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" \
-      && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
-
-  AFTER=$(jq -r '[.permissions.allow // [] | .[] | select(startswith("Bash("))] | length' "$SETTINGS_FILE" 2>/dev/null || echo 0)
-
-  REMOVED=$((BEFORE - AFTER))
-  TOTAL_REMOVED=$((TOTAL_REMOVED + REMOVED))
+    # Step 1: 確保 allow 包含 Bash(*)
+    # Step 2: 設定 deny 規則
+    # Step 3: 清理 allow list 中的危險規則（防止手動加入繞過 deny）
+    jq --argjson deny "$DENY_JSON" --arg pattern "$DANGEROUS_PATTERNS" '
+        # 確保 Bash(*) 在 allow list 中
+        .permissions.allow = (
+            [(.permissions.allow // [])[] | select(
+                (startswith("Bash(") and test($pattern)) | not
+            )] + ["Bash(*)"] | unique
+        ) |
+        # 設定 deny 規則（合併現有 + denied-commands.json）
+        .permissions.deny = ((.permissions.deny // []) + $deny | unique)
+    ' "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" \
+        && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
 done
 
-if [ "$TOTAL_REMOVED" -gt 0 ]; then
-    echo "🔒 ASP: 已從 allow list 移除 ${TOTAL_REMOVED} 條危險規則（git rebase/push, docker push, rm -r 等）" >&2
-fi
+echo "🔒 ASP: 權限已設定 — allow: Bash(*), deny: $(echo "$DENY_JSON" | jq length) 條危險指令" >&2
 
 exit 0

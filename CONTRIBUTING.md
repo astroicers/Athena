@@ -173,7 +173,7 @@ export function MetricCard({ label, value, trend }: MetricCardProps) {
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 ```
 
 可使用 `python3 scripts/add_license_headers.py` 批次新增。

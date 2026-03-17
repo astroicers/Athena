@@ -1,0 +1,10 @@
+[
+  "Bash(git push *)",
+  "Bash(git push)",
+  "Bash(git rebase *)",
+  "Bash(git rebase)",
+  "Bash(docker push *)",
+  "Bash(docker deploy *)",
+  "Bash(rm -rf *)",
+  "Bash(rm -r *)"
+]

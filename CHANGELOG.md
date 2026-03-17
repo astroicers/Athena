@@ -7,6 +7,22 @@
 
 ## [Unreleased]
 
+### 整合測試補齊 + Audit Warning 修復（2026-03-17）
+
+#### Added
+- **19 Router 整合測試**：新增 18 個測試檔案共 130 個測試，覆蓋所有後端 API router（engagements, facts, logs, missions, poc, recommendations, operations, admin, agents, attack_graph, c5isr, constraints, health, reports, targets, techniques, vulnerabilities, terminal）
+- **`test_terminal_router.py`**：24 個 `_is_dangerous()` 單元測試，覆蓋完整命令黑名單
+
+#### Fixed
+- **`engagements.py` datetime 序列化 bug**：`_row_to_engagement()` 新增 datetime → ISO string 轉換，修復 Pydantic 驗證錯誤
+- **`pyproject.toml` pytest-asyncio 設定**：新增 `asyncio_default_fixture_loop_scope = "session"` 與 `asyncio_default_test_loop_scope = "session"`，修復 session-scoped fixture 的 event loop 衝突
+- **`audit-quick` 覆蓋率計算**：`.asp/Makefile.inc` 的 `audit-quick` 指令排除 `frontend/.next/` 編譯產物，消除分母虛高問題
+
+#### Changed
+- **`audit-health` 結果**：3 warning → 0 warning（覆蓋率、DEPRECATED 標記、TODO 佔位符全部清零）
+
+---
+
 ### UI 整併 + 工具頁面 Container 化 + 掃描修復（2026-03-05）
 
 #### Added

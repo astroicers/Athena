@@ -63,7 +63,9 @@ T1003.001 (OS Credential Dumping) — available via DirectSSH [high-value]
 |------|------|--------|
 | PayloadsAllTheThings（GitHub） | 解析 Markdown → import 腳本 | 中期 |
 | MITRE ATT&CK STIX JSON | 官方 technique procedures | 長期 |
-| 使用者自定義 | `POST /api/playbooks` API endpoint | 短期 |
+| 使用者自定義 | `POST /api/playbooks` API endpoint | 短期 ✅ |
+| 批次匯入 | `POST /api/playbooks/bulk` endpoint | 短期 ✅ |
+| 內建 Seed 擴充 | 124 playbooks covering 14 ATT&CK tactics | 短期 ✅ |
 
 ---
 
@@ -76,7 +78,9 @@ T1003.001 (OS Credential Dumping) — available via DirectSSH [high-value]
 
 **技術債：**
 - ✅ Layer B（OrientEngine Section 7.6）已實作 — `orient_engine.py` L500-514，查詢 `technique_playbooks` 依平台篩選並注入 `{playbook_summary}` 至提示詞
-- `POST /api/playbooks` API endpoint 尚未建立
+- ✅ `POST /api/playbooks` API endpoint 已實作 — `routers/playbooks.py`
+- ✅ `POST /api/playbooks/bulk` 批次匯入 API 已實作
+- ✅ Layer C：Seed 擴充至 124 個 playbook（62 Linux + 62 Windows），覆蓋全 14 個 ATT&CK tactics
 
 ---
 

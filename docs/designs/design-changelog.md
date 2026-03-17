@@ -4,6 +4,31 @@
 
 ---
 
+## [2026-03-17] 全頁面 .pen 設計同步 + UI 修復
+
+### Added
+- `pencil-new-v2.pen` 新增 frame：
+  - War Room V2 - OPSEC (`EEbwu`，x:3080 y:8000) — 4 Metric Cards + Noise Trend + OPSEC Events
+  - War Room V2 - Decision (`Nntpe`，x:4620 y:8000) — Confidence Breakdown + Noise×Risk Matrix + History
+  - Planner - Attack Graph Tab (`2qyS3`，x:3080 y:6000) — SVG Canvas + Stats Panel + Legend
+- 建立 `SPEC-051-design-token-and-pen-sync-protocol.md` — Design Token 唯一真相來源 + 禁止模式
+
+### Changed
+- 標記孤兒 frame 為 deprecated：`lVZKT`（OPSEC Dashboard）、`nPItC`（AI Decision Breakdown）
+- 修復 4 個 TabBar `alignItems: end` → `center`（.pen: TGT9O, cEDoL, RDSgS, TTmjJ）
+- 修復前端 TabBar.tsx `items-end` → `items-center`
+- 空狀態邊框統一：`border border` bug → `border-white/5` + `bg-[#111827] rounded-lg p-6`
+- 輸入框邊框統一：`#374151` → `#1f2937`
+- 更新 `frontend/DESIGN_MAP.md` 加入 token 速查表和禁止模式
+
+### Fixed
+- EngagementPanel.tsx:96 — `border border rounded`（缺色）
+- ObjectivesPanel.tsx:218 — `border border rounded`（缺色）
+- MissionTab.tsx:338 — `border-[#1f293740]`（半透明不一致）
+- MissionTab.tsx:186 — `border-[#374151]`（混用 gray-700）
+
+---
+
 ## [2026-03-09] PoC 報告 + 漏洞儀表板設計稿
 
 ### Added

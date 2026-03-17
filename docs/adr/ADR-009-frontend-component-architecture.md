@@ -152,3 +152,4 @@ const ForceGraph = dynamic(
 - 取代：（無）
 - 被取代：（無）
 - 參考：ADR-001（Next.js + Tailwind 選型）、ADR-007（WebSocket hook 在 hooks/ 目錄）、ADR-004（HexConfirmModal 在 modal/ 目錄）、ADR-012（c5isr/ 前端元件目錄的 C5ISR 框架映射）
+- 規格：SPEC-051（Design Token 與 .pen 設計同步協議 — Token 定義、禁止模式、同步流程）

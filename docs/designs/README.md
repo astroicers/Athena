@@ -16,7 +16,10 @@
 | `design/athena-c5isr-board.pen` | C5ISR 指揮板 | 2026-02-22 |
 | `design/athena-mitre-navigator.pen` | MITRE ATT&CK 導航器 | 2026-02-22 |
 | `design/athena-mission-planner.pen` | 任務規劃器 | 2026-02-22 |
-| `design/pencil-new.pen` | PoC 報告 + 漏洞儀表板 | 2026-03-09 |
+| `design/pencil-new-v2.pen` | **全頁面統一設計稿（當前活躍）** — 18 frame 覆蓋所有頁面 | 2026-03-17 |
+| `design/pencil-new.pen` | ~~舊版~~ PoC 報告 + 漏洞儀表板（legacy，已由 v2 取代） | 2026-03-09 |
+
+> **⚠️ `pencil-new-v2.pen` 為唯一真相來源。** 詳見 [SPEC-051](../specs/SPEC-051-design-token-and-pen-sync-protocol.md)。
 
 ## 設計文件參照
 

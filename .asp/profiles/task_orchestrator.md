@@ -643,8 +643,9 @@ FUNCTION documentation_pipeline(spec_or_tasks, task_type):
     artifacts.append("CHANGELOG.md")
 
   // ─── 2. README.md ───
-  IF spec.changes_user_facing_behavior:
+  IF spec.changes_user_facing_behavior OR is_final_task:
     UPDATE "README.md" affected sections
+    // is_final_task: 最後一個任務完成時，全面檢視 README 是否反映專案最新狀態
     artifacts.append("README.md")
 
   // ─── 3. docs/architecture.md ───

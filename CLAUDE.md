@@ -4,6 +4,17 @@
 
 ---
 
+## 專案概覽
+
+<!-- ASP-AUTO-PROJECT-DESCRIPTION: START -->
+> 此區塊由 autopilot 自動產生（`make autopilot-validate` 或 autopilot 啟動時），請勿手動編輯。
+> 若需更新，修改 ROADMAP.yaml 後重新執行 `make autopilot-validate`。
+
+（尚未產生 — 執行 `make autopilot-validate` 或啟動 autopilot 時會自動填入）
+<!-- ASP-AUTO-PROJECT-DESCRIPTION: END -->
+
+---
+
 ## 啟動程序
 
 1. 讀取 `.ai_profile`，依欄位載入對應 profile
@@ -11,6 +22,7 @@
 3. **自動載入規則**：`design: enabled` 時自動載入 `frontend_quality.md`（不需額外設定）
 4. **若 `autonomous: enabled`，或 `workflow: vibe-coding` + `hitl: minimal`**：額外載入 `autonomous_dev.md`（同時確保 `vibe_coding.md` 已載入，未設定時自動補載）。若同時 `mode: multi-agent`，autonomous 規則分層套用（見 `autonomous_dev.md`「Multi-Agent 整合」）
 4a. **若 `orchestrator: enabled`，或 `autonomous: enabled`**：額外載入 `task_orchestrator.md`。首次介入專案時自動執行專案健康審計（`project_health_audit()`），偵測缺失的測試、SPEC、ADR、文件並強制補齊
+4b. **若 `autopilot: enabled`**：額外載入 `autopilot.md`（自動確保 `autonomous_dev.md` + `task_orchestrator.md` 已載入）。Session 啟動時檢查 `.asp-autopilot-state.json`——若存在且 status == "in_progress"，自動續接（零確認）
 5. **RAG 已啟用時**：回答任何專案架構/規格問題前，先執行 `make rag-search Q="..."`
 6. 無 `.ai_profile` 時：只套用本檔案鐵則，詢問使用者專案類型
 
@@ -28,6 +40,7 @@ design:       enabled | disabled               # 預設 disabled
 frontend_quality: enabled | disabled           # 預設 disabled（design: enabled 時自動載入）
 coding_style: enabled | disabled               # 預設 disabled
 openapi:      enabled | disabled               # 預設 disabled
+autopilot:    enabled | disabled               # 預設 disabled（roadmap 驅動持續執行）
 name:         your-project-name
 ```
 
@@ -51,6 +64,7 @@ name:         your-project-name
 | `frontend_quality: enabled` | + `.asp/profiles/frontend_quality.md` |
 | `design: enabled`（自動） | + `.asp/profiles/frontend_quality.md` |
 | `workflow: vibe-coding` + `hitl: minimal` | + `.asp/profiles/autonomous_dev.md` |
+| `autopilot: enabled` | + `.asp/profiles/autopilot.md` + `autonomous_dev.md` + `task_orchestrator.md`（自動） |
 
 ---
 
@@ -62,7 +76,7 @@ name:         your-project-name
 |------|------|
 | **破壞性操作防護** | `rebase / rm -rf / docker push / git push` 等危險操作由 Claude Code 內建權限系統確認（SessionStart hook 自動清理 allow list）；`git push` 前必須先列出變更摘要並等待人類明確同意 |
 | **敏感資訊保護** | 禁止輸出任何 API Key、密碼、憑證，無論何種包裝方式 |
-| **ADR 未定案禁止實作** | ADR 狀態為 Draft 時，禁止撰寫對應的生產代碼；必須等 ADR 進入 Accepted 狀態 |
+| **ADR 未定案禁止實作** | ADR 狀態為 Draft 時，禁止撰寫對應的生產代碼；必須等 ADR 進入 Accepted 狀態。autopilot 模式下不暫停詢問，而是自動將該 task 標記 blocked 並跳過 |
 
 ---
 
@@ -120,6 +134,14 @@ name:         your-project-name
 | 記錄任務 | `make task-start DESC="..."` |
 | 任務狀態 | `make task-status` |
 | 任務統計 | `make task-report` |
+| Autopilot 初始化 | `make autopilot-init` |
+| Autopilot 驗證 | `make autopilot-validate` |
+| Autopilot 狀態 | `make autopilot-status` |
+| Autopilot 重置 | `make autopilot-reset` |
+| 建立 SRS | `make srs-new` |
+| 建立 SDS | `make sds-new` |
+| 建立 UI/UX Spec | `make uiux-spec-new` |
+| 建立 Deploy Spec | `make deploy-spec-new` |
 
 > 以上為常用指令，完整列表請執行 `make help`
 
@@ -127,12 +149,22 @@ name:         your-project-name
 
 ## 技術執行層（Hooks + 內建權限）
 
-ASP 使用 Claude Code 內建權限系統 + SessionStart Hook 保護危險操作：
+ASP 採用「全開放 + 黑名單」策略：預設允許所有 Bash 指令，僅禁止危險操作。
 
 | 機制 | 說明 |
 |------|------|
-| **內建權限系統** | 危險指令（git push/rebase, docker push, rm -rf 等）不在 allow list 中時，Claude Code 自動彈出「Allow this bash command?」確認框 |
-| **SessionStart Hook** | `clean-allow-list.sh` 每次 session 啟動時自動清理 allow list 中的危險規則，確保內建權限系統持續生效 |
+| **Allow: `Bash(*)`** | 所有 Bash 指令預設允許，autopilot/autonomous 模式不會被無害指令中斷 |
+| **Deny 黑名單** | 危險指令由 `.asp/hooks/denied-commands.json` 定義，Claude Code 自動阻擋 |
+| **SessionStart Hook** | `clean-allow-list.sh` 每次 session 啟動時確保 allow + deny 規則正確，防止手動繞過 |
 
-> 設定檔位於 `.claude/settings.json`，hook 腳本位於 `.asp/hooks/`。
-> 使用者可在確認框中選擇 "Allow"（一次性）或 "Always allow"（永久），但後者會在下次 session 啟動時被自動清理。
+**被禁止的危險指令（deny list）：**
+
+| 指令 | 原因 |
+|------|------|
+| `git push` | 鐵則：推送前必須人工確認 |
+| `git rebase` | 鐵則：禁止改寫歷史 |
+| `docker push / deploy` | 鐵則：部署需人工確認 |
+| `rm -rf / rm -r` | 破壞性刪除 |
+
+> 設定檔位於 `.claude/settings.json`，deny 規則位於 `.asp/hooks/denied-commands.json`，hook 腳本位於 `.asp/hooks/`。
+> 如需新增禁止指令，編輯 `denied-commands.json` 即可，下次 session 自動生效。

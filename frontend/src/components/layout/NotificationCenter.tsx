@@ -134,12 +134,11 @@ export function NotificationCenter({
             </h2>
             {totalCount > 0 && (
               <span
-                className="inline-flex items-center justify-center font-mono font-bold text-white leading-none"
+                className="inline-flex items-center justify-center font-mono font-bold text-white leading-none rounded-[10px]"
                 style={{
                   minWidth: 20,
                   height: 20,
                   padding: "2px 8px",
-                  borderRadius: 10,
                   backgroundColor: "#EF4444",
                   fontSize: 9,
                 }}
@@ -200,9 +199,8 @@ export function NotificationCenter({
                   {constraintAlert.messages.map((msg, i) => (
                     <div
                       key={i}
-                      className="flex flex-col"
+                      className="flex flex-col rounded-athena-md"
                       style={{
-                        borderRadius: 6,
                         backgroundColor: "#F59E0B10",
                         border: "1px solid #F59E0B50",
                         padding: "12px 14px",
@@ -279,9 +277,8 @@ export function NotificationCenter({
                     return (
                       <div
                         key={alert.id}
-                        className="flex flex-col"
+                        className="flex flex-col rounded-athena-md"
                         style={{
-                          borderRadius: 6,
                           backgroundColor: colors.fill,
                           border: `1px solid ${colors.border}`,
                           padding: "10px 12px",

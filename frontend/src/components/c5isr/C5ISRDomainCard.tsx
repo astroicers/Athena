@@ -47,12 +47,11 @@ export function C5ISRDomainCard({ domain, onClick }: C5ISRDomainCardProps) {
           {domain.domain}
         </span>
         <span
-          className="font-mono text-[9px] font-bold uppercase tracking-wider"
+          className="font-mono text-[9px] font-bold uppercase tracking-wider rounded-athena-sm"
           style={{
             color,
             backgroundColor: `${color}15`,
             padding: "1px 5px",
-            borderRadius: 3,
           }}
         >
           {domain.status}

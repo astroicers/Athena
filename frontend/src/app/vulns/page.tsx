@@ -146,8 +146,8 @@ function StatusPipeline({
                 {t(`status.${status}`)}
               </span>
               <div
-                className="w-full"
-                style={{ height: 3, borderRadius: 2, backgroundColor: STATUS_COLORS[status] }}
+                className="w-full rounded-[2px]"
+                style={{ height: 3, backgroundColor: STATUS_COLORS[status] }}
               />
             </div>
             {idx < STATUS_LIST.length - 1 && (

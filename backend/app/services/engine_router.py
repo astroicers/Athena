@@ -20,19 +20,13 @@ from app.clients import BaseEngineClient, ExecutionResult
 from app.config import settings
 from app.services.agent_capability_matcher import AgentCapabilityMatcher
 from app.services.fact_collector import FactCollector
+from app.services.knowledge_base import get_exploitable_banners
 from app.ws_manager import WebSocketManager
 
 logger = logging.getLogger(__name__)
 
 # Known vulnerable service banners -> Metasploit service name (SPEC-037 Phase 2)
-_KNOWN_EXPLOITABLE_BANNERS: dict[str, str] = {
-    "vsftpd_2.3.4": "vsftpd",
-    "vsftpd 2.3.4": "vsftpd",
-    "unrealircd": "unrealircd",
-    "unreal_ircd": "unrealircd",
-    "samba 3.0": "samba",
-    "distccd": "distccd",
-}
+_KNOWN_EXPLOITABLE_BANNERS: dict[str, str] = get_exploitable_banners()
 
 # Keywords indicating credential/access failure (SPEC-037)
 _AUTH_FAILURE_KEYWORDS = [

@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """VulnLookupService — maps service banners to CVEs via NVD NIST API."""
 
@@ -19,6 +19,7 @@ import asyncpg
 from app.config import settings
 from app.models.recon import ServiceInfo
 from app.models.vuln import VulnFinding
+from app.services.knowledge_base import get_cpe_mappings
 from app.ws_manager import ws_manager
 
 logger = logging.getLogger(__name__)
@@ -28,36 +29,7 @@ logger = logging.getLogger(__name__)
 # Maps (service_name_lower, version_prefix) → CPE vendor/product
 # ---------------------------------------------------------------------------
 _CPE_MAP: dict[str, tuple[str, str]] = {
-    # SSH
-    "ssh": ("openbsd", "openssh"),
-    "openssh": ("openbsd", "openssh"),
-    # HTTP servers
-    "apache": ("apache", "http_server"),
-    "http": ("apache", "http_server"),
-    "nginx": ("nginx", "nginx"),
-    # FTP
-    "ftp": ("vsftpd_project", "vsftpd"),
-    "vsftpd": ("vsftpd_project", "vsftpd"),
-    # Database
-    "mysql": ("mysql", "mysql"),
-    "postgresql": ("postgresql", "postgresql"),
-    "postgres": ("postgresql", "postgresql"),
-    "mssql": ("microsoft", "sql_server"),
-    "mongodb": ("mongodb", "mongodb"),
-    "redis": ("redis", "redis"),
-    # SMB/NETBIOS
-    "samba": ("samba", "samba"),
-    "smb": ("samba", "samba"),
-    # Misc
-    "tomcat": ("apache", "tomcat"),
-    "iis": ("microsoft", "internet_information_services"),
-    "proftpd": ("proftpd_project", "proftpd"),
-    "exim": ("exim", "exim"),
-    "postfix": ("postfix", "postfix"),
-    "bind": ("isc", "bind"),
-    "named": ("isc", "bind"),
-    "sendmail": ("sendmail", "sendmail"),
-    "dovecot": ("dovecot", "dovecot"),
+    k: tuple(v) for k, v in get_cpe_mappings().items()  # type: ignore[arg-type]
 }
 
 

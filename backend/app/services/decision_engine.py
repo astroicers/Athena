@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """Decide phase — evaluate recommendation against risk thresholds."""
 
@@ -16,6 +16,7 @@ import asyncpg
 
 from app.models.enums import AutomationMode, NoiseLevel, RiskLevel
 from app.services.kill_chain_enforcer import KillChainEnforcer
+from app.services.knowledge_base import get_noise_risk_matrix
 from app.services.validation_engine import ValidationEngine
 
 logger = logging.getLogger(__name__)
@@ -37,40 +38,18 @@ _NOISE_POINTS: dict[str, int] = {
 
 # Noise x Risk decision matrix per mission profile (NR1)
 # True = auto-approvable, False = needs_confirmation, None = needs_manual
-_NOISE_RISK_MATRIX: dict[str, dict[tuple[str, str], bool | None]] = {
-    "SR": {  # Stealth Recon — only low noise + low risk auto-approved
-        ("low", "low"): True, ("low", "medium"): False,
-        ("low", "high"): None, ("low", "critical"): None,
-        ("medium", "low"): False, ("medium", "medium"): None,
-        ("medium", "high"): None, ("medium", "critical"): None,
-        ("high", "low"): None, ("high", "medium"): None,
-        ("high", "high"): None, ("high", "critical"): None,
-    },
-    "CO": {  # Covert Operation
-        ("low", "low"): True, ("low", "medium"): True,
-        ("low", "high"): False, ("low", "critical"): None,
-        ("medium", "low"): True, ("medium", "medium"): False,
-        ("medium", "high"): None, ("medium", "critical"): None,
-        ("high", "low"): False, ("high", "medium"): None,
-        ("high", "high"): None, ("high", "critical"): None,
-    },
-    "SP": {  # Standard Pentest
-        ("low", "low"): True, ("low", "medium"): True,
-        ("low", "high"): False, ("low", "critical"): None,
-        ("medium", "low"): True, ("medium", "medium"): True,
-        ("medium", "high"): False, ("medium", "critical"): None,
-        ("high", "low"): True, ("high", "medium"): False,
-        ("high", "high"): False, ("high", "critical"): None,
-    },
-    "FA": {  # Full Assault
-        ("low", "low"): True, ("low", "medium"): True,
-        ("low", "high"): True, ("low", "critical"): False,
-        ("medium", "low"): True, ("medium", "medium"): True,
-        ("medium", "high"): True, ("medium", "critical"): False,
-        ("high", "low"): True, ("high", "medium"): True,
-        ("high", "high"): False, ("high", "critical"): None,
-    },
-}
+def _build_noise_matrix() -> dict[str, dict[tuple[str, str], bool | None]]:
+    """Build noise×risk decision matrix from YAML. Key 'low_medium' -> tuple ('low','medium')."""
+    raw = get_noise_risk_matrix()
+    result: dict[str, dict[tuple[str, str], bool | None]] = {}
+    for profile, entries in raw.items():
+        result[profile] = {
+            tuple(k.split("_", 1)): v
+            for k, v in entries.items()
+        }
+    return result
+
+_NOISE_RISK_MATRIX = _build_noise_matrix()
 
 
 class DecisionEngine:

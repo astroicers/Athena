@@ -19,25 +19,14 @@ from dataclasses import dataclass, field
 
 import asyncpg
 
+from app.services.knowledge_base import get_kill_chain_stages
+
 logger = logging.getLogger(__name__)
 
 # Kill Chain stages mapped to MITRE ATT&CK tactics
 _KILL_CHAIN_STAGES: list[tuple[int, str, str, bool]] = [
-    # (stage, tactic_id, name, required)
-    (0,  "TA0043", "Reconnaissance",        True),
-    (1,  "TA0042", "Resource Development",  False),
-    (2,  "TA0001", "Initial Access",        True),
-    (3,  "TA0002", "Execution",             True),
-    (4,  "TA0003", "Persistence",           False),
-    (5,  "TA0004", "Privilege Escalation",  True),
-    (6,  "TA0005", "Defense Evasion",       False),
-    (7,  "TA0006", "Credential Access",     True),
-    (8,  "TA0007", "Discovery",             True),
-    (9,  "TA0008", "Lateral Movement",      True),
-    (10, "TA0009", "Collection",            True),
-    (11, "TA0011", "Command and Control",   False),
-    (12, "TA0010", "Exfiltration",          True),
-    (13, "TA0040", "Impact",               True),
+    (s["stage"], s["tactic_id"], s["name"], s["required"])
+    for s in get_kill_chain_stages()
 ]
 
 _TACTIC_TO_STAGE: dict[str, int] = {t[1]: t[0] for t in _KILL_CHAIN_STAGES}

@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """InitialAccessEngine — multi-protocol credential testing and C2 agent bootstrapping.
 
@@ -25,6 +25,7 @@ import asyncpg
 
 from app.config import settings
 from app.models.recon import InitialAccessResult
+from app.services.knowledge_base import get_default_credentials, get_protocol_map
 from app.ws_manager import ws_manager
 
 logger = logging.getLogger(__name__)
@@ -33,45 +34,8 @@ logger = logging.getLogger(__name__)
 # Credential lists grouped by protocol family
 # ---------------------------------------------------------------------------
 _CREDS_BY_PROTOCOL: dict[str, list[tuple[str, str]]] = {
-    "ssh": [
-        # Linux distro & Vagrant box defaults (sorted by likelihood)
-        ("vagrant", "vagrant"),
-        ("ubuntu", "ubuntu"),
-        ("pi", "raspberry"),
-        ("ec2-user", "ec2-user"),
-        ("centos", "centos"),
-        ("debian", "debian"),
-        # Common weak / default passwords
-        ("root", "root"),
-        ("root", "toor"),
-        ("root", "password"),
-        ("admin", "admin"),
-        ("admin", "password"),
-        ("administrator", "administrator"),
-        # Lab / CTF environments
-        ("msfadmin", "msfadmin"),
-        ("user", "user"),
-        # Network appliances
-        ("cisco", "cisco"),
-        ("ubnt", "ubnt"),
-        ("apc", "apc"),
-    ],
-    "windows": [
-        # AD / Windows defaults (shared by RDP and WinRM)
-        ("Administrator", "Password1"),
-        ("Administrator", "P@ssw0rd"),
-        ("Administrator", "Admin123"),
-        ("Administrator", "administrator"),
-        ("admin", "admin"),
-        ("admin", "password"),
-        ("admin", "P@ssw0rd"),
-        # Service accounts
-        ("svc_sql", "Password1"),
-        ("svc_backup", "Password1"),
-        # Lab / evaluation VMs
-        ("vagrant", "vagrant"),
-        ("IEUser", "Passw0rd!"),
-    ],
+    proto: [tuple(c) for c in creds]  # type: ignore[misc]
+    for proto, creds in get_default_credentials().items()
 }
 
 # Backward-compatible alias used by existing code
@@ -86,11 +50,16 @@ _DEFAULT_CREDS = _CREDS_BY_PROTOCOL["ssh"]
 #   2. Add a row here
 #   3. Add the corresponding @mcp.tool() in credential-checker server.py
 # ---------------------------------------------------------------------------
-_PROTOCOL_MAP: list[tuple[int, tuple[str, ...], str, str | None, str, str]] = [
-    (22,   ("ssh", "unknown"),            "ssh",   None,                      "credential.ssh",   "ssh"),
-    (3389, ("ms-wbt-server", "unknown"),  "rdp",   "rdp_credential_check",   "credential.rdp",   "windows"),
-    (5985, ("wsman", "http", "unknown"),  "winrm", "winrm_credential_check", "credential.winrm", "windows"),
-    (5986, ("wsman", "https", "unknown"), "winrm", "winrm_credential_check", "credential.winrm", "windows"),
+_PROTOCOL_MAP = [
+    (
+        p["port"],
+        p["service_keywords"],
+        p["protocol"],
+        p.get("mcp_tool"),
+        p["fact_trait"],
+        p["creds_key"],
+    )
+    for p in get_protocol_map()
 ]
 
 

@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """Act phase — route execution to MCP attack-executor, C2 engine, or mock."""
 
@@ -65,7 +65,17 @@ _FALLBACK_CHAIN: dict[str, list[str]] = {
     "mcp_ssh":    ["c2"],
     "metasploit": [],
     "c2":         ["mcp_ssh"],
+    "mcp_recon":  [],      # no fallback — recon either works or it doesn't
 }
+
+_RECON_TECHNIQUE_PREFIXES: frozenset[str] = frozenset({
+    "T1595",  # Active Scanning
+    "T1590",  # Gather Victim Network Information
+    "T1592",  # Gather Victim Host Information
+    "T1046",  # Network Service Discovery
+    "T1018",  # Remote System Discovery
+    "T1135",  # Network Share Discovery
+})
 
 _TERMINAL_ERRORS: list[str] = [
     "scope violation",
@@ -209,6 +219,13 @@ class EngineRouter:
         )
         ability_id = (tech_row["c2_ability_id"] if tech_row else None) or technique_id
 
+        # -- Recon route: route recon techniques to mcp_recon (no credentials needed) --
+        tech_prefix = technique_id.split(".")[0]
+        if tech_prefix in _RECON_TECHNIQUE_PREFIXES:
+            return await self._execute_recon_via_mcp(
+                db, exec_id, now, technique_id, target_id, operation_id, ooda_iteration_id
+            )
+
         # -- MCP route: engine == "mcp" (explicit tool-registry dispatch) --
         if engine == "mcp" and settings.MCP_ENABLED and self._mcp_engine:
             return await self._execute_mcp(
@@ -275,6 +292,33 @@ class EngineRouter:
             )
 
     # -- Internal helpers --
+
+    async def _execute_recon_via_mcp(
+        self, db, exec_id, now, technique_id, target_id,
+        operation_id, ooda_iteration_id
+    ) -> dict:
+        """Route recon techniques directly to ReconEngine (no credentials needed)."""
+        from app.services.recon_engine import ReconEngine
+        try:
+            result = await ReconEngine().scan(db, operation_id, target_id)
+            facts_count = getattr(result, "facts_written", 0)
+            if isinstance(result, dict):
+                facts_count = result.get("facts_written", 0)
+            return {
+                "execution_id": exec_id, "technique_id": technique_id,
+                "target_id": target_id, "engine": "mcp_recon",
+                "status": "success",
+                "result_summary": "Recon scan complete",
+                "facts_collected_count": facts_count,
+                "error": None,
+            }
+        except Exception as e:
+            logger.exception("Recon via MCP failed for technique %s", technique_id)
+            return {
+                "execution_id": exec_id, "technique_id": technique_id,
+                "target_id": target_id, "engine": "mcp_recon",
+                "status": "failed", "error": str(e),
+            }
 
     async def _execute_via_mcp_executor(
         self,

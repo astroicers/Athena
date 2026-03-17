@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """Kill Chain Enforcer — skip-stage penalty calculator.
 
@@ -139,4 +139,17 @@ class KillChainEnforcer:
                 "AND te.status = 'success'",
                 operation_id, target_id,
             )
-        return {r["tactic_id"] for r in rows}
+        completed_tactics = {r["tactic_id"] for r in rows}
+
+        # Fallback: direct check for known recon technique IDs
+        # (covers cases where attack_graph_nodes doesn't have T1046)
+        recon_rows = await db.fetch(
+            "SELECT 1 FROM technique_executions "
+            "WHERE operation_id = $1 AND status = 'success' "
+            "AND technique_id = ANY($2::text[])",
+            operation_id, ["T1046", "T1595", "T1595.001", "T1590"],
+        )
+        if recon_rows:
+            completed_tactics.add("TA0043")
+
+        return completed_tactics

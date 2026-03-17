@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """ReconEngine — delegates nmap scans to MCP and writes results to the facts table."""
 
@@ -19,7 +19,9 @@ from datetime import datetime, timezone
 import asyncpg
 
 from app.config import settings
+from app.models.enums import FactCategory
 from app.models.recon import ReconResult, ServiceInfo
+from app.utils.enum_safety import ensure_enum_value
 from app.ws_manager import ws_manager
 
 logger = logging.getLogger(__name__)
@@ -129,6 +131,9 @@ class ReconEngine:
             services=services,
             os_guess=os_guess,
         )
+
+        # Step 5b: Write T1046 execution record so KillChainEnforcer sees TA0043 complete
+        await self._write_technique_execution(db, operation_id, target_id, facts_written)
 
         # Step 6: Update target OS in DB
         if os_guess:
@@ -292,6 +297,7 @@ class ReconEngine:
             services=_MOCK_SERVICES,
             os_guess="Linux_2.6.x",
         )
+        await self._write_technique_execution(db, operation_id, target_id, facts_written)
         scan_duration = time.monotonic() - t_start
 
         return ReconResult(
@@ -303,6 +309,25 @@ class ReconEngine:
             facts_written=facts_written,
             scan_duration_sec=round(scan_duration, 3),
             raw_xml=None,
+        )
+
+    async def _write_technique_execution(
+        self, db: asyncpg.Connection, operation_id: str,
+        target_id: str, facts_written: int,
+    ) -> None:
+        """Write T1046 record so KillChainEnforcer sees TA0043 complete."""
+        import uuid as _uuid
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        await db.execute(
+            "INSERT INTO technique_executions "
+            "(id, technique_id, target_id, operation_id, engine, status, "
+            " result_summary, facts_collected_count, started_at, completed_at) "
+            "VALUES ($1, $2, $3, $4, 'mcp', 'success', $5, $6, $7, $7) "
+            "ON CONFLICT DO NOTHING",
+            str(_uuid.uuid4()), "T1046", target_id, operation_id,
+            f"MCP nmap scan: {facts_written} facts collected",
+            facts_written, now,
         )
 
     async def _write_web_facts(
@@ -339,11 +364,12 @@ class ReconEngine:
 
             # Determine category from trait prefix
             if trait.startswith("web.vuln"):
-                category = "vulnerability"
+                raw_cat = "vulnerability"
             elif trait.startswith("web.http.waf"):
-                category = "defense"
+                raw_cat = "defense"
             else:
-                category = "web"
+                raw_cat = "web"
+            category = ensure_enum_value(FactCategory, raw_cat, fallback_member=FactCategory.WEB)
 
             fact_id = str(uuid.uuid4())
             await db.execute(
@@ -379,7 +405,8 @@ class ReconEngine:
         now = datetime.now(timezone.utc)
         facts_written = 0
 
-        async def _insert_fact(trait: str, value: str, category: str) -> None:
+        async def _insert_fact(trait: str, value: str, category: str | FactCategory) -> None:
+            category = ensure_enum_value(FactCategory, category if isinstance(category, str) else category.value, fallback_member=FactCategory.HOST)
             nonlocal facts_written
             fact_id = str(uuid.uuid4())
             await db.execute(

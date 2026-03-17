@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """AgentSwarm — bounded-concurrency parallel task executor for OODA Act phase."""
 
@@ -75,12 +75,17 @@ class SwarmExecutor:
 
     async def execute_swarm(
         self,
-        db: asyncpg.Connection,
+        pool: asyncpg.Pool,
         operation_id: str,
         ooda_iteration_id: str,
         parallel_tasks: list[dict],
     ) -> SwarmResult:
-        """Execute multiple tasks in parallel with bounded concurrency."""
+        """Execute multiple tasks in parallel with bounded concurrency.
+
+        Each parallel coroutine acquires its own connection from *pool* so that
+        concurrent tasks never share a single asyncpg.Connection (which is not
+        safe for concurrent coroutines).
+        """
         swarm_result = SwarmResult(
             ooda_iteration_id=ooda_iteration_id,
             total=len(parallel_tasks),
@@ -99,27 +104,30 @@ class SwarmExecutor:
             )
             swarm_tasks.append(st)
 
-        # Insert into DB
+        # Insert into DB — sequential, use a single acquired connection
         now = datetime.now(timezone.utc)
-        for st in swarm_tasks:
-            await db.execute(
-                "INSERT INTO swarm_tasks "
-                "(id, ooda_iteration_id, operation_id, technique_id, target_id, "
-                "engine, status, created_at) "
-                "VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7)",
-                st.task_id, ooda_iteration_id, operation_id,
-                st.technique_id, st.target_id, st.engine, now,
-            )
+        async with pool.acquire() as db:
+            for st in swarm_tasks:
+                await db.execute(
+                    "INSERT INTO swarm_tasks "
+                    "(id, ooda_iteration_id, operation_id, technique_id, target_id, "
+                    "engine, status, created_at) "
+                    "VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7)",
+                    st.task_id, ooda_iteration_id, operation_id,
+                    st.technique_id, st.target_id, st.engine, now,
+                )
 
         # Broadcast initial state
         await self._broadcast_batch(operation_id, swarm_tasks)
 
-        # Execute all tasks concurrently with bounded semaphore
+        # Execute all tasks concurrently with bounded semaphore.
+        # Each _execute_single acquires its own connection from the pool so
+        # concurrent coroutines never share a single asyncpg.Connection.
         # Using asyncio.gather with return_exceptions=True for Python 3.10 compat
         # (_execute_single handles its own exceptions, so leaked ones are logged)
         results = await asyncio.gather(
             *(
-                self._execute_single(db, operation_id, ooda_iteration_id, st)
+                self._execute_single(pool, operation_id, ooda_iteration_id, st)
                 for st in swarm_tasks
             ),
             return_exceptions=True,
@@ -141,16 +149,17 @@ class SwarmExecutor:
             elif st.status == "failed":
                 swarm_result.failed += 1
 
-        # Update DB records
-        for st in swarm_tasks:
-            await db.execute(
-                "UPDATE swarm_tasks SET status = $1, error = $2, "
-                "started_at = $3, completed_at = $4 WHERE id = $5",
-                st.status, st.error,
-                st.started_at if st.started_at else None,
-                st.completed_at if st.completed_at else None,
-                st.task_id,
-            )
+        # Update DB records — sequential, use a single acquired connection
+        async with pool.acquire() as db:
+            for st in swarm_tasks:
+                await db.execute(
+                    "UPDATE swarm_tasks SET status = $1, error = $2, "
+                    "started_at = $3, completed_at = $4 WHERE id = $5",
+                    st.status, st.error,
+                    st.started_at if st.started_at else None,
+                    st.completed_at if st.completed_at else None,
+                    st.task_id,
+                )
 
         # Broadcast final state
         await self._broadcast_batch(operation_id, swarm_tasks)
@@ -158,25 +167,30 @@ class SwarmExecutor:
         return swarm_result
 
     async def _execute_single(
-        self, db, operation_id: str, ooda_iteration_id: str, task: SwarmTask,
+        self, pool: asyncpg.Pool, operation_id: str, ooda_iteration_id: str, task: SwarmTask,
     ) -> None:
-        """Execute a single task with semaphore guard and per-task timeout."""
+        """Execute a single task with semaphore guard and per-task timeout.
+
+        Acquires its own connection from *pool* so that concurrent invocations
+        do not share a single asyncpg.Connection.
+        """
         async with self._semaphore:
             task.status = "running"
             task.started_at = datetime.now(timezone.utc)
 
             try:
-                result = await asyncio.wait_for(
-                    self._router.execute(
-                        db,
-                        technique_id=task.technique_id,
-                        target_id=task.target_id,
-                        engine=task.engine,
-                        operation_id=operation_id,
-                        ooda_iteration_id=ooda_iteration_id,
-                    ),
-                    timeout=settings.PARALLEL_TASK_TIMEOUT_SEC,
-                )
+                async with pool.acquire() as db:
+                    result = await asyncio.wait_for(
+                        self._router.execute(
+                            db,
+                            technique_id=task.technique_id,
+                            target_id=task.target_id,
+                            engine=task.engine,
+                            operation_id=operation_id,
+                            ooda_iteration_id=ooda_iteration_id,
+                        ),
+                        timeout=settings.PARALLEL_TASK_TIMEOUT_SEC,
+                    )
                 task.result = result
                 task.status = "completed" if result.get("status") == "success" else "failed"
                 if result.get("error"):

@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 import asyncpg
 
 from app.config import settings
+from app.database import db_manager
 from app.models.enums import OODAPhase
 from app.services.agent_swarm import SwarmExecutor
 from app.services.c5isr_mapper import C5ISRMapper
@@ -276,7 +277,7 @@ class OODAController:
         if self._swarm and parallel_tasks and len(parallel_tasks) > 1:
             # -- SWARM PATH (SPEC-030) --
             logger.info("OODA[%s] Act phase -- swarm executing %d parallel tasks", ooda_id[:8], len(parallel_tasks))
-            swarm_result = await self._swarm.execute_swarm(db, operation_id, ooda_id, parallel_tasks)
+            swarm_result = await self._swarm.execute_swarm(db_manager.pool, operation_id, ooda_id, parallel_tasks)
             act_summary = swarm_result.act_summary
 
             for st in swarm_result.tasks:

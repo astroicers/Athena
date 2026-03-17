@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """Unit tests for AgentSwarm — SPEC-030 bounded-parallel task executor."""
 
@@ -90,7 +90,7 @@ class TestSwarmResultProperties:
 class TestSwarmExecutorEmptyTasks:
     """Test empty parallel_tasks list."""
 
-    async def test_empty_parallel_tasks(self, tmp_db):
+    async def test_empty_parallel_tasks(self, pg_pool):
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
@@ -98,7 +98,7 @@ class TestSwarmExecutorEmptyTasks:
         executor = SwarmExecutor(engine_router=router, ws_manager=ws)
 
         result = await executor.execute_swarm(
-            tmp_db, "op-1", "ooda-1", []
+            pg_pool, "op-1", "ooda-1", []
         )
         assert result.total == 0
         assert result.completed == 0
@@ -110,7 +110,7 @@ class TestSwarmExecutorEmptyTasks:
 class TestSwarmExecutorSingleTask:
     """Test single task execution."""
 
-    async def test_single_task_executes(self, tmp_db):
+    async def test_single_task_executes(self, pg_pool, tmp_db):
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
@@ -129,7 +129,7 @@ class TestSwarmExecutorSingleTask:
                     "engine": "ssh",
                 }
             ]
-            result = await executor.execute_swarm(tmp_db, "op-1", "ooda-1", tasks)
+            result = await executor.execute_swarm(pg_pool, "op-1", "ooda-1", tasks)
             assert result.total == 1
             assert result.completed == 1
             assert result.failed == 0
@@ -141,7 +141,7 @@ class TestSwarmExecutorSingleTask:
 class TestSwarmExecutorMultipleTasks:
     """Test multiple parallel task execution."""
 
-    async def test_multiple_tasks_parallel(self, tmp_db):
+    async def test_multiple_tasks_parallel(self, pg_pool, tmp_db):
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
@@ -158,7 +158,7 @@ class TestSwarmExecutorMultipleTasks:
                 {"technique_id": "T1087", "target_id": "tgt-2", "engine": "ssh"},
                 {"technique_id": "T1083", "target_id": "tgt-3", "engine": "ssh"},
             ]
-            result = await executor.execute_swarm(tmp_db, "op-1", "ooda-1", tasks)
+            result = await executor.execute_swarm(pg_pool, "op-1", "ooda-1", tasks)
             assert result.total == 3
             assert result.completed == 3
             assert result.failed == 0
@@ -169,7 +169,7 @@ class TestSwarmExecutorMultipleTasks:
 class TestSwarmExecutorSemaphore:
     """Test semaphore bounds concurrency."""
 
-    async def test_semaphore_bounds_concurrency(self, tmp_db):
+    async def test_semaphore_bounds_concurrency(self, pg_pool, tmp_db):
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
@@ -201,7 +201,7 @@ class TestSwarmExecutorSemaphore:
                 {"technique_id": f"T{i}", "target_id": f"tgt-{i}", "engine": "ssh"}
                 for i in range(4)
             ]
-            result = await executor.execute_swarm(tmp_db, "op-1", "ooda-1", tasks)
+            result = await executor.execute_swarm(pg_pool, "op-1", "ooda-1", tasks)
             assert result.total == 4
             assert result.completed == 4
             # The semaphore should limit concurrency to 2
@@ -211,7 +211,7 @@ class TestSwarmExecutorSemaphore:
 class TestSwarmExecutorTimeoutIsolation:
     """Test that one task timing out does not affect others."""
 
-    async def test_task_timeout_isolation(self, tmp_db):
+    async def test_task_timeout_isolation(self, pg_pool, tmp_db):
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
@@ -240,7 +240,7 @@ class TestSwarmExecutorTimeoutIsolation:
                 {"technique_id": "T_TIMEOUT", "target_id": "tgt-2", "engine": "ssh"},
                 {"technique_id": "T_OK2", "target_id": "tgt-3", "engine": "ssh"},
             ]
-            result = await executor.execute_swarm(tmp_db, "op-1", "ooda-1", tasks)
+            result = await executor.execute_swarm(pg_pool, "op-1", "ooda-1", tasks)
             assert result.total == 3
             assert result.completed == 2
             assert result.timed_out == 1
@@ -254,7 +254,7 @@ class TestSwarmExecutorTimeoutIsolation:
 class TestSwarmExecutorExceptionIsolation:
     """Test that one task raising an exception does not affect others."""
 
-    async def test_task_exception_isolation(self, tmp_db):
+    async def test_task_exception_isolation(self, pg_pool, tmp_db):
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
@@ -279,7 +279,7 @@ class TestSwarmExecutorExceptionIsolation:
                 {"technique_id": "T_FAIL", "target_id": "tgt-2", "engine": "ssh"},
                 {"technique_id": "T_OK2", "target_id": "tgt-3", "engine": "ssh"},
             ]
-            result = await executor.execute_swarm(tmp_db, "op-1", "ooda-1", tasks)
+            result = await executor.execute_swarm(pg_pool, "op-1", "ooda-1", tasks)
             assert result.total == 3
             assert result.completed == 2
             assert result.failed == 1
@@ -293,7 +293,7 @@ class TestSwarmExecutorExceptionIsolation:
 class TestSwarmExecutorAllFail:
     """Test all tasks failing."""
 
-    async def test_all_tasks_fail(self, tmp_db):
+    async def test_all_tasks_fail(self, pg_pool, tmp_db):
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
@@ -310,7 +310,7 @@ class TestSwarmExecutorAllFail:
                 {"technique_id": "T2", "target_id": "tgt-2", "engine": "ssh"},
                 {"technique_id": "T3", "target_id": "tgt-3", "engine": "ssh"},
             ]
-            result = await executor.execute_swarm(tmp_db, "op-1", "ooda-1", tasks)
+            result = await executor.execute_swarm(pg_pool, "op-1", "ooda-1", tasks)
             assert result.total == 3
             assert result.completed == 0
             assert result.failed == 3
@@ -320,7 +320,7 @@ class TestSwarmExecutorAllFail:
 class TestSwarmExecutorPartialSuccess:
     """Test partial success."""
 
-    async def test_partial_success(self, tmp_db):
+    async def test_partial_success(self, pg_pool, tmp_db):
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
@@ -347,7 +347,7 @@ class TestSwarmExecutorPartialSuccess:
                 {"technique_id": "T2", "target_id": "tgt-2", "engine": "ssh"},
                 {"technique_id": "T3", "target_id": "tgt-3", "engine": "ssh"},
             ]
-            result = await executor.execute_swarm(tmp_db, "op-1", "ooda-1", tasks)
+            result = await executor.execute_swarm(pg_pool, "op-1", "ooda-1", tasks)
             assert result.total == 3
             assert result.completed == 2
             assert result.failed == 1
@@ -357,7 +357,7 @@ class TestSwarmExecutorPartialSuccess:
 class TestSwarmExecutorDBPersistence:
     """Test that task records are persisted to the database."""
 
-    async def test_db_records_created(self, tmp_db):
+    async def test_db_records_created(self, pg_pool, tmp_db):
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
@@ -373,9 +373,10 @@ class TestSwarmExecutorDBPersistence:
                 {"technique_id": "T1", "target_id": "tgt-1", "engine": "ssh"},
                 {"technique_id": "T2", "target_id": "tgt-2", "engine": "ssh"},
             ]
-            result = await executor.execute_swarm(tmp_db, "op-1", "ooda-1", tasks)
+            # pg_pool used so each parallel task gets its own connection
+            result = await executor.execute_swarm(pg_pool, "op-1", "ooda-1", tasks)
 
-            # Check DB records
+            # Verify via tmp_db (same underlying test database, tables already truncated)
             count = await tmp_db.fetchval(
                 "SELECT COUNT(*) FROM swarm_tasks WHERE ooda_iteration_id = 'ooda-1'"
             )

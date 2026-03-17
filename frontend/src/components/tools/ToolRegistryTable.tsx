@@ -14,6 +14,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { ToolExecuteModal } from "@/components/tools/ToolExecuteModal";
+import { Button } from "@/components/atoms/Button";
 import type { ToolRegistryEntry } from "@/types/tool";
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
@@ -137,21 +138,15 @@ export function ToolRegistryTable({
                   {tool.name}
                 </span>
                 {tool.source === "user" && (
-                  <button
+                  <Button
+                    variant="danger"
+                    size="sm"
                     onClick={() => handleDelete(tool.toolId)}
                     disabled={deletingId === tool.toolId}
-                    className="font-mono shrink-0 rounded-athena-sm transition-colors hover:opacity-80 disabled:opacity-40"
-                    style={{
-                      background: "rgba(239,68,68,0.15)",
-                      color: "#EF4444",
-                      fontSize: 10,
-                      padding: "2px 6px",
-                      border: "none",
-                      cursor: deletingId === tool.toolId ? "not-allowed" : "pointer",
-                    }}
+                    className="text-[10px] px-1.5 py-0.5 shrink-0"
                   >
                     {deletingId === tool.toolId ? "..." : t("del")}
-                  </button>
+                  </Button>
                 )}
               </div>
               {tool.description && (
@@ -286,21 +281,14 @@ export function ToolRegistryTable({
               style={{ width: 80, flexShrink: 0 }}
             >
               {tool.enabled ? (
-                <button
+                <Button
+                  variant="primary"
+                  size="sm"
                   onClick={() => setSelectedTool(tool)}
-                  className="font-mono transition-colors hover:opacity-90"
-                  style={{
-                    background: "#3b82f6",
-                    color: "#ffffff",
-                    borderRadius: 4,
-                    padding: "4px 10px",
-                    fontSize: 10,
-                    border: "none",
-                    cursor: "pointer",
-                  }}
+                  className="text-[10px]"
                 >
                   {t("execute")}
-                </button>
+                </Button>
               ) : (
                 <span className="font-mono" style={{ color: "#4b5563", fontSize: 10 }}>
                   --

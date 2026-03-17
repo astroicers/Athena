@@ -19,6 +19,7 @@ import {
 } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { Button } from "@/components/atoms/Button";
 import type { OrientRecommendation } from "@/types/recommendation";
 
 /* ── Constants ── */
@@ -406,20 +407,24 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
             </span>
             {/* Buttons */}
             <div className="flex gap-2 mt-2">
-              <button
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={handleAccept}
                 disabled={
                   accepting || recommendation?.accepted === true
                 }
-                className="font-mono text-xs uppercase tracking-wider px-4 py-1.5 rounded-athena-sm transition-colors disabled:opacity-50 bg-[#3b82f6] text-[#e5e7eb]"
+                className="uppercase tracking-wider"
               >
                 {accepting ? t("accepting") : t("accept")}
-              </button>
-              <button
-                className="font-mono text-xs uppercase tracking-wider px-4 py-1.5 rounded-athena-sm transition-colors hover:bg-[#1f2937] border border-[#374151] text-[#6b7280]"
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="uppercase tracking-wider text-[#6b7280]"
               >
                 {t("override")}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

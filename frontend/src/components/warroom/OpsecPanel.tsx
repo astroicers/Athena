@@ -20,6 +20,7 @@ import {
 import { useTranslations } from "next-intl";
 import { useOPSEC } from "@/hooks/useOPSEC";
 import { api } from "@/lib/api";
+import { Button } from "@/components/atoms/Button";
 import {
   TimeSeriesChart,
   type TimeSeriesLine,
@@ -403,12 +404,13 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
                   {event.message}
                 </span>
                 {/* View button */}
-                <button
-                  className="font-mono text-[10px] px-2 py-0.5 rounded-athena-sm shrink-0 hover:bg-[#1f2937] transition-colors border border-[#1f2937]"
-                  style={{ color: "#f59e0b" }}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="text-[10px] px-2 py-0.5 shrink-0 text-[#f59e0b]"
                 >
                   {t("view")}
-                </button>
+                </Button>
               </div>
             ))
           )}

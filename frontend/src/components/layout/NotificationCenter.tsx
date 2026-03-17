@@ -12,6 +12,7 @@
 
 import { useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
+import { Button } from "@/components/atoms/Button";
 import type { OpsecAlert } from "@/hooks/useGlobalAlerts";
 import type { ConstraintAlert } from "@/hooks/useGlobalAlerts";
 
@@ -148,13 +149,14 @@ export function NotificationCenter({
             )}
           </div>
           <div className="flex items-center gap-3">
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={handleClearAll}
-              className="font-mono transition-colors"
-              style={{ fontSize: 10, color: "#3B82F6", fontWeight: 600 }}
+              className="text-[10px] text-[#3B82F6] bg-transparent border-transparent hover:bg-transparent"
             >
               {t("clearAll")}
-            </button>
+            </Button>
             <button
               onClick={onClose}
               className="transition-colors p-1"

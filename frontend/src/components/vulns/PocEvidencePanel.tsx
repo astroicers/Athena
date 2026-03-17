@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { Button } from "@/components/atoms/Button";
 import type { PocRecord, PocSummary } from "@/types/poc";
 
 /* ── Constants ── */
@@ -219,16 +220,14 @@ function ExportDropdown({
 
   return (
     <div className="relative" ref={ref}>
-      <button
+      <Button
+        variant="primary"
+        size="sm"
         onClick={() => setOpen(!open)}
-        className="font-mono text-[10px] font-bold rounded-athena-sm px-4 py-2 transition-colors hover:brightness-110"
-        style={{
-          backgroundColor: "var(--color-accent)",
-          color: "var(--color-text-primary)",
-        }}
+        className="text-[10px] font-bold"
       >
         EXPORT .MD
-      </button>
+      </Button>
       {open && (
         <div
           className="absolute right-0 top-full mt-1 rounded-athena-md py-1 z-50 min-w-[180px]"
@@ -344,17 +343,14 @@ export default function PocEvidencePanel({ operationId }: PocEvidencePanelProps)
         >
           {error || t("errorSubtitle")}
         </span>
-        <button
+        <Button
+          variant="danger"
+          size="sm"
           onClick={fetchRecords}
-          className="font-mono text-[10px] font-bold rounded-athena-sm px-5 py-2 transition-colors hover:brightness-110"
-          style={{
-            backgroundColor: "var(--color-error-bg)",
-            border: "1px solid rgba(239,68,68,0.25)",
-            color: "var(--color-error)",
-          }}
+          className="text-[10px] font-bold"
         >
           {t("retry")}
-        </button>
+        </Button>
       </div>
     );
   }

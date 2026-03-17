@@ -13,6 +13,7 @@
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { SectionHeader } from "@/components/atoms/SectionHeader";
+import { Button } from "@/components/atoms/Button";
 import { MITRECell } from "@/components/mitre/MITRECell";
 import { KillChainIndicator } from "@/components/mitre/KillChainIndicator";
 import { AttackPathTimeline } from "@/components/mitre/AttackPathTimeline";
@@ -81,13 +82,14 @@ export function AttackTab({
           <SectionHeader
             className="mb-2"
             trailing={
-              <button
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => onSetCompact(!compact)}
-                className="text-[10px] font-mono text-[#9ca3af] hover:text-[#3b82f6] transition-colors rounded-athena-sm bg-[#111827] border border-[#374151]"
-                style={{ padding: "5px 10px" }}
+                className="text-[10px] text-[#9ca3af] hover:text-[#3b82f6]"
               >
                 {compact ? t("expandView") : t("compactView")}
-              </button>
+              </Button>
             }
           >
             {t("mitreMatrix")}

@@ -185,18 +185,17 @@ export function AddTargetModal({
 
         {/* Tab buttons */}
         <div className="flex gap-2 mb-4">
-          <button
+          <Button
+            variant={mode === "single" ? "primary" : "secondary"}
+            size="sm"
             type="button"
             onClick={() => setMode("single")}
-            className={`text-xs font-mono px-3 py-1 rounded-athena-sm border ${
-              mode === "single"
-                ? "bg-[#3b82f6] text-[#0A0E17] border-[#3b82f6]"
-                : "border-[#1f2937] text-[#9ca3af] hover:border-[#3b82f6]"
-            }`}
           >
             {t("single")}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant={mode === "batch" ? "primary" : "secondary"}
+            size="sm"
             type="button"
             onClick={() => {
               setMode("batch");
@@ -204,14 +203,9 @@ export function AddTargetModal({
               setBatchStage("input");
               setBatchResult(null);
             }}
-            className={`text-xs font-mono px-3 py-1 rounded-athena-sm border ${
-              mode === "batch"
-                ? "bg-[#3b82f6] text-[#0A0E17] border-[#3b82f6]"
-                : "border-[#1f2937] text-[#9ca3af] hover:border-[#3b82f6]"
-            }`}
           >
             {t("batch")}
-          </button>
+          </Button>
         </div>
 
         {/* Single mode: existing form */}

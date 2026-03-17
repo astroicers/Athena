@@ -12,6 +12,7 @@
 
 import { useState } from "react";
 import { ProgressBar } from "@/components/atoms/ProgressBar";
+import { Button } from "@/components/atoms/Button";
 import type { OperationalConstraints } from "@/types/constraint";
 
 interface ConstraintStatusPanelProps {
@@ -157,13 +158,15 @@ export function ConstraintStatusPanel({
               </div>
               {onOverride &&
                 !constraints.activeOverrides.includes(limit.domain) && (
-                  <button
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={() => handleOverride(limit.domain)}
                     disabled={overriding === limit.domain}
-                    className="font-mono text-[7px] font-bold uppercase px-1.5 py-0.5 rounded-athena-sm transition-colors disabled:opacity-50 bg-[#ffffff1a] text-[#ffffff50]"
+                    className="text-[7px] font-bold uppercase px-1.5 py-0.5 bg-[#ffffff1a] text-[#ffffff50]"
                   >
                     {overriding === limit.domain ? "..." : "OVERRIDE"}
-                  </button>
+                  </Button>
                 )}
             </div>
           ))}

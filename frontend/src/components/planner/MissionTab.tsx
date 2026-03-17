@@ -364,39 +364,47 @@ export function MissionTab({
                 />
                 <div className="flex gap-1 mt-1">
                   {onOsintDiscover && (
-                    <button
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       onClick={() => onOsintDiscover(tgt.id)}
-                      className="flex-1 text-xs font-mono text-[#3b82f6] border border-[#3b82f640] rounded-athena-sm py-1 hover:bg-[#3b82f610] transition-colors uppercase tracking-wider"
+                      className="flex-1 text-xs text-[#3b82f6] border-[#3b82f640] bg-transparent hover:bg-[#3b82f610] uppercase tracking-wider"
                     >
                       {t("osintDiscover")}
-                    </button>
+                    </Button>
                   )}
                   {onInitialAccess && (
-                    <button
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       onClick={() => onInitialAccess(tgt.id)}
                       disabled={scanState?.targetId === tgt.id}
-                      className="flex-1 text-xs font-mono text-[#FBBF24] border border-[#FBBF2440] rounded-athena-sm py-1 hover:bg-[#FBBF2410] transition-colors uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="flex-1 text-xs text-[#FBBF24] border-[#FBBF2440] bg-transparent hover:bg-[#FBBF2410] uppercase tracking-wider"
                     >
                       {t("initialAccess")}
-                    </button>
+                    </Button>
                   )}
-                  <button
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={() =>
                       setSummaryTargetId((prev) =>
                         prev === tgt.id ? null : tgt.id,
                       )
                     }
-                    className="flex-1 text-xs font-mono text-[#9ca3af] border border-[#374151] rounded-athena-sm py-1 hover:bg-[#1f2937] hover:text-[#e5e7eb] transition-colors uppercase tracking-wider"
+                    className="flex-1 text-xs text-[#9ca3af] hover:text-[#e5e7eb] uppercase tracking-wider"
                   >
                     {t("aiSummary")}
-                  </button>
+                  </Button>
                   {tgt.isCompromised && (
-                    <button
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       onClick={() => onSetTerminalTarget(tgt)}
-                      className="flex-1 text-xs font-mono text-[#22C55E] border border-[#22C55E40] rounded-athena-sm py-1 hover:bg-[#22C55E10] transition-colors uppercase tracking-wider"
+                      className="flex-1 text-xs text-[#22C55E] border-[#22C55E40] bg-transparent hover:bg-[#22C55E10] uppercase tracking-wider"
                     >
                       {t("terminal")}
-                    </button>
+                    </Button>
                   )}
                 </div>
                 {summaryTargetId === tgt.id && (

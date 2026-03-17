@@ -13,6 +13,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useOperationId } from "@/contexts/OperationContext";
+import { Button } from "@/components/atoms/Button";
 import {
   useAttackGraph,
   type AttackNode,
@@ -913,41 +914,22 @@ export function AttackGraphTab() {
                 gap: 8,
               }}
             >
-              <button
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={handleRebuild}
                 disabled={rebuilding}
-                style={{
-                  fontFamily: "monospace",
-                  fontSize: 10,
-                  color: ACCENT,
-                  background: "transparent",
-                  border: `1px solid color-mix(in srgb, var(--color-accent) 31%, transparent)`,
-                  borderRadius: 4,
-                  padding: "6px 14px",
-                  cursor: rebuilding ? "not-allowed" : "pointer",
-                  opacity: rebuilding ? 0.6 : 1,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                }}
+                className="text-[10px] uppercase tracking-wider text-[#3b82f6] bg-transparent border-[color-mix(in_srgb,var(--color-accent)_31%,transparent)]"
               >
                 {rebuilding ? t("rebuilding") : t("rebuild")}
-              </button>
-              <button
-                style={{
-                  fontFamily: "monospace",
-                  fontSize: 10,
-                  color: ACCENT,
-                  background: "transparent",
-                  border: `1px solid color-mix(in srgb, var(--color-accent) 31%, transparent)`,
-                  borderRadius: 4,
-                  padding: "6px 14px",
-                  cursor: "pointer",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                }}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="text-[10px] uppercase tracking-wider text-[#3b82f6] bg-transparent border-[color-mix(in_srgb,var(--color-accent)_31%,transparent)]"
               >
                 DEPTH SCAN
-              </button>
+              </Button>
             </div>
 
             {/* Right-side panels */}

@@ -16,6 +16,7 @@ Lifespan:
     - on shutdown → close pool
 """
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, Response
@@ -24,6 +25,8 @@ from fastapi.responses import ORJSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import settings, _init_task_model_map
+
+logger = logging.getLogger(__name__)
 
 
 class MockModeMiddleware(BaseHTTPMiddleware):
@@ -41,6 +44,7 @@ class MockModeMiddleware(BaseHTTPMiddleware):
         if mock_flags:
             response.headers["X-Athena-Mock"] = ",".join(mock_flags)
         return response
+
 from app.database import db_manager, get_db, init_db
 from app.services.ooda_scheduler import start_scheduler, stop_scheduler
 from app.routers import (
@@ -77,6 +81,20 @@ async def lifespan(app: FastAPI):
     await init_db()
     start_scheduler()
 
+    # --- Engine Registry ---
+    from app.services import engine_registry as _engine_registry
+    from app.clients.c2_client import C2EngineClient
+    from app.clients.metasploit_client import MetasploitEngineAdapter
+
+    _engine_registry.register(
+        "c2", C2EngineClient(settings.C2_ENGINE_URL, settings.C2_ENGINE_API_KEY)
+    )
+    _engine_registry.register(
+        "mock", C2EngineClient(settings.C2_ENGINE_URL, settings.C2_ENGINE_API_KEY)
+    )
+    _engine_registry.register("metasploit", MetasploitEngineAdapter())
+    logger.info("Engine registry initialized: %s", _engine_registry.list_engines())
+
     # Seed demo scenario if operations table is empty
     async with db_manager.connection() as conn:
         count = await conn.fetchval("SELECT COUNT(*) FROM operations")
@@ -98,6 +116,13 @@ async def lifespan(app: FastAPI):
         await mcp_manager.startup()
         app.state.mcp_manager = mcp_manager
         set_mcp_manager(mcp_manager)
+
+        if mcp_manager:
+            from app.clients.mcp_engine_client import MCPEngineClient
+            _mcp_client = MCPEngineClient(mcp_manager)
+            _engine_registry.register("mcp", _mcp_client)
+            _engine_registry.register("mcp_ssh", _mcp_client)
+            logger.info("MCP engines registered in engine_registry")
 
     yield  # application runs here
 

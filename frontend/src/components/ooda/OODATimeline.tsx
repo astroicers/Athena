@@ -169,7 +169,7 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
               {/* Iteration header */}
               <button
                 onClick={() => toggleIteration(iterNum)}
-                className="w-full flex items-center justify-between px-3 py-2 bg-[#0A0E17] hover:bg-[#1f293733] transition-colors"
+                className="w-full flex items-center justify-between px-3 py-2 bg-[#0A0E17] hover:bg-[#1f2937] transition-colors"
               >
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-mono text-[#9ca3af]">

@@ -98,7 +98,7 @@ export function DataTable<T extends Record<string, unknown>>({
           {sorted.map((row) => (
             <tr
               key={String(row[keyField])}
-              className="hover:bg-[#ffffff05]"
+              className="hover:bg-white/5"
               style={{ borderBottom: "1px solid #1f293740", height: 40 }}
             >
               {columns.map((col) => (

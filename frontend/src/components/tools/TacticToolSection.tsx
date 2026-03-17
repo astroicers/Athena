@@ -51,7 +51,7 @@ export function TacticToolSection({
       {/* Header */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-3 py-2 bg-[#111827] hover:bg-[#1f2937]/30 transition-colors"
+        className="w-full flex items-center justify-between px-3 py-2 bg-[#111827] hover:bg-[#1f2937] transition-colors"
       >
         <div className="flex items-center gap-2">
           <span

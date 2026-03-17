@@ -240,7 +240,7 @@ function ExportDropdown({
             <button
               key={opt.path}
               onClick={() => handleExport(opt.path)}
-              className="block w-full text-left font-mono text-[10px] px-3 py-2 hover:bg-[#374151] transition-colors text-[#e5e7eb]"
+              className="block w-full text-left font-mono text-[10px] px-3 py-2 hover:bg-[#1f2937] transition-colors text-[#e5e7eb]"
             >
               {opt.label}
             </button>

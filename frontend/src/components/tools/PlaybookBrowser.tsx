@@ -334,7 +334,7 @@ export function PlaybookBrowser() {
               {filtered.map((pb) => (
                 <tr
                   key={pb.id}
-                  className="border-b border-[#1f293780] hover:bg-[#1f2937]/30 cursor-pointer"
+                  className="border-b border-[#1f293780] hover:bg-[#1f2937] cursor-pointer"
                   onClick={() => openEditForm(pb)}
                 >
                   <td className="px-3 py-2 text-[#3b82f6] font-bold">

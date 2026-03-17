@@ -207,7 +207,7 @@ export function MissionTab({
             onChange={(e) => handleStepStatusChange(r.id, e.target.value)}
             onBlur={() => setTimeout(() => setEditingStepId(null), 150)}
             autoFocus
-            className="bg-[#0A0E17] border border-[#3b82f6] rounded-athena-sm px-2 py-1 text-xs font-mono text-[#e5e7eb] focus:outline-none"
+            className="bg-[#0A0E17] border border-[#3b82f6] rounded-athena-sm px-2 py-1 text-xs font-mono text-[#e5e7eb] focus:outline-none focus:ring-2 focus:ring-[#3b82f6]"
           >
             {Object.values(MissionStepStatus).map((s) => (
               <option key={s} value={s}>{tStatus(s as any)}</option>

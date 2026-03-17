@@ -117,7 +117,7 @@ export function ToolRegistryTable({
         return (
           <div
             key={tool.id}
-            className="flex items-center transition-colors hover:bg-white/[0.02]"
+            className="flex items-center transition-colors hover:bg-white/5"
             style={{
               height: 52,
               padding: "0 12px",

@@ -87,7 +87,7 @@ export function TechniqueCard({ technique, relatedTools }: TechniqueCardProps) {
               <Link
                 key={tool.toolId}
                 href={`/tools#${tool.toolId}`}
-                className="flex items-center justify-between gap-2 px-2 py-1 rounded-athena-sm hover:bg-[#3b82f610] transition-colors group"
+                className="flex items-center justify-between gap-2 px-2 py-1 rounded-athena-sm hover:bg-[#1f2937] transition-colors group"
               >
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span

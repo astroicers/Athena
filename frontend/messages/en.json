@@ -148,6 +148,7 @@
     "confirmReset": "Reset Operation",
     "missionTab": "MISSION",
     "attackTab": "ATT&CK",
+    "attackGraphTab": "ATTACK GRAPH",
     "attackPath": "Attack Path Timeline",
     "mitreMatrix": "MITRE ATT&CK Matrix",
     "selectTechnique": "Select a technique to view details",
@@ -875,9 +876,21 @@
   "Constraints": {
     "title": "Constraints",
     "noConstraints": "No active constraints",
+    "allNominal": "All domains nominal — no active constraints",
     "domain": "Domain",
     "rule": "Rule",
     "active": "ON",
-    "inactive": "OFF"
+    "inactive": "OFF",
+    "override": "Override",
+    "overrideConfirm": "Override {domain} constraint for one cycle?",
+    "forcedMode": "Forced Mode",
+    "noiseBudget": "Noise Budget",
+    "maxOptions": "Max Options",
+    "blockedTargets": "Blocked Targets",
+    "activeOverrides": "Active Overrides",
+    "decisionFlow": "Decision Flow",
+    "constraintStatus": "Constraint Status",
+    "domainHealth": "C5ISR Domain Health",
+    "waitingData": "Waiting for constraint data..."
   }
 }

@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
@@ -22,13 +22,26 @@ export function PageHeader({
   trailing,
 }: PageHeaderProps) {
   return (
-    <header className="h-12 px-4 flex items-center justify-between bg-athena-surface border-b border-athena-border">
+    <header
+      className="px-4 flex items-center justify-between border-b border-[#1f2937]"
+      style={{ height: 48, backgroundColor: "#111827" }}
+    >
       <div className="flex items-center gap-3">
-        <h2 className="text-sm font-mono font-bold text-athena-text">
+        <h2
+          className="font-mono font-bold tracking-wider"
+          style={{ fontSize: 13, color: "#e5e7eb", letterSpacing: 1 }}
+        >
           {title}
         </h2>
         {operationCode && (
-          <span className="text-xs font-mono text-athena-accent bg-athena-accent/10 px-2 py-0.5 rounded">
+          <span
+            className="font-mono text-[10px] rounded"
+            style={{
+              color: "#3b82f6",
+              backgroundColor: "#3b82f620",
+              padding: "2px 8px",
+            }}
+          >
             {operationCode}
           </span>
         )}

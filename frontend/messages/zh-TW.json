@@ -148,6 +148,7 @@
     "confirmReset": "重設作業",
     "missionTab": "任務",
     "attackTab": "ATT&CK",
+    "attackGraphTab": "攻擊圖",
     "attackPath": "攻擊路徑時間軸",
     "mitreMatrix": "MITRE ATT&CK 矩陣",
     "selectTechnique": "選擇技術以檢視詳情",
@@ -843,10 +844,22 @@
   "Constraints": {
     "title": "限制條件",
     "noConstraints": "無活躍限制條件",
+    "allNominal": "所有網域正常 — 無活躍限制",
     "domain": "網域",
     "rule": "規則",
     "active": "啟用",
-    "inactive": "停用"
+    "inactive": "停用",
+    "override": "覆寫",
+    "overrideConfirm": "覆寫 {domain} 限制一個循環？",
+    "forcedMode": "強制模式",
+    "noiseBudget": "噪音預算",
+    "maxOptions": "最大選項數",
+    "blockedTargets": "封鎖目標",
+    "activeOverrides": "活躍覆寫",
+    "decisionFlow": "決策流程",
+    "constraintStatus": "限制狀態",
+    "domainHealth": "C5ISR 網域健康",
+    "waitingData": "等待限制資料..."
   },
   "Errors": {
     "failedLoadC5isr": "載入 C5ISR 資料失敗",

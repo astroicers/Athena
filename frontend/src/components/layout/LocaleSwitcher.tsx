@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
@@ -29,7 +29,7 @@ export function LocaleSwitcher() {
     <button
       onClick={handleSwitch}
       disabled={isPending}
-      className="text-xs font-mono text-athena-text-secondary hover:text-athena-accent transition-colors disabled:opacity-50"
+      className="text-xs font-mono text-[#9ca3af] hover:text-[#3b82f6] transition-colors disabled:opacity-50"
     >
       {isPending ? "..." : currentLocale === "en" ? "中文" : "EN"}
     </button>

@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
@@ -37,20 +37,25 @@ interface SeverityStyle {
 
 const SEVERITY_STYLES: Record<OpsecSeverity, SeverityStyle> = {
   error: {
-    bg: "bg-[#EF444410]",
-    border: "border-[#EF444425]",
-    dot: "bg-red-500",
-    badge: "bg-red-500/20 text-red-400",
+    bg: "",
+    border: "",
+    dot: "",
+    badge: "",
     badgeText: "CRITICAL",
   },
   warning: {
-    bg: "bg-[#F9731610]",
-    border: "border-[#F9731625]",
-    dot: "bg-orange-500",
-    badge: "bg-orange-500/20 text-orange-400",
+    bg: "",
+    border: "",
+    dot: "",
+    badge: "",
     badgeText: "HIGH",
   },
 };
+
+function severityColors(sev: OpsecSeverity) {
+  if (sev === "error") return { fill: "#EF444410", border: "#EF444425", text: "#EF4444" };
+  return { fill: "#F9731610", border: "#F9731625", text: "#F97316" };
+}
 
 export function NotificationCenter({
   isOpen,
@@ -96,26 +101,48 @@ export function NotificationCenter({
     <>
       {/* Backdrop overlay */}
       <div
-        className="fixed inset-0 bg-black/40 z-40"
+        className="fixed inset-0 z-40"
+        style={{ backgroundColor: "#00000060" }}
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* Slide-in panel */}
       <aside
-        className="fixed inset-y-0 right-0 w-96 z-50 flex flex-col bg-[#111827] border-l border-[#FFFFFF10] animate-in slide-in-from-right duration-200"
-        style={{ fontFamily: "'JetBrains Mono', 'Courier New', monospace" }}
+        className="fixed inset-y-0 right-0 z-50 flex flex-col animate-in slide-in-from-right duration-200"
+        style={{
+          width: 384,
+          backgroundColor: "#111827",
+          borderLeft: "1px solid #FFFFFF10",
+          fontFamily: "'JetBrains Mono', 'Courier New', monospace",
+        }}
         role="dialog"
         aria-label={t("title")}
       >
         {/* ── Header ── */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#FFFFFF10]">
+        <div
+          className="flex items-center justify-between shrink-0"
+          style={{ height: 56, backgroundColor: "#1F2937", padding: "0 20px" }}
+        >
           <div className="flex items-center gap-2">
-            <h2 className="text-xs font-mono font-bold tracking-widest text-athena-text-primary uppercase">
+            <h2
+              className="font-mono font-bold uppercase"
+              style={{ fontSize: 13, color: "#FFFFFF" }}
+            >
               {t("title")}
             </h2>
             {totalCount > 0 && (
-              <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-[9px] font-mono font-bold text-white leading-none">
+              <span
+                className="inline-flex items-center justify-center font-mono font-bold text-white leading-none"
+                style={{
+                  minWidth: 20,
+                  height: 20,
+                  padding: "2px 8px",
+                  borderRadius: 10,
+                  backgroundColor: "#EF4444",
+                  fontSize: 9,
+                }}
+              >
                 {totalCount > 99 ? "99+" : totalCount}
               </span>
             )}
@@ -123,28 +150,18 @@ export function NotificationCenter({
           <div className="flex items-center gap-3">
             <button
               onClick={handleClearAll}
-              className="text-[10px] font-mono text-blue-400 hover:text-blue-300 transition-colors uppercase tracking-wider"
+              className="font-mono transition-colors"
+              style={{ fontSize: 10, color: "#3B82F6", fontWeight: 600 }}
             >
               {t("clearAll")}
             </button>
             <button
               onClick={onClose}
-              className="text-athena-text-tertiary hover:text-athena-text-primary transition-colors p-1"
+              className="transition-colors p-1"
+              style={{ color: "#FFFFFF50", fontSize: 14, fontWeight: 700 }}
               aria-label="Close"
             >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
+              X
             </button>
           </div>
         </div>
@@ -152,112 +169,161 @@ export function NotificationCenter({
         {/* ── Scrollable content ── */}
         <div className="flex-1 overflow-y-auto">
           {isEmpty ? (
-            <div className="flex items-center justify-center h-48">
-              <p className="text-xs font-mono text-athena-text-tertiary">
+            <div className="flex flex-col items-center justify-center h-64 gap-3">
+              <span
+                className="font-mono font-bold"
+                style={{ fontSize: 40, color: "#FFFFFF15" }}
+              >
+                {"[ ]"}
+              </span>
+              <span
+                className="font-mono"
+                style={{ fontSize: 13, fontWeight: 600, color: "#FFFFFF30" }}
+              >
                 {t("empty")}
-              </p>
+              </span>
             </div>
           ) : (
             <>
               {/* ── Pinned Constraints section ── */}
               {hasConstraint && (
-                <section>
-                  <p className="px-4 pt-4 pb-2 text-[10px] font-mono font-semibold tracking-widest text-athena-text-tertiary uppercase">
+                <section style={{ padding: "12px 16px" }} className="flex flex-col gap-2">
+                  <p
+                    className="font-mono font-bold uppercase"
+                    style={{ fontSize: 8, color: "#FFFFFF40", letterSpacing: "1.5px" }}
+                  >
                     {t("pinnedConstraints")}
                   </p>
 
-                  <div className="px-3 pb-3 space-y-2">
-                    {constraintAlert.messages.map((msg, i) => (
-                      <div
-                        key={i}
-                        className="rounded border border-[#F59E0B50] bg-[#F59E0B10] p-3"
-                      >
-                        {/* Card header row */}
-                        <div className="flex items-center justify-between mb-1.5">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
-                            <span className="text-[10px] font-mono font-bold text-amber-400 uppercase tracking-wider">
-                              {t("constraintActive")}
-                            </span>
-                          </div>
-                          <span className="text-[10px] font-mono text-athena-text-tertiary">
-                            {new Date().toLocaleTimeString(undefined, {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              second: "2-digit",
-                            })}
+                  {constraintAlert.messages.map((msg, i) => (
+                    <div
+                      key={i}
+                      className="flex flex-col"
+                      style={{
+                        borderRadius: 6,
+                        backgroundColor: "#F59E0B10",
+                        border: "1px solid #F59E0B50",
+                        padding: "12px 14px",
+                        gap: 6,
+                      }}
+                    >
+                      {/* Card header row */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{ backgroundColor: "#F59E0B" }}
+                          />
+                          <span
+                            className="font-mono font-bold uppercase tracking-wider"
+                            style={{ fontSize: 10, color: "#F59E0B" }}
+                          >
+                            {t("constraintActive")}
                           </span>
                         </div>
-                        {/* Message */}
-                        <p className="text-xs font-mono text-athena-text-secondary leading-relaxed ml-4">
-                          {msg}
-                        </p>
-                        {/* Source */}
-                        {constraintAlert.domains.length > 0 && (
-                          <p className="text-[10px] font-mono text-athena-text-tertiary ml-4 mt-1.5">
-                            {t("source")}:{" "}
-                            <span className="text-amber-500/80">
-                              constraint_engine / {constraintAlert.domains[i] ?? constraintAlert.domains[0]}
-                            </span>
-                          </p>
-                        )}
+                        <span
+                          className="font-mono"
+                          style={{ fontSize: 8, color: "#FFFFFF30" }}
+                        >
+                          {new Date().toLocaleTimeString(undefined, {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                          })}
+                        </span>
                       </div>
-                    ))}
-                  </div>
+                      {/* Message */}
+                      <p
+                        className="font-mono leading-relaxed"
+                        style={{ fontSize: 10, color: "#FFFFFFB0" }}
+                      >
+                        {msg}
+                      </p>
+                      {/* Source */}
+                      {constraintAlert.domains.length > 0 && (
+                        <span
+                          className="font-mono"
+                          style={{ fontSize: 8, color: "#FFFFFF30" }}
+                        >
+                          {t("source")}: constraint_engine / {constraintAlert.domains[i] ?? constraintAlert.domains[0]}
+                        </span>
+                      )}
+                    </div>
+                  ))}
                 </section>
               )}
 
               {/* ── Divider between sections ── */}
               {hasConstraint && hasOpsec && (
-                <div className="mx-4 border-t border-[#FFFFFF10]" />
+                <div style={{ borderTop: "1px solid #FFFFFF08", margin: "0 16px" }} />
               )}
 
               {/* ── OPSEC Warnings section ── */}
               {hasOpsec && (
-                <section>
-                  <p className="px-4 pt-4 pb-2 text-[10px] font-mono font-semibold tracking-widest text-athena-text-tertiary uppercase">
+                <section
+                  className="flex flex-col gap-2 flex-1 overflow-y-auto"
+                  style={{ padding: "12px 16px" }}
+                >
+                  <p
+                    className="font-mono font-bold uppercase"
+                    style={{ fontSize: 8, color: "#FFFFFF40", letterSpacing: "1.5px" }}
+                  >
                     {t("opsecWarnings")}
                   </p>
 
-                  <ul className="px-3 pb-3 space-y-2">
-                    {displayAlerts.map((alert) => {
-                      const style = SEVERITY_STYLES[alert.severity];
-                      return (
-                        <li
-                          key={alert.id}
-                          className={`rounded border ${style.bg} ${style.border} p-3`}
-                        >
-                          {/* Card header row */}
-                          <div className="flex items-center justify-between mb-1.5">
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={`w-2 h-2 rounded-full shrink-0 ${style.dot}`}
-                              />
-                              <span
-                                className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${style.badge}`}
-                              >
-                                {style.badgeText}
-                              </span>
-                            </div>
-                            <span className="text-[10px] font-mono text-athena-text-tertiary">
-                              {formatTimestamp(alert.timestamp)}
+                  {displayAlerts.map((alert) => {
+                    const colors = severityColors(alert.severity);
+                    const style = SEVERITY_STYLES[alert.severity];
+                    return (
+                      <div
+                        key={alert.id}
+                        className="flex flex-col"
+                        style={{
+                          borderRadius: 6,
+                          backgroundColor: colors.fill,
+                          border: `1px solid ${colors.border}`,
+                          padding: "10px 12px",
+                          gap: 6,
+                        }}
+                      >
+                        {/* Card header row */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{ backgroundColor: colors.text }}
+                            />
+                            <span
+                              className="font-mono font-bold uppercase tracking-wider"
+                              style={{ fontSize: 10, color: colors.text }}
+                            >
+                              {style.badgeText}
                             </span>
                           </div>
-                          {/* Message */}
-                          <p className="text-xs font-mono text-athena-text-primary leading-relaxed ml-4 break-words">
-                            {alert.message}
-                          </p>
-                          {/* Source */}
-                          <p className="text-[10px] font-mono text-athena-text-tertiary ml-4 mt-1.5">
-                            {t("source")}:{" "}
-                            <span className="text-athena-text-secondary">
-                              {t("sourceOpsec")}
-                            </span>
-                          </p>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                          <span
+                            className="font-mono"
+                            style={{ fontSize: 8, color: "#FFFFFF30" }}
+                          >
+                            {formatTimestamp(alert.timestamp)}
+                          </span>
+                        </div>
+                        {/* Message */}
+                        <p
+                          className="font-mono leading-relaxed break-words"
+                          style={{ fontSize: 9, color: "#FFFFFFA0" }}
+                        >
+                          {alert.message}
+                        </p>
+                        {/* Source */}
+                        <span
+                          className="font-mono"
+                          style={{ fontSize: 8, color: "#FFFFFF25" }}
+                        >
+                          {t("source")}: {t("sourceOpsec")}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </section>
               )}
             </>

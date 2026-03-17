@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
@@ -51,10 +51,10 @@ interface Operation {
 /* ------------------------------------------------------------------ */
 
 const STATUS_COLORS: Record<string, string> = {
-  planning: "#FBBF24",
+  planning: "#FB923C",
   active: "#22C55E",
-  paused: "#FB923C",
-  completed: "#3B82F6",
+  paused: "#FBBF24",
+  completed: "#3b82f6",
   failed: "#EF4444",
 };
 
@@ -113,7 +113,7 @@ function OperationsContent() {
   if (loading) return <PageLoading />;
 
   return (
-    <div className="flex flex-col h-full athena-grid-bg">
+    <div className="flex flex-col h-full">
       <PageHeader
         title={t("title")}
         trailing={
@@ -123,12 +123,12 @@ function OperationsContent() {
         }
       />
 
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 overflow-auto py-5 px-6">
         {operations.length === 0 ? (
           /* -- Empty state ------------------------------------------ */
           <div className="flex items-center justify-center h-full">
             <div className="text-center space-y-4">
-              <div className="text-sm font-mono text-athena-text-secondary">
+              <div className="text-sm font-mono text-[#9ca3af]">
                 {t("noOperations")}
               </div>
               <Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>
@@ -138,64 +138,73 @@ function OperationsContent() {
           </div>
         ) : (
           /* -- Operations grid -------------------------------------- */
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {operations.map((op) => (
               <button
                 key={op.id}
                 onClick={() => handleSelect(op)}
-                className="text-left bg-athena-surface border border-athena-border rounded-athena-md p-4 hover:border-athena-accent/50 transition-colors cursor-pointer"
+                className="text-left bg-[#111827] border border-[#1f2937] rounded hover:border-[#3b82f640] transition-colors cursor-pointer flex flex-col gap-2"
+                style={{ padding: 16, height: 140 }}
               >
                 {/* Header row: codename + status badge */}
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-mono font-bold text-athena-accent truncate">
+                <div className="flex items-center justify-between w-full">
+                  <span className="font-mono font-bold text-[#3b82f6] truncate" style={{ fontSize: 16 }}>
                     {op.codename}
                   </span>
                   <span
-                    className="text-[10px] font-mono font-bold uppercase border rounded-athena-sm px-1.5 py-0.5"
-                    style={STATUS_COLORS[op.status] ? { color: STATUS_COLORS[op.status], borderColor: STATUS_COLORS[op.status] + "66" } : undefined}
+                    className="text-[10px] font-mono font-semibold uppercase border rounded shrink-0"
+                    style={{
+                      color: STATUS_COLORS[op.status],
+                      borderColor: (STATUS_COLORS[op.status] || "") + "66",
+                      padding: "2px 8px",
+                    }}
                   >
                     {op.status}
                   </span>
                 </div>
 
-                {/* Name */}
-                <div className="text-xs font-mono text-athena-text mb-3 truncate">
+                {/* Name / strategic intent */}
+                <div className="font-mono text-[#9ca3af] truncate" style={{ fontSize: 11 }}>
                   {op.name}
                 </div>
 
                 {/* Meta row */}
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-3 mt-auto">
                   {/* Mission profile badge */}
                   <span
-                    className="text-[10px] font-mono font-bold border rounded-athena-sm px-1.5 py-0.5"
-                    style={PROFILE_COLORS[op.missionProfile] ? { color: PROFILE_COLORS[op.missionProfile], borderColor: PROFILE_COLORS[op.missionProfile] + "66" } : undefined}
+                    className="text-[10px] font-mono font-semibold border rounded"
+                    style={{
+                      color: PROFILE_COLORS[op.missionProfile],
+                      borderColor: (PROFILE_COLORS[op.missionProfile] || "") + "66",
+                      padding: "2px 6px",
+                    }}
                   >
                     {op.missionProfile}
                   </span>
 
                   {/* OODA phase */}
-                  <span className="text-[10px] font-mono text-athena-text-secondary uppercase">
-                    {op.currentOodaPhase}
+                  <span className="text-[10px] font-mono text-[#9ca3af]">
+                    OODA: {op.currentOodaPhase}
                   </span>
 
-                  {/* Edit button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingOp(op);
-                    }}
-                    className="text-[10px] font-mono font-bold text-athena-accent border border-athena-accent/40 rounded-athena-sm px-1.5 py-0.5 hover:bg-athena-accent/10 transition-colors"
-                  >
-                    {t("editOp")}
-                  </button>
-
                   {/* Created date */}
-                  <span className="text-[10px] font-mono text-athena-text-secondary ml-auto">
+                  <span className="text-[10px] font-mono text-[#6b7280] ml-auto">
                     {new Date(op.createdAt).toLocaleDateString()}
                   </span>
                 </div>
               </button>
             ))}
+
+            {/* Empty card placeholder — "+ New Operation" */}
+            <button
+              onClick={() => setShowCreate(true)}
+              className="flex items-center justify-center border border-[#1f293740] rounded hover:border-[#3b82f640] transition-colors cursor-pointer"
+              style={{ height: 140 }}
+            >
+              <span className="font-mono text-xs text-[#4b5563]">
+                + {t("createOp")}
+              </span>
+            </button>
           </div>
         )}
       </div>
@@ -277,18 +286,18 @@ function CreateOperationModal({ onCreated, onCancel }: CreateModalProps) {
   }
 
   const inputClass =
-    "w-full bg-athena-bg border border-athena-border rounded-athena-sm px-3 py-2 text-sm font-mono text-athena-text placeholder-athena-text-secondary/50 focus:outline-none focus:border-athena-accent";
+    "w-full bg-[#0A0E17] border border-[#374151] rounded px-3 py-2 text-sm font-mono text-[#e5e7eb] placeholder-[#6b7280] focus:outline-none focus:border-[#3b82f6]";
   const labelClass =
-    "block text-sm font-mono text-athena-text-secondary uppercase tracking-wider mb-1";
+    "block text-xs font-mono text-[#6b7280] uppercase tracking-wider mb-1";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
-      <div className="bg-athena-surface border-2 border-athena-border rounded-athena-lg p-6 max-w-md w-full mx-4">
+      <div className="bg-[#111827] border-2 border-[#1f2937] rounded-lg p-6 max-w-md w-full mx-4">
         <div className="mb-4">
-          <h2 className="text-lg font-mono font-bold text-athena-text">
+          <h2 className="text-lg font-mono font-bold text-[#e5e7eb]">
             {t("createOp")}
           </h2>
-          <p className="text-xs font-mono text-athena-text-secondary mt-1">
+          <p className="text-xs font-mono text-[#9ca3af] mt-1">
             {t("subtitle")}
           </p>
         </div>
@@ -297,7 +306,7 @@ function CreateOperationModal({ onCreated, onCancel }: CreateModalProps) {
           {/* Code */}
           <div>
             <label className={labelClass}>
-              {t("code")} <span className="text-athena-error">*</span>
+              {t("code")} <span className="text-[#EF4444]">*</span>
             </label>
             <input
               type="text"
@@ -311,7 +320,7 @@ function CreateOperationModal({ onCreated, onCancel }: CreateModalProps) {
           {/* Name */}
           <div>
             <label className={labelClass}>
-              {t("name")} <span className="text-athena-error">*</span>
+              {t("name")} <span className="text-[#EF4444]">*</span>
             </label>
             <input
               type="text"
@@ -325,7 +334,7 @@ function CreateOperationModal({ onCreated, onCancel }: CreateModalProps) {
           {/* Codename */}
           <div>
             <label className={labelClass}>
-              {t("codename")} <span className="text-athena-error">*</span>
+              {t("codename")} <span className="text-[#EF4444]">*</span>
             </label>
             <input
               type="text"
@@ -363,7 +372,7 @@ function CreateOperationModal({ onCreated, onCancel }: CreateModalProps) {
           </div>
 
           {error && (
-            <p className="text-xs font-mono text-athena-error">{error}</p>
+            <p className="text-xs font-mono text-[#EF4444]">{error}</p>
           )}
 
           <div className="flex gap-3 justify-end pt-2">
@@ -427,18 +436,18 @@ function EditOperationModal({ operation, onSaved, onCancel }: EditModalProps) {
   }
 
   const inputClass =
-    "w-full bg-athena-bg border border-athena-border rounded-athena-sm px-3 py-2 text-sm font-mono text-athena-text placeholder-athena-text-secondary/50 focus:outline-none focus:border-athena-accent";
+    "w-full bg-[#0A0E17] border border-[#374151] rounded px-3 py-2 text-sm font-mono text-[#e5e7eb] placeholder-[#6b7280] focus:outline-none focus:border-[#3b82f6]";
   const labelClass =
-    "block text-sm font-mono text-athena-text-secondary uppercase tracking-wider mb-1";
+    "block text-xs font-mono text-[#6b7280] uppercase tracking-wider mb-1";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
-      <div className="bg-athena-surface border-2 border-athena-border rounded-athena-lg p-6 max-w-md w-full mx-4">
+      <div className="bg-[#111827] border-2 border-[#1f2937] rounded-lg p-6 max-w-md w-full mx-4">
         <div className="mb-4">
-          <h2 className="text-lg font-mono font-bold text-athena-text">
+          <h2 className="text-lg font-mono font-bold text-[#e5e7eb]">
             {t("editOp")}
           </h2>
-          <p className="text-xs font-mono text-athena-text-secondary mt-1">
+          <p className="text-xs font-mono text-[#9ca3af] mt-1">
             {operation.codename}
           </p>
         </div>
@@ -504,7 +513,7 @@ function EditOperationModal({ operation, onSaved, onCancel }: EditModalProps) {
           </div>
 
           {error && (
-            <p className="text-xs font-mono text-athena-error">{error}</p>
+            <p className="text-xs font-mono text-[#EF4444]">{error}</p>
           )}
 
           <div className="flex gap-3 justify-end pt-2">

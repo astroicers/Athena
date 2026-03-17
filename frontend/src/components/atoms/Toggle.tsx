@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
@@ -24,15 +24,15 @@ export function Toggle({ checked, onChange, label }: ToggleProps) {
         aria-checked={checked}
         onClick={() => onChange(!checked)}
         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors
-          ${checked ? "bg-athena-accent" : "bg-athena-border"}`}
+          ${checked ? "bg-[#3b82f6]" : "bg-[#1f2937]"}`}
       >
         <span
-          className={`inline-block h-3.5 w-3.5 rounded-full bg-athena-bg transition-transform
+          className={`inline-block h-3.5 w-3.5 rounded-full bg-[#0A0E17] transition-transform
             ${checked ? "translate-x-4" : "translate-x-0.5"}`}
         />
       </button>
       {label && (
-        <span className="text-xs font-mono text-athena-text-secondary">
+        <span className="text-xs font-mono text-[#9ca3af]">
           {label}
         </span>
       )}

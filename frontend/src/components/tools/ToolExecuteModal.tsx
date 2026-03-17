@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
@@ -81,22 +81,22 @@ export function ToolExecuteModal({ tool, onClose }: ToolExecuteModalProps) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={handleBackdropClick}
     >
-      <div className="bg-athena-surface border border-athena-border rounded-athena-md w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col">
+      <div className="bg-[#111827] border border-[#1f2937] rounded-lg w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-athena-border">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#1f2937]">
           <div>
-            <h2 className="text-sm font-mono font-bold text-athena-accent">
+            <h2 className="text-sm font-mono font-bold text-[#3b82f6]">
               {tool.name}
             </h2>
             {mcpServer && (
-              <p className="text-xs font-mono text-athena-text-secondary mt-0.5">
+              <p className="text-xs font-mono text-[#9ca3af] mt-0.5">
                 MCP: {mcpServer}
               </p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="text-athena-text-secondary hover:text-athena-text text-lg leading-none px-1"
+            className="text-[#9ca3af] hover:text-[#e5e7eb] text-lg leading-none px-1"
           >
             x
           </button>
@@ -106,11 +106,11 @@ export function ToolExecuteModal({ tool, onClose }: ToolExecuteModalProps) {
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {/* Arguments input */}
           <div>
-            <label className="block text-xs font-mono font-medium text-athena-text-secondary mb-1">
+            <label className="block text-xs font-mono font-medium text-[#9ca3af] mb-1">
               {t("arguments")}
             </label>
             <textarea
-              className="w-full h-32 bg-athena-bg border border-athena-border rounded-athena-md p-3 font-mono text-xs text-athena-text resize-y focus:outline-none focus:border-athena-accent"
+              className="w-full h-32 bg-[#0A0E17] border border-[#1f2937] rounded-lg p-3 font-mono text-xs text-[#e5e7eb] resize-y focus:outline-none focus:border-[#3b82f6]"
               value={argsText}
               onChange={(e) => setArgsText(e.target.value)}
               spellCheck={false}
@@ -134,14 +134,14 @@ export function ToolExecuteModal({ tool, onClose }: ToolExecuteModalProps) {
 
           {/* Error display */}
           {error && (
-            <div className="bg-athena-bg border border-red-500/30 rounded-athena-md p-3">
+            <div className="bg-[#0A0E17] border border-red-500/30 rounded-lg p-3">
               <p className="font-mono text-xs text-red-400">{error}</p>
             </div>
           )}
 
           {/* Result display */}
           {result && (
-            <div className="bg-athena-bg border border-athena-border rounded-athena-md p-3 max-h-80 overflow-y-auto">
+            <div className="bg-[#0A0E17] border border-[#1f2937] rounded-lg p-3 max-h-80 overflow-y-auto">
               <pre className="font-mono text-xs text-[#22C55E] whitespace-pre-wrap break-words">
                 {result}
               </pre>

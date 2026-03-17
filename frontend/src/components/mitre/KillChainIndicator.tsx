@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
@@ -47,11 +47,11 @@ export function KillChainIndicator({ stageCounts }: KillChainIndicatorProps) {
   );
 
   return (
-    <div className="bg-athena-surface border border-athena-border rounded-athena-md p-4">
+    <div className="bg-[#111827] border border-[#1f2937] rounded-lg p-4">
       <SectionHeader level="card" className="mb-1">
         {t("progress")}
       </SectionHeader>
-      <p className="text-sm font-mono text-athena-text-secondary mb-3">{tHints("killChain")}</p>
+      <p className="text-sm font-mono text-[#9ca3af] mb-3">{tHints("killChain")}</p>
       <div className="flex items-end gap-1.5 h-20">
         {STAGES.map((stage) => {
           const data = stageCounts[stage.key] || {
@@ -72,33 +72,33 @@ export function KillChainIndicator({ stageCounts }: KillChainIndicatorProps) {
               key={stage.key}
               className="flex-1 flex flex-col items-center gap-1"
             >
-              <span className="text-sm font-mono text-athena-accent font-bold">
+              <span className="text-sm font-mono text-[#3b82f6] font-bold">
                 {data.total > 0 ? `${data.tested}/${data.total}` : ""}
               </span>
               <div
-                className="w-full bg-athena-border/20 rounded-sm overflow-hidden flex flex-col justify-end"
+                className="w-full bg-[#1f293733] rounded-sm overflow-hidden flex flex-col justify-end"
                 style={{ height: `${BAR_H}px` }}
               >
                 {successH > 0 && (
                   <div
-                    className="w-full bg-athena-accent/70 transition-all"
+                    className="w-full bg-[#3b82f6]/70 transition-all"
                     style={{ height: `${(successH / 100) * BAR_H}px` }}
                   />
                 )}
                 {failedH > 0 && (
                   <div
-                    className="w-full bg-athena-error/50 transition-all"
+                    className="w-full bg-[#EF444420]/50 transition-all"
                     style={{ height: `${(failedH / 100) * BAR_H}px` }}
                   />
                 )}
                 {untestedH > 0 && (
                   <div
-                    className="w-full bg-athena-border/40 transition-all"
+                    className="w-full bg-[#1f2937]/40 transition-all"
                     style={{ height: `${(untestedH / 100) * BAR_H}px` }}
                   />
                 )}
               </div>
-              <span className="text-sm font-mono text-athena-text-secondary">
+              <span className="text-sm font-mono text-[#9ca3af]">
                 {t(stage.key as any)}
               </span>
             </div>
@@ -107,20 +107,20 @@ export function KillChainIndicator({ stageCounts }: KillChainIndicatorProps) {
       </div>
       <div className="flex items-center gap-3 mt-2">
         <div className="flex items-center gap-1">
-          <div className="w-2 h-2 rounded-sm bg-athena-accent/70" />
-          <span className="text-sm font-mono text-athena-text-secondary">
+          <div className="w-2 h-2 rounded-sm bg-[#3b82f6]/70" />
+          <span className="text-sm font-mono text-[#9ca3af]">
             {t("tested")}
           </span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-2 h-2 rounded-sm bg-athena-error/50" />
-          <span className="text-sm font-mono text-athena-text-secondary">
+          <div className="w-2 h-2 rounded-sm bg-[#EF444420]/50" />
+          <span className="text-sm font-mono text-[#9ca3af]">
             {t("failed")}
           </span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-2 h-2 rounded-sm bg-athena-border/40" />
-          <span className="text-sm font-mono text-athena-text-secondary">
+          <div className="w-2 h-2 rounded-sm bg-[#1f2937]/40" />
+          <span className="text-sm font-mono text-[#9ca3af]">
             {t("untested")}
           </span>
         </div>

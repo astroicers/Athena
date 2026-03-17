@@ -6,29 +6,21 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 import {
   OperationsIcon,
   PlannerIcon,
   MonitorIcon,
-  PocIcon,
   VulnsIcon,
-  OPSECIcon,
-  AttackGraphIcon,
   ToolsIcon,
-  AIDecisionsIcon,
 } from "@/components/atoms/NavIcons";
 
 export const NAV_ITEMS = [
   { href: "/operations", icon: OperationsIcon, labelKey: "operations" },
   { href: "/planner", icon: PlannerIcon, labelKey: "planner" },
   { href: "/warroom", icon: MonitorIcon, labelKey: "warRoom" },
-  { href: "/decisions", icon: AIDecisionsIcon, labelKey: "decisions" },
-  { href: "/poc", icon: PocIcon, labelKey: "poc" },
   { href: "/vulns", icon: VulnsIcon, labelKey: "vulns" },
-  { href: "/opsec", icon: OPSECIcon, labelKey: "opsec" },
-  { href: "/attack-graph", icon: AttackGraphIcon, labelKey: "attackGraph" },
   { href: "/tools", icon: ToolsIcon, labelKey: "tools" },
 ] as const;
 

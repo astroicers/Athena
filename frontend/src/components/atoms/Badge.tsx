@@ -6,17 +6,17 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
 import { ReactNode } from "react";
 
 const VARIANT_STYLES = {
-  success: "bg-athena-success/20 text-athena-success border-athena-success/40",
-  warning: "bg-athena-warning/20 text-athena-warning border-athena-warning/40",
-  error: "bg-athena-error/20 text-athena-error border-athena-error/40",
-  info: "bg-athena-accent/20 text-athena-accent border-athena-accent/40",
+  success: "bg-[#22C55E20] text-[#22C55E] border-[#22C55E40]",
+  warning: "bg-[#FBBF2420] text-[#FBBF24] border-[#FBBF2440]",
+  error: "bg-[#EF444420] text-[#EF4444] border-[#EF444440]",
+  info: "bg-[#3b82f620] text-[#3b82f6] border-[#3b82f640]",
 } as const;
 
 interface BadgeProps {

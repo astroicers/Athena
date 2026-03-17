@@ -19,8 +19,8 @@
   --color-text-primary: #ffffff;
   --color-text-secondary: #6B7280;
 
-  /* -- Border (v2: opacity-based) -- */
-  --color-border: rgba(255, 255, 255, 0.0625);
+  /* -- Border (v2: solid dark) -- */
+  --color-border: #1f2937;
 
   /* -- Status Colors (v2 tokens) -- */
   --color-success: #22C55E;
@@ -66,6 +66,36 @@
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
+
+  /* -- White Opacity Scale (v2: backgrounds & overlays) -- */
+  --color-white-5: rgba(255, 255, 255, 0.02);
+  --color-white-8: rgba(255, 255, 255, 0.03);
+  --color-white-10: rgba(255, 255, 255, 0.06);
+
+  /* -- Text Opacity Scale (v2: label hierarchy) -- */
+  --color-text-ghost: rgba(255, 255, 255, 0.125);
+  --color-text-faint: rgba(255, 255, 255, 0.19);
+  --color-text-muted: rgba(255, 255, 255, 0.25);
+  --color-text-dim: rgba(255, 255, 255, 0.375);
+  --color-text-soft: rgba(255, 255, 255, 0.50);
+  --color-text-subtle: rgba(255, 255, 255, 0.63);
+
+  /* -- Surface Variants (v2) -- */
+  --color-bg-surface-hover: rgba(255, 255, 255, 0.03);
+  --color-bg-overlay: rgba(0, 0, 0, 0.60);
+
+  /* -- OODA Phase Colors (v2: War Room / Decisions) -- */
+  --color-phase-observe: #3B82F6;
+  --color-phase-orient: #A855F7;
+  --color-phase-decide: #FFA500;
+  --color-phase-act: #22C55E;
+
+  /* -- Status Background Tints (v2: severity badges) -- */
+  --color-error-bg: rgba(239, 68, 68, 0.12);
+  --color-warning-bg: rgba(251, 191, 36, 0.12);
+  --color-warning-alt: #FFA500;
+  --color-success-bg: rgba(34, 197, 94, 0.08);
+  --color-accent-bg: rgba(59, 130, 246, 0.12);
 }
 
 /* Animations */

@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
@@ -46,12 +46,12 @@ export function TacticToolSection({
   return (
     <div
       id={`tactic-${tacticSlug}`}
-      className="border border-athena-border rounded-athena-md overflow-hidden"
+      className="border border-[#1f2937] rounded-lg overflow-hidden"
     >
       {/* Header */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-3 py-2 bg-athena-surface hover:bg-athena-elevated/30 transition-colors"
+        className="w-full flex items-center justify-between px-3 py-2 bg-[#111827] hover:bg-[#1f2937]/30 transition-colors"
       >
         <div className="flex items-center gap-2">
           <span
@@ -59,21 +59,21 @@ export function TacticToolSection({
           >
             ▶
           </span>
-          <span className="text-xs font-mono font-bold text-athena-text uppercase">
+          <span className="text-xs font-mono font-bold text-[#e5e7eb] uppercase">
             {tacticLabel}
           </span>
-          <span className="text-sm font-mono text-athena-accent px-1.5 py-0.5 bg-athena-accent/10 rounded-full">
+          <span className="text-sm font-mono text-[#3b82f6] px-1.5 py-0.5 bg-[#3b82f610] rounded-full">
             {tacticId}
           </span>
         </div>
-        <span className="text-sm font-mono text-athena-text-secondary">
+        <span className="text-sm font-mono text-[#9ca3af]">
           {tools.length} {t("toolCount")}
         </span>
       </button>
 
       {/* Body */}
       {isOpen && (
-        <div className="border-t border-athena-border">
+        <div className="border-t border-[#1f2937]">
           <ToolRegistryTable
             tools={tools}
             onToggleEnabled={onToggleEnabled}

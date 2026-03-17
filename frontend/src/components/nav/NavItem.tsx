@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
@@ -25,11 +25,11 @@ export function NavItem({ href, icon: Icon, label, isActive }: NavItemProps) {
     <Link
       href={href}
       title={label}
-      className={`flex items-center justify-center h-9 w-9 mx-auto rounded transition-colors
+      className={`flex items-center justify-center h-9 w-full rounded transition-colors
         ${
           isActive
             ? "bg-[#3b82f620] text-[#3B82F6]"
-            : "text-[#6b7280] hover:text-[#9ca3af]"
+            : "text-[#9ca3af] hover:text-[#e5e7eb]"
         }`}
     >
       <Icon />

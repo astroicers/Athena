@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
@@ -35,18 +35,18 @@ function OptionCard({ option, index }: { option: TacticalOption; index: number }
 
   return (
     <div
-      className={`bg-athena-bg border rounded-athena-sm p-3 cursor-pointer transition-colors ${
-        index === 0 ? "border-athena-accent/50" : "border-athena-border"
+      className={`bg-[#0A0E17] border rounded p-3 cursor-pointer transition-colors ${
+        index === 0 ? "border-[#3b82f680]" : "border-[#1f2937]"
       }`}
       onClick={() => setExpanded(!expanded)}
     >
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
-          <span className="text-athena-accent text-xs font-mono font-bold">
+          <span className="text-[#3b82f6] text-xs font-mono font-bold">
             {option.techniqueId}
           </span>
           {index === 0 && (
-            <span className="text-sm font-mono text-athena-accent bg-athena-accent/10 px-1.5 py-0.5 rounded">
+            <span className="text-sm font-mono text-[#3b82f6] bg-[#3b82f610] px-1.5 py-0.5 rounded">
               {t("recommended")}
             </span>
           )}
@@ -55,29 +55,29 @@ function OptionCard({ option, index }: { option: TacticalOption; index: number }
           <Badge variant={RISK_VARIANT[option.riskLevel] || "info"}>
             {tRisk(option.riskLevel as any)}
           </Badge>
-          <span className="text-sm font-mono text-athena-text-secondary">
+          <span className="text-sm font-mono text-[#9ca3af]">
             {(option.confidence * 100).toFixed(0)}%
           </span>
         </div>
       </div>
-      <p className="text-xs font-mono text-athena-text-secondary">{option.techniqueName}</p>
-      <p className="text-sm font-mono text-athena-text-secondary mt-1">
+      <p className="text-xs font-mono text-[#9ca3af]">{option.techniqueName}</p>
+      <p className="text-sm font-mono text-[#9ca3af] mt-1">
         {t("engine", { name: option.recommendedEngine.toUpperCase() })}
       </p>
 
       {expanded && (
-        <div className="mt-2 pt-2 border-t border-athena-border/50 space-y-2">
-          <p className="text-xs font-mono text-athena-text-secondary leading-relaxed">
+        <div className="mt-2 pt-2 border-t border-[#1f293780] space-y-2">
+          <p className="text-xs font-mono text-[#9ca3af] leading-relaxed">
             {option.reasoning}
           </p>
           {option.prerequisites.length > 0 && (
             <div>
-              <span className="text-sm font-mono text-athena-text-secondary uppercase">
+              <span className="text-sm font-mono text-[#9ca3af] uppercase">
                 {t("prerequisites")}
               </span>
               <ul className="mt-1 space-y-0.5">
                 {option.prerequisites.map((p, i) => (
-                  <li key={i} className="text-sm font-mono text-athena-text-secondary">
+                  <li key={i} className="text-sm font-mono text-[#9ca3af]">
                     &bull; {p}
                   </li>
                 ))}
@@ -98,12 +98,12 @@ export function RecommendationPanel({
 
   if (!recommendation) {
     return (
-      <div className="bg-athena-surface border border-athena-border rounded-athena-md p-4">
+      <div className="bg-[#111827] border border-[#1f2937] rounded-lg p-4">
         <SectionHeader level="card" className="mb-3" title={tHints("recommendation")}>
           {t("title")}
         </SectionHeader>
         <div className="text-center py-4">
-          <span className="text-xs font-mono text-athena-text-secondary">
+          <span className="text-xs font-mono text-[#9ca3af]">
             {t("noRecommendation")}
           </span>
         </div>
@@ -114,14 +114,14 @@ export function RecommendationPanel({
   const isDecided = recommendation.accepted !== null;
 
   return (
-    <div className="bg-athena-surface border border-athena-border rounded-athena-md p-4">
+    <div className="bg-[#111827] border border-[#1f2937] rounded-lg p-4">
       <SectionHeader
         level="card"
         className="mb-3"
         title={tHints("recommendation")}
         trailing={
           <div className="flex items-center gap-2">
-            <span className="text-sm font-mono text-athena-text-secondary">
+            <span className="text-sm font-mono text-[#9ca3af]">
               {t("confidence", { value: (recommendation.confidence * 100).toFixed(0) })}
             </span>
             {isDecided && (
@@ -136,18 +136,18 @@ export function RecommendationPanel({
       </SectionHeader>
 
       {/* Situation Assessment */}
-      <div className="bg-athena-bg border border-athena-border/50 rounded-athena-sm p-3 mb-3">
-        <span className="text-sm font-mono text-athena-text-secondary uppercase tracking-wider">
+      <div className="bg-[#0A0E17] border border-[#1f293780] rounded p-3 mb-3">
+        <span className="text-sm font-mono text-[#9ca3af] uppercase tracking-wider">
           {t("situationAssessment")}
         </span>
-        <p className="text-xs font-mono text-athena-text leading-relaxed mt-1">
+        <p className="text-xs font-mono text-[#e5e7eb] leading-relaxed mt-1">
           {recommendation.situationAssessment}
         </p>
       </div>
 
       {/* Tactical Options */}
       <div className="space-y-2 mb-3">
-        <span className="text-sm font-mono text-athena-text-secondary uppercase tracking-wider">
+        <span className="text-sm font-mono text-[#9ca3af] uppercase tracking-wider">
           {t("tacticalOptions", { count: recommendation.options.length })}
         </span>
         {recommendation.options.map((opt, i) => (

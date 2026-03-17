@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
@@ -70,10 +70,10 @@ export function AttackTab({
   const stageCounts = useStageCounts(techniques);
 
   return (
-    <div className="flex-1 space-y-4 min-h-0 overflow-y-auto">
+    <div className="flex-1 space-y-4 min-h-0 overflow-y-auto py-4 px-6">
       {/* Attack Path Timeline */}
       <AttackPathTimeline data={attackPath} loading={false} />
-      <p className="text-sm font-mono text-athena-text-secondary -mt-3 ml-1">{tHints("attackPath")}</p>
+      <p className="text-sm font-mono text-[#9ca3af] -mt-3 ml-1">{tHints("attackPath")}</p>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         {/* ATT&CK Matrix */}
@@ -83,7 +83,8 @@ export function AttackTab({
             trailing={
               <button
                 onClick={() => onSetCompact(!compact)}
-                className="text-sm font-mono text-athena-text-secondary hover:text-athena-accent transition-colors px-2 py-0.5 border border-athena-border rounded-athena-sm"
+                className="text-[10px] font-mono text-[#9ca3af] hover:text-[#3b82f6] transition-colors rounded bg-[#111827] border border-[#374151]"
+                style={{ padding: "5px 10px" }}
               >
                 {compact ? t("expandView") : t("compactView")}
               </button>
@@ -91,12 +92,12 @@ export function AttackTab({
           >
             {t("mitreMatrix")}
           </SectionHeader>
-          <p className="text-sm font-mono text-athena-text-secondary -mt-1 mb-2 ml-1">{tHints("mitreMatrix")}</p>
-          <div className="bg-athena-surface border border-athena-border rounded-athena-md p-3 overflow-x-auto">
+          <p className="text-sm font-mono text-[#9ca3af] -mt-1 mb-2 ml-1">{tHints("mitreMatrix")}</p>
+          <div className="bg-[#111827] border border-[#1f2937] rounded-lg p-3 overflow-x-auto">
             <div className="flex gap-2 min-w-max">
               {orderedTactics.map((tactic) => (
                 <div key={tactic} className={`${compact ? "w-20" : "w-28"} shrink-0`}>
-                  <div className="text-sm font-mono text-athena-accent font-bold uppercase mb-2 truncate">
+                  <div className="text-sm font-mono text-[#3b82f6] font-bold uppercase mb-2 truncate">
                     {tacticLabel(tactic)}
                   </div>
                   <div className="space-y-1">
@@ -127,8 +128,8 @@ export function AttackTab({
               relatedTools={getToolsForTechnique(allTools, selectedTech.mitreId)}
             />
           ) : (
-            <div className="border-2 border-dashed border-athena-border/50 rounded-athena-md p-4">
-              <span className="text-xs font-mono text-athena-text-secondary">
+            <div className="border border-[#1f293740] rounded-lg p-4">
+              <span className="text-xs font-mono text-[#9ca3af]">
                 {tEmpty("navigatorNoSelection")}
               </span>
             </div>

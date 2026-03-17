@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
@@ -62,7 +62,7 @@ function ShellInner({ children }: { children: ReactNode }) {
           trailing={
             <button
               onClick={() => setNotifOpen(true)}
-              className="relative p-1.5 text-athena-text-secondary hover:text-athena-accent transition-colors"
+              className="relative p-1.5 text-[#9ca3af] hover:text-[#3b82f6] transition-colors"
               aria-label="Notifications"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -70,7 +70,7 @@ function ShellInner({ children }: { children: ReactNode }) {
                 <path d="M6 12.5a2 2 0 0 0 4 0" />
               </svg>
               {alertCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-athena-error rounded-full text-[8px] font-mono font-bold text-white flex items-center justify-center">
+                <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-[#EF444420] rounded-full text-[8px] font-mono font-bold text-white flex items-center justify-center">
                   {alertCount > 9 ? "9+" : alertCount}
                 </span>
               )}

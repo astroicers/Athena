@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
@@ -30,7 +30,7 @@ export function Sidebar() {
       <div className="mx-2 border-b border-[#1f2937]" />
 
       {/* Navigation */}
-      <nav className="flex-1 pt-4 flex flex-col gap-5 items-center">
+      <nav className="flex-1 pt-4 px-2 flex flex-col gap-1">
         {NAV_ITEMS.map((item) => (
           <NavItem
             key={item.href}

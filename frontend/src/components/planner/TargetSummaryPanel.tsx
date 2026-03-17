@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
@@ -66,15 +66,15 @@ export function TargetSummaryPanel({
   }, [operationId, targetId]);
 
   return (
-    <div className="bg-athena-surface border border-athena-border rounded-athena-sm p-4 font-mono text-xs space-y-3">
+    <div className="bg-[#111827] border border-[#1f2937] rounded p-4 font-mono text-xs space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <span className="text-athena-accent uppercase tracking-wider font-bold">
+        <span className="text-[#3b82f6] uppercase tracking-wider font-bold">
           {t("aiSummary")} — {hostname}
         </span>
         <button
           onClick={onClose}
-          className="text-athena-text-secondary hover:text-athena-text transition-colors leading-none"
+          className="text-[#9ca3af] hover:text-[#e5e7eb] transition-colors leading-none"
           aria-label="Close"
         >
           ✕
@@ -84,16 +84,16 @@ export function TargetSummaryPanel({
       {/* Loading skeleton */}
       {loading && (
         <div className="space-y-2 animate-pulse">
-          <div className="h-3 bg-athena-border/40 rounded w-full" />
-          <div className="h-3 bg-athena-border/40 rounded w-5/6" />
-          <div className="h-3 bg-athena-border/40 rounded w-4/6" />
-          <p className="text-athena-text-secondary pt-1">{t("loadingSummary")}</p>
+          <div className="h-3 bg-[#1f2937]/40 rounded w-full" />
+          <div className="h-3 bg-[#1f2937]/40 rounded w-5/6" />
+          <div className="h-3 bg-[#1f2937]/40 rounded w-4/6" />
+          <p className="text-[#9ca3af] pt-1">{t("loadingSummary")}</p>
         </div>
       )}
 
       {/* Error */}
       {!loading && error && (
-        <p className="text-athena-error">{t("noSummary")}</p>
+        <p className="text-[#EF4444]">{t("noSummary")}</p>
       )}
 
       {/* Content */}
@@ -101,22 +101,22 @@ export function TargetSummaryPanel({
         <>
           {/* Summary text */}
           {data.summary ? (
-            <p className="text-athena-text leading-relaxed whitespace-pre-wrap">
+            <p className="text-[#e5e7eb] leading-relaxed whitespace-pre-wrap">
               {data.summary}
             </p>
           ) : (
-            <p className="text-athena-text-secondary">{t("noSummary")}</p>
+            <p className="text-[#9ca3af]">{t("noSummary")}</p>
           )}
 
           {/* Attack Surface */}
           {data.attackSurface && data.attackSurface.length > 0 && (
             <div>
-              <p className="text-athena-text-secondary uppercase tracking-wider mb-1">
+              <p className="text-[#9ca3af] uppercase tracking-wider mb-1">
                 {t("attackSurface")}
               </p>
               <ul className="space-y-0.5 pl-2">
                 {data.attackSurface.map((item, idx) => (
-                  <li key={idx} className="text-athena-text before:content-['>_'] before:text-athena-accent/60">
+                  <li key={idx} className="text-[#e5e7eb] before:content-['>_'] before:text-[#3b82f6]/60">
                     {item}
                   </li>
                 ))}
@@ -127,21 +127,21 @@ export function TargetSummaryPanel({
           {/* Recommended Techniques */}
           {data.recommendedTechniques && data.recommendedTechniques.length > 0 && (
             <div>
-              <p className="text-athena-text-secondary uppercase tracking-wider mb-1">
+              <p className="text-[#9ca3af] uppercase tracking-wider mb-1">
                 {t("recommendedTechniques")}
               </p>
               <div className="space-y-2">
                 {data.recommendedTechniques.map((tech) => (
                   <div
                     key={tech.techniqueId}
-                    className="border border-athena-border/50 rounded-athena-sm p-2 space-y-0.5"
+                    className="border border-[#1f293780] rounded p-2 space-y-0.5"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="text-athena-accent">{tech.techniqueId}</span>
-                      <span className="text-athena-text font-semibold">{tech.name}</span>
+                      <span className="text-[#3b82f6]">{tech.techniqueId}</span>
+                      <span className="text-[#e5e7eb] font-semibold">{tech.name}</span>
                     </div>
                     {tech.rationale && (
-                      <p className="text-athena-text-secondary pl-1">{tech.rationale}</p>
+                      <p className="text-[#9ca3af] pl-1">{tech.rationale}</p>
                     )}
                   </div>
                 ))}

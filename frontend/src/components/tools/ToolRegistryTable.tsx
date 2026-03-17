@@ -6,25 +6,31 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Toggle } from "@/components/atoms/Toggle";
-import { Badge } from "@/components/atoms/Badge";
-import { Button } from "@/components/atoms/Button";
 
 import { ToolExecuteModal } from "@/components/tools/ToolExecuteModal";
 import type { ToolRegistryEntry } from "@/types/tool";
 
-const RISK_VARIANT: Record<string, "success" | "warning" | "error" | "info"> = {
-  low: "success",
-  medium: "warning",
-  high: "error",
-  critical: "error",
+const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
+  recon: { bg: "rgba(59,130,246,0.125)", text: "#3b82f6" },
+  execution: { bg: "rgba(167,139,250,0.125)", text: "#A78BFA" },
+  vuln_scan: { bg: "rgba(34,197,94,0.125)", text: "#22C55E" },
+  credential: { bg: "rgba(239,68,68,0.125)", text: "#EF4444" },
 };
+
+const RISK_COLORS: Record<string, { bg: string; text: string }> = {
+  low: { bg: "rgba(34,197,94,0.125)", text: "#22C55E" },
+  medium: { bg: "rgba(251,191,36,0.125)", text: "#FBBF24" },
+  high: { bg: "rgba(251,146,60,0.125)", text: "#FB923C" },
+  critical: { bg: "rgba(239,68,68,0.125)", text: "#EF4444" },
+};
+
+const DEFAULT_CATEGORY_COLOR = { bg: "rgba(107,114,128,0.125)", text: "#6b7280" };
 
 interface ToolRegistryTableProps {
   tools: ToolRegistryEntry[];
@@ -65,8 +71,14 @@ export function ToolRegistryTable({
 
   if (tools.length === 0) {
     return (
-      <div className="bg-athena-surface border border-athena-border rounded-athena-md p-6 text-center">
-        <span className="text-xs font-mono text-athena-text-secondary">
+      <div
+        className="rounded-lg text-center"
+        style={{
+          border: "1px solid rgba(31,41,55,0.25)",
+          padding: 24,
+        }}
+      >
+        <span className="font-mono text-xs" style={{ color: "#4b5563" }}>
           {t("noTools")}
         </span>
       </div>
@@ -74,152 +86,230 @@ export function ToolRegistryTable({
   }
 
   return (
-    <div className="bg-athena-surface border border-athena-border rounded-athena-md overflow-hidden">
-      <table className="w-full text-xs font-mono">
-        <thead>
-          <tr className="border-b border-athena-border">
-            <th className="px-3 py-2 text-left text-athena-text-secondary font-medium uppercase tracking-wider">
-              {t("colName")}
-            </th>
-            <th className="px-3 py-2 text-center text-athena-text-secondary font-medium uppercase tracking-wider w-28">
-              {t("colCategory")}
-            </th>
-            <th className="px-3 py-2 text-center text-athena-text-secondary font-medium uppercase tracking-wider w-20">
-              {t("colStatus")}
-            </th>
-            <th className="px-3 py-2 text-center text-athena-text-secondary font-medium uppercase tracking-wider w-20">
-              {t("colRisk")}
-            </th>
-            <th className="px-3 py-2 text-left text-athena-text-secondary font-medium uppercase tracking-wider w-40">
-              {t("colMitre")}
-            </th>
-            <th className="px-3 py-2 text-center text-athena-text-secondary font-medium uppercase tracking-wider w-24">
-              {t("colContainer")}
-            </th>
-            <th className="px-3 py-2 text-center text-athena-text-secondary font-medium uppercase tracking-wider w-24">
-              {t("colActions")}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {tools.map((tool) => {
-            const status = getContainerStatus(tool, containerStatuses);
-            return (
-              <tr
-                key={tool.id}
-                className="border-b border-athena-border/50 hover:bg-athena-elevated/30"
-              >
-                {/* Name + delete for user tools */}
-                <td className="px-3 py-2 text-athena-text">
-                  <div className="flex items-center gap-2">
-                    <div className="min-w-0 flex-1">
-                      <span className="text-athena-accent font-bold">
-                        {tool.name}
-                      </span>
-                      {tool.description && (
-                        <p className="text-sm text-athena-text-secondary mt-0.5 truncate max-w-[200px]">
-                          {tool.description}
-                        </p>
-                      )}
-                    </div>
-                    {tool.source === "user" && (
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={() => handleDelete(tool.toolId)}
-                        disabled={deletingId === tool.toolId}
-                      >
-                        {deletingId === tool.toolId ? "..." : t("del")}
-                      </Button>
-                    )}
-                  </div>
-                </td>
+    <div>
+      {/* Header row */}
+      <div
+        className="flex items-center font-mono uppercase tracking-wider"
+        style={{
+          height: 36,
+          padding: "0 12px",
+          color: "#6b7280",
+          fontSize: 10,
+          fontWeight: 600,
+          borderBottom: "1px solid #1f2937",
+        }}
+      >
+        <div style={{ width: 260, flexShrink: 0 }}>{t("colName")}</div>
+        <div style={{ width: 120, flexShrink: 0 }}>{t("colCategory")}</div>
+        <div style={{ width: 70, flexShrink: 0 }}>{t("colStatus")}</div>
+        <div style={{ width: 80, flexShrink: 0 }}>{t("colRisk")}</div>
+        <div style={{ width: 180, flexShrink: 0 }}>{t("colMitre")}</div>
+        <div style={{ width: 100, flexShrink: 0 }}>{t("colContainer")}</div>
+        <div style={{ width: 80, flexShrink: 0, textAlign: "center" }}>{t("colActions")}</div>
+      </div>
 
-                {/* Category */}
-                <td className="px-3 py-2 text-center w-28">
-                  <Badge variant="info">{tCategory(tool.category as any)}</Badge>
-                </td>
+      {/* Data rows */}
+      {tools.map((tool) => {
+        const status = getContainerStatus(tool, containerStatuses);
+        const catColor = CATEGORY_COLORS[tool.category] ?? DEFAULT_CATEGORY_COLOR;
+        const riskColor = RISK_COLORS[tool.riskLevel] ?? DEFAULT_CATEGORY_COLOR;
 
-                {/* Status toggle */}
-                <td className="px-3 py-2 text-center w-20">
-                  <Toggle
-                    checked={tool.enabled}
-                    onChange={(checked) =>
-                      onToggleEnabled(tool.toolId, checked)
-                    }
-                    label={tool.enabled ? t("on") : t("off")}
-                  />
-                </td>
-
-                {/* Risk */}
-                <td className="px-3 py-2 text-center w-20">
-                  <Badge
-                    variant={RISK_VARIANT[tool.riskLevel] || "info"}
+        return (
+          <div
+            key={tool.id}
+            className="flex items-center transition-colors hover:bg-white/[0.02]"
+            style={{
+              height: 52,
+              padding: "0 12px",
+              borderBottom: "1px solid rgba(31,41,55,0.25)",
+            }}
+          >
+            {/* NAME */}
+            <div
+              className="flex flex-col"
+              style={{ width: 260, flexShrink: 0, gap: 2 }}
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className="font-semibold truncate"
+                  style={{ color: "#3b82f6", fontSize: 12 }}
+                >
+                  {tool.name}
+                </span>
+                {tool.source === "user" && (
+                  <button
+                    onClick={() => handleDelete(tool.toolId)}
+                    disabled={deletingId === tool.toolId}
+                    className="font-mono shrink-0 rounded transition-colors hover:opacity-80 disabled:opacity-40"
+                    style={{
+                      background: "rgba(239,68,68,0.15)",
+                      color: "#EF4444",
+                      fontSize: 10,
+                      padding: "2px 6px",
+                      border: "none",
+                      cursor: deletingId === tool.toolId ? "not-allowed" : "pointer",
+                    }}
                   >
-                    {tRisk(tool.riskLevel as any)}
-                  </Badge>
-                </td>
+                    {deletingId === tool.toolId ? "..." : t("del")}
+                  </button>
+                )}
+              </div>
+              {tool.description && (
+                <span
+                  className="truncate"
+                  style={{ color: "#6b7280", fontSize: 9, maxWidth: 240 }}
+                >
+                  {tool.description}
+                </span>
+              )}
+            </div>
 
-                {/* MITRE technique IDs */}
-                <td className="px-3 py-2 w-40">
-                  {tool.mitreTechniques.length > 0 ? (
-                    <div className="flex flex-wrap gap-1">
-                      {tool.mitreTechniques.map((tid) => (
-                        <span
-                          key={tid}
-                          className="text-sm font-mono text-athena-accent bg-athena-accent/10 px-1.5 py-0.5 rounded"
-                        >
-                          {tid}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="text-athena-text-secondary">&mdash;</span>
-                  )}
-                </td>
+            {/* CATEGORY */}
+            <div style={{ width: 120, flexShrink: 0 }}>
+              <span
+                className="font-mono inline-block"
+                style={{
+                  background: catColor.bg,
+                  color: catColor.text,
+                  borderRadius: 4,
+                  padding: "2px 6px",
+                  fontSize: 10,
+                }}
+              >
+                {tCategory(tool.category as any)}
+              </span>
+            </div>
 
-                {/* Container status */}
-                <td className="px-3 py-2 text-center w-24">
-                  {status === "online" && (
-                    <Badge variant="success">
-                      <span className="relative inline-flex h-2.5 w-2.5 mr-1.5">
-                        <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping" style={{ backgroundColor: "#22C55E" }} />
-                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "#22C55E" }} />
-                      </span>
-                      {t("containerOnline")}
-                    </Badge>
-                  )}
-                  {status === "offline" && (
-                    <Badge variant="error">
-                      <span className="relative inline-flex h-2.5 w-2.5 mr-1.5">
-                        <span className="absolute inline-flex h-full w-full rounded-full opacity-50 animate-pulse" style={{ backgroundColor: "#EF4444" }} />
-                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "#EF4444" }} />
-                      </span>
-                      {t("containerOffline")}
-                    </Badge>
-                  )}
-                  {status === "none" && (
-                    <span className="text-sm text-athena-text-secondary">{t("containerNA")}</span>
-                  )}
-                </td>
+            {/* STATUS */}
+            <button
+              role="switch"
+              aria-checked={tool.enabled}
+              onClick={() => onToggleEnabled(tool.toolId, !tool.enabled)}
+              className="flex items-center transition-opacity hover:opacity-75"
+              style={{ width: 70, flexShrink: 0, gap: 6, background: "none", border: "none", cursor: "pointer", padding: 0 }}
+            >
+              <span
+                className="inline-block rounded-full"
+                style={{
+                  width: 8,
+                  height: 8,
+                  background: tool.enabled ? "#22C55E" : "#6b7280",
+                  flexShrink: 0,
+                }}
+              />
+              <span
+                className="font-semibold"
+                style={{
+                  fontSize: 10,
+                  color: tool.enabled ? "#22C55E" : "#6b7280",
+                }}
+              >
+                {tool.enabled ? t("on") : t("off")}
+              </span>
+            </button>
 
-                {/* Actions */}
-                <td className="px-3 py-2 text-center w-24">
-                  {tool.enabled && (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => setSelectedTool(tool)}
-                    >
-                      {t("execute")}
-                    </Button>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            {/* RISK */}
+            <div style={{ width: 80, flexShrink: 0 }}>
+              <span
+                className="font-mono inline-block"
+                style={{
+                  background: riskColor.bg,
+                  color: riskColor.text,
+                  borderRadius: 4,
+                  padding: "2px 6px",
+                  fontSize: 10,
+                }}
+              >
+                {tRisk(tool.riskLevel as any)}
+              </span>
+            </div>
+
+            {/* MITRE */}
+            <div
+              className="flex flex-wrap"
+              style={{ width: 180, flexShrink: 0, gap: 4 }}
+            >
+              {tool.mitreTechniques.map((tid) => (
+                <span
+                  key={tid}
+                  className="font-mono inline-block"
+                  style={{
+                    background: "#374151",
+                    color: "#9ca3af",
+                    borderRadius: 4,
+                    padding: "2px 6px",
+                    fontSize: 10,
+                  }}
+                >
+                  {tid}
+                </span>
+              ))}
+            </div>
+
+            {/* CONTAINER */}
+            <div
+              className="flex items-center"
+              style={{ width: 100, flexShrink: 0, gap: 6 }}
+            >
+              {status === "online" && (
+                <>
+                  <span
+                    className="inline-block rounded-full"
+                    style={{ width: 6, height: 6, background: "#22C55E", flexShrink: 0 }}
+                  />
+                  <span style={{ color: "#22C55E", fontSize: 10 }}>
+                    {t("containerOnline")}
+                  </span>
+                </>
+              )}
+              {status === "offline" && (
+                <>
+                  <span
+                    className="inline-block rounded-full"
+                    style={{ width: 6, height: 6, background: "#EF4444", flexShrink: 0 }}
+                  />
+                  <span style={{ color: "#EF4444", fontSize: 10 }}>
+                    {t("containerOffline")}
+                  </span>
+                </>
+              )}
+              {status === "none" && (
+                <span className="font-mono" style={{ color: "#4b5563", fontSize: 10 }}>
+                  --
+                </span>
+              )}
+            </div>
+
+            {/* ACTIONS */}
+            <div
+              className="flex items-center justify-center"
+              style={{ width: 80, flexShrink: 0 }}
+            >
+              {tool.enabled ? (
+                <button
+                  onClick={() => setSelectedTool(tool)}
+                  className="font-mono transition-colors hover:opacity-90"
+                  style={{
+                    background: "#3b82f6",
+                    color: "#ffffff",
+                    borderRadius: 4,
+                    padding: "4px 10px",
+                    fontSize: 10,
+                    border: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  {t("execute")}
+                </button>
+              ) : (
+                <span className="font-mono" style={{ color: "#4b5563", fontSize: 10 }}>
+                  --
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      })}
 
       <ToolExecuteModal
         tool={selectedTool}

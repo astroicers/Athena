@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
@@ -17,6 +17,7 @@ export interface Column<T> {
   header: string;
   render?: (row: T) => ReactNode;
   sortable?: boolean;
+  width?: number | string;
 }
 
 interface DataTableProps<T> {
@@ -63,23 +64,24 @@ export function DataTable<T extends Record<string, unknown>>({
 
   if (data.length === 0) {
     return (
-      <div className="border-2 border-dashed border-athena-border/50 rounded-athena-md p-6 text-center">
-        <span className="text-xs font-mono text-athena-text-secondary">{emptyMessage}</span>
+      <div className="border border-[#1f293740] rounded p-6 text-center">
+        <span className="text-xs font-mono text-[#6b7280]">{emptyMessage}</span>
       </div>
     );
   }
 
   return (
-    <div className="bg-athena-surface border border-athena-border rounded-athena-md overflow-hidden">
+    <div className="bg-[#111827] border border-[#1f2937] rounded overflow-hidden">
       <table className="w-full text-xs font-mono">
         <thead>
-          <tr className="border-b border-athena-border">
+          <tr className="border-b border-[#1f2937]" style={{ background: "#0f172a" }}>
             {columns.map((col) => (
               <th
                 key={col.key}
-                className={`px-4 py-3 text-left text-athena-text-secondary font-medium uppercase tracking-wider ${
-                  col.sortable ? "cursor-pointer hover:text-athena-accent select-none" : ""
+                className={`px-4 py-3 text-left font-semibold uppercase tracking-wider text-[#6b7280] ${
+                  col.sortable ? "cursor-pointer hover:text-[#3b82f6] select-none" : ""
                 }`}
+                style={col.width ? { width: col.width } : undefined}
                 onClick={col.sortable ? () => handleSort(col.key) : undefined}
               >
                 <span className="flex items-center gap-1">
@@ -96,10 +98,11 @@ export function DataTable<T extends Record<string, unknown>>({
           {sorted.map((row) => (
             <tr
               key={String(row[keyField])}
-              className="border-b border-athena-border/50 hover:bg-athena-elevated/30"
+              className="hover:bg-[#ffffff05]"
+              style={{ borderBottom: "1px solid #1f293740", height: 40 }}
             >
               {columns.map((col) => (
-                <td key={col.key} className="px-4 py-3 text-athena-text">
+                <td key={col.key} className="px-4 py-2 text-[#e5e7eb]">
                   {col.render ? col.render(row) : String(row[col.key] ?? "")}
                 </td>
               ))}

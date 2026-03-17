@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
@@ -26,7 +26,7 @@ function TrendArrow({ trend }: { trend: "up" | "down" | "stable" }) {
       ? "text-[var(--color-success)]"
       : trend === "down"
         ? "text-[var(--color-error)]"
-        : "text-athena-text-secondary";
+        : "text-[#9ca3af]";
 
   const path =
     trend === "up"
@@ -102,9 +102,9 @@ export function MetricCard({
   gauge,
 }: MetricCardProps) {
   return (
-    <div className="bg-athena-surface border border-athena-border rounded-athena-md p-4 flex items-start justify-between gap-2">
+    <div className="bg-[#111827] border border-[#1f2937] rounded-lg p-4 flex items-start justify-between gap-2">
       <div className="flex flex-col gap-1 flex-1">
-        <span className="text-sm font-mono text-athena-text-secondary uppercase tracking-wider">
+        <span className="text-sm font-mono text-[#9ca3af] uppercase tracking-wider">
           {title}
         </span>
         <div className="flex items-center gap-2">
@@ -117,12 +117,12 @@ export function MetricCard({
           {trend && <TrendArrow trend={trend} />}
         </div>
         {trendLabel && (
-          <span className="text-sm font-mono text-athena-text-secondary">
+          <span className="text-sm font-mono text-[#9ca3af]">
             {trendLabel}
           </span>
         )}
         {subtitle && !trendLabel && (
-          <span className="text-sm font-mono text-athena-text-secondary">
+          <span className="text-sm font-mono text-[#9ca3af]">
             {subtitle}
           </span>
         )}

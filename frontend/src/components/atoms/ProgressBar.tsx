@@ -6,15 +6,15 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
 const VARIANT_COLORS = {
-  default: "bg-athena-accent",
-  success: "bg-athena-success",
-  warning: "bg-athena-warning",
-  error: "bg-athena-error",
+  default: "bg-[#3b82f6]",
+  success: "bg-[#22C55E20]",
+  warning: "bg-[#FBBF2420]",
+  error: "bg-[#EF444420]",
 } as const;
 
 interface ProgressBarProps {
@@ -30,7 +30,7 @@ export function ProgressBar({
 }: ProgressBarProps) {
   const pct = Math.min(100, Math.max(0, (value / max) * 100));
   return (
-    <div className="w-full h-1.5 bg-athena-border rounded-full overflow-hidden">
+    <div className="w-full h-1.5 bg-[#1f2937] rounded-full overflow-hidden">
       <div
         className={`h-full rounded-full transition-all ${VARIANT_COLORS[variant]}`}
         style={{ width: `${pct}%` }}

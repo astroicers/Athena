@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
@@ -56,7 +56,7 @@ function ToolsContent() {
   if (loading) return <PageLoading />;
 
   return (
-    <div className="athena-grid-bg flex flex-col h-full space-y-4">
+    <div className="flex flex-col h-full">
       {/* Page Header */}
       <PageHeader
         title={t("title")}

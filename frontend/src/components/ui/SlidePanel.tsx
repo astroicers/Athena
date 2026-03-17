@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
@@ -47,7 +47,7 @@ export function SlidePanel({ open, onClose, title, width = "md", children }: Sli
     <div className="fixed inset-0 z-50 flex justify-end">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-athena-bg/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-[#0A0E17]/60 backdrop-blur-sm"
         onClick={onClose}
       />
 
@@ -57,16 +57,16 @@ export function SlidePanel({ open, onClose, title, width = "md", children }: Sli
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`relative ${widthClass} h-full bg-athena-surface border-l border-athena-border flex flex-col`}
+        className={`relative ${widthClass} h-full bg-[#111827] border-l border-[#1f2937] flex flex-col`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-athena-border shrink-0">
-          <h2 className="text-xs font-mono text-athena-text-secondary uppercase tracking-wider font-bold">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#1f2937] shrink-0">
+          <h2 className="text-xs font-mono text-[#9ca3af] uppercase tracking-wider font-bold">
             {title}
           </h2>
           <button
             onClick={onClose}
-            className="text-athena-text-secondary hover:text-athena-text transition-colors p-1"
+            className="text-[#9ca3af] hover:text-[#e5e7eb] transition-colors p-1"
             aria-label="Close panel"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">

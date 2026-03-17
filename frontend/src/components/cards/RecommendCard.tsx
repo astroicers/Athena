@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
@@ -33,8 +33,8 @@ export function RecommendCard({ recommendation }: RecommendCardProps) {
 
   if (!recommendation) {
     return (
-      <div className="bg-athena-surface border border-athena-border rounded-athena-md p-4">
-        <span className="text-xs font-mono text-athena-text-secondary">
+      <div className="bg-[#111827] border border-[#1f2937] rounded-lg p-4">
+        <span className="text-xs font-mono text-[#9ca3af]">
           {t("noRecommendation")}
         </span>
       </div>
@@ -42,41 +42,41 @@ export function RecommendCard({ recommendation }: RecommendCardProps) {
   }
 
   return (
-    <div className="bg-athena-surface border border-athena-accent/30 rounded-athena-md p-4">
+    <div className="bg-[#111827] border border-[#3b82f6]/30 rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-mono text-athena-accent uppercase tracking-wider">
+        <span className="text-sm font-mono text-[#3b82f6] uppercase tracking-wider">
           {t("title")}
         </span>
-        <span className="text-xs font-mono text-athena-accent font-bold">
+        <span className="text-xs font-mono text-[#3b82f6] font-bold">
           {tUI("confidence", { value: Math.round(recommendation.confidence * 100) })}
         </span>
       </div>
-      <p className="text-xs font-mono text-athena-text-secondary mb-3">
+      <p className="text-xs font-mono text-[#9ca3af] mb-3">
         {recommendation.situationAssessment}
       </p>
       <div className="space-y-2">
         {recommendation.options.map((opt, i) => (
           <div
             key={opt.techniqueId}
-            className={`flex items-center gap-2 p-2 rounded-athena-sm text-xs font-mono ${
+            className={`flex items-center gap-2 p-2 rounded text-xs font-mono ${
               opt.techniqueId === recommendation.recommendedTechniqueId
-                ? "bg-athena-accent/10 border border-athena-accent/30"
-                : "bg-athena-elevated/50"
+                ? "bg-[#3b82f610] border border-[#3b82f6]/30"
+                : "bg-[#1f2937]/50"
             }`}
           >
-            <span className="text-athena-text-secondary w-4">{i + 1}.</span>
-            <span className="text-athena-accent">{opt.techniqueId}</span>
-            <span className="text-athena-text flex-1">{opt.techniqueName}</span>
+            <span className="text-[#9ca3af] w-4">{i + 1}.</span>
+            <span className="text-[#3b82f6]">{opt.techniqueId}</span>
+            <span className="text-[#e5e7eb] flex-1">{opt.techniqueName}</span>
             <Badge variant={RISK_VARIANT[opt.riskLevel] || "info"}>
               {tRisk(opt.riskLevel as any)}
             </Badge>
-            <span className="text-athena-text-secondary">
+            <span className="text-[#9ca3af]">
               {opt.recommendedEngine.toUpperCase()}
             </span>
           </div>
         ))}
       </div>
-      <p className="text-sm font-mono text-athena-text-secondary mt-3">
+      <p className="text-sm font-mono text-[#9ca3af] mt-3">
         {recommendation.reasoningText}
       </p>
     </div>

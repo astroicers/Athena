@@ -6,16 +6,16 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
 const VARIANT_COLORS = {
-  default: { text: "text-athena-accent", bg: "bg-athena-accent/10" },
-  success: { text: "text-athena-success", bg: "bg-athena-success/10" },
-  warning: { text: "text-athena-warning", bg: "bg-athena-warning/10" },
-  error: { text: "text-athena-error", bg: "bg-athena-error/10" },
-  muted: { text: "text-athena-text-secondary", bg: "bg-athena-text-secondary/10" },
+  default: { text: "text-[#3b82f6]", bg: "bg-[#3b82f610]" },
+  success: { text: "text-[#22C55E]", bg: "bg-[#22C55E10]" },
+  warning: { text: "text-[#FBBF24]", bg: "bg-[#FBBF2410]" },
+  error: { text: "text-[#EF4444]", bg: "bg-[#EF444410]" },
+  muted: { text: "text-[#9ca3af]", bg: "bg-[#9ca3af]/10" },
 } as const;
 
 const SIZE_MAP = {

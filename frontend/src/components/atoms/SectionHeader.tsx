@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
@@ -29,13 +29,13 @@ export function SectionHeader({
   ...rest
 }: SectionHeaderProps) {
   const Tag = level === "page" ? "h2" : "h3";
-  const sizeClass = level === "page" ? "text-xs" : "text-xs";
+  const colorClass = level === "page" ? "text-[#e5e7eb]" : "text-[#e5e7eb]";
 
   if (trailing) {
     return (
       <div className={`flex items-center justify-between ${className}`}>
         <Tag
-          className={`${sizeClass} font-mono text-athena-text-secondary uppercase tracking-wider`}
+          className={`text-xs font-mono font-bold ${colorClass} uppercase tracking-wider`}
           {...rest}
         >
           {children}
@@ -47,7 +47,7 @@ export function SectionHeader({
 
   return (
     <Tag
-      className={`${sizeClass} font-mono text-athena-text-secondary uppercase tracking-wider ${className}`}
+      className={`text-xs font-mono font-bold ${colorClass} uppercase tracking-wider ${className}`}
       {...rest}
     >
       {children}

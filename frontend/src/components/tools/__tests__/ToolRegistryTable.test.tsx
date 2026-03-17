@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
@@ -143,7 +143,9 @@ describe("ToolRegistryTable", () => {
       />,
       { wrapper: IntlWrapper },
     );
-    expect(screen.getByText("N/A")).toBeInTheDocument();
+    // New design uses "--" for N/A container status
+    const dashes = screen.getAllByText("--");
+    expect(dashes.length).toBeGreaterThan(0);
   });
 
   it("shows Execute button only for enabled tools", () => {

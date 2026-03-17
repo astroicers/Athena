@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
@@ -23,19 +23,22 @@ interface TabBarProps {
 
 export function TabBar({ tabs, activeTab, onChange }: TabBarProps) {
   return (
-    <div className="flex gap-1 bg-athena-surface rounded-athena-md p-1">
+    <div className="flex items-center h-10 px-4 bg-[#0f1729] border-b border-[#1f2937]">
       {tabs.map((tab) => (
         <button
           key={tab.id}
           onClick={() => onChange(tab.id)}
-          className={`px-4 py-1.5 text-xs font-mono rounded-athena-sm transition-colors
+          className={`relative h-full px-4 text-xs font-mono transition-colors flex items-center
             ${
               activeTab === tab.id
-                ? "bg-athena-accent/20 text-athena-accent border border-athena-accent"
-                : "text-athena-text-secondary hover:text-athena-text"
+                ? "text-[#3b82f6] font-semibold"
+                : "text-[#6b7280] hover:text-[#9ca3af]"
             }`}
         >
           {tab.label}
+          {activeTab === tab.id && (
+            <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-[#3b82f6]" />
+          )}
         </button>
       ))}
     </div>

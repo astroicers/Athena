@@ -1,6 +1,6 @@
 "use client";
 
-import {
+import React, {
   Suspense,
   useCallback,
   useEffect,
@@ -18,6 +18,7 @@ import type {
   VulnStatus,
   VulnSummary,
 } from "@/types/vulnerability";
+import PocEvidencePanel from "@/components/vulns/PocEvidencePanel";
 
 /* ── Constants ── */
 
@@ -30,11 +31,19 @@ const SEVERITY_ORDER: VulnSeverity[] = [
 ];
 
 const SEVERITY_COLORS: Record<VulnSeverity, string> = {
-  critical: "#FF0000",
-  high: "#FF8800",
-  medium: "#FFD700",
+  critical: "#EF4444",
+  high: "#F97316",
+  medium: "#EAB308",
   low: "#22C55E",
-  info: "#999999",
+  info: "#6B7280",
+};
+
+const STATUS_COLORS: Record<VulnStatus, string> = {
+  discovered: "#3B82F6",
+  confirmed: "#22C55E",
+  exploited: "#F97316",
+  reported: "#A855F7",
+  false_positive: "#6B7280",
 };
 
 const STATUS_LIST: VulnStatus[] = [
@@ -58,7 +67,7 @@ function SeverityHeatStrip({
     <div className="flex flex-col gap-1.5">
       <span
         className="font-mono uppercase tracking-[1.5px]"
-        style={{ fontSize: 8, color: "#FFFFFF40" }}
+        style={{ fontSize: 8, fontWeight: 700, color: "#FFFFFF40" }}
       >
         SEVERITY DISTRIBUTION
       </span>
@@ -79,12 +88,14 @@ function SeverityHeatStrip({
             >
               {widthPct > 6 && (
                 <span
-                  className="font-mono font-bold text-[11px] athena-tabular-nums"
+                  className="font-mono athena-tabular-nums"
                   style={{
+                    fontSize: 8,
+                    fontWeight: 700,
                     color: sev === "medium" || sev === "low" ? "#000" : "#FFF",
                   }}
                 >
-                  {count}
+                  {sev.toUpperCase().slice(0, 4)} {count}
                 </span>
               )}
             </div>
@@ -93,7 +104,7 @@ function SeverityHeatStrip({
         {total === 0 && (
           <div
             className="flex-1 rounded-sm"
-            style={{ backgroundColor: "#1f2937" }}
+            style={{ backgroundColor: "var(--color-bg-elevated)" }}
           />
         )}
       </div>
@@ -114,29 +125,40 @@ function StatusPipeline({
     <div className="flex flex-col gap-1.5">
       <span
         className="font-mono uppercase tracking-[1.5px]"
-        style={{ fontSize: 8, color: "#FFFFFF40" }}
+        style={{ fontSize: 8, fontWeight: 700, color: "#FFFFFF40" }}
       >
         STATUS PIPELINE
       </span>
-      <div className="flex justify-around">
-        {STATUS_LIST.map((status) => (
-          <div
-            key={status}
-            className="flex flex-col items-center gap-0.5"
-          >
-            <span
-              className="font-mono font-bold text-lg athena-tabular-nums"
-              style={{ color: "#E5E7EB" }}
-            >
-              {byStatus[status] ?? 0}
-            </span>
-            <span
-              className="font-mono uppercase tracking-wider"
-              style={{ fontSize: 9, color: "#6B7280" }}
-            >
-              {t(`status.${status}`)}
-            </span>
-          </div>
+      <div className="flex items-center justify-around">
+        {STATUS_LIST.map((status, idx) => (
+          <React.Fragment key={status}>
+            <div className="flex flex-col items-center gap-0.5">
+              <span
+                className="font-mono athena-tabular-nums"
+                style={{ fontSize: 28, fontWeight: 700, color: STATUS_COLORS[status] }}
+              >
+                {byStatus[status] ?? 0}
+              </span>
+              <span
+                className="font-mono uppercase tracking-wider"
+                style={{ fontSize: 8, fontWeight: 600, color: "#FFFFFF50" }}
+              >
+                {t(`status.${status}`)}
+              </span>
+              <div
+                className="w-full"
+                style={{ height: 3, borderRadius: 2, backgroundColor: STATUS_COLORS[status] }}
+              />
+            </div>
+            {idx < STATUS_LIST.length - 1 && (
+              <span
+                className="font-mono font-bold"
+                style={{ fontSize: 16, color: "#FFFFFF20" }}
+              >
+                {">>"}
+              </span>
+            )}
+          </React.Fragment>
         ))}
       </div>
     </div>
@@ -148,11 +170,15 @@ function StatusPipeline({
 function SeverityBadge({ severity }: { severity: VulnSeverity }) {
   return (
     <span
-      className="font-mono text-[10px] font-bold uppercase px-1.5 py-0.5 rounded"
+      className="font-mono text-[10px] font-bold uppercase"
       style={{
-        backgroundColor: `${SEVERITY_COLORS[severity]}20`,
-        color: SEVERITY_COLORS[severity],
-        border: `1px solid ${SEVERITY_COLORS[severity]}40`,
+        backgroundColor: SEVERITY_COLORS[severity],
+        color: severity === "medium" || severity === "low" ? "#000" : "#FFF",
+        border: "none",
+        borderRadius: 3,
+        padding: "2px 8px",
+        width: 70,
+        textAlign: "center" as const,
       }}
     >
       {severity}
@@ -183,39 +209,38 @@ function VulnTable({
 
   return (
     <div
-      className="flex-1 min-w-0 rounded-md overflow-hidden flex flex-col"
+      className="flex-1 min-w-0 rounded-md overflow-hidden flex flex-col bg-[#111827]"
       style={{
-        backgroundColor: "#111827",
-        border: "1px solid #FFFFFF08",
+        border: "1px solid var(--color-white-8)",
       }}
     >
       {/* Table header */}
       <div
         className="flex items-center gap-3 px-3 py-2 shrink-0"
-        style={{ borderBottom: "1px solid #FFFFFF08" }}
+        style={{ backgroundColor: "#1F2937", borderBottom: "1px solid var(--color-white-8)" }}
       >
         <span className="w-1 shrink-0" />
         <span
-          className="font-mono text-[10px] uppercase tracking-wider w-[120px] shrink-0"
-          style={{ color: "#6B7280" }}
+          className="font-mono uppercase tracking-wider w-[120px] shrink-0"
+          style={{ fontSize: 9, fontWeight: 700, color: "#FFFFFF50" }}
         >
           {t("columns.cveId")}
         </span>
         <span
-          className="font-mono text-[10px] uppercase tracking-wider flex-1 min-w-0"
-          style={{ color: "#6B7280" }}
+          className="font-mono uppercase tracking-wider flex-1 min-w-0"
+          style={{ fontSize: 9, fontWeight: 700, color: "#FFFFFF50" }}
         >
           Title
         </span>
         <span
-          className="font-mono text-[10px] uppercase tracking-wider w-[80px] shrink-0 text-center"
-          style={{ color: "#6B7280" }}
+          className="font-mono uppercase tracking-wider w-[80px] shrink-0 text-center"
+          style={{ fontSize: 9, fontWeight: 700, color: "#FFFFFF50" }}
         >
           {t("columns.severity")}
         </span>
         <span
-          className="font-mono text-[10px] uppercase tracking-wider w-[90px] shrink-0 text-center"
-          style={{ color: "#6B7280" }}
+          className="font-mono uppercase tracking-wider w-[90px] shrink-0 text-center"
+          style={{ fontSize: 9, fontWeight: 700, color: "#FFFFFF50" }}
         >
           {t("columns.status")}
         </span>
@@ -226,8 +251,7 @@ function VulnTable({
         {sorted.length === 0 ? (
           <div className="flex items-center justify-center py-12">
             <span
-              className="font-mono text-xs"
-              style={{ color: "#6B7280" }}
+              className="font-mono text-xs text-[#9ca3af]"
             >
               {t("noVulns")}
             </span>
@@ -240,14 +264,16 @@ function VulnTable({
                 key={vuln.id}
                 type="button"
                 onClick={() => onSelect(vuln)}
-                className="flex items-center gap-3 w-full px-3 py-2 text-left transition-colors"
+                className="flex items-center gap-3 w-full px-3 text-left transition-colors"
                 style={{
-                  backgroundColor: isSelected ? "#1E293B" : "transparent",
-                  borderBottom: "1px solid #FFFFFF08",
+                  height: 44,
+                  backgroundColor: isSelected ? "#3B82F615" : "transparent",
+                  border: isSelected ? "1px solid #3B82F630" : "1px solid transparent",
+                  borderBottom: isSelected ? "1px solid #3B82F630" : "1px solid var(--color-white-8)",
                 }}
                 onMouseEnter={(e) => {
                   if (!isSelected) {
-                    e.currentTarget.style.backgroundColor = "#111827CC";
+                    e.currentTarget.style.backgroundColor = "var(--color-bg-surface)";
                   }
                 }}
                 onMouseLeave={(e) => {
@@ -267,7 +293,10 @@ function VulnTable({
                 {/* CVE ID */}
                 <span
                   className="font-mono text-xs w-[120px] shrink-0 truncate"
-                  style={{ color: "#3B82F6" }}
+                  style={{
+                    color: isSelected ? "#3B82F6" : "var(--color-accent)",
+                    fontWeight: isSelected ? 700 : 400,
+                  }}
                 >
                   {vuln.cveId ?? "N/A"}
                 </span>
@@ -287,8 +316,7 @@ function VulnTable({
 
                 {/* Status */}
                 <span
-                  className="font-mono text-[10px] uppercase w-[90px] shrink-0 text-center"
-                  style={{ color: "#9CA3AF" }}
+                  className="font-mono text-[10px] uppercase w-[90px] shrink-0 text-center text-[#6b7280]"
                 >
                   {t(`status.${vuln.status}`)}
                 </span>
@@ -336,11 +364,10 @@ function DetailPanel({
 
   return (
     <div
-      className="rounded-md flex flex-col gap-5 shrink-0 overflow-y-auto"
+      className="rounded-md flex flex-col gap-5 shrink-0 overflow-y-auto bg-[#111827]"
       style={{
         width: 380,
-        backgroundColor: "#111827",
-        border: "1px solid #FFFFFF08",
+        border: "1px solid var(--color-white-8)",
         padding: 20,
       }}
     >
@@ -348,8 +375,7 @@ function DetailPanel({
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-col gap-2 min-w-0">
           <span
-            className="font-mono text-sm font-bold truncate"
-            style={{ color: "#3B82F6" }}
+            className="font-mono text-sm font-bold truncate text-[#3b82f6]"
           >
             {vuln.cveId ?? "N/A"}
           </span>
@@ -358,8 +384,7 @@ function DetailPanel({
         <button
           type="button"
           onClick={onClose}
-          className="font-mono text-sm shrink-0 w-7 h-7 flex items-center justify-center rounded hover:bg-[#1f2937] transition-colors"
-          style={{ color: "#6B7280" }}
+          className="font-mono text-sm shrink-0 w-7 h-7 flex items-center justify-center rounded hover:bg-[#1f2937] transition-colors text-[#9ca3af]"
           aria-label={t("detail.close")}
         >
           X
@@ -380,14 +405,12 @@ function DetailPanel({
       {vuln.description && (
         <div className="flex flex-col gap-1">
           <span
-            className="font-mono text-[10px] uppercase tracking-wider"
-            style={{ color: "#6B7280" }}
+            className="font-mono text-[10px] uppercase tracking-wider text-[#9ca3af]"
           >
             {t("detail.description")}
           </span>
           <p
-            className="font-mono text-xs leading-relaxed"
-            style={{ color: "#9CA3AF" }}
+            className="font-mono text-xs leading-relaxed text-[#6b7280]"
           >
             {vuln.description}
           </p>
@@ -397,8 +420,7 @@ function DetailPanel({
       {/* Status */}
       <div className="flex flex-col gap-1">
         <span
-          className="font-mono text-[10px] uppercase tracking-wider"
-          style={{ color: "#6B7280" }}
+          className="font-mono text-[10px] uppercase tracking-wider text-[#9ca3af]"
         >
           {t("columns.status")}
         </span>
@@ -414,14 +436,12 @@ function DetailPanel({
       {vuln.service && (
         <div className="flex flex-col gap-1">
           <span
-            className="font-mono text-[10px] uppercase tracking-wider"
-            style={{ color: "#6B7280" }}
+            className="font-mono text-[10px] uppercase tracking-wider text-[#9ca3af]"
           >
             {t("detail.service")}
           </span>
           <span
-            className="font-mono text-xs"
-            style={{ color: "#9CA3AF" }}
+            className="font-mono text-xs text-[#6b7280]"
           >
             {vuln.service}
           </span>
@@ -431,14 +451,12 @@ function DetailPanel({
       {/* Target */}
       <div className="flex flex-col gap-1">
         <span
-          className="font-mono text-[10px] uppercase tracking-wider"
-          style={{ color: "#6B7280" }}
+          className="font-mono text-[10px] uppercase tracking-wider text-[#9ca3af]"
         >
           {t("columns.target")}
         </span>
         <span
-          className="font-mono text-xs"
-          style={{ color: "#9CA3AF" }}
+          className="font-mono text-xs text-[#6b7280]"
         >
           {vuln.targetHostname ?? vuln.targetIp}
         </span>
@@ -448,8 +466,7 @@ function DetailPanel({
       {vuln.cvssScore !== null && vuln.cvssScore !== undefined && (
         <div className="flex flex-col gap-1">
           <span
-            className="font-mono text-[10px] uppercase tracking-wider"
-            style={{ color: "#6B7280" }}
+            className="font-mono text-[10px] uppercase tracking-wider text-[#9ca3af]"
           >
             {t("columns.cvss")}
           </span>
@@ -465,8 +482,7 @@ function DetailPanel({
       {/* Timeline */}
       <div className="flex flex-col gap-1">
         <span
-          className="font-mono text-[10px] uppercase tracking-wider"
-          style={{ color: "#6B7280" }}
+          className="font-mono text-[10px] uppercase tracking-wider text-[#9ca3af]"
         >
           {t("detail.timeline")}
         </span>
@@ -499,8 +515,7 @@ function DetailPanel({
       {/* Status actions */}
       <div className="flex flex-col gap-2 mt-auto">
         <span
-          className="font-mono text-[10px] uppercase tracking-wider"
-          style={{ color: "#6B7280" }}
+          className="font-mono text-[10px] uppercase tracking-wider text-[#9ca3af]"
         >
           {t("detail.actions")}
         </span>
@@ -511,14 +526,13 @@ function DetailPanel({
               type="button"
               disabled={changingStatus}
               onClick={() => handleStatusChange(action.status)}
-              className="font-mono text-[10px] uppercase px-2.5 py-1 rounded transition-colors disabled:opacity-50"
+              className="font-mono text-[10px] uppercase px-2.5 py-1 rounded transition-colors disabled:opacity-50 text-[#3b82f6]"
               style={{
-                color: "#3B82F6",
-                border: "1px solid #3B82F640",
+                border: "1px solid var(--color-accent-bg)",
                 backgroundColor: "transparent",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "#3B82F610";
+                e.currentTarget.style.backgroundColor = "var(--color-accent-bg)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = "transparent";
@@ -546,14 +560,12 @@ function TimelineEntry({ label, date }: { label: string; date: string }) {
   return (
     <div className="flex items-center gap-2">
       <span
-        className="font-mono text-[10px]"
-        style={{ color: "#6B7280" }}
+        className="font-mono text-[10px] text-[#9ca3af]"
       >
         {label}:
       </span>
       <span
-        className="font-mono text-[10px] athena-tabular-nums"
-        style={{ color: "#9CA3AF" }}
+        className="font-mono text-[10px] athena-tabular-nums text-[#6b7280]"
       >
         {formatted}
       </span>
@@ -652,7 +664,7 @@ function VulnsContent() {
   if (loading && vulns.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-sm font-mono" style={{ color: "#6B7280" }}>
+        <p className="text-sm font-mono text-[#9ca3af]">
           {t("title")}...
         </p>
       </div>
@@ -663,7 +675,7 @@ function VulnsContent() {
   if (error && vulns.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-sm font-mono" style={{ color: "#EF4444" }}>
+        <p className="text-sm font-mono text-[#EF4444]">
           {error}
         </p>
       </div>
@@ -671,16 +683,10 @@ function VulnsContent() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden" style={{ backgroundColor: "#0A0E17" }}>
-      <div className="flex flex-col gap-4 p-4 h-full max-w-[1440px] w-full mx-auto">
+    <div className="flex flex-col h-full overflow-y-auto bg-[#0A0E17]">
+      <div className="flex flex-col gap-4 min-h-full max-w-[1440px] w-full mx-auto">
         {/* Stats Row */}
-        <div
-          className="flex gap-6 rounded-md p-4 shrink-0"
-          style={{
-            backgroundColor: "#111827",
-            border: "1px solid #FFFFFF08",
-          }}
-        >
+        <div className="flex gap-6 py-4 px-6 shrink-0">
           {/* Severity Heat Strip */}
           <div className="flex-1 min-w-0">
             <SeverityHeatStrip
@@ -688,12 +694,6 @@ function VulnsContent() {
               total={computedSummary.total}
             />
           </div>
-
-          {/* Divider */}
-          <div
-            className="w-px shrink-0"
-            style={{ backgroundColor: "#FFFFFF10" }}
-          />
 
           {/* Status Pipeline */}
           <div className="flex-1 min-w-0">
@@ -705,7 +705,7 @@ function VulnsContent() {
         </div>
 
         {/* Body: Table + Detail Panel */}
-        <div className="flex gap-4 flex-1 min-h-0">
+        <div className="flex gap-4 flex-1 min-h-0 px-6 pb-4">
           {/* Left: Vulnerability Table */}
           <VulnTable
             vulns={vulns}
@@ -724,6 +724,24 @@ function VulnsContent() {
             />
           )}
         </div>
+
+        {/* PoC Evidence Section */}
+        <div className="flex flex-col gap-3 shrink-0">
+          <div
+            className="flex items-center gap-2"
+            style={{ borderTop: "1px solid var(--color-white-8)", paddingTop: 16 }}
+          >
+            <span
+              className="font-mono text-[8px] font-bold uppercase tracking-[1.5px]"
+              style={{ color: "var(--color-text-muted)" }}
+            >
+              POC EVIDENCE
+            </span>
+          </div>
+          {operationId && (
+            <PocEvidencePanel operationId={operationId} />
+          )}
+        </div>
       </div>
     </div>
   );
@@ -736,7 +754,7 @@ export default function VulnsPage() {
     <Suspense
       fallback={
         <div className="flex items-center justify-center h-full">
-          <p className="text-sm font-mono" style={{ color: "#6B7280" }}>
+          <p className="text-sm font-mono text-[#9ca3af]">
             Loading Vulnerability Dashboard...
           </p>
         </div>

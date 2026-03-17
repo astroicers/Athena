@@ -18,6 +18,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "mermaid": "^11.13.0",
     "next": "^14.1.0",
     "next-intl": "^4.8.3",
     "react": "^18.2.0",

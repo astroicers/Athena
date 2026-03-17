@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 import { C5ISRDomain, C5ISRDomainStatus } from "./enums";
 
@@ -26,15 +26,15 @@ export interface RiskVector {
 }
 
 export interface DomainReport {
-  executive_summary: string;
-  health_pct: number;
+  executiveSummary: string;
+  healthPct: number;
   status: string;
   metrics: DomainMetric[];
-  asset_roster: Array<Record<string, unknown>>;
-  tactical_assessment: string;
-  risk_vectors: RiskVector[];
-  recommended_actions: string[];
-  cross_domain_impacts: string[];
+  assetRoster: Array<Record<string, unknown>>;
+  tacticalAssessment: string;
+  riskVectors: RiskVector[];
+  recommendedActions: string[];
+  crossDomainImpacts: string[];
 }
 
 export interface C5ISRStatus {
@@ -48,5 +48,4 @@ export interface C5ISRStatus {
   numerator: number | null;
   denominator: number | null;
   metricLabel: string;
-  report: DomainReport | null;
 }

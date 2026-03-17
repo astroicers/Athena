@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
@@ -48,7 +48,7 @@ describe("Sidebar", () => {
     expect(screen.getByTitle("Operations")).toBeInTheDocument();
     expect(screen.getByTitle("Mission Planner")).toBeInTheDocument();
     expect(screen.getByTitle("War Room")).toBeInTheDocument();
-    expect(screen.getByTitle("AI Decisions")).toBeInTheDocument();
+    expect(screen.getByTitle("Vulns")).toBeInTheDocument();
     expect(screen.getByTitle("Tool Registry")).toBeInTheDocument();
     // Total links: nav items + the GitHub star link
     const links = screen.getAllByRole("link");

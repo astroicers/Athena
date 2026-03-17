@@ -6,23 +6,23 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
 const STATUS_COLORS: Record<string, string> = {
-  alive: "bg-athena-success",
-  operational: "bg-athena-success",
-  active: "bg-athena-accent",
-  nominal: "bg-athena-success",
-  engaged: "bg-athena-warning",
-  scanning: "bg-athena-accent",
-  pending: "bg-athena-warning",
-  degraded: "bg-athena-warning",
-  untrusted: "bg-athena-error",
-  offline: "bg-athena-border",
-  dead: "bg-athena-error",
-  critical: "bg-athena-critical",
+  alive: "bg-[#22C55E20]",
+  operational: "bg-[#22C55E20]",
+  active: "bg-[#3b82f6]",
+  nominal: "bg-[#22C55E20]",
+  engaged: "bg-[#FBBF2420]",
+  scanning: "bg-[#3b82f6]",
+  pending: "bg-[#FBBF2420]",
+  degraded: "bg-[#FBBF2420]",
+  untrusted: "bg-[#EF444420]",
+  offline: "bg-[#1f2937]",
+  dead: "bg-[#EF444420]",
+  critical: "bg-[#DC262620]",
 };
 
 interface StatusDotProps {
@@ -31,7 +31,7 @@ interface StatusDotProps {
 }
 
 export function StatusDot({ status, pulse = false }: StatusDotProps) {
-  const color = STATUS_COLORS[status] || "bg-athena-border";
+  const color = STATUS_COLORS[status] || "bg-[#1f2937]";
   return (
     <span className="relative inline-flex h-2.5 w-2.5">
       {pulse && (

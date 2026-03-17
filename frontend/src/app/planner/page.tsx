@@ -6,11 +6,12 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { useOperation } from "@/hooks/useOperation";
@@ -23,6 +24,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { TabBar } from "@/components/nav/TabBar";
 import { MissionTab } from "@/components/planner/MissionTab";
 import { AttackTab } from "@/components/planner/AttackTab";
+import { AttackGraphTab } from "@/components/planner/AttackGraphTab";
 import type { MissionStep } from "@/types/mission";
 import type { OODATimelineEntry } from "@/types/ooda";
 import type { Target } from "@/types/target";
@@ -39,10 +41,13 @@ function PlannerContent() {
   const tErrors = useTranslations("Errors");
 
   // --- Tab state ---
-  const [activeTab, setActiveTab] = useState("mission");
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab") === "attack-graph" ? "attack-graph" : "mission";
+  const [activeTab, setActiveTab] = useState(initialTab);
   const PLANNER_TABS = useMemo(() => [
     { id: "mission", label: t("missionTab") },
     { id: "attack", label: t("attackTab") },
+    { id: "attack-graph", label: t("attackGraphTab") },
   ], [t]);
 
   const { operation } = useOperation(DEFAULT_OP_ID);
@@ -268,7 +273,7 @@ function PlannerContent() {
   if (isLoading) return <PlannerPageSkeleton />;
 
   return (
-    <div className="flex flex-col h-full space-y-3 athena-grid-bg">
+    <div className="flex flex-col h-full">
       <PageHeader title={t("title")} operationCode={operation?.code} />
       <TabBar tabs={PLANNER_TABS} activeTab={activeTab} onChange={setActiveTab} />
 
@@ -325,6 +330,8 @@ function PlannerContent() {
           onSetCompact={setCompact}
         />
       )}
+
+      {activeTab === "attack-graph" && <AttackGraphTab />}
     </div>
   );
 }

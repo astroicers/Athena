@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
@@ -20,6 +20,6 @@ describe("Badge", () => {
 
   it("applies variant styles", () => {
     render(<Badge variant="success">OK</Badge>);
-    expect(screen.getByText("OK").className).toContain("text-athena-success");
+    expect(screen.getByText("OK").className).toContain("text-[#22C55E]");
   });
 });

@@ -6,7 +6,7 @@
 // Change Date: Four years from release date of each version
 // Change License: Apache License, Version 2.0
 //
-// For commercial licensing, contact: [TODO: contact email]
+// For commercial licensing, contact: azz093093.830330@gmail.com
 
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
@@ -18,6 +18,6 @@ describe("OODAIndicator", () => {
   it("highlights the active phase", () => {
     render(<OODAIndicator currentPhase={OODAPhase.ORIENT} />, { wrapper: IntlWrapper });
     const orient = screen.getByText("Orient");
-    expect(orient.closest("div")).toHaveClass("bg-athena-accent/20");
+    expect(orient.closest("div")).toHaveClass("bg-[#3b82f620]");
   });
 });

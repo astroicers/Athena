@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """OODA loop orchestrator — coordinates Observe -> Orient -> Decide -> Act."""
 
@@ -182,6 +182,14 @@ class OODAController:
             db, operation_id, observe_summary,
             attack_graph_summary=graph_summary,
         )
+        if not recommendation:
+            await self._write_log(db, operation_id, "warning",
+                "Orient phase aborted: LLM unavailable or returned invalid response")
+            await db.execute(
+                "UPDATE ooda_iterations SET phase = 'orient', completed_at = NOW() WHERE id = $1",
+                ooda_id,
+            )
+            return {"status": "aborted", "reason": "orient_llm_unavailable"}
         orient_summary = recommendation.get("situation_assessment", "")
         await db.execute(
             "UPDATE ooda_iterations SET orient_summary = $1 WHERE id = $2",

@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """Orient phase — PentestGPT integration, Athena's core value."""
 
@@ -32,14 +32,20 @@ def _to_camel_case(snake_str: str) -> str:
 
 def _dict_to_camel_case(d: dict) -> dict:
     """Convert dict keys from snake_case to camelCase (shallow for recommendations)."""
+    from datetime import datetime as _dt
+
     result = {}
     for key, value in d.items():
         camel_key = _to_camel_case(key)
         if isinstance(value, list):
             result[camel_key] = [
-                _dict_to_camel_case(item) if isinstance(item, dict) else item
+                _dict_to_camel_case(item) if isinstance(item, dict)
+                else item.isoformat() if isinstance(item, _dt)
+                else item
                 for item in value
             ]
+        elif isinstance(value, _dt):
+            result[camel_key] = value.isoformat()
         else:
             result[camel_key] = value
     return result
@@ -336,20 +342,31 @@ class OrientEngine:
         try:
             parsed = json.loads(cleaned)
         except json.JSONDecodeError:
-            logger.warning("LLM returned non-JSON: %.200s", llm_response)
-            parsed = _MOCK_RECOMMENDATION
+            logger.error("Orient LLM returned non-JSON: %.200s", llm_response)
+            if settings.MOCK_LLM:
+                parsed = _MOCK_RECOMMENDATION
+            else:
+                await self._ws.broadcast(operation_id, "orient.error",
+                    {"error": "LLM returned non-JSON"})
+                return {}
 
         # Validate required fields
         _required = ("situation_assessment", "recommended_technique_id", "confidence", "options")
         if not all(k in parsed for k in _required):
-            logger.warning(
-                "LLM response missing required fields: %s",
+            logger.error(
+                "Orient LLM response missing required fields: %s",
                 [k for k in _required if k not in parsed],
             )
-            parsed = _MOCK_RECOMMENDATION
+            if settings.MOCK_LLM:
+                parsed = _MOCK_RECOMMENDATION
+            else:
+                return {}
         elif not isinstance(parsed.get("options"), list) or len(parsed["options"]) < 1:
-            logger.warning("LLM response has no valid options, falling back to mock")
-            parsed = _MOCK_RECOMMENDATION
+            logger.error("Orient LLM response has no valid options")
+            if settings.MOCK_LLM:
+                parsed = _MOCK_RECOMMENDATION
+            else:
+                return {}
 
         # SPEC-046: Filter options exceeding mission noise limit
         parsed = await self._filter_options_by_noise(db, parsed, mission_code)
@@ -922,8 +939,11 @@ class OrientEngine:
 
         result = await get_llm_client().call(system_prompt, user_prompt, task_type="orient_analysis")
         if not result:
-            logger.info("No LLM backend available, using mock recommendation")
-            return json.dumps(_MOCK_RECOMMENDATION)
+            if settings.MOCK_LLM:
+                logger.info("No LLM backend available, using mock recommendation")
+                return json.dumps(_MOCK_RECOMMENDATION)
+            logger.error("No LLM backend available and MOCK_LLM=False — orient phase will abort")
+            return ""
         return result
 
     async def _store_recommendation(

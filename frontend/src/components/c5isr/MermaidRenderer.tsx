@@ -68,7 +68,7 @@ export function MermaidRenderer({
   if (error) {
     return (
       <div
-        className={`rounded-lg border p-4 font-mono text-xs bg-[#111827] text-[#EF4444] ${className}`}
+        className={`rounded-athena-md border p-4 font-mono text-xs bg-[#111827] text-[#EF4444] ${className}`}
         style={{
           borderColor: "color-mix(in srgb, var(--color-error) 40%, transparent)",
         }}
@@ -83,7 +83,7 @@ export function MermaidRenderer({
       <style>{MERMAID_CSS_OVERRIDES}</style>
       <div
         ref={containerRef}
-        className={`mermaid-container rounded-lg border overflow-hidden bg-[#111827] border-[#1f2937] ${className}`}
+        className={`mermaid-container rounded-athena-md border overflow-hidden bg-[#111827] border-[#1f2937] ${className}`}
         style={{
           padding: 12,
         }}

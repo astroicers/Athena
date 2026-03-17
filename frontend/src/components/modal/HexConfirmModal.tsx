@@ -47,7 +47,7 @@ export function HexConfirmModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0A0E17]/80 backdrop-blur-sm">
       <div
-        className={`bg-[#111827] border-2 ${style.border} rounded-xl p-6 max-w-md w-full mx-4`}
+        className={`bg-[#111827] border-2 ${style.border} rounded-athena-lg p-6 max-w-md w-full mx-4`}
       >
         <div className="text-center mb-4">
           <span className="text-xs font-mono text-[#9ca3af]">

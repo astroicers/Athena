@@ -25,7 +25,7 @@ export function NavItem({ href, icon: Icon, label, isActive }: NavItemProps) {
     <Link
       href={href}
       title={label}
-      className={`flex items-center justify-center h-9 w-full rounded transition-colors
+      className={`flex items-center justify-center h-9 w-full rounded-athena-sm transition-colors
         ${
           isActive
             ? "bg-[#3b82f620] text-[#3B82F6]"

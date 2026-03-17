@@ -79,7 +79,7 @@ function SeverityHeatStrip({
           return (
             <div
               key={sev}
-              className="flex items-center justify-center rounded-sm transition-all duration-300"
+              className="flex items-center justify-center rounded-athena-sm transition-all duration-300"
               style={{
                 width: `${widthPct}%`,
                 minWidth: count > 0 ? 24 : 0,
@@ -103,7 +103,7 @@ function SeverityHeatStrip({
         })}
         {total === 0 && (
           <div
-            className="flex-1 rounded-sm"
+            className="flex-1 rounded-athena-sm"
             style={{ backgroundColor: "var(--color-bg-elevated)" }}
           />
         )}
@@ -209,7 +209,7 @@ function VulnTable({
 
   return (
     <div
-      className="flex-1 min-w-0 rounded-md overflow-hidden flex flex-col bg-[#111827]"
+      className="flex-1 min-w-0 rounded-athena-md overflow-hidden flex flex-col bg-[#111827]"
       style={{
         border: "1px solid var(--color-white-8)",
       }}
@@ -364,7 +364,7 @@ function DetailPanel({
 
   return (
     <div
-      className="rounded-md flex flex-col gap-5 shrink-0 overflow-y-auto bg-[#111827]"
+      className="rounded-athena-md flex flex-col gap-5 shrink-0 overflow-y-auto bg-[#111827]"
       style={{
         width: 380,
         border: "1px solid var(--color-white-8)",
@@ -384,7 +384,7 @@ function DetailPanel({
         <button
           type="button"
           onClick={onClose}
-          className="font-mono text-sm shrink-0 w-7 h-7 flex items-center justify-center rounded hover:bg-[#1f2937] transition-colors text-[#9ca3af]"
+          className="font-mono text-sm shrink-0 w-7 h-7 flex items-center justify-center rounded-athena-sm hover:bg-[#1f2937] transition-colors text-[#9ca3af]"
           aria-label={t("detail.close")}
         >
           X
@@ -526,7 +526,7 @@ function DetailPanel({
               type="button"
               disabled={changingStatus}
               onClick={() => handleStatusChange(action.status)}
-              className="font-mono text-[10px] uppercase px-2.5 py-1 rounded transition-colors disabled:opacity-50 text-[#3b82f6]"
+              className="font-mono text-[10px] uppercase px-2.5 py-1 rounded-athena-sm transition-colors disabled:opacity-50 text-[#3b82f6]"
               style={{
                 border: "1px solid var(--color-accent-bg)",
                 backgroundColor: "transparent",

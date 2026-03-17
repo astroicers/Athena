@@ -143,7 +143,7 @@ function OperationsContent() {
               <button
                 key={op.id}
                 onClick={() => handleSelect(op)}
-                className="text-left bg-[#111827] border border-[#1f2937] rounded hover:border-[#3b82f640] transition-colors cursor-pointer flex flex-col gap-2"
+                className="text-left bg-[#111827] border border-[#1f2937] rounded-athena-sm hover:border-[#3b82f640] transition-colors cursor-pointer flex flex-col gap-2"
                 style={{ padding: 16, height: 140 }}
               >
                 {/* Header row: codename + status badge */}
@@ -152,7 +152,7 @@ function OperationsContent() {
                     {op.codename}
                   </span>
                   <span
-                    className="text-[10px] font-mono font-semibold uppercase border rounded shrink-0"
+                    className="text-[10px] font-mono font-semibold uppercase border rounded-athena-sm shrink-0"
                     style={{
                       color: STATUS_COLORS[op.status],
                       borderColor: (STATUS_COLORS[op.status] || "") + "66",
@@ -172,7 +172,7 @@ function OperationsContent() {
                 <div className="flex items-center gap-3 mt-auto">
                   {/* Mission profile badge */}
                   <span
-                    className="text-[10px] font-mono font-semibold border rounded"
+                    className="text-[10px] font-mono font-semibold border rounded-athena-sm"
                     style={{
                       color: PROFILE_COLORS[op.missionProfile],
                       borderColor: (PROFILE_COLORS[op.missionProfile] || "") + "66",
@@ -198,7 +198,7 @@ function OperationsContent() {
             {/* Empty card placeholder — "+ New Operation" */}
             <button
               onClick={() => setShowCreate(true)}
-              className="flex items-center justify-center border border-[#1f293740] rounded hover:border-[#3b82f640] transition-colors cursor-pointer"
+              className="flex items-center justify-center border border-[#1f293740] rounded-athena-sm hover:border-[#3b82f640] transition-colors cursor-pointer"
               style={{ height: 140 }}
             >
               <span className="font-mono text-xs text-[#4b5563]">
@@ -286,13 +286,13 @@ function CreateOperationModal({ onCreated, onCancel }: CreateModalProps) {
   }
 
   const inputClass =
-    "w-full bg-[#0A0E17] border border-[#374151] rounded px-3 py-2 text-sm font-mono text-[#e5e7eb] placeholder-[#6b7280] focus:outline-none focus:border-[#3b82f6]";
+    "w-full bg-[#0A0E17] border border-[#374151] rounded-athena-sm px-3 py-2 text-sm font-mono text-[#e5e7eb] placeholder-[#6b7280] focus:outline-none focus:border-[#3b82f6]";
   const labelClass =
     "block text-xs font-mono text-[#6b7280] uppercase tracking-wider mb-1";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
-      <div className="bg-[#111827] border-2 border-[#1f2937] rounded-lg p-6 max-w-md w-full mx-4">
+      <div className="bg-[#111827] border-2 border-[#1f2937] rounded-athena-md p-6 max-w-md w-full mx-4">
         <div className="mb-4">
           <h2 className="text-lg font-mono font-bold text-[#e5e7eb]">
             {t("createOp")}
@@ -436,13 +436,13 @@ function EditOperationModal({ operation, onSaved, onCancel }: EditModalProps) {
   }
 
   const inputClass =
-    "w-full bg-[#0A0E17] border border-[#374151] rounded px-3 py-2 text-sm font-mono text-[#e5e7eb] placeholder-[#6b7280] focus:outline-none focus:border-[#3b82f6]";
+    "w-full bg-[#0A0E17] border border-[#374151] rounded-athena-sm px-3 py-2 text-sm font-mono text-[#e5e7eb] placeholder-[#6b7280] focus:outline-none focus:border-[#3b82f6]";
   const labelClass =
     "block text-xs font-mono text-[#6b7280] uppercase tracking-wider mb-1";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
-      <div className="bg-[#111827] border-2 border-[#1f2937] rounded-lg p-6 max-w-md w-full mx-4">
+      <div className="bg-[#111827] border-2 border-[#1f2937] rounded-athena-md p-6 max-w-md w-full mx-4">
         <div className="mb-4">
           <h2 className="text-lg font-mono font-bold text-[#e5e7eb]">
             {t("editOp")}

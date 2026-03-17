@@ -117,7 +117,7 @@ function PhaseCard({
 
   return (
     <div
-      className="rounded-md flex flex-col gap-2"
+      className="rounded-athena-md flex flex-col gap-2"
       style={{
         backgroundColor: bg,
         border: active ? `1px solid ${color}40` : "1px solid #1f2937",
@@ -254,7 +254,7 @@ function WarRoomContent() {
       <div className="flex flex-1 gap-4 py-4 px-5 min-h-0">
         {/* Left panel: OODA Loop */}
         <div
-          className="rounded-lg flex flex-col gap-2.5 overflow-y-auto shrink-0 bg-[#111827]"
+          className="rounded-athena-md flex flex-col gap-2.5 overflow-y-auto shrink-0 bg-[#111827]"
           style={{
             width: 200,
             padding: 14,
@@ -285,7 +285,7 @@ function WarRoomContent() {
           {/* Iteration counter */}
           {dashboard && (
             <div
-              className="rounded-md mt-2"
+              className="rounded-athena-md mt-2"
               style={{
                 backgroundColor: "#ffffff05",
                 border: "1px solid #ffffff08",
@@ -351,7 +351,7 @@ function WarRoomContent() {
 
         {/* Right panel: Action Log */}
         <div
-          className="flex flex-col gap-2.5 overflow-y-auto shrink-0 bg-[#111827] rounded-lg"
+          className="flex flex-col gap-2.5 overflow-y-auto shrink-0 bg-[#111827] rounded-athena-md"
           style={{
             width: 300,
             padding: 14,

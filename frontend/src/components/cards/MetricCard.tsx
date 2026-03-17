@@ -102,7 +102,7 @@ export function MetricCard({
   gauge,
 }: MetricCardProps) {
   return (
-    <div className="bg-[#111827] border border-[#1f2937] rounded-lg p-4 flex items-start justify-between gap-2">
+    <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md p-4 flex items-start justify-between gap-2">
       <div className="flex flex-col gap-1 flex-1">
         <span className="text-sm font-mono text-[#9ca3af] uppercase tracking-wider">
           {title}

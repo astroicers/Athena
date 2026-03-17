@@ -94,7 +94,7 @@ function TechniquePill({ entry }: { entry: AttackPathEntry }) {
   return (
     <div className="relative group">
       <div
-        className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-sm font-mono cursor-default ${pillBg(entry.status)}`}
+        className={`flex items-center gap-1 px-1.5 py-0.5 rounded-athena-sm text-sm font-mono cursor-default ${pillBg(entry.status)}`}
         title={tooltipLines}
       >
         <StatusDot status={entry.status} />
@@ -104,7 +104,7 @@ function TechniquePill({ entry }: { entry: AttackPathEntry }) {
       <div
         className={
           "absolute z-50 left-0 top-full mt-1 min-w-[180px] max-w-[240px] " +
-          "bg-[#1f2937] border border-[#1f2937] rounded p-2 " +
+          "bg-[#1f2937] border border-[#1f2937] rounded-athena-sm p-2 " +
           "text-sm font-mono text-[#e5e7eb]-primary shadow-lg " +
           "invisible opacity-0 group-hover:visible group-hover:opacity-100 " +
           "transition-opacity duration-150 pointer-events-none whitespace-pre-wrap"
@@ -122,12 +122,12 @@ function SkeletonColumn() {
   return (
     <div className="w-24 shrink-0 space-y-1">
       {/* header shimmer */}
-      <div className="h-3 bg-[#1f2937]/40 rounded animate-pulse mb-2" />
+      <div className="h-3 bg-[#1f2937]/40 rounded-athena-sm animate-pulse mb-2" />
       {/* pill shimmers */}
       {[1, 2].map((i) => (
         <div
           key={i}
-          className="h-5 bg-[#1f2937]/30 rounded animate-pulse"
+          className="h-5 bg-[#1f2937]/30 rounded-athena-sm animate-pulse"
           style={{ animationDelay: `${i * 80}ms` }}
         />
       ))}
@@ -156,7 +156,7 @@ function AttackGraphSummaryPanel({ graphData }: { graphData: AttackGraphResponse
   const coveragePct = Math.round(coverageScore * 100);
 
   return (
-    <div className="mb-3 p-2 bg-[#1f2937] border border-[#1f2937] rounded">
+    <div className="mb-3 p-2 bg-[#1f2937] border border-[#1f2937] rounded-athena-sm">
       <div className="flex items-center gap-3 text-sm font-mono">
         {/* Coverage bar */}
         <div className="flex items-center gap-1.5 min-w-[120px]">
@@ -226,7 +226,7 @@ export function AttackPathTimeline({ data, loading, graphData }: AttackPathTimel
     : null;
 
   return (
-    <div className="bg-[#111827] border border-[#1f2937] rounded-lg p-3">
+    <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md p-3">
       {/* Section header */}
       <SectionHeader className="mb-3" title={tHints("attackPath")}>
         {tNav("attackPath")}
@@ -252,7 +252,7 @@ export function AttackPathTimeline({ data, loading, graphData }: AttackPathTimel
                   <div
                     key={tid}
                     className={[
-                      "w-24 shrink-0 rounded p-1.5",
+                      "w-24 shrink-0 rounded-athena-sm p-1.5",
                       isHighest
                         ? "border-b-2 border-[#3b82f6] bg-[#3b82f6]/5"
                         : isEmpty

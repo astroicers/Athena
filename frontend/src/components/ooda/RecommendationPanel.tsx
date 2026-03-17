@@ -35,7 +35,7 @@ function OptionCard({ option, index }: { option: TacticalOption; index: number }
 
   return (
     <div
-      className={`bg-[#0A0E17] border rounded p-3 cursor-pointer transition-colors ${
+      className={`bg-[#0A0E17] border rounded-athena-sm p-3 cursor-pointer transition-colors ${
         index === 0 ? "border-[#3b82f680]" : "border-[#1f2937]"
       }`}
       onClick={() => setExpanded(!expanded)}
@@ -46,7 +46,7 @@ function OptionCard({ option, index }: { option: TacticalOption; index: number }
             {option.techniqueId}
           </span>
           {index === 0 && (
-            <span className="text-sm font-mono text-[#3b82f6] bg-[#3b82f610] px-1.5 py-0.5 rounded">
+            <span className="text-sm font-mono text-[#3b82f6] bg-[#3b82f610] px-1.5 py-0.5 rounded-athena-sm">
               {t("recommended")}
             </span>
           )}
@@ -98,7 +98,7 @@ export function RecommendationPanel({
 
   if (!recommendation) {
     return (
-      <div className="bg-[#111827] border border-[#1f2937] rounded-lg p-4">
+      <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md p-4">
         <SectionHeader level="card" className="mb-3" title={tHints("recommendation")}>
           {t("title")}
         </SectionHeader>
@@ -114,7 +114,7 @@ export function RecommendationPanel({
   const isDecided = recommendation.accepted !== null;
 
   return (
-    <div className="bg-[#111827] border border-[#1f2937] rounded-lg p-4">
+    <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md p-4">
       <SectionHeader
         level="card"
         className="mb-3"
@@ -136,7 +136,7 @@ export function RecommendationPanel({
       </SectionHeader>
 
       {/* Situation Assessment */}
-      <div className="bg-[#0A0E17] border border-[#1f293780] rounded p-3 mb-3">
+      <div className="bg-[#0A0E17] border border-[#1f293780] rounded-athena-sm p-3 mb-3">
         <span className="text-sm font-mono text-[#9ca3af] uppercase tracking-wider">
           {t("situationAssessment")}
         </span>

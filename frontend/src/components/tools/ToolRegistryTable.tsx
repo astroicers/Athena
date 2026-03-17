@@ -72,7 +72,7 @@ export function ToolRegistryTable({
   if (tools.length === 0) {
     return (
       <div
-        className="rounded-lg text-center"
+        className="rounded-athena-md text-center"
         style={{
           border: "1px solid rgba(31,41,55,0.25)",
           padding: 24,
@@ -140,7 +140,7 @@ export function ToolRegistryTable({
                   <button
                     onClick={() => handleDelete(tool.toolId)}
                     disabled={deletingId === tool.toolId}
-                    className="font-mono shrink-0 rounded transition-colors hover:opacity-80 disabled:opacity-40"
+                    className="font-mono shrink-0 rounded-athena-sm transition-colors hover:opacity-80 disabled:opacity-40"
                     style={{
                       background: "rgba(239,68,68,0.15)",
                       color: "#EF4444",

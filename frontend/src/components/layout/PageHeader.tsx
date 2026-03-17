@@ -35,7 +35,7 @@ export function PageHeader({
         </h2>
         {operationCode && (
           <span
-            className="font-mono text-[10px] rounded"
+            className="font-mono text-[10px] rounded-athena-sm"
             style={{
               color: "#3b82f6",
               backgroundColor: "#3b82f620",

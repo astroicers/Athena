@@ -51,7 +51,7 @@ export function ReconResultModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0A0E17]/80 backdrop-blur-sm">
-      <div className="bg-[#111827] border-2 border-[#1f2937] rounded-xl p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
+      <div className="bg-[#111827] border-2 border-[#1f2937] rounded-athena-lg p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
         <div className="mb-4 border-b border-[#1f2937] pb-3">
           <span className="text-xs font-mono text-[#9ca3af]">{t("scanComplete")}</span>
           <h2 className="text-lg font-mono font-bold text-[#e5e7eb] mt-1">{t("title")}</h2>

@@ -32,7 +32,7 @@ export function OnboardingGuide({ isOpen, onClose }: OnboardingGuideProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
-      <div className="bg-[#111827] border-2 border-[#1f2937] rounded-xl p-6 max-w-lg w-full mx-4">
+      <div className="bg-[#111827] border-2 border-[#1f2937] rounded-athena-lg p-6 max-w-lg w-full mx-4">
         {/* Header */}
         <div className="mb-4">
           <span className="text-xs font-mono text-[#9ca3af] uppercase tracking-wider">
@@ -55,7 +55,7 @@ export function OnboardingGuide({ isOpen, onClose }: OnboardingGuideProps) {
                   {t(step.titleKey)}
                 </span>
               </div>
-              <pre className="bg-[#0A0E17] border border-[#1f2937] rounded px-3 py-2 text-sm text-[#3b82f6] font-mono select-all whitespace-pre-wrap">
+              <pre className="bg-[#0A0E17] border border-[#1f2937] rounded-athena-sm px-3 py-2 text-sm text-[#3b82f6] font-mono select-all whitespace-pre-wrap">
                 {t(step.cmdKey)}
               </pre>
               <p className="text-xs font-mono text-[#9ca3af] mt-1">

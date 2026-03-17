@@ -66,7 +66,7 @@ export function TargetSummaryPanel({
   }, [operationId, targetId]);
 
   return (
-    <div className="bg-[#111827] border border-[#1f2937] rounded p-4 font-mono text-xs space-y-3">
+    <div className="bg-[#111827] border border-[#1f2937] rounded-athena-sm p-4 font-mono text-xs space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
         <span className="text-[#3b82f6] uppercase tracking-wider font-bold">
@@ -84,9 +84,9 @@ export function TargetSummaryPanel({
       {/* Loading skeleton */}
       {loading && (
         <div className="space-y-2 animate-pulse">
-          <div className="h-3 bg-[#1f2937]/40 rounded w-full" />
-          <div className="h-3 bg-[#1f2937]/40 rounded w-5/6" />
-          <div className="h-3 bg-[#1f2937]/40 rounded w-4/6" />
+          <div className="h-3 bg-[#1f2937]/40 rounded-athena-sm w-full" />
+          <div className="h-3 bg-[#1f2937]/40 rounded-athena-sm w-5/6" />
+          <div className="h-3 bg-[#1f2937]/40 rounded-athena-sm w-4/6" />
           <p className="text-[#9ca3af] pt-1">{t("loadingSummary")}</p>
         </div>
       )}
@@ -134,7 +134,7 @@ export function TargetSummaryPanel({
                 {data.recommendedTechniques.map((tech) => (
                   <div
                     key={tech.techniqueId}
-                    className="border border-[#1f293780] rounded p-2 space-y-0.5"
+                    className="border border-[#1f293780] rounded-athena-sm p-2 space-y-0.5"
                   >
                     <div className="flex items-center gap-2">
                       <span className="text-[#3b82f6]">{tech.techniqueId}</span>

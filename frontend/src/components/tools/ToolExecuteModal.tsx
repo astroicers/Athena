@@ -81,7 +81,7 @@ export function ToolExecuteModal({ tool, onClose }: ToolExecuteModalProps) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={handleBackdropClick}
     >
-      <div className="bg-[#111827] border border-[#1f2937] rounded-lg w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col">
+      <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#1f2937]">
           <div>
@@ -110,7 +110,7 @@ export function ToolExecuteModal({ tool, onClose }: ToolExecuteModalProps) {
               {t("arguments")}
             </label>
             <textarea
-              className="w-full h-32 bg-[#0A0E17] border border-[#1f2937] rounded-lg p-3 font-mono text-xs text-[#e5e7eb] resize-y focus:outline-none focus:border-[#3b82f6]"
+              className="w-full h-32 bg-[#0A0E17] border border-[#1f2937] rounded-athena-md p-3 font-mono text-xs text-[#e5e7eb] resize-y focus:outline-none focus:border-[#3b82f6]"
               value={argsText}
               onChange={(e) => setArgsText(e.target.value)}
               spellCheck={false}
@@ -134,14 +134,14 @@ export function ToolExecuteModal({ tool, onClose }: ToolExecuteModalProps) {
 
           {/* Error display */}
           {error && (
-            <div className="bg-[#0A0E17] border border-red-500/30 rounded-lg p-3">
+            <div className="bg-[#0A0E17] border border-red-500/30 rounded-athena-md p-3">
               <p className="font-mono text-xs text-red-400">{error}</p>
             </div>
           )}
 
           {/* Result display */}
           {result && (
-            <div className="bg-[#0A0E17] border border-[#1f2937] rounded-lg p-3 max-h-80 overflow-y-auto">
+            <div className="bg-[#0A0E17] border border-[#1f2937] rounded-athena-md p-3 max-h-80 overflow-y-auto">
               <pre className="font-mono text-xs text-[#22C55E] whitespace-pre-wrap break-words">
                 {result}
               </pre>

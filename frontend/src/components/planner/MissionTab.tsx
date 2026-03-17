@@ -183,7 +183,7 @@ export function MissionTab({
   }
 
   const inputStyles =
-    "w-full bg-[#0A0E17] border border-[#1f2937] rounded px-3 py-2 text-sm font-mono text-[#e5e7eb] placeholder-[#6b7280] focus:outline-none focus:border-[#3b82f6]";
+    "w-full bg-[#0A0E17] border border-[#1f2937] rounded-athena-sm px-3 py-2 text-sm font-mono text-[#e5e7eb] placeholder-[#6b7280] focus:outline-none focus:border-[#3b82f6]";
 
   const labelStyles =
     "block text-xs font-mono text-[#6b7280] uppercase tracking-wider mb-1";
@@ -207,7 +207,7 @@ export function MissionTab({
             onChange={(e) => handleStepStatusChange(r.id, e.target.value)}
             onBlur={() => setTimeout(() => setEditingStepId(null), 150)}
             autoFocus
-            className="bg-[#0A0E17] border border-[#3b82f6] rounded px-2 py-1 text-xs font-mono text-[#e5e7eb] focus:outline-none"
+            className="bg-[#0A0E17] border border-[#3b82f6] rounded-athena-sm px-2 py-1 text-xs font-mono text-[#e5e7eb] focus:outline-none"
           >
             {Object.values(MissionStepStatus).map((s) => (
               <option key={s} value={s}>{tStatus(s as any)}</option>
@@ -263,7 +263,7 @@ export function MissionTab({
             </Button>
           </Tooltip>
           {oodaPhase && (
-            <span className="text-xs font-mono font-bold text-[#3b82f6] bg-[#3b82f620] border border-[#3b82f640] rounded px-3 py-1 animate-pulse">
+            <span className="text-xs font-mono font-bold text-[#3b82f6] bg-[#3b82f620] border border-[#3b82f640] rounded-athena-sm px-3 py-1 animate-pulse">
               {tOoda(oodaPhase as "observe" | "orient" | "decide" | "act")}...
             </span>
           )}
@@ -335,7 +335,7 @@ export function MissionTab({
           </SectionHeader>
           <p className="text-xs font-mono text-[#6b7280] -mt-2 ml-1">{tHints("targetHosts")}</p>
           {targets.length === 0 ? (
-            <div className="bg-[#111827] border border-white/5 rounded-lg p-6 text-center">
+            <div className="bg-[#111827] border border-white/5 rounded-athena-md p-6 text-center">
               <span className="text-xs font-mono text-[#4b5563] whitespace-pre-line">{tEmpty("plannerGuide")}</span>
             </div>
           ) : (
@@ -366,7 +366,7 @@ export function MissionTab({
                   {onOsintDiscover && (
                     <button
                       onClick={() => onOsintDiscover(tgt.id)}
-                      className="flex-1 text-xs font-mono text-[#3b82f6] border border-[#3b82f640] rounded py-1 hover:bg-[#3b82f610] transition-colors uppercase tracking-wider"
+                      className="flex-1 text-xs font-mono text-[#3b82f6] border border-[#3b82f640] rounded-athena-sm py-1 hover:bg-[#3b82f610] transition-colors uppercase tracking-wider"
                     >
                       {t("osintDiscover")}
                     </button>
@@ -375,7 +375,7 @@ export function MissionTab({
                     <button
                       onClick={() => onInitialAccess(tgt.id)}
                       disabled={scanState?.targetId === tgt.id}
-                      className="flex-1 text-xs font-mono text-[#FBBF24] border border-[#FBBF2440] rounded py-1 hover:bg-[#FBBF2410] transition-colors uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="flex-1 text-xs font-mono text-[#FBBF24] border border-[#FBBF2440] rounded-athena-sm py-1 hover:bg-[#FBBF2410] transition-colors uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       {t("initialAccess")}
                     </button>
@@ -386,14 +386,14 @@ export function MissionTab({
                         prev === tgt.id ? null : tgt.id,
                       )
                     }
-                    className="flex-1 text-xs font-mono text-[#9ca3af] border border-[#374151] rounded py-1 hover:bg-[#1f2937] hover:text-[#e5e7eb] transition-colors uppercase tracking-wider"
+                    className="flex-1 text-xs font-mono text-[#9ca3af] border border-[#374151] rounded-athena-sm py-1 hover:bg-[#1f2937] hover:text-[#e5e7eb] transition-colors uppercase tracking-wider"
                   >
                     {t("aiSummary")}
                   </button>
                   {tgt.isCompromised && (
                     <button
                       onClick={() => onSetTerminalTarget(tgt)}
-                      className="flex-1 text-xs font-mono text-[#22C55E] border border-[#22C55E40] rounded py-1 hover:bg-[#22C55E10] transition-colors uppercase tracking-wider"
+                      className="flex-1 text-xs font-mono text-[#22C55E] border border-[#22C55E40] rounded-athena-sm py-1 hover:bg-[#22C55E10] transition-colors uppercase tracking-wider"
                     >
                       {t("terminal")}
                     </button>
@@ -469,7 +469,7 @@ export function MissionTab({
       {/* Create Step Modal */}
       {showCreateStep && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "#00000080" }}>
-          <div className="bg-[#111827] border border-[#1f2937] rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md p-6 max-w-md w-full mx-4">
             <div className="mb-4">
               <span className="text-xs font-mono text-[#6b7280]">{t("missionSteps")}</span>
               <h2 className="text-base font-mono font-bold text-[#e5e7eb] mt-1">{t("createStep")}</h2>

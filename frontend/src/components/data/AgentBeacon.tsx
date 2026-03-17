@@ -34,7 +34,7 @@ export function AgentBeacon({ paw, status, privilege, platform, lastBeacon }: Ag
   const beaconTime = lastBeacon?.split("T")[1]?.slice(0, 8) || "—";
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2 bg-[#111827] border border-[#1f2937] rounded">
+    <div className="flex items-center gap-3 px-3 py-2 bg-[#111827] border border-[#1f2937] rounded-athena-sm">
       <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${style.dot}`} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">

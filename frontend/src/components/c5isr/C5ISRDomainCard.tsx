@@ -38,7 +38,7 @@ export function C5ISRDomainCard({ domain, onClick }: C5ISRDomainCardProps) {
   return (
     <button
       onClick={onClick}
-      className="rounded-md flex flex-col gap-1.5 text-left transition-colors bg-[#ffffff0d] border border-[#ffffff10] hover:border-[#3b82f640]"
+      className="rounded-athena-md flex flex-col gap-1.5 text-left transition-colors bg-[#ffffff0d] border border-[#ffffff10] hover:border-[#3b82f640]"
       style={{
         padding: "10px 12px",
       }}

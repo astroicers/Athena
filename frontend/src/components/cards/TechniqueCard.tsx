@@ -51,7 +51,7 @@ export function TechniqueCard({ technique, relatedTools }: TechniqueCardProps) {
   const tRisk = useTranslations("Risk");
 
   return (
-    <div className="bg-[#111827] border border-[#1f2937] rounded-lg p-4">
+    <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md p-4">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-mono text-[#3b82f6]">
           {technique.mitreId}
@@ -87,7 +87,7 @@ export function TechniqueCard({ technique, relatedTools }: TechniqueCardProps) {
               <Link
                 key={tool.toolId}
                 href={`/tools#${tool.toolId}`}
-                className="flex items-center justify-between gap-2 px-2 py-1 rounded hover:bg-[#3b82f610] transition-colors group"
+                className="flex items-center justify-between gap-2 px-2 py-1 rounded-athena-sm hover:bg-[#3b82f610] transition-colors group"
               >
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span

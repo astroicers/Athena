@@ -47,7 +47,7 @@ function ShieldIcon({ isCompromised, isScanning }: { isCompromised: boolean; isS
       : "bg-[#22C55E10]";
 
   return (
-    <div className={`shrink-0 w-8 h-8 rounded flex items-center justify-center ${bgColor}`}>
+    <div className={`shrink-0 w-8 h-8 rounded-athena-sm flex items-center justify-center ${bgColor}`}>
       {isScanning ? (
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="animate-spin" style={{ animationDuration: "3s" }}>
           <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5" strokeDasharray="22 22" className="text-[#3b82f6]" />
@@ -94,7 +94,7 @@ export function HostNodeCard({
 
   return (
     <div
-      className={`bg-[#111827] border rounded-lg p-3 ${
+      className={`bg-[#111827] border rounded-athena-md p-3 ${
         isCompromised
           ? "border-[#EF4444]/60"
           : isActive
@@ -154,7 +154,7 @@ export function HostNodeCard({
                   {services.slice(0, 3).map((svc) => (
                     <span
                       key={svc.port}
-                      className="text-sm font-mono bg-[#0A0E17] border border-[#1f293780] rounded px-1.5 py-0.5 text-[#9ca3af]"
+                      className="text-sm font-mono bg-[#0A0E17] border border-[#1f293780] rounded-athena-sm px-1.5 py-0.5 text-[#9ca3af]"
                     >
                       {svc.port}/{svc.service}
                     </span>

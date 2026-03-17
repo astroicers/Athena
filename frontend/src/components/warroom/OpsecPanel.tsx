@@ -113,7 +113,7 @@ function MetricCard({
 }) {
   return (
     <div
-      className="flex-1 min-w-0 rounded-md p-4 flex flex-col gap-1 bg-[#111827] border border-[#1f2937]"
+      className="flex-1 min-w-0 rounded-athena-md p-4 flex flex-col gap-1 bg-[#111827] border border-[#1f2937]"
       style={{
         height: 120,
       }}
@@ -316,7 +316,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
 
       {/* Noise Trend Chart */}
       <div
-        className="rounded-md p-4 flex flex-col gap-2 bg-[#111827] border border-[#1f2937]"
+        className="rounded-athena-md p-4 flex flex-col gap-2 bg-[#111827] border border-[#1f2937]"
         style={{
           height: 220,
         }}
@@ -347,7 +347,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
 
       {/* OPSEC Events */}
       <div
-        className="rounded-md flex flex-col flex-1 min-h-[200px] bg-[#111827] border border-[#1f2937]"
+        className="rounded-athena-md flex flex-col flex-1 min-h-[200px] bg-[#111827] border border-[#1f2937]"
       >
         {/* Header */}
         <div className="flex items-center gap-2" style={{ height: 40, padding: "0 16px" }}>
@@ -404,7 +404,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
                 </span>
                 {/* View button */}
                 <button
-                  className="font-mono text-[10px] px-2 py-0.5 rounded shrink-0 hover:bg-[#1f2937] transition-colors border border-[#1f2937]"
+                  className="font-mono text-[10px] px-2 py-0.5 rounded-athena-sm shrink-0 hover:bg-[#1f2937] transition-colors border border-[#1f2937]"
                   style={{ color: "#f59e0b" }}
                 >
                   {t("view")}

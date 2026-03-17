@@ -33,7 +33,7 @@ export function RecommendCard({ recommendation }: RecommendCardProps) {
 
   if (!recommendation) {
     return (
-      <div className="bg-[#111827] border border-[#1f2937] rounded-lg p-4">
+      <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md p-4">
         <span className="text-xs font-mono text-[#9ca3af]">
           {t("noRecommendation")}
         </span>
@@ -42,7 +42,7 @@ export function RecommendCard({ recommendation }: RecommendCardProps) {
   }
 
   return (
-    <div className="bg-[#111827] border border-[#3b82f6]/30 rounded-lg p-4">
+    <div className="bg-[#111827] border border-[#3b82f6]/30 rounded-athena-md p-4">
       <div className="flex items-center justify-between mb-3">
         <span className="text-sm font-mono text-[#3b82f6] uppercase tracking-wider">
           {t("title")}
@@ -58,7 +58,7 @@ export function RecommendCard({ recommendation }: RecommendCardProps) {
         {recommendation.options.map((opt, i) => (
           <div
             key={opt.techniqueId}
-            className={`flex items-center gap-2 p-2 rounded text-xs font-mono ${
+            className={`flex items-center gap-2 p-2 rounded-athena-sm text-xs font-mono ${
               opt.techniqueId === recommendation.recommendedTechniqueId
                 ? "bg-[#3b82f610] border border-[#3b82f6]/30"
                 : "bg-[#1f2937]/50"

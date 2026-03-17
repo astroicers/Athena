@@ -126,7 +126,7 @@ export function ObjectivesPanel({ operationId }: { operationId: string }) {
   }
 
   const inputStyles =
-    "w-full bg-[#0A0E17] border border-[#1f2937] rounded px-3 py-2 text-sm font-mono text-[#e5e7eb] placeholder-[#6b7280] focus:outline-none focus:border-[#3b82f6]";
+    "w-full bg-[#0A0E17] border border-[#1f2937] rounded-athena-sm px-3 py-2 text-sm font-mono text-[#e5e7eb] placeholder-[#6b7280] focus:outline-none focus:border-[#3b82f6]";
 
   const labelStyles =
     "block text-sm font-mono text-[#9ca3af] uppercase tracking-wider mb-1";
@@ -134,8 +134,8 @@ export function ObjectivesPanel({ operationId }: { operationId: string }) {
   if (loading) {
     return (
       <div className="animate-pulse">
-        <div className="h-6 w-32 bg-[#111827] rounded mb-2" />
-        <div className="h-20 bg-[#111827] rounded" />
+        <div className="h-6 w-32 bg-[#111827] rounded-athena-sm mb-2" />
+        <div className="h-20 bg-[#111827] rounded-athena-sm" />
       </div>
     );
   }
@@ -164,7 +164,7 @@ export function ObjectivesPanel({ operationId }: { operationId: string }) {
 
       {/* Add Objective Form */}
       {showForm && (
-        <form onSubmit={handleAdd} className="mt-2 border border-[#1f2937] rounded bg-[#111827] p-3 space-y-3">
+        <form onSubmit={handleAdd} className="mt-2 border border-[#1f2937] rounded-athena-sm bg-[#111827] p-3 space-y-3">
           <div>
             <label className={labelStyles}>
               {t("objective")} <span className="text-[#EF4444]">*</span>
@@ -215,7 +215,7 @@ export function ObjectivesPanel({ operationId }: { operationId: string }) {
 
       {/* Objectives List */}
       {objectives.length === 0 ? (
-        <div className="bg-[#111827] border border-white/5 rounded-lg p-6 text-center mt-2">
+        <div className="bg-[#111827] border border-white/5 rounded-athena-md p-6 text-center mt-2">
           <span className="text-xs font-mono text-[#9ca3af]">
             {t("noObjectives")}
           </span>
@@ -225,7 +225,7 @@ export function ObjectivesPanel({ operationId }: { operationId: string }) {
           {objectives.map((obj) => (
             <div
               key={obj.id}
-              className="border border-[#1f2937] rounded bg-[#111827] p-3 flex items-center gap-3"
+              className="border border-[#1f2937] rounded-athena-sm bg-[#111827] p-3 flex items-center gap-3"
             >
               <div className="flex-1 min-w-0">
                 <p className={`text-sm font-mono ${obj.status === "achieved" ? "text-[#9ca3af] line-through" : "text-[#e5e7eb]"}`}>

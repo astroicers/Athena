@@ -64,14 +64,14 @@ export function DataTable<T extends Record<string, unknown>>({
 
   if (data.length === 0) {
     return (
-      <div className="border border-[#1f293740] rounded p-6 text-center">
+      <div className="border border-[#1f293740] rounded-athena-sm p-6 text-center">
         <span className="text-xs font-mono text-[#6b7280]">{emptyMessage}</span>
       </div>
     );
   }
 
   return (
-    <div className="bg-[#111827] border border-[#1f2937] rounded overflow-hidden">
+    <div className="bg-[#111827] border border-[#1f2937] rounded-athena-sm overflow-hidden">
       <table className="w-full text-xs font-mono">
         <thead>
           <tr className="border-b border-[#1f2937]" style={{ background: "#0f172a" }}>

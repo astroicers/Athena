@@ -91,7 +91,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
-      <div className="bg-[#111827] border-2 border-[#1f2937] rounded-xl p-6 max-w-md w-full mx-4">
+      <div className="bg-[#111827] border-2 border-[#1f2937] rounded-athena-lg p-6 max-w-md w-full mx-4">
         <div className="mb-4">
           <span className="text-xs font-mono text-[#9ca3af]">
             {t("newTool")}
@@ -112,7 +112,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
               value={toolId}
               onChange={(e) => setToolId(e.target.value)}
               placeholder="my-custom-scanner"
-              className="w-full bg-[#0A0E17] border border-[#1f2937] rounded px-3 py-2 text-sm font-mono text-[#e5e7eb] placeholder-[#6b7280] focus:outline-none focus:border-[#3b82f6]"
+              className="w-full bg-[#0A0E17] border border-[#1f2937] rounded-athena-sm px-3 py-2 text-sm font-mono text-[#e5e7eb] placeholder-[#6b7280] focus:outline-none focus:border-[#3b82f6]"
             />
           </div>
 
@@ -126,7 +126,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Custom Scanner"
-              className="w-full bg-[#0A0E17] border border-[#1f2937] rounded px-3 py-2 text-sm font-mono text-[#e5e7eb] placeholder-[#6b7280] focus:outline-none focus:border-[#3b82f6]"
+              className="w-full bg-[#0A0E17] border border-[#1f2937] rounded-athena-sm px-3 py-2 text-sm font-mono text-[#e5e7eb] placeholder-[#6b7280] focus:outline-none focus:border-[#3b82f6]"
             />
           </div>
 
@@ -138,7 +138,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
             <select
               value={kind}
               onChange={(e) => setKind(e.target.value as "tool" | "engine")}
-              className="w-full bg-[#0A0E17] border border-[#1f2937] rounded px-3 py-2 text-sm font-mono text-[#e5e7eb] focus:outline-none focus:border-[#3b82f6]"
+              className="w-full bg-[#0A0E17] border border-[#1f2937] rounded-athena-sm px-3 py-2 text-sm font-mono text-[#e5e7eb] focus:outline-none focus:border-[#3b82f6]"
             >
               <option value="tool">{tKind("tool")}</option>
               <option value="engine">{tKind("engine")}</option>
@@ -153,7 +153,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full bg-[#0A0E17] border border-[#1f2937] rounded px-3 py-2 text-sm font-mono text-[#e5e7eb] focus:outline-none focus:border-[#3b82f6]"
+              className="w-full bg-[#0A0E17] border border-[#1f2937] rounded-athena-sm px-3 py-2 text-sm font-mono text-[#e5e7eb] focus:outline-none focus:border-[#3b82f6]"
             >
               {CATEGORY_OPTIONS.map((cat) => (
                 <option key={cat} value={cat}>
@@ -171,7 +171,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
             <select
               value={riskLevel}
               onChange={(e) => setRiskLevel(e.target.value)}
-              className="w-full bg-[#0A0E17] border border-[#1f2937] rounded px-3 py-2 text-sm font-mono text-[#e5e7eb] focus:outline-none focus:border-[#3b82f6]"
+              className="w-full bg-[#0A0E17] border border-[#1f2937] rounded-athena-sm px-3 py-2 text-sm font-mono text-[#e5e7eb] focus:outline-none focus:border-[#3b82f6]"
             >
               {RISK_OPTIONS.map((level) => (
                 <option key={level} value={level}>
@@ -191,7 +191,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Brief description of the tool..."
               rows={3}
-              className="w-full bg-[#0A0E17] border border-[#1f2937] rounded px-3 py-2 text-sm font-mono text-[#e5e7eb] placeholder-[#6b7280] focus:outline-none focus:border-[#3b82f6] resize-none"
+              className="w-full bg-[#0A0E17] border border-[#1f2937] rounded-athena-sm px-3 py-2 text-sm font-mono text-[#e5e7eb] placeholder-[#6b7280] focus:outline-none focus:border-[#3b82f6] resize-none"
             />
           </div>
 

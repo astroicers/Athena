@@ -327,7 +327,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Left Column: Confidence Breakdown */}
         <div
-          className="rounded-lg flex flex-col gap-5 bg-[#111827] border border-[#FFFFFF08]"
+          className="rounded-athena-md flex flex-col gap-5 bg-[#111827] border border-[#FFFFFF08]"
           style={{ padding: "20px 24px" }}
         >
           {/* Header */}
@@ -411,12 +411,12 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
                 disabled={
                   accepting || recommendation?.accepted === true
                 }
-                className="font-mono text-xs uppercase tracking-wider px-4 py-1.5 rounded transition-colors disabled:opacity-50 bg-[#3b82f6] text-[#e5e7eb]"
+                className="font-mono text-xs uppercase tracking-wider px-4 py-1.5 rounded-athena-sm transition-colors disabled:opacity-50 bg-[#3b82f6] text-[#e5e7eb]"
               >
                 {accepting ? t("accepting") : t("accept")}
               </button>
               <button
-                className="font-mono text-xs uppercase tracking-wider px-4 py-1.5 rounded transition-colors hover:bg-[#1f2937] border border-[#374151] text-[#6b7280]"
+                className="font-mono text-xs uppercase tracking-wider px-4 py-1.5 rounded-athena-sm transition-colors hover:bg-[#1f2937] border border-[#374151] text-[#6b7280]"
               >
                 {t("override")}
               </button>
@@ -426,7 +426,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
 
         {/* Right Column: Noise x Risk Matrix */}
         <div
-          className="rounded-lg flex flex-col gap-5 bg-[#111827] border border-[#FFFFFF08]"
+          className="rounded-athena-md flex flex-col gap-5 bg-[#111827] border border-[#FFFFFF08]"
           style={{ padding: "20px 24px" }}
         >
           {/* Header */}
@@ -505,7 +505,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
                       <div
                         key={colIdx}
                         className={`
-                          flex items-center justify-center rounded-md py-3
+                          flex items-center justify-center rounded-athena-md py-3
                           ${actionBg(action)}
                           ${isCurrent ? "ring-2 ring-white/70 scale-105 shadow-lg z-10" : ""}
                           transition-all duration-300
@@ -539,7 +539,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
 
           {/* Current Position card */}
           <div
-            className="rounded-md p-4 flex flex-col gap-2 mt-auto"
+            className="rounded-athena-md p-4 flex flex-col gap-2 mt-auto"
             style={{
               border: `1px solid ${actionBorderColor(curAction)}`,
               backgroundColor: "rgba(0,0,0,0.2)",
@@ -605,7 +605,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
       {/* Recommendation History */}
       {history.length > 0 && (
         <div
-          className="rounded-lg flex flex-col gap-3 bg-[#111827] border border-[#FFFFFF08]"
+          className="rounded-athena-md flex flex-col gap-3 bg-[#111827] border border-[#FFFFFF08]"
           style={{ padding: "20px 24px" }}
         >
           <span
@@ -621,7 +621,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
               return (
                 <div
                   key={rec.id}
-                  className="flex items-center gap-3 px-3 py-2 rounded hover:bg-[#1f2937] transition-colors"
+                  className="flex items-center gap-3 px-3 py-2 rounded-athena-sm hover:bg-[#1f2937] transition-colors"
                 >
                   {/* Confidence dot */}
                   <span
@@ -656,7 +656,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
                   {/* Accepted badge */}
                   {rec.accepted === true && (
                     <span
-                      className="font-mono text-[10px] px-2 py-0.5 rounded shrink-0 bg-[#22C55E20] text-[#22C55E]"
+                      className="font-mono text-[10px] px-2 py-0.5 rounded-athena-sm shrink-0 bg-[#22C55E20] text-[#22C55E]"
                     >
                       ACCEPTED
                     </span>
@@ -671,7 +671,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
       {/* Empty history state */}
       {history.length === 0 && !loading && (
         <div
-          className="rounded-lg flex items-center justify-center bg-[#111827] border border-[#FFFFFF08]"
+          className="rounded-athena-md flex items-center justify-center bg-[#111827] border border-[#FFFFFF08]"
           style={{ padding: "20px 24px" }}
         >
           <span className="font-mono text-xs text-[#9ca3af]">

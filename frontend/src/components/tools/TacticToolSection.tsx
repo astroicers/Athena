@@ -46,7 +46,7 @@ export function TacticToolSection({
   return (
     <div
       id={`tactic-${tacticSlug}`}
-      className="border border-[#1f2937] rounded-lg overflow-hidden"
+      className="border border-[#1f2937] rounded-athena-md overflow-hidden"
     >
       {/* Header */}
       <button

@@ -47,7 +47,7 @@ export function KillChainIndicator({ stageCounts }: KillChainIndicatorProps) {
   );
 
   return (
-    <div className="bg-[#111827] border border-[#1f2937] rounded-lg p-4">
+    <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md p-4">
       <SectionHeader level="card" className="mb-1">
         {t("progress")}
       </SectionHeader>
@@ -76,7 +76,7 @@ export function KillChainIndicator({ stageCounts }: KillChainIndicatorProps) {
                 {data.total > 0 ? `${data.tested}/${data.total}` : ""}
               </span>
               <div
-                className="w-full bg-[#1f293733] rounded-sm overflow-hidden flex flex-col justify-end"
+                className="w-full bg-[#1f293733] rounded-athena-sm overflow-hidden flex flex-col justify-end"
                 style={{ height: `${BAR_H}px` }}
               >
                 {successH > 0 && (
@@ -107,19 +107,19 @@ export function KillChainIndicator({ stageCounts }: KillChainIndicatorProps) {
       </div>
       <div className="flex items-center gap-3 mt-2">
         <div className="flex items-center gap-1">
-          <div className="w-2 h-2 rounded-sm bg-[#3b82f6]/70" />
+          <div className="w-2 h-2 rounded-athena-sm bg-[#3b82f6]/70" />
           <span className="text-sm font-mono text-[#9ca3af]">
             {t("tested")}
           </span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-2 h-2 rounded-sm bg-[#EF444420]/50" />
+          <div className="w-2 h-2 rounded-athena-sm bg-[#EF444420]/50" />
           <span className="text-sm font-mono text-[#9ca3af]">
             {t("failed")}
           </span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-2 h-2 rounded-sm bg-[#1f2937]/40" />
+          <div className="w-2 h-2 rounded-athena-sm bg-[#1f2937]/40" />
           <span className="text-sm font-mono text-[#9ca3af]">
             {t("untested")}
           </span>

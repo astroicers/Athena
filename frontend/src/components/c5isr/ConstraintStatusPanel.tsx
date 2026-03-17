@@ -28,7 +28,7 @@ export function ConstraintStatusPanel({
   if (!constraints) {
     return (
       <div
-        className="rounded-md font-mono text-[9px] text-center bg-[#ffffff0d] border border-[#ffffff10] text-[#ffffff25]"
+        className="rounded-athena-md font-mono text-[9px] text-center bg-[#ffffff0d] border border-[#ffffff10] text-[#ffffff25]"
         style={{
           padding: "10px 12px",
         }}
@@ -64,7 +64,7 @@ export function ConstraintStatusPanel({
         {/* Forced Mode */}
         {constraints.forcedMode && (
           <span
-            className="font-mono text-[8px] font-bold uppercase px-2 py-0.5 rounded bg-[#EF444420] text-[#EF4444]"
+            className="font-mono text-[8px] font-bold uppercase px-2 py-0.5 rounded-athena-sm bg-[#EF444420] text-[#EF4444]"
           >
             MODE: {constraints.forcedMode}
           </span>
@@ -72,7 +72,7 @@ export function ConstraintStatusPanel({
 
         {/* Noise Budget */}
         <div
-          className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#ffffff14]"
+          className="flex items-center gap-1.5 px-2 py-0.5 rounded-athena-sm bg-[#ffffff14]"
         >
           <span
             className="font-mono text-[8px] text-[#ffffff20]"
@@ -101,7 +101,7 @@ export function ConstraintStatusPanel({
         {/* Orient Options (only if reduced) */}
         {constraints.orientMaxOptions < 3 && (
           <span
-            className="font-mono text-[8px] font-bold px-2 py-0.5 rounded bg-[#FBBF2420]"
+            className="font-mono text-[8px] font-bold px-2 py-0.5 rounded-athena-sm bg-[#FBBF2420]"
             style={{ color: "#FBBF24" }}
           >
             OPTIONS: {constraints.orientMaxOptions}/3
@@ -111,7 +111,7 @@ export function ConstraintStatusPanel({
         {/* Blocked Targets */}
         {constraints.blockedTargets.length > 0 && (
           <span
-            className="font-mono text-[8px] font-bold px-2 py-0.5 rounded bg-[#EF444420] text-[#EF4444]"
+            className="font-mono text-[8px] font-bold px-2 py-0.5 rounded-athena-sm bg-[#EF444420] text-[#EF4444]"
           >
             BLOCKED: {constraints.blockedTargets.length}
           </span>
@@ -120,7 +120,7 @@ export function ConstraintStatusPanel({
         {/* Active Overrides */}
         {constraints.activeOverrides.length > 0 && (
           <span
-            className="font-mono text-[8px] font-bold px-2 py-0.5 rounded bg-[#3b82f620] text-[#3b82f6]"
+            className="font-mono text-[8px] font-bold px-2 py-0.5 rounded-athena-sm bg-[#3b82f620] text-[#3b82f6]"
           >
             OVERRIDES: {constraints.activeOverrides.join(", ")}
           </span>
@@ -133,7 +133,7 @@ export function ConstraintStatusPanel({
           {constraints.hardLimits.map((limit, i) => (
             <div
               key={i}
-              className="rounded flex items-center justify-between"
+              className="rounded-athena-sm flex items-center justify-between"
               style={{
                 backgroundColor: "var(--color-error-bg)",
                 border: "1px solid color-mix(in srgb, var(--color-error) 20%, transparent)",
@@ -160,7 +160,7 @@ export function ConstraintStatusPanel({
                   <button
                     onClick={() => handleOverride(limit.domain)}
                     disabled={overriding === limit.domain}
-                    className="font-mono text-[7px] font-bold uppercase px-1.5 py-0.5 rounded transition-colors disabled:opacity-50 bg-[#ffffff1a] text-[#ffffff50]"
+                    className="font-mono text-[7px] font-bold uppercase px-1.5 py-0.5 rounded-athena-sm transition-colors disabled:opacity-50 bg-[#ffffff1a] text-[#ffffff50]"
                   >
                     {overriding === limit.domain ? "..." : "OVERRIDE"}
                   </button>
@@ -176,7 +176,7 @@ export function ConstraintStatusPanel({
           {constraints.warnings.map((warn, i) => (
             <div
               key={i}
-              className="rounded flex items-center gap-2"
+              className="rounded-athena-sm flex items-center gap-2"
               style={{
                 backgroundColor: "var(--color-warning-bg)",
                 border: "1px solid color-mix(in srgb, #FBBF24 15%, transparent)",
@@ -206,7 +206,7 @@ export function ConstraintStatusPanel({
       {/* All nominal */}
       {!hasIssues && (
         <div
-          className="rounded font-mono text-[9px] text-center bg-[#22C55E20] text-[#22C55E]"
+          className="rounded-athena-sm font-mono text-[9px] text-center bg-[#22C55E20] text-[#22C55E]"
           style={{
             border: "1px solid color-mix(in srgb, var(--color-success) 15%, transparent)",
             padding: "8px 12px",

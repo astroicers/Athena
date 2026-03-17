@@ -34,7 +34,7 @@ export function C5ISRDomainDetail({ domain, report, onClose }: C5ISRDomainDetail
 
   return (
     <div
-      className="rounded-lg flex flex-col gap-3 overflow-y-auto bg-[#111827] border border-[#1f2937]"
+      className="rounded-athena-md flex flex-col gap-3 overflow-y-auto bg-[#111827] border border-[#1f2937]"
       style={{
         padding: 16,
         maxHeight: 400,
@@ -118,7 +118,7 @@ export function C5ISRDomainDetail({ domain, report, onClose }: C5ISRDomainDetail
             {report.riskVectors.map((rv, i) => (
               <div key={i} className="flex items-center gap-2">
                 <span
-                  className="font-mono text-[7px] font-bold px-1 py-0.5 rounded"
+                  className="font-mono text-[7px] font-bold px-1 py-0.5 rounded-athena-sm"
                   style={{
                     backgroundColor: `color-mix(in srgb, ${severityColor(rv.severity)} 20%, transparent)`,
                     color: severityColor(rv.severity),

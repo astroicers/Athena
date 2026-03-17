@@ -103,14 +103,14 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
 
   if (oodaEntries.length === 0 && reconEntries.length === 0) {
     return (
-      <div className="bg-[#111827] border border-[#1f2937] rounded-lg p-6 text-center">
+      <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md p-6 text-center">
         <span className="text-xs font-mono text-[#9ca3af]">{t("noIterations")}</span>
       </div>
     );
   }
 
   return (
-    <div className="bg-[#111827] border border-[#1f2937] rounded-lg p-4">
+    <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md p-4">
       {/* Header + filter bar */}
       <SectionHeader
         level="card"
@@ -121,7 +121,7 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
             {/* Phase filter chips */}
             <button
               onClick={() => setPhaseFilter([])}
-              className={`text-sm font-mono px-1.5 py-0.5 rounded border transition-colors ${
+              className={`text-sm font-mono px-1.5 py-0.5 rounded-athena-sm border transition-colors ${
                 phaseFilter.length === 0
                   ? "border-[#3b82f6] text-[#3b82f6] bg-[#3b82f610]"
                   : "border-[#1f2937] text-[#9ca3af] hover:border-[#3b82f680]"
@@ -133,7 +133,7 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
               <button
                 key={p}
                 onClick={() => togglePhaseFilter(p)}
-                className={`text-sm font-mono px-1.5 py-0.5 rounded border transition-colors ${
+                className={`text-sm font-mono px-1.5 py-0.5 rounded-athena-sm border transition-colors ${
                   phaseFilter.includes(p)
                     ? "border-[#3b82f6] text-[#3b82f6] bg-[#3b82f610]"
                     : "border-[#1f2937] text-[#9ca3af] hover:border-[#3b82f680]"
@@ -164,7 +164,7 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
           return (
             <div
               key={iterNum}
-              className="border border-[#1f293799] rounded overflow-hidden"
+              className="border border-[#1f293799] rounded-athena-sm overflow-hidden"
             >
               {/* Iteration header */}
               <button
@@ -179,7 +179,7 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
                     {t("iteration", { number: iterNum })}
                   </span>
                   {iterNum === maxIteration && (
-                    <span className="text-sm font-mono text-[#22C55E] bg-[#22C55E10] px-1 rounded">
+                    <span className="text-sm font-mono text-[#22C55E] bg-[#22C55E10] px-1 rounded-athena-sm">
                       {t("latest")}
                     </span>
                   )}

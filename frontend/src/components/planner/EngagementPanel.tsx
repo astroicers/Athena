@@ -83,8 +83,8 @@ export function EngagementPanel({ operationId }: { operationId: string }) {
   if (loading) {
     return (
       <div className="animate-pulse">
-        <div className="h-6 w-32 bg-[#111827] rounded mb-2" />
-        <div className="h-20 bg-[#111827] rounded" />
+        <div className="h-6 w-32 bg-[#111827] rounded-athena-sm mb-2" />
+        <div className="h-20 bg-[#111827] rounded-athena-sm" />
       </div>
     );
   }
@@ -93,7 +93,7 @@ export function EngagementPanel({ operationId }: { operationId: string }) {
     return (
       <div>
         <SectionHeader level="card">{t("title")}</SectionHeader>
-        <div className="bg-[#111827] border border-white/5 rounded-lg p-6 text-center mt-2">
+        <div className="bg-[#111827] border border-white/5 rounded-athena-md p-6 text-center mt-2">
           <span className="text-xs font-mono text-[#9ca3af]">
             {t("noEngagement")}
           </span>
@@ -137,7 +137,7 @@ export function EngagementPanel({ operationId }: { operationId: string }) {
         {t("title")}
       </SectionHeader>
 
-      <div className="mt-2 border border-[#1f2937] rounded bg-[#111827] p-3 space-y-2">
+      <div className="mt-2 border border-[#1f2937] rounded-athena-sm bg-[#111827] p-3 space-y-2">
         {/* Client info */}
         <div className="flex gap-4 text-xs font-mono">
           <div>

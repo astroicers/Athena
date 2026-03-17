@@ -30,7 +30,7 @@ export function OODAIndicator({ currentPhase }: OODAIndicatorProps) {
   const tHints = useTranslations("Hints");
 
   return (
-    <div className="bg-[#111827] border border-[#1f2937] rounded-lg p-4">
+    <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md p-4">
       <SectionHeader level="card" className="mb-1">
         {t("cycle")}
       </SectionHeader>
@@ -44,7 +44,7 @@ export function OODAIndicator({ currentPhase }: OODAIndicatorProps) {
           return (
             <div key={phase.key} className="flex items-center gap-1 flex-1">
               <div
-                className={`flex flex-col items-center justify-center w-full py-2 rounded text-sm font-mono font-bold transition-all ${
+                className={`flex flex-col items-center justify-center w-full py-2 rounded-athena-sm text-sm font-mono font-bold transition-all ${
                   isActive
                     ? "bg-[#3b82f620] text-[#3b82f6] border border-[#3b82f6]"
                     : isPast

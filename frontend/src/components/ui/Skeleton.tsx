@@ -18,7 +18,7 @@ interface SkeletonProps {
 export function Skeleton({ className = "" }: SkeletonProps) {
   return (
     <div
-      className={`bg-[#1f2937]/30 rounded animate-pulse ${className}`}
+      className={`bg-[#1f2937]/30 rounded-athena-sm animate-pulse ${className}`}
     />
   );
 }
@@ -26,7 +26,7 @@ export function Skeleton({ className = "" }: SkeletonProps) {
 /** Skeleton matching MetricCard layout */
 export function MetricCardSkeleton() {
   return (
-    <div className="bg-[#111827] border border-[#1f2937] rounded-lg p-3 space-y-2">
+    <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md p-3 space-y-2">
       <Skeleton className="h-3 w-20" />
       <Skeleton className="h-6 w-14" />
     </div>
@@ -36,7 +36,7 @@ export function MetricCardSkeleton() {
 /** Skeleton matching DataTable layout */
 export function DataTableSkeleton({ rows = 4 }: { rows?: number }) {
   return (
-    <div className="bg-[#111827] border border-[#1f2937] rounded-lg p-3 space-y-2">
+    <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md p-3 space-y-2">
       <Skeleton className="h-3 w-full" />
       {Array.from({ length: rows }).map((_, i) => (
         <Skeleton key={i} className="h-5 w-full" />
@@ -49,7 +49,7 @@ export function DataTableSkeleton({ rows = 4 }: { rows?: number }) {
 export function TopologySkeleton({ height = 420 }: { height?: number }) {
   return (
     <div
-      className="bg-[#111827] border border-[#1f2937] rounded-lg flex items-center justify-center"
+      className="bg-[#111827] border border-[#1f2937] rounded-athena-md flex items-center justify-center"
       style={{ height }}
     >
       <div className="space-y-3 text-center">
@@ -67,14 +67,14 @@ export function MonitorPageSkeleton() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {Array.from({ length: 4 }).map((_, i) => <MetricCardSkeleton key={i} />)}
       </div>
-      <Skeleton className="h-8 w-full rounded-lg" />
+      <Skeleton className="h-8 w-full rounded-athena-md" />
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <div className="lg:col-span-3 space-y-3">
           <TopologySkeleton />
         </div>
         <div className="space-y-3">
-          <Skeleton className="h-32 rounded-lg" />
-          <Skeleton className="h-48 rounded-lg" />
+          <Skeleton className="h-32 rounded-athena-md" />
+          <Skeleton className="h-48 rounded-athena-md" />
         </div>
       </div>
     </div>
@@ -85,15 +85,15 @@ export function MonitorPageSkeleton() {
 export function PlannerPageSkeleton() {
   return (
     <div className="space-y-4">
-      <Skeleton className="h-8 w-full rounded-lg" />
+      <Skeleton className="h-8 w-full rounded-athena-md" />
       <DataTableSkeleton rows={5} />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
-          <Skeleton className="h-48 rounded-lg" />
+          <Skeleton className="h-48 rounded-athena-md" />
         </div>
         <div className="space-y-3">
-          <Skeleton className="h-24 rounded-lg" />
-          <Skeleton className="h-24 rounded-lg" />
+          <Skeleton className="h-24 rounded-athena-md" />
+          <Skeleton className="h-24 rounded-athena-md" />
         </div>
       </div>
     </div>

@@ -83,7 +83,7 @@ export function AttackTab({
             trailing={
               <button
                 onClick={() => onSetCompact(!compact)}
-                className="text-[10px] font-mono text-[#9ca3af] hover:text-[#3b82f6] transition-colors rounded bg-[#111827] border border-[#374151]"
+                className="text-[10px] font-mono text-[#9ca3af] hover:text-[#3b82f6] transition-colors rounded-athena-sm bg-[#111827] border border-[#374151]"
                 style={{ padding: "5px 10px" }}
               >
                 {compact ? t("expandView") : t("compactView")}
@@ -93,7 +93,7 @@ export function AttackTab({
             {t("mitreMatrix")}
           </SectionHeader>
           <p className="text-sm font-mono text-[#9ca3af] -mt-1 mb-2 ml-1">{tHints("mitreMatrix")}</p>
-          <div className="bg-[#111827] border border-[#1f2937] rounded-lg p-3 overflow-x-auto">
+          <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md p-3 overflow-x-auto">
             <div className="flex gap-2 min-w-max">
               {orderedTactics.map((tactic) => (
                 <div key={tactic} className={`${compact ? "w-20" : "w-28"} shrink-0`}>
@@ -128,7 +128,7 @@ export function AttackTab({
               relatedTools={getToolsForTechnique(allTools, selectedTech.mitreId)}
             />
           ) : (
-            <div className="border border-[#1f293740] rounded-lg p-4">
+            <div className="border border-[#1f293740] rounded-athena-md p-4">
               <span className="text-xs font-mono text-[#9ca3af]">
                 {tEmpty("navigatorNoSelection")}
               </span>

@@ -80,7 +80,7 @@ export function TerminalPanel({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0A0E17]/80 backdrop-blur-sm">
       <div
-        className="bg-[#0A0E17] border border-[#1f2937] rounded-lg shadow-2xl flex flex-col"
+        className="bg-[#0A0E17] border border-[#1f2937] rounded-athena-md shadow-2xl flex flex-col"
         style={{ width: "720px", height: "480px" }}
         onClick={() => inputRef.current?.focus()}
       >

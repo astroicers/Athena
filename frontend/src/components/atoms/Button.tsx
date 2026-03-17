@@ -44,7 +44,7 @@ export function Button({
 }: ButtonProps) {
   return (
     <button
-      className={`inline-flex items-center justify-center gap-1.5 font-mono font-semibold rounded transition-colors
+      className={`inline-flex items-center justify-center gap-1.5 font-mono font-semibold rounded-athena-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#3b82f6]
         ${VARIANT_STYLES[variant]} ${SIZE_STYLES[size]}
         ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
         ${className}`}

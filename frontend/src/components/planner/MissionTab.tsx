@@ -225,7 +225,7 @@ export function MissionTab({
   ];
 
   return (
-    <div className="flex-1 space-y-4 min-h-0 overflow-y-auto py-4 px-6">
+    <div className="flex-1 space-y-4 min-h-0 overflow-y-auto pt-6 pb-4 px-6">
       {/* Mission Steps + Execute */}
       <div className="flex items-center justify-between">
         <SectionHeader>

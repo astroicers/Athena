@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """Technique playbook knowledge base CRUD endpoints."""
 import json
@@ -18,7 +18,13 @@ import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.database import get_db
-from app.models.playbook import Playbook, PlaybookCreate, PlaybookUpdate
+from app.models.playbook import (
+    Playbook,
+    PlaybookBulkCreate,
+    PlaybookBulkResult,
+    PlaybookCreate,
+    PlaybookUpdate,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/playbooks", tags=["playbooks"])
@@ -90,6 +96,45 @@ async def create_playbook(
         "SELECT * FROM technique_playbooks WHERE id = $1", pb_id
     )
     return _row_to_playbook(row)
+
+
+@router.post("/bulk", response_model=PlaybookBulkResult, status_code=200)
+
+
+async def bulk_create_playbooks(
+    body: PlaybookBulkCreate,
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Bulk-import playbooks. Skips entries where (mitre_id, platform) already exists."""
+    created = 0
+    skipped = 0
+    errors: list[str] = []
+
+    for idx, pb in enumerate(body.playbooks):
+        try:
+            existing = await db.fetchrow(
+                "SELECT id FROM technique_playbooks WHERE mitre_id = $1 AND platform = $2",
+                pb.mitre_id, pb.platform,
+            )
+            if existing:
+                skipped += 1
+                continue
+            pb_id = str(uuid.uuid4())
+            now = datetime.now(timezone.utc)
+            await db.execute(
+                """INSERT INTO technique_playbooks
+                   (id, mitre_id, platform, command, output_parser, facts_traits, source, tags, created_at)
+                   VALUES ($1, $2, $3, $4, $5, $6, 'user', $7, $8)""",
+                pb_id, pb.mitre_id, pb.platform, pb.command,
+                pb.output_parser, json.dumps(pb.facts_traits),
+                json.dumps(pb.tags), now,
+            )
+            created += 1
+        except Exception as exc:
+            errors.append(f"[{idx}] {pb.mitre_id}/{pb.platform}: {exc}")
+
+    logger.info("Bulk import: created=%d skipped=%d errors=%d", created, skipped, len(errors))
+    return PlaybookBulkResult(created=created, skipped=skipped, errors=errors)
 
 
 @router.get("/{playbook_id}", response_model=Playbook)

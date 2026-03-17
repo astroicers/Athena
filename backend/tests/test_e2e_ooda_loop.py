@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """E2E integration tests: OODA Kill Chain (all-mock mode).
 
@@ -206,7 +206,7 @@ async def test_playbook_list_has_seeds(client: AsyncClient):
     resp = await client.get("/api/playbooks")
     assert resp.status_code == 200
     playbooks = resp.json()
-    assert len(playbooks) >= 13
+    assert len(playbooks) >= 100
 
 
 async def test_playbook_list_filter_by_mitre_id(client: AsyncClient):

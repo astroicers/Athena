@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """Attack graph engine — deterministic prerequisite-rule-based graph construction.
 
@@ -322,17 +322,6 @@ class AttackGraphEngine:
             + 0.25 * risk_cost
             + 0.15 * effort_norm
         )
-
-    # Keep backward-compatible alias for existing callers
-    @staticmethod
-    def compute_edge_weight(
-        target_node: AttackNode,
-        alpha: float = 0.5,
-        beta: float = 0.3,
-        gamma: float = 0.2,
-    ) -> float:
-        """DEPRECATED: Use compute_edge_cost(). Kept for backward compatibility."""
-        return AttackGraphEngine.compute_edge_cost(target_node)
 
     def compute_recommended_path(self, graph: AttackGraph) -> list[str]:
         """Dijkstra shortest path from entry nodes to highest-IG PENDING node."""

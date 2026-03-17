@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """Tests for AttackGraphEngine — SPEC-031 acceptance criteria.
 
@@ -205,7 +205,7 @@ async def test_dijkstra_recommended_path():
     edges = []
     pairs = [("entry", "a"), ("a", "b"), ("b", "c"), ("c", "dest")]
     for src, tgt in pairs:
-        w = engine.compute_edge_weight(graph.nodes[tgt])
+        w = engine.compute_edge_cost(graph.nodes[tgt])
         edges.append(AttackEdge(
             edge_id=f"e-{src}-{tgt}", source=src, target=tgt,
             weight=w, relationship=EdgeRelationship.ENABLES,

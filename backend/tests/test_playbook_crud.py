@@ -6,19 +6,19 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """Integration tests for Playbook CRUD API."""
 from httpx import AsyncClient
 
 
 async def test_list_playbooks_returns_seeded(client: AsyncClient):
-    """GET /api/playbooks returns at least the 13 seed playbooks."""
+    """GET /api/playbooks returns at least 100 seed playbooks."""
     resp = await client.get("/api/playbooks")
     assert resp.status_code == 200
     data = resp.json()
     assert isinstance(data, list)
-    assert len(data) >= 13
+    assert len(data) >= 100
 
 
 async def test_create_playbook(client: AsyncClient):

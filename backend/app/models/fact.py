@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 from datetime import datetime
 
@@ -19,7 +19,7 @@ class Fact(BaseModel):
     id: str
     trait: str                          # "host.user.name"
     value: str                          # "CORP\\Administrator"
-    category: FactCategory
+    category: FactCategory | str
     source_technique_id: str | None = None
     source_target_id: str | None = None
     operation_id: str

@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 from pydantic import BaseModel
 
@@ -16,8 +16,8 @@ from .enums import C5ISRDomain, C5ISRDomainStatus
 class C5ISRStatus(BaseModel):
     id: str
     operation_id: str
-    domain: C5ISRDomain
-    status: C5ISRDomainStatus
+    domain: C5ISRDomain | str
+    status: C5ISRDomainStatus | str
     health_pct: float                   # 0-100
     detail: str = ""
     # Structured metrics for frontend tactical display

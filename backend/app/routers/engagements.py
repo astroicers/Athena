@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """Engagement (Rules of Engagement) endpoints."""
 
@@ -31,6 +31,10 @@ def _row_to_engagement(row: asyncpg.Record) -> Engagement:
     d = dict(row)
     d["in_scope"] = json.loads(d.get("in_scope") or "[]")
     d["out_of_scope"] = json.loads(d.get("out_of_scope") or "[]")
+    # Normalise datetime fields to ISO strings so Pydantic (str-typed) accepts them
+    for field in ("created_at", "start_time", "end_time", "roe_signed_at"):
+        if field in d and isinstance(d[field], datetime):
+            d[field] = d[field].isoformat()
     return Engagement(**d)
 
 

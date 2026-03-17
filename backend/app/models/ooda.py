@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 from datetime import datetime
 from typing import Literal
@@ -20,7 +20,7 @@ class OODAIteration(BaseModel):
     id: str
     operation_id: str
     iteration_number: int
-    phase: OODAPhase
+    phase: OODAPhase | str
     observe_summary: str | None = None
     orient_summary: str | None = None
     decide_summary: str | None = None

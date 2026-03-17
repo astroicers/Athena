@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """C5ISR domain status endpoints."""
 
@@ -19,8 +19,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.database import get_db
 from app.models import C5ISRStatus
 from app.models.api_schemas import C5ISRUpdate
-from app.models.enums import C5ISRDomain
+from app.models.enums import C5ISRDomain, C5ISRDomainStatus
 from app.routers._deps import ensure_operation
+from app.utils.enum_safety import safe_enum
 from app.services.c5isr_mapper import DomainReport
 
 router = APIRouter()
@@ -31,8 +32,8 @@ def _row_to_c5isr(row: asyncpg.Record) -> C5ISRStatus:
     return C5ISRStatus(
         id=row["id"],
         operation_id=row["operation_id"],
-        domain=row["domain"],
-        status=row["status"],
+        domain=safe_enum(C5ISRDomain, row["domain"], log_name="C5ISRDomain"),
+        status=safe_enum(C5ISRDomainStatus, row["status"], log_name="C5ISRDomainStatus"),
         health_pct=row["health_pct"],
         detail=row["detail"],
         numerator=row["numerator"] if "numerator" in keys else None,

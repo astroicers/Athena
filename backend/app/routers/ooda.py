@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 """OODA loop endpoints."""
 
@@ -21,9 +21,11 @@ from fastapi import APIRouter, Depends
 
 from app.database import db_manager, get_db
 from app.models import OODAIteration
+from app.models.enums import OODAPhase
 from app.models.ooda import OodaTriggerQueued, OODADirectiveCreate, OodaDashboardResponse
 from app.models.api_schemas import OODATimelineEntry
 from app.routers._deps import ensure_operation
+from app.utils.enum_safety import safe_enum
 from app.services.ooda_controller import OODAController
 from app.ws_manager import ws_manager
 from app.services.ooda_scheduler import start_auto_loop, stop_auto_loop, get_loop_status
@@ -46,7 +48,7 @@ def _row_to_ooda(row: asyncpg.Record) -> OODAIteration:
         id=row["id"],
         operation_id=row["operation_id"],
         iteration_number=row["iteration_number"],
-        phase=row["phase"],
+        phase=safe_enum(OODAPhase, row["phase"], log_name="OODAPhase"),
         observe_summary=row["observe_summary"],
         orient_summary=row["orient_summary"],
         decide_summary=row["decide_summary"],
@@ -212,7 +214,7 @@ async def get_ooda_timeline(
                         iteration_number=row["iteration_number"],
                         phase=phase_name,
                         summary=summary,
-                        timestamp=row["started_at"] or "",
+                        timestamp=str(row["started_at"] or ""),
                     )
                 )
     # -- Also include completed recon scans as timeline entries --
@@ -251,7 +253,7 @@ async def get_ooda_timeline(
                 iteration_number=0,
                 phase="recon",
                 summary=" · ".join(parts),
-                timestamp=row["completed_at"] or "",
+                timestamp=str(row["completed_at"] or ""),
             )
         )
 

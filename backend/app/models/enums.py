@@ -6,7 +6,7 @@
 # Change Date: Four years from release date of each version
 # Change License: Apache License, Version 2.0
 #
-# For commercial licensing, contact: [TODO: contact email]
+# For commercial licensing, contact: azz093093.830330@gmail.com
 
 from enum import Enum
 
@@ -16,6 +16,7 @@ class OODAPhase(str, Enum):
     ORIENT = "orient"
     DECIDE = "decide"
     ACT = "act"
+    FAILED = "failed"
 
 
 class OperationStatus(str, Enum):
@@ -89,6 +90,8 @@ class FactCategory(str, Enum):
     VULNERABILITY = "vulnerability"
     FILE = "file"
     POC = "poc"
+    WEB = "web"
+    DEFENSE = "defense"
 
 
 class LogSeverity(str, Enum):

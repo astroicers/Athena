@@ -161,11 +161,10 @@ export function ToolRegistryTable({
             {/* CATEGORY */}
             <div style={{ width: 120, flexShrink: 0 }}>
               <span
-                className="font-mono inline-block"
+                className="font-mono inline-block rounded-athena-sm"
                 style={{
                   background: catColor.bg,
                   color: catColor.text,
-                  borderRadius: 4,
                   padding: "2px 6px",
                   fontSize: 10,
                 }}
@@ -205,11 +204,10 @@ export function ToolRegistryTable({
             {/* RISK */}
             <div style={{ width: 80, flexShrink: 0 }}>
               <span
-                className="font-mono inline-block"
+                className="font-mono inline-block rounded-athena-sm"
                 style={{
                   background: riskColor.bg,
                   color: riskColor.text,
-                  borderRadius: 4,
                   padding: "2px 6px",
                   fontSize: 10,
                 }}
@@ -226,11 +224,10 @@ export function ToolRegistryTable({
               {tool.mitreTechniques.map((tid) => (
                 <span
                   key={tid}
-                  className="font-mono inline-block"
+                  className="font-mono inline-block rounded-athena-sm"
                   style={{
                     background: "#374151",
                     color: "#9ca3af",
-                    borderRadius: 4,
                     padding: "2px 6px",
                     fontSize: 10,
                   }}

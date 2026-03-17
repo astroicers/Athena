@@ -328,8 +328,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Left Column: Confidence Breakdown */}
         <div
-          className="rounded-athena-md flex flex-col gap-5 bg-[#111827] border border-[#FFFFFF08]"
-          style={{ padding: "20px 24px" }}
+          className="rounded-athena-md flex flex-col gap-5 bg-[#111827] border border-[#FFFFFF08] px-6 py-5"
         >
           {/* Header */}
           <div className="flex flex-col gap-1">
@@ -388,8 +387,8 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
 
           {/* Recommended Action card */}
           <div
-            className="flex flex-col gap-2 mt-auto"
-            style={{ backgroundColor: "#3B82F610", border: "1px solid #3B82F630", borderRadius: 6, padding: "12px 16px" }}
+            className="flex flex-col gap-2 mt-auto rounded-athena-md px-4 py-3"
+            style={{ backgroundColor: "#3B82F610", border: "1px solid #3B82F630" }}
           >
             <span
               className="font-mono uppercase tracking-widest text-[#9ca3af]"
@@ -431,8 +430,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
 
         {/* Right Column: Noise x Risk Matrix */}
         <div
-          className="rounded-athena-md flex flex-col gap-5 bg-[#111827] border border-[#FFFFFF08]"
-          style={{ padding: "20px 24px" }}
+          className="rounded-athena-md flex flex-col gap-5 bg-[#111827] border border-[#FFFFFF08] px-6 py-5"
         >
           {/* Header */}
           <div className="flex flex-col gap-1">
@@ -610,8 +608,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
       {/* Recommendation History */}
       {history.length > 0 && (
         <div
-          className="rounded-athena-md flex flex-col gap-3 bg-[#111827] border border-[#FFFFFF08]"
-          style={{ padding: "20px 24px" }}
+          className="rounded-athena-md flex flex-col gap-3 bg-[#111827] border border-[#FFFFFF08] px-6 py-5"
         >
           <span
             className="font-mono uppercase tracking-widest text-[#9ca3af]"
@@ -676,8 +673,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
       {/* Empty history state */}
       {history.length === 0 && !loading && (
         <div
-          className="rounded-athena-md flex items-center justify-center bg-[#111827] border border-[#FFFFFF08]"
-          style={{ padding: "20px 24px" }}
+          className="rounded-athena-md flex items-center justify-center bg-[#111827] border border-[#FFFFFF08] px-6 py-5"
         >
           <span className="font-mono text-xs text-[#9ca3af]">
             {tRec("noHistory")}

@@ -351,7 +351,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
         className="rounded-athena-md flex flex-col flex-1 min-h-[200px] bg-[#111827] border border-[#1f2937]"
       >
         {/* Header */}
-        <div className="flex items-center gap-2" style={{ height: 40, padding: "0 16px" }}>
+        <div className="flex items-center gap-2 h-10 px-4">
           <span
             className="font-mono uppercase font-semibold"
             style={{ color: "#e5e7eb", fontSize: 11, letterSpacing: "1px" }}
@@ -359,8 +359,8 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
             OPSEC EVENTS
           </span>
           <span
-            className="font-mono text-[10px]"
-            style={{ color: "#ef4444", backgroundColor: "#ef444420", borderRadius: 3, padding: "2px 8px" }}
+            className="font-mono text-[10px] rounded-athena-sm px-2 py-0.5"
+            style={{ color: "#ef4444", backgroundColor: "#ef444420" }}
           >
             {t("eventCount", { count: events.length })}
           </span>
@@ -376,8 +376,8 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
             events.map((event) => (
               <div
                 key={event.id}
-                className="flex items-center gap-3"
-                style={{ height: 36, padding: "0 16px", borderBottom: "1px solid #1f2937" }}
+                className="flex items-center gap-3 px-4"
+                style={{ height: 36, borderBottom: "1px solid #1f2937" }}
               >
                 {/* Severity dot */}
                 <span

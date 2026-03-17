@@ -23,8 +23,8 @@ export function PageHeader({
 }: PageHeaderProps) {
   return (
     <header
-      className="px-4 flex items-center justify-between border-b border-[#1f2937]"
-      style={{ height: 48, backgroundColor: "#111827" }}
+      className="px-4 flex items-center justify-between border-b border-[#1f2937] h-12"
+      style={{ backgroundColor: "#111827" }}
     >
       <div className="flex items-center gap-3">
         <h2

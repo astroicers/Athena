@@ -34,11 +34,7 @@ export function C5ISRDomainDetail({ domain, report, onClose }: C5ISRDomainDetail
 
   return (
     <div
-      className="rounded-athena-md flex flex-col gap-3 overflow-y-auto bg-[#111827] border border-[#1f2937]"
-      style={{
-        padding: 16,
-        maxHeight: 400,
-      }}
+      className="rounded-athena-md flex flex-col gap-3 overflow-y-auto bg-[#111827] border border-[#1f2937] p-4 max-h-[400px]"
     >
       {/* Header */}
       <div className="flex items-center justify-between">

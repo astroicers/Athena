@@ -29,10 +29,7 @@ export function ConstraintStatusPanel({
   if (!constraints) {
     return (
       <div
-        className="rounded-athena-md font-mono text-[9px] text-center bg-[#ffffff0d] border border-[#ffffff10] text-[#ffffff25]"
-        style={{
-          padding: "10px 12px",
-        }}
+        className="rounded-athena-md font-mono text-[9px] text-center bg-[#ffffff0d] border border-[#ffffff10] text-[#ffffff25] px-3 py-2.5"
       >
         Waiting for constraint data...
       </div>
@@ -134,11 +131,10 @@ export function ConstraintStatusPanel({
           {constraints.hardLimits.map((limit, i) => (
             <div
               key={i}
-              className="rounded-athena-sm flex items-center justify-between"
+              className="rounded-athena-sm flex items-center justify-between px-2.5 py-1.5"
               style={{
                 backgroundColor: "var(--color-error-bg)",
                 border: "1px solid color-mix(in srgb, var(--color-error) 20%, transparent)",
-                padding: "6px 10px",
               }}
             >
               <div className="flex items-center gap-2">

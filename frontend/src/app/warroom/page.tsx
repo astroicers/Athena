@@ -253,10 +253,7 @@ function WarRoomContent() {
       <div className="flex flex-1 gap-4 py-4 px-6 min-h-0">
         {/* Left panel: OODA Loop */}
         <div
-          className="rounded-athena-md flex flex-col gap-3 overflow-y-auto shrink-0 bg-[#111827] p-4"
-          style={{
-            width: 200,
-          }}
+          className="rounded-athena-md flex flex-col gap-3 overflow-y-auto shrink-0 bg-[#111827] p-4 w-[200px]"
         >
           <span
             className="font-mono font-bold"
@@ -348,10 +345,7 @@ function WarRoomContent() {
 
         {/* Right panel: Action Log */}
         <div
-          className="flex flex-col gap-3 overflow-y-auto shrink-0 bg-[#111827] rounded-athena-md p-4"
-          style={{
-            width: 300,
-          }}
+          className="flex flex-col gap-3 overflow-y-auto shrink-0 bg-[#111827] rounded-athena-md p-4 w-[300px]"
         >
           <span className="font-mono font-bold" style={{ color: "#ffffff60", fontSize: 10 }}>
             ACTION LOG
@@ -368,11 +362,10 @@ function WarRoomContent() {
               {logs.map((entry) => (
                 <div
                   key={entry.id}
-                  className="flex flex-col gap-1 px-3 py-2.5"
+                  className="flex flex-col gap-1 px-3 py-2.5 rounded-athena-sm"
                   style={{
                     backgroundColor: "#0a0e17",
                     border: "1px solid #1f2937",
-                    borderRadius: 6,
                   }}
                 >
                   <div className="flex items-center justify-between">

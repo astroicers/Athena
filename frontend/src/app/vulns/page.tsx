@@ -170,13 +170,11 @@ function StatusPipeline({
 function SeverityBadge({ severity }: { severity: VulnSeverity }) {
   return (
     <span
-      className="font-mono text-[10px] font-bold uppercase"
+      className="font-mono text-[10px] font-bold uppercase rounded-athena-sm px-2 py-0.5"
       style={{
         backgroundColor: SEVERITY_COLORS[severity],
         color: severity === "medium" || severity === "low" ? "#000" : "#FFF",
         border: "none",
-        borderRadius: 3,
-        padding: "2px 8px",
         width: 70,
         textAlign: "center" as const,
       }}

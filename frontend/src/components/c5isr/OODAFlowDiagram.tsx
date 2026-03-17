@@ -44,11 +44,7 @@ export function OODAFlowDiagram({
   if (!definition) {
     return (
       <div
-        className="rounded-athena-md border font-mono text-xs flex items-center justify-center bg-[#111827] border-[#1f2937] text-[#9ca3af]"
-        style={{
-          padding: 24,
-          minHeight: 120,
-        }}
+        className="rounded-athena-md border font-mono text-xs flex items-center justify-center bg-[#111827] border-[#1f2937] text-[#9ca3af] p-6 min-h-[120px]"
       >
         Waiting for OODA data...
       </div>

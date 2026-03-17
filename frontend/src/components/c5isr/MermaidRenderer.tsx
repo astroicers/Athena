@@ -83,10 +83,7 @@ export function MermaidRenderer({
       <style>{MERMAID_CSS_OVERRIDES}</style>
       <div
         ref={containerRef}
-        className={`mermaid-container rounded-athena-md border overflow-hidden bg-[#111827] border-[#1f2937] ${className}`}
-        style={{
-          padding: 12,
-        }}
+        className={`mermaid-container rounded-athena-md border overflow-hidden bg-[#111827] border-[#1f2937] p-3 ${className}`}
         dangerouslySetInnerHTML={{ __html: svg }}
       />
     </>

@@ -1,0 +1,17 @@
+version: "1.0"
+# Source: kill_chain_enforcer.py _KILL_CHAIN_STAGES (lines 25-41)
+stages:
+  - {stage: 0,  tactic_id: TA0043, name: "Reconnaissance",       required: true}
+  - {stage: 1,  tactic_id: TA0042, name: "Resource Development",  required: false}
+  - {stage: 2,  tactic_id: TA0001, name: "Initial Access",        required: true}
+  - {stage: 3,  tactic_id: TA0002, name: "Execution",             required: true}
+  - {stage: 4,  tactic_id: TA0003, name: "Persistence",           required: false}
+  - {stage: 5,  tactic_id: TA0004, name: "Privilege Escalation",  required: true}
+  - {stage: 6,  tactic_id: TA0005, name: "Defense Evasion",       required: false}
+  - {stage: 7,  tactic_id: TA0006, name: "Credential Access",     required: true}
+  - {stage: 8,  tactic_id: TA0007, name: "Discovery",             required: true}
+  - {stage: 9,  tactic_id: TA0008, name: "Lateral Movement",      required: true}
+  - {stage: 10, tactic_id: TA0009, name: "Collection",            required: true}
+  - {stage: 11, tactic_id: TA0011, name: "Command and Control",   required: false}
+  - {stage: 12, tactic_id: TA0010, name: "Exfiltration",          required: true}
+  - {stage: 13, tactic_id: TA0040, name: "Impact",                required: true}

@@ -1,0 +1,56 @@
+version: "1.0"
+# Source: decision_engine.py _NOISE_RISK_MATRIX (lines 40-73)
+# Key format: "{noise_level}_{risk_level}" -> true (auto) / false (confirm) / null (manual)
+matrix:
+  SR:
+    low_low: true
+    low_medium: false
+    low_high: null
+    low_critical: null
+    medium_low: false
+    medium_medium: null
+    medium_high: null
+    medium_critical: null
+    high_low: null
+    high_medium: null
+    high_high: null
+    high_critical: null
+  CO:
+    low_low: true
+    low_medium: true
+    low_high: false
+    low_critical: null
+    medium_low: true
+    medium_medium: false
+    medium_high: null
+    medium_critical: null
+    high_low: false
+    high_medium: null
+    high_high: null
+    high_critical: null
+  SP:
+    low_low: true
+    low_medium: true
+    low_high: false
+    low_critical: null
+    medium_low: true
+    medium_medium: true
+    medium_high: false
+    medium_critical: null
+    high_low: true
+    high_medium: false
+    high_high: false
+    high_critical: null
+  FA:
+    low_low: true
+    low_medium: true
+    low_high: true
+    low_critical: false
+    medium_low: true
+    medium_medium: true
+    medium_high: true
+    medium_critical: false
+    high_low: true
+    high_medium: true
+    high_high: false
+    high_critical: null

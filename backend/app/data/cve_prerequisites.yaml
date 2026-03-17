@@ -1,0 +1,14 @@
+version: "1.0"
+# Source: exploit_validator.py _CVE_PREREQUISITES (lines 264-270)
+# Static mapping: CVE ID -> list of prerequisite fact traits that must exist
+prerequisites:
+  CVE-2021-41773:
+    - web.http.module.mod_cgi
+  CVE-2021-42013:
+    - web.http.module.mod_cgi
+  CVE-2017-0144:
+    - service.smb.signing_disabled
+  CVE-2014-6271:
+    - web.http.cgi_enabled
+  CVE-2019-0708:
+    - service.rdp.nla_disabled

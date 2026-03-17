@@ -1,0 +1,24 @@
+version: "1.0"
+# Source: exploit_validator.py _KNOWN_WEAPONIZED_CVES (lines 107-116)
+# Key: (service, version_contains) -> {cve_id, confidence, evidence}
+cves:
+  - service: vsftpd
+    version_contains: "2.3.4"
+    cve_id: CVE-2011-2523
+    confidence: 0.98
+    evidence: "vsftpd 2.3.4 backdoor, MSF: exploit/unix/ftp/vsftpd_234_backdoor"
+  - service: unrealircd
+    version_contains: "3.2.8"
+    cve_id: CVE-2010-2075
+    confidence: 0.98
+    evidence: "UnrealIRCd 3.2.8.1 backdoor, MSF: exploit/unix/irc/unreal_ircd_3281_backdoor"
+  - service: samba
+    version_contains: "3.0"
+    cve_id: CVE-2007-2447
+    confidence: 0.97
+    evidence: "Samba 3.0.x usermap_script RCE, MSF: exploit/multi/samba/usermap_script"
+  - service: distccd
+    version_contains: ""
+    cve_id: CVE-2004-2687
+    confidence: 0.95
+    evidence: "distccd RCE, MSF: exploit/unix/misc/distcc_exec"

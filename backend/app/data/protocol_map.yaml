@@ -1,0 +1,28 @@
+version: "1.0"
+# Source: initial_access_engine.py _PROTOCOL_MAP (lines 89-94)
+# Protocol detection table: port, service_keywords, protocol, mcp_tool, fact_trait, creds_key
+protocols:
+  - port: 22
+    service_keywords: [ssh, unknown]
+    protocol: ssh
+    mcp_tool: null
+    fact_trait: credential.ssh
+    creds_key: ssh
+  - port: 3389
+    service_keywords: [ms-wbt-server, unknown]
+    protocol: rdp
+    mcp_tool: rdp_credential_check
+    fact_trait: credential.rdp
+    creds_key: windows
+  - port: 5985
+    service_keywords: [wsman, http, unknown]
+    protocol: winrm
+    mcp_tool: winrm_credential_check
+    fact_trait: credential.winrm
+    creds_key: windows
+  - port: 5986
+    service_keywords: [wsman, https, unknown]
+    protocol: winrm
+    mcp_tool: winrm_credential_check
+    fact_trait: credential.winrm
+    creds_key: windows

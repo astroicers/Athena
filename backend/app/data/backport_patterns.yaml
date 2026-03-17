@@ -1,0 +1,40 @@
+version: "1.0"
+# Source: exploit_validator.py _BACKPORT_PATTERNS (lines 70-100)
+# Key: (service_lower, upstream_version_prefix) -> list of distro-patched version patterns (regex)
+patterns:
+  # Debian/Ubuntu backport OpenSSH — upstream 7.4 but distro patches applied
+  - service: ssh
+    version_prefix: "7.4"
+    distro_patterns:
+      - ".*Debian.*"
+      - ".*Ubuntu.*"
+  - service: ssh
+    version_prefix: "7.9"
+    distro_patterns:
+      - ".*Debian.*"
+      - ".*Ubuntu.*"
+  - service: ssh
+    version_prefix: "8.4"
+    distro_patterns:
+      - ".*Debian.*"
+      - ".*Ubuntu.*"
+  # Apache httpd — Debian/RHEL backport patches
+  - service: http
+    version_prefix: "2.4.6"
+    distro_patterns:
+      - ".*el[67].*"
+      - ".*Debian.*"
+  - service: http
+    version_prefix: "2.4.29"
+    distro_patterns:
+      - ".*Ubuntu.*"
+  # vsftpd — common in RHEL/CentOS with backports
+  - service: ftp
+    version_prefix: "3.0.2"
+    distro_patterns:
+      - ".*el[67].*"
+  # nginx — Debian/Ubuntu LTS backports
+  - service: http
+    version_prefix: "1.14.0"
+    distro_patterns:
+      - ".*Ubuntu.*"

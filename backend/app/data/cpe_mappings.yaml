@@ -1,0 +1,34 @@
+version: "1.0"
+# Source: vuln_lookup.py _CPE_MAP (lines 30-61)
+# Maps service_name_lower -> [CPE vendor, CPE product]
+mappings:
+  # SSH
+  ssh:          [openbsd, openssh]
+  openssh:      [openbsd, openssh]
+  # HTTP servers
+  apache:       [apache, http_server]
+  http:         [apache, http_server]
+  nginx:        [nginx, nginx]
+  # FTP
+  ftp:          [vsftpd_project, vsftpd]
+  vsftpd:       [vsftpd_project, vsftpd]
+  # Database
+  mysql:        [mysql, mysql]
+  postgresql:   [postgresql, postgresql]
+  postgres:     [postgresql, postgresql]
+  mssql:        [microsoft, sql_server]
+  mongodb:      [mongodb, mongodb]
+  redis:        [redis, redis]
+  # SMB/NETBIOS
+  samba:        [samba, samba]
+  smb:          [samba, samba]
+  # Misc
+  tomcat:       [apache, tomcat]
+  iis:          [microsoft, internet_information_services]
+  proftpd:      [proftpd_project, proftpd]
+  exim:         [exim, exim]
+  postfix:      [postfix, postfix]
+  bind:         [isc, bind]
+  named:        [isc, bind]
+  sendmail:     [sendmail, sendmail]
+  dovecot:      [dovecot, dovecot]

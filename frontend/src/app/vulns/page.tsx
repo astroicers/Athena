@@ -364,11 +364,10 @@ function DetailPanel({
 
   return (
     <div
-      className="rounded-athena-md flex flex-col gap-5 shrink-0 overflow-y-auto bg-[#111827]"
+      className="rounded-athena-md flex flex-col gap-5 shrink-0 overflow-y-auto bg-[#111827] p-5"
       style={{
         width: 380,
         border: "1px solid var(--color-white-8)",
-        padding: 20,
       }}
     >
       {/* Header with close button */}
@@ -686,7 +685,7 @@ function VulnsContent() {
     <div className="flex flex-col h-full overflow-y-auto bg-[#0A0E17]">
       <div className="flex flex-col gap-4 min-h-full max-w-[1440px] w-full mx-auto">
         {/* Stats Row */}
-        <div className="flex gap-6 py-4 px-6 shrink-0">
+        <div className="flex gap-4 py-4 px-6 shrink-0">
           {/* Severity Heat Strip */}
           <div className="flex-1 min-w-0">
             <SeverityHeatStrip

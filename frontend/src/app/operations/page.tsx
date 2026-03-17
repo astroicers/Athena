@@ -123,7 +123,7 @@ function OperationsContent() {
         }
       />
 
-      <div className="flex-1 overflow-auto py-5 px-6">
+      <div className="flex-1 overflow-auto px-6 py-4">
         {operations.length === 0 ? (
           /* -- Empty state ------------------------------------------ */
           <div className="flex items-center justify-center h-full">

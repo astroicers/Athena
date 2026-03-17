@@ -38,10 +38,7 @@ export function C5ISRDomainCard({ domain, onClick }: C5ISRDomainCardProps) {
   return (
     <button
       onClick={onClick}
-      className="rounded-athena-md flex flex-col gap-1.5 text-left transition-colors bg-[#ffffff0d] border border-[#ffffff10] hover:border-[#3b82f640]"
-      style={{
-        padding: "10px 12px",
-      }}
+      className="rounded-athena-md flex flex-col gap-1.5 text-left transition-colors bg-[#ffffff0d] border border-[#ffffff10] hover:border-[#3b82f640] px-3 py-2.5"
     >
       <div className="flex items-center justify-between w-full">
         <span

@@ -73,10 +73,9 @@ export function ToolRegistryTable({
   if (tools.length === 0) {
     return (
       <div
-        className="rounded-athena-md text-center"
+        className="rounded-athena-md text-center p-6"
         style={{
           border: "1px solid rgba(31,41,55,0.25)",
-          padding: 24,
         }}
       >
         <span className="font-mono text-xs" style={{ color: "#4b5563" }}>

@@ -117,11 +117,10 @@ function PhaseCard({
 
   return (
     <div
-      className="rounded-athena-md flex flex-col gap-2"
+      className="rounded-athena-md flex flex-col gap-2 px-3.5 py-3"
       style={{
         backgroundColor: bg,
         border: active ? `1px solid ${color}40` : "1px solid #1f2937",
-        padding: "12px 14px",
       }}
     >
       <div className="flex items-center gap-2">
@@ -251,13 +250,12 @@ function WarRoomContent() {
       <ConstraintBanner constraints={bannerData} onOverride={override} />
 
       {/* Three-column layout */}
-      <div className="flex flex-1 gap-4 py-4 px-5 min-h-0">
+      <div className="flex flex-1 gap-4 py-4 px-6 min-h-0">
         {/* Left panel: OODA Loop */}
         <div
-          className="rounded-athena-md flex flex-col gap-2.5 overflow-y-auto shrink-0 bg-[#111827]"
+          className="rounded-athena-md flex flex-col gap-3 overflow-y-auto shrink-0 bg-[#111827] p-4"
           style={{
             width: 200,
-            padding: 14,
           }}
         >
           <span
@@ -285,11 +283,10 @@ function WarRoomContent() {
           {/* Iteration counter */}
           {dashboard && (
             <div
-              className="rounded-athena-md mt-2"
+              className="rounded-athena-md mt-2 px-3 py-2.5"
               style={{
                 backgroundColor: "#ffffff05",
                 border: "1px solid #ffffff08",
-                padding: "10px 14px",
               }}
             >
               <div className="flex items-center justify-between">
@@ -311,7 +308,7 @@ function WarRoomContent() {
         </div>
 
         {/* Center panel: C5ISR + Mermaid Flow + Constraints */}
-        <div className="flex-1 flex flex-col gap-3.5 overflow-y-auto min-w-0">
+        <div className="flex-1 flex flex-col gap-4 overflow-y-auto min-w-0">
           {/* Mermaid Decision Flow Diagram */}
           <OODAFlowDiagram
             dashboard={dashboard}
@@ -351,10 +348,9 @@ function WarRoomContent() {
 
         {/* Right panel: Action Log */}
         <div
-          className="flex flex-col gap-2.5 overflow-y-auto shrink-0 bg-[#111827] rounded-athena-md"
+          className="flex flex-col gap-3 overflow-y-auto shrink-0 bg-[#111827] rounded-athena-md p-4"
           style={{
             width: 300,
-            padding: 14,
           }}
         >
           <span className="font-mono font-bold" style={{ color: "#ffffff60", fontSize: 10 }}>
@@ -372,12 +368,11 @@ function WarRoomContent() {
               {logs.map((entry) => (
                 <div
                   key={entry.id}
-                  className="flex flex-col gap-1"
+                  className="flex flex-col gap-1 px-3 py-2.5"
                   style={{
                     backgroundColor: "#0a0e17",
                     border: "1px solid #1f2937",
                     borderRadius: 6,
-                    padding: "10px 12px",
                   }}
                 >
                   <div className="flex items-center justify-between">

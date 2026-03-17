@@ -137,7 +137,7 @@ export function EngagementPanel({ operationId }: { operationId: string }) {
         {t("title")}
       </SectionHeader>
 
-      <div className="mt-2 border border-[#1f2937] rounded-athena-sm bg-[#111827] p-3 space-y-2">
+      <div className="mt-2 border border-[#1f2937] rounded-athena-sm bg-[#111827] p-4 space-y-3">
         {/* Client info */}
         <div className="flex gap-4 text-xs font-mono">
           <div>

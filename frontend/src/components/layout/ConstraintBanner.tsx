@@ -82,7 +82,7 @@ export function ConstraintBanner({
               key={domain}
               onClick={() => handleOverride(domain)}
               disabled={overriding === domain}
-              className="px-1.5 py-0.5 bg-white/20 hover:bg-white/5 rounded-athena-sm text-[10px] uppercase font-bold tracking-wider transition-colors disabled:opacity-50"
+              className="px-1.5 py-0.5 bg-white/20 hover:bg-white/5 rounded-athena-sm text-[10px] uppercase font-bold tracking-wider transition-colors disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-white/20"
             >
               {overriding === domain ? "..." : `Override ${domain}`}
             </button>
@@ -91,7 +91,7 @@ export function ConstraintBanner({
       )}
       <button
         onClick={() => setDismissed(true)}
-        className="ml-2 hover:text-white/70 transition-colors"
+        className="ml-2 hover:text-white/70 transition-colors focus:outline-none focus:ring-1 focus:ring-white/20"
         aria-label="Dismiss constraint banner"
       >
         x

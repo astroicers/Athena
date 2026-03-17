@@ -23,7 +23,7 @@ export function Toggle({ checked, onChange, label }: ToggleProps) {
         role="switch"
         aria-checked={checked}
         onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#3b82f6]
           ${checked ? "bg-[#3b82f6]" : "bg-[#1f2937]"}`}
       >
         <span

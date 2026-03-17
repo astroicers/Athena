@@ -94,7 +94,7 @@ export function HostNodeCard({
 
   return (
     <div
-      className={`bg-[#111827] border rounded-athena-md p-3 ${
+      className={`bg-[#111827] border rounded-athena-md p-4 ${
         isCompromised
           ? "border-[#EF4444]/60"
           : isActive

@@ -299,7 +299,7 @@ export function MissionTab({
           </Tooltip>
         </div>
       </div>
-      <p className="text-xs font-mono text-[#6b7280] -mt-3 ml-1">{tHints("missionSteps")}</p>
+      <p className="text-xs font-mono text-[#9ca3af] -mt-3 ml-1">{tHints("missionSteps")}</p>
       <DataTable columns={STEP_COLUMNS} data={steps as StepRow[]} keyField="id" emptyMessage={t("noSteps")} />
 
       {/* Objectives */}
@@ -309,7 +309,7 @@ export function MissionTab({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
           <OODATimeline entries={timeline} />
-          <p className="text-xs font-mono text-[#6b7280] mt-1 ml-1">{tHints("oodaTimeline")}</p>
+          <p className="text-xs font-mono text-[#9ca3af] mt-1 ml-1">{tHints("oodaTimeline")}</p>
         </div>
         <div className="space-y-3">
           <SectionHeader

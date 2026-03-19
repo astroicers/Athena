@@ -11,11 +11,11 @@
 "use client";
 
 const VARIANT_COLORS = {
-  default: { text: "text-[#3b82f6]", bg: "bg-[#3b82f610]" },
-  success: { text: "text-[#22C55E]", bg: "bg-[#22C55E10]" },
-  warning: { text: "text-[#FBBF24]", bg: "bg-[#FBBF2410]" },
-  error: { text: "text-[#EF4444]", bg: "bg-[#EF444410]" },
-  muted: { text: "text-[#9ca3af]", bg: "bg-[#9ca3af]/10" },
+  default: { text: "text-athena-accent", bg: "bg-[#3b82f610]" },
+  success: { text: "text-athena-success", bg: "bg-[#22C55E10]" },
+  warning: { text: "text-athena-warning", bg: "bg-athena-warning-bg" },
+  error: { text: "text-athena-error", bg: "bg-[#EF444410]" },
+  muted: { text: "text-athena-text-tertiary", bg: "bg-[#9ca3af]/10" },
 } as const;
 
 const SIZE_MAP = {
@@ -38,7 +38,7 @@ export function HexIcon({
   const { text, bg } = VARIANT_COLORS[variant];
   return (
     <div
-      className={`inline-flex items-center justify-center font-mono font-bold rounded-athena-md
+      className={`inline-flex items-center justify-center font-mono font-bold rounded-athena
         ${SIZE_MAP[size]} ${text} ${bg}`}
     >
       <span>{icon}</span>

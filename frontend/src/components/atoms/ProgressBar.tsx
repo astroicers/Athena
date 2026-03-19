@@ -12,9 +12,9 @@
 
 const VARIANT_COLORS = {
   default: "bg-[#3b82f6]",
-  success: "bg-[#22C55E20]",
-  warning: "bg-[#FBBF2420]",
-  error: "bg-[#EF444420]",
+  success: "bg-athena-success-bg",
+  warning: "bg-athena-warning-bg",
+  error: "bg-athena-error-bg",
 } as const;
 
 interface ProgressBarProps {
@@ -30,7 +30,7 @@ export function ProgressBar({
 }: ProgressBarProps) {
   const pct = Math.min(100, Math.max(0, (value / max) * 100));
   return (
-    <div className="w-full h-1.5 bg-[#1f2937] rounded-full overflow-hidden">
+    <div className="w-full h-1.5 bg-athena-elevated rounded-full overflow-hidden">
       <div
         className={`h-full rounded-full transition-all ${VARIANT_COLORS[variant]}`}
         style={{ width: `${pct}%` }}

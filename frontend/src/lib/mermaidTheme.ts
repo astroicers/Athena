@@ -94,7 +94,7 @@ export const MERMAID_CSS_OVERRIDES = `
     stroke: #22C55E !important;
   }
   .mermaid-container .node.degraded rect {
-    stroke: #FBBF24 !important;
+    stroke: #F59E0B !important;
   }
   .mermaid-container .node.critical rect {
     stroke: #EF4444 !important;

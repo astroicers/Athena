@@ -79,7 +79,7 @@ function SeverityHeatStrip({
           return (
             <div
               key={sev}
-              className="flex items-center justify-center rounded-athena-sm transition-all duration-300"
+              className="flex items-center justify-center rounded-athena transition-all duration-300"
               style={{
                 width: `${widthPct}%`,
                 minWidth: count > 0 ? 24 : 0,
@@ -103,7 +103,7 @@ function SeverityHeatStrip({
         })}
         {total === 0 && (
           <div
-            className="flex-1 rounded-athena-sm"
+            className="flex-1 rounded-athena"
             style={{ backgroundColor: "var(--color-bg-elevated)" }}
           />
         )}
@@ -170,7 +170,7 @@ function StatusPipeline({
 function SeverityBadge({ severity }: { severity: VulnSeverity }) {
   return (
     <span
-      className="font-mono text-[10px] font-bold uppercase rounded-athena-sm px-2 py-0.5"
+      className="font-mono text-[10px] font-bold uppercase rounded-athena px-2 py-0.5"
       style={{
         backgroundColor: SEVERITY_COLORS[severity],
         color: severity === "medium" || severity === "low" ? "#000" : "#FFF",
@@ -207,7 +207,7 @@ function VulnTable({
 
   return (
     <div
-      className="flex-1 min-w-0 rounded-athena-md overflow-hidden flex flex-col bg-[#111827]"
+      className="flex-1 min-w-0 rounded-athena overflow-hidden flex flex-col bg-athena-surface"
       style={{
         border: "1px solid var(--color-white-8)",
       }}
@@ -249,7 +249,7 @@ function VulnTable({
         {sorted.length === 0 ? (
           <div className="flex items-center justify-center py-12">
             <span
-              className="font-mono text-xs text-[#9ca3af]"
+              className="font-mono text-xs text-athena-text-tertiary"
             >
               {t("noVulns")}
             </span>
@@ -314,7 +314,7 @@ function VulnTable({
 
                 {/* Status */}
                 <span
-                  className="font-mono text-[10px] uppercase w-[90px] shrink-0 text-center text-[#6b7280]"
+                  className="font-mono text-[10px] uppercase w-[90px] shrink-0 text-center text-athena-text-secondary"
                 >
                   {t(`status.${vuln.status}`)}
                 </span>
@@ -362,7 +362,7 @@ function DetailPanel({
 
   return (
     <div
-      className="rounded-athena-md flex flex-col gap-5 shrink-0 overflow-y-auto bg-[#111827] p-5"
+      className="rounded-athena flex flex-col gap-5 shrink-0 overflow-y-auto bg-athena-surface p-5"
       style={{
         width: 380,
         border: "1px solid var(--color-white-8)",
@@ -372,7 +372,7 @@ function DetailPanel({
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-col gap-2 min-w-0">
           <span
-            className="font-mono text-sm font-bold truncate text-[#3b82f6]"
+            className="font-mono text-sm font-bold truncate text-athena-accent"
           >
             {vuln.cveId ?? "N/A"}
           </span>
@@ -381,7 +381,7 @@ function DetailPanel({
         <button
           type="button"
           onClick={onClose}
-          className="font-mono text-sm shrink-0 w-7 h-7 flex items-center justify-center rounded-athena-sm hover:bg-[#1f2937] transition-colors text-[#9ca3af]"
+          className="font-mono text-sm shrink-0 w-7 h-7 flex items-center justify-center rounded-athena hover:bg-athena-elevated transition-colors text-athena-text-tertiary"
           aria-label={t("detail.close")}
         >
           X
@@ -402,12 +402,12 @@ function DetailPanel({
       {vuln.description && (
         <div className="flex flex-col gap-1">
           <span
-            className="font-mono text-[10px] uppercase tracking-wider text-[#9ca3af]"
+            className="font-mono text-[10px] uppercase tracking-wider text-athena-text-tertiary"
           >
             {t("detail.description")}
           </span>
           <p
-            className="font-mono text-xs leading-relaxed text-[#6b7280]"
+            className="font-mono text-xs leading-relaxed text-athena-text-secondary"
           >
             {vuln.description}
           </p>
@@ -417,7 +417,7 @@ function DetailPanel({
       {/* Status */}
       <div className="flex flex-col gap-1">
         <span
-          className="font-mono text-[10px] uppercase tracking-wider text-[#9ca3af]"
+          className="font-mono text-[10px] uppercase tracking-wider text-athena-text-tertiary"
         >
           {t("columns.status")}
         </span>
@@ -433,12 +433,12 @@ function DetailPanel({
       {vuln.service && (
         <div className="flex flex-col gap-1">
           <span
-            className="font-mono text-[10px] uppercase tracking-wider text-[#9ca3af]"
+            className="font-mono text-[10px] uppercase tracking-wider text-athena-text-tertiary"
           >
             {t("detail.service")}
           </span>
           <span
-            className="font-mono text-xs text-[#6b7280]"
+            className="font-mono text-xs text-athena-text-secondary"
           >
             {vuln.service}
           </span>
@@ -448,12 +448,12 @@ function DetailPanel({
       {/* Target */}
       <div className="flex flex-col gap-1">
         <span
-          className="font-mono text-[10px] uppercase tracking-wider text-[#9ca3af]"
+          className="font-mono text-[10px] uppercase tracking-wider text-athena-text-tertiary"
         >
           {t("columns.target")}
         </span>
         <span
-          className="font-mono text-xs text-[#6b7280]"
+          className="font-mono text-xs text-athena-text-secondary"
         >
           {vuln.targetHostname ?? vuln.targetIp}
         </span>
@@ -463,7 +463,7 @@ function DetailPanel({
       {vuln.cvssScore !== null && vuln.cvssScore !== undefined && (
         <div className="flex flex-col gap-1">
           <span
-            className="font-mono text-[10px] uppercase tracking-wider text-[#9ca3af]"
+            className="font-mono text-[10px] uppercase tracking-wider text-athena-text-tertiary"
           >
             {t("columns.cvss")}
           </span>
@@ -479,7 +479,7 @@ function DetailPanel({
       {/* Timeline */}
       <div className="flex flex-col gap-1">
         <span
-          className="font-mono text-[10px] uppercase tracking-wider text-[#9ca3af]"
+          className="font-mono text-[10px] uppercase tracking-wider text-athena-text-tertiary"
         >
           {t("detail.timeline")}
         </span>
@@ -512,7 +512,7 @@ function DetailPanel({
       {/* Status actions */}
       <div className="flex flex-col gap-2 mt-auto">
         <span
-          className="font-mono text-[10px] uppercase tracking-wider text-[#9ca3af]"
+          className="font-mono text-[10px] uppercase tracking-wider text-athena-text-tertiary"
         >
           {t("detail.actions")}
         </span>
@@ -523,7 +523,7 @@ function DetailPanel({
               type="button"
               disabled={changingStatus}
               onClick={() => handleStatusChange(action.status)}
-              className="font-mono text-[10px] uppercase px-2.5 py-1 rounded-athena-sm transition-colors disabled:opacity-50 text-[#3b82f6]"
+              className="font-mono text-[10px] uppercase px-2.5 py-1 rounded-athena transition-colors disabled:opacity-50 text-athena-accent"
               style={{
                 border: "1px solid var(--color-accent-bg)",
                 backgroundColor: "transparent",
@@ -557,12 +557,12 @@ function TimelineEntry({ label, date }: { label: string; date: string }) {
   return (
     <div className="flex items-center gap-2">
       <span
-        className="font-mono text-[10px] text-[#9ca3af]"
+        className="font-mono text-[10px] text-athena-text-tertiary"
       >
         {label}:
       </span>
       <span
-        className="font-mono text-[10px] athena-tabular-nums text-[#6b7280]"
+        className="font-mono text-[10px] athena-tabular-nums text-athena-text-secondary"
       >
         {formatted}
       </span>
@@ -661,7 +661,7 @@ function VulnsContent() {
   if (loading && vulns.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-sm font-mono text-[#9ca3af]">
+        <p className="text-sm font-mono text-athena-text-tertiary">
           {t("title")}...
         </p>
       </div>
@@ -672,7 +672,7 @@ function VulnsContent() {
   if (error && vulns.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-sm font-mono text-[#EF4444]">
+        <p className="text-sm font-mono text-athena-error">
           {error}
         </p>
       </div>
@@ -680,7 +680,7 @@ function VulnsContent() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto bg-[#0A0E17]">
+    <div className="flex flex-col h-full overflow-y-auto bg-athena-bg">
       <div className="flex flex-col gap-4 min-h-full max-w-[1440px] w-full mx-auto">
         {/* Stats Row */}
         <div className="flex gap-4 py-4 px-6 shrink-0">
@@ -751,7 +751,7 @@ export default function VulnsPage() {
     <Suspense
       fallback={
         <div className="flex items-center justify-center h-full">
-          <p className="text-sm font-mono text-[#9ca3af]">
+          <p className="text-sm font-mono text-athena-text-tertiary">
             Loading Vulnerability Dashboard...
           </p>
         </div>

@@ -50,49 +50,49 @@ export function ReconResultModal({
   const ia = result.initialAccess;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0A0E17]/80 backdrop-blur-sm">
-      <div className="bg-[#111827] border-2 border-[#1f2937] rounded-athena-lg p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
-        <div className="mb-4 border-b border-[#1f2937] pb-3">
-          <span className="text-xs font-mono text-[#9ca3af]">{t("scanComplete")}</span>
-          <h2 className="text-lg font-mono font-bold text-[#e5e7eb] mt-1">{t("title")}</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-athena-bg/80 backdrop-blur-sm">
+      <div className="bg-athena-surface border-2 border-athena-border rounded-athena p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <div className="mb-4 border-b border-athena-border pb-3">
+          <span className="text-xs font-mono text-athena-text-tertiary">{t("scanComplete")}</span>
+          <h2 className="text-lg font-mono font-bold text-athena-text-light mt-1">{t("title")}</h2>
         </div>
 
         {/* Summary */}
         <div className="space-y-1 text-xs font-mono mb-4">
           <div className="flex justify-between">
-            <span className="text-[#9ca3af]">{t("ip")}</span>
-            <span className="text-[#e5e7eb]">{result.ipAddress}</span>
+            <span className="text-athena-text-tertiary">{t("ip")}</span>
+            <span className="text-athena-text-light">{result.ipAddress}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-[#9ca3af]">{t("os")}</span>
-            <span className="text-[#e5e7eb]">{result.osGuess ?? "—"}</span>
+            <span className="text-athena-text-tertiary">{t("os")}</span>
+            <span className="text-athena-text-light">{result.osGuess ?? "—"}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-[#9ca3af]">{t("services")}</span>
-            <span className="text-[#3b82f6]">{t("servicesFound", { count: result.servicesFound })}</span>
+            <span className="text-athena-text-tertiary">{t("services")}</span>
+            <span className="text-athena-accent">{t("servicesFound", { count: result.servicesFound })}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-[#9ca3af]">{t("factsWritten")}</span>
-            <span className="text-[#e5e7eb]">{result.factsWritten}</span>
+            <span className="text-athena-text-tertiary">{t("factsWritten")}</span>
+            <span className="text-athena-text-light">{result.factsWritten}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-[#9ca3af]">{t("duration")}</span>
-            <span className="text-[#e5e7eb]">{result.scanDurationSec.toFixed(1)}s</span>
+            <span className="text-athena-text-tertiary">{t("duration")}</span>
+            <span className="text-athena-text-light">{result.scanDurationSec.toFixed(1)}s</span>
           </div>
         </div>
 
         {/* Open Ports */}
         {result.services && result.services.length > 0 && (
-          <div className="border-t border-[#1f2937] pt-3 mb-4">
-            <p className="text-sm font-mono text-[#9ca3af] uppercase tracking-wider mb-2">
+          <div className="border-t border-athena-border pt-3 mb-4">
+            <p className="text-sm font-mono text-athena-text-tertiary uppercase tracking-wider mb-2">
               {t("openPorts")}
             </p>
             <div className="space-y-0.5 text-xs font-mono max-h-48 overflow-y-auto">
               {result.services.map((svc) => (
                 <div key={`${svc.port}-${svc.protocol}`} className="flex justify-between gap-2">
-                  <span className="text-[#3b82f6] shrink-0">{svc.port}/{svc.protocol}</span>
-                  <span className="text-[#e5e7eb] shrink-0">{svc.service}</span>
-                  <span className="text-[#9ca3af] truncate text-right">{svc.version || "\u2014"}</span>
+                  <span className="text-athena-accent shrink-0">{svc.port}/{svc.protocol}</span>
+                  <span className="text-athena-text-light shrink-0">{svc.service}</span>
+                  <span className="text-athena-text-tertiary truncate text-right">{svc.version || "\u2014"}</span>
                 </div>
               ))}
             </div>
@@ -100,43 +100,43 @@ export function ReconResultModal({
         )}
 
         {/* Initial Access */}
-        <div className="border-t border-[#1f2937] pt-3 mb-4">
-          <p className="text-sm font-mono text-[#9ca3af] uppercase tracking-wider mb-2">
+        <div className="border-t border-athena-border pt-3 mb-4">
+          <p className="text-sm font-mono text-athena-text-tertiary uppercase tracking-wider mb-2">
             {t("initialAccess")}
           </p>
           <div className="space-y-1 text-xs font-mono">
             <div className="flex justify-between">
-              <span className="text-[#9ca3af]">{t("status")}</span>
-              <span className={ia.success ? "text-[#22C55E]" : "text-[#EF4444]"}>
+              <span className="text-athena-text-tertiary">{t("status")}</span>
+              <span className={ia.success ? "text-athena-success" : "text-athena-error"}>
                 {ia.success ? t("success") : t("failed")}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#9ca3af]">{t("method")}</span>
-              <span className="text-[#e5e7eb]">{ia.method}</span>
+              <span className="text-athena-text-tertiary">{t("method")}</span>
+              <span className="text-athena-text-light">{ia.method}</span>
             </div>
             {ia.credential && (
               <div className="flex justify-between">
-                <span className="text-[#9ca3af]">{t("credential")}</span>
-                <span className="text-[#3b82f6] font-bold">{ia.credential}</span>
+                <span className="text-athena-text-tertiary">{t("credential")}</span>
+                <span className="text-athena-accent font-bold">{ia.credential}</span>
               </div>
             )}
             <div className="flex justify-between">
-              <span className="text-[#9ca3af]">{t("agent")}</span>
-              <span className={ia.agentDeployed ? "text-[#22C55E]" : "text-[#9ca3af]"}>
+              <span className="text-athena-text-tertiary">{t("agent")}</span>
+              <span className={ia.agentDeployed ? "text-athena-success" : "text-athena-text-tertiary"}>
                 {ia.agentDeployed ? t("deployed") : t("notDeployed")}
               </span>
             </div>
             {ia.error && (
               <div className="flex justify-between">
-                <span className="text-[#9ca3af]">{t("error")}</span>
-                <span className="text-[#EF4444] text-right max-w-[60%]">{ia.error}</span>
+                <span className="text-athena-text-tertiary">{t("error")}</span>
+                <span className="text-athena-error text-right max-w-[60%]">{ia.error}</span>
               </div>
             )}
           </div>
         </div>
 
-        <div className="flex gap-3 justify-end pt-2 border-t border-[#1f2937]">
+        <div className="flex gap-3 justify-end pt-2 border-t border-athena-border">
           {ia.agentDeployed && !triggered && (
             <Button variant="secondary" onClick={handleTriggerOoda} disabled={triggering}>
               {triggering ? t("triggering") : t("triggerOoda")}

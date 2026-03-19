@@ -16,7 +16,7 @@ import { Button } from "@/components/atoms/Button";
 
 const RISK_STYLES: Record<string, { border: string; labelKey: "lowRisk" | "mediumRisk" | "highRisk" | "critical" }> = {
   [RiskLevel.LOW]: { border: "border-[#22C55E]", labelKey: "lowRisk" },
-  [RiskLevel.MEDIUM]: { border: "border-[#FBBF24]", labelKey: "mediumRisk" },
+  [RiskLevel.MEDIUM]: { border: "border-athena-warning", labelKey: "mediumRisk" },
   [RiskLevel.HIGH]: { border: "border-[#EF4444]", labelKey: "highRisk" },
   [RiskLevel.CRITICAL]: { border: "border-[#DC2626]", labelKey: "critical" },
 };
@@ -45,15 +45,15 @@ export function HexConfirmModal({
   const isCritical = riskLevel === RiskLevel.CRITICAL;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0A0E17]/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-athena-bg/80 backdrop-blur-sm">
       <div
-        className={`bg-[#111827] border-2 ${style.border} rounded-athena-lg p-6 max-w-md w-full mx-4`}
+        className={`bg-athena-surface border-2 ${style.border} rounded-athena p-6 max-w-md w-full mx-4`}
       >
         <div className="text-center mb-4">
-          <span className="text-xs font-mono text-[#9ca3af]">
+          <span className="text-xs font-mono text-athena-text-tertiary">
             {t(style.labelKey)}
           </span>
-          <h2 className="text-lg font-mono font-bold text-[#e5e7eb] mt-1">
+          <h2 className="text-lg font-mono font-bold text-athena-text-light mt-1">
             {title}
           </h2>
         </div>

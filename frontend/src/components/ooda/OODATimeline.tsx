@@ -103,14 +103,14 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
 
   if (oodaEntries.length === 0 && reconEntries.length === 0) {
     return (
-      <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md p-6 text-center">
-        <span className="text-xs font-mono text-[#9ca3af]">{t("noIterations")}</span>
+      <div className="bg-athena-surface border border-athena-border rounded-athena p-6 text-center">
+        <span className="text-xs font-mono text-athena-text-tertiary">{t("noIterations")}</span>
       </div>
     );
   }
 
   return (
-    <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md p-4">
+    <div className="bg-athena-surface border border-athena-border rounded-athena p-4">
       {/* Header + filter bar */}
       <SectionHeader
         level="card"
@@ -121,10 +121,10 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
             {/* Phase filter chips */}
             <button
               onClick={() => setPhaseFilter([])}
-              className={`text-sm font-mono px-1.5 py-0.5 rounded-athena-sm border transition-colors ${
+              className={`text-sm font-mono px-1.5 py-0.5 rounded-athena border transition-colors ${
                 phaseFilter.length === 0
-                  ? "border-[#3b82f6] text-[#3b82f6] bg-[#3b82f610]"
-                  : "border-[#1f2937] text-[#9ca3af] hover:border-[#3b82f680]"
+                  ? "border-athena-accent text-athena-accent bg-[#3b82f610]"
+                  : "border-athena-border text-athena-text-tertiary hover:border-athena-accent/50"
               }`}
             >
               {t("all")}
@@ -133,10 +133,10 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
               <button
                 key={p}
                 onClick={() => togglePhaseFilter(p)}
-                className={`text-sm font-mono px-1.5 py-0.5 rounded-athena-sm border transition-colors ${
+                className={`text-sm font-mono px-1.5 py-0.5 rounded-athena border transition-colors ${
                   phaseFilter.includes(p)
-                    ? "border-[#3b82f6] text-[#3b82f6] bg-[#3b82f610]"
-                    : "border-[#1f2937] text-[#9ca3af] hover:border-[#3b82f680]"
+                    ? "border-athena-accent text-athena-accent bg-[#3b82f610]"
+                    : "border-athena-border text-athena-text-tertiary hover:border-athena-accent/50"
                 }`}
               >
                 {t(p as "observe" | "orient" | "decide" | "act")}
@@ -164,28 +164,28 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
           return (
             <div
               key={iterNum}
-              className="border border-[#1f293799] rounded-athena-sm overflow-hidden"
+              className="border border-athena-border/60 rounded-athena overflow-hidden"
             >
               {/* Iteration header */}
               <button
                 onClick={() => toggleIteration(iterNum)}
-                className="w-full flex items-center justify-between px-3 py-2 bg-[#0A0E17] hover:bg-[#1f2937] transition-colors"
+                className="w-full flex items-center justify-between px-3 py-2 bg-athena-bg hover:bg-athena-elevated transition-colors"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-mono text-[#9ca3af]">
+                  <span className="text-sm font-mono text-athena-text-tertiary">
                     {isExpanded ? "▼" : "►"}
                   </span>
-                  <span className="text-xs font-mono text-[#3b82f6] font-bold">
+                  <span className="text-xs font-mono text-athena-accent font-bold">
                     {t("iteration", { number: iterNum })}
                   </span>
                   {iterNum === maxIteration && (
-                    <span className="text-sm font-mono text-[#22C55E] bg-[#22C55E10] px-1 rounded-athena-sm">
+                    <span className="text-sm font-mono text-athena-success bg-[#22C55E10] px-1 rounded-athena">
                       {t("latest")}
                     </span>
                   )}
                 </div>
                 {!isExpanded && actEntry && (
-                  <span className="text-sm font-mono text-[#9ca3af] truncate max-w-[200px]">
+                  <span className="text-sm font-mono text-athena-text-tertiary truncate max-w-[200px]">
                     {actTime} · {actEntry.summary.slice(0, 60)}{actEntry.summary.length > 60 ? "..." : ""}
                   </span>
                 )}
@@ -214,19 +214,19 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
                         </div>
                         <div className="flex-1 min-w-0 pb-1">
                           <div className="flex items-center gap-2 mb-0.5">
-                            <span className="text-sm font-mono text-[#9ca3af]">
+                            <span className="text-sm font-mono text-athena-text-tertiary">
                               {time}
                             </span>
                             <Badge variant={PHASE_VARIANT[entry.phase] || "info"}>
                               {t(entry.phase as "observe" | "orient" | "decide" | "act")}
                             </Badge>
                           </div>
-                          <p className="text-xs font-mono text-[#e5e7eb] leading-relaxed">
+                          <p className="text-xs font-mono text-athena-text-light leading-relaxed">
                             {displaySummary}
                             {needsTruncate && (
                               <button
                                 onClick={() => toggleEntry(entryKey)}
-                                className="ml-1 text-sm font-mono text-[#3b82f6] hover:underline"
+                                className="ml-1 text-sm font-mono text-athena-accent hover:underline"
                               >
                                 {isEntryExpanded ? t("collapse") : t("expand")}
                               </button>
@@ -245,8 +245,8 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
 
       {/* Recon Activity Log */}
       {reconEntries.length > 0 && (
-        <div className={oodaEntries.length > 0 ? "mt-3 pt-3 border-t border-[#1f293780]" : ""}>
-          <span className="text-sm font-mono text-[#9ca3af] uppercase tracking-wider">
+        <div className={oodaEntries.length > 0 ? "mt-3 pt-3 border-t border-athena-border/50" : ""}>
+          <span className="text-sm font-mono text-athena-text-tertiary uppercase tracking-wider">
             {t("reconActivity")}
           </span>
           <div className="mt-2 space-y-2">
@@ -262,12 +262,12 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
                   </div>
                   <div className="flex-1 min-w-0 pb-1">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-sm font-mono text-[#9ca3af]">
+                      <span className="text-sm font-mono text-athena-text-tertiary">
                         {time}
                       </span>
                       <Badge variant="info">{t("recon")}</Badge>
                     </div>
-                    <p className="text-xs font-mono text-[#e5e7eb] leading-relaxed">
+                    <p className="text-xs font-mono text-athena-text-light leading-relaxed">
                       {entry.summary}
                     </p>
                   </div>
@@ -282,7 +282,7 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
       {allIterationNumbers.length > DEFAULT_SHOW_ITERATIONS && (
         <button
           onClick={() => setShowAll((v) => !v)}
-          className="mt-3 w-full text-sm font-mono text-[#9ca3af] hover:text-[#3b82f6] transition-colors py-1 border-t border-[#1f293780]"
+          className="mt-3 w-full text-sm font-mono text-athena-text-tertiary hover:text-athena-accent transition-colors py-1 border-t border-athena-border/50"
         >
           {showAll
             ? t("showLatest", { count: DEFAULT_SHOW_ITERATIONS })

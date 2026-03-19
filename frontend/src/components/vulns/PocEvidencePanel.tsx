@@ -59,7 +59,7 @@ function SummaryCard({
 }) {
   return (
     <div
-      className="flex-1 min-w-0 rounded-athena-md flex flex-col gap-1 bg-[#111827]"
+      className="flex-1 min-w-0 rounded-athena flex flex-col gap-1 bg-athena-surface"
       style={{
         border: "1px solid var(--color-white-8)",
         padding: "14px 16px",
@@ -88,7 +88,7 @@ function PocCard({ record, index }: { record: PocRecord; index: number }) {
 
   return (
     <div
-      className="rounded-athena-md flex flex-col gap-3 bg-[#111827]"
+      className="rounded-athena flex flex-col gap-3 bg-athena-surface"
       style={{
         border: "1px solid var(--color-white-8)",
         padding: "16px 20px",
@@ -97,11 +97,11 @@ function PocCard({ record, index }: { record: PocRecord; index: number }) {
       {/* Header row: ID + badges + vuln ref */}
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-2.5">
-          <span className="font-mono text-xs font-bold text-[#3b82f6]">
+          <span className="font-mono text-xs font-bold text-athena-accent">
             POC-{String(index + 1).padStart(3, "0")}
           </span>
           <span
-            className="font-mono text-[9px] font-bold rounded-athena-sm px-2 py-0.5"
+            className="font-mono text-[9px] font-bold rounded-athena px-2 py-0.5"
             style={{ ...repColor, backgroundColor: repColor.bg, border: `1px solid ${repColor.border}`, color: repColor.text }}
           >
             {reproducibleLabel(record.reproducible)}
@@ -115,7 +115,7 @@ function PocCard({ record, index }: { record: PocRecord; index: number }) {
       </div>
 
       {/* Title */}
-      <span className="font-mono text-[13px] font-bold text-[#e5e7eb]">
+      <span className="font-mono text-[13px] font-bold text-athena-text-light">
         {record.techniqueName || record.techniqueId}
       </span>
 
@@ -230,7 +230,7 @@ function ExportDropdown({
       </Button>
       {open && (
         <div
-          className="absolute right-0 top-full mt-1 rounded-athena-md py-1 z-50 min-w-[180px]"
+          className="absolute right-0 top-full mt-1 rounded-athena py-1 z-50 min-w-[180px]"
           style={{
             backgroundColor: "var(--color-bg-elevated)",
             border: "1px solid var(--color-white-10)",
@@ -240,7 +240,7 @@ function ExportDropdown({
             <button
               key={opt.path}
               onClick={() => handleExport(opt.path)}
-              className="block w-full text-left font-mono text-[10px] px-3 py-2 hover:bg-[#1f2937] transition-colors text-[#e5e7eb]"
+              className="block w-full text-left font-mono text-[10px] px-3 py-2 hover:bg-athena-elevated transition-colors text-athena-text-light"
             >
               {opt.label}
             </button>
@@ -309,7 +309,7 @@ export default function PocEvidencePanel({ operationId }: PocEvidencePanelProps)
   if (loading && records.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-sm font-mono text-[#9ca3af]">
+        <p className="text-sm font-mono text-athena-text-tertiary">
           {t("title")}...
         </p>
       </div>
@@ -320,13 +320,13 @@ export default function PocEvidencePanel({ operationId }: PocEvidencePanelProps)
   if (error && records.length === 0) {
     return (
       <div
-        className="rounded-athena-md flex flex-col items-center justify-center gap-3 py-12 bg-[#111827]"
+        className="rounded-athena flex flex-col items-center justify-center gap-3 py-12 bg-athena-surface"
         style={{
           border: "1px solid var(--color-error-bg)",
         }}
       >
         <span
-          className="font-mono text-[8px] font-bold rounded-athena-sm px-3 py-1"
+          className="font-mono text-[8px] font-bold rounded-athena px-3 py-1"
           style={{ backgroundColor: "var(--color-error-bg)", color: "var(--color-error)" }}
         >
           ERROR STATE
@@ -359,13 +359,13 @@ export default function PocEvidencePanel({ operationId }: PocEvidencePanelProps)
   if (records.length === 0) {
     return (
       <div
-        className="rounded-athena-md flex flex-col items-center justify-center gap-3 py-12 bg-[#111827]"
+        className="rounded-athena flex flex-col items-center justify-center gap-3 py-12 bg-athena-surface"
         style={{
           border: "1px solid var(--color-white-8)",
         }}
       >
         <span
-          className="font-mono text-[8px] font-bold rounded-athena-sm px-3 py-1"
+          className="font-mono text-[8px] font-bold rounded-athena px-3 py-1"
           style={{ backgroundColor: "var(--color-accent-bg)", color: "var(--color-accent)" }}
         >
           EMPTY STATE
@@ -398,11 +398,11 @@ export default function PocEvidencePanel({ operationId }: PocEvidencePanelProps)
       {/* Header row */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="font-mono text-sm font-bold text-[#e5e7eb]">
+          <span className="font-mono text-sm font-bold text-athena-text-light">
             PoC RECORDS
           </span>
           <span
-            className="font-mono text-[10px] font-semibold rounded-athena-sm px-2.5 py-1"
+            className="font-mono text-[10px] font-semibold rounded-athena px-2.5 py-1"
             style={{ backgroundColor: "var(--color-accent-bg)", color: "var(--color-accent)" }}
           >
             {operationId?.slice(0, 12).toUpperCase()}

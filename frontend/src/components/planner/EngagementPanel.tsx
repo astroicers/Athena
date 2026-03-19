@@ -83,8 +83,8 @@ export function EngagementPanel({ operationId }: { operationId: string }) {
   if (loading) {
     return (
       <div className="animate-pulse">
-        <div className="h-6 w-32 bg-[#111827] rounded-athena-sm mb-2" />
-        <div className="h-20 bg-[#111827] rounded-athena-sm" />
+        <div className="h-6 w-32 bg-athena-surface rounded-athena mb-2" />
+        <div className="h-20 bg-athena-surface rounded-athena" />
       </div>
     );
   }
@@ -93,8 +93,8 @@ export function EngagementPanel({ operationId }: { operationId: string }) {
     return (
       <div>
         <SectionHeader level="card">{t("title")}</SectionHeader>
-        <div className="bg-[#111827] border border-white/5 rounded-athena-md p-6 text-center mt-2">
-          <span className="text-xs font-mono text-[#9ca3af]">
+        <div className="bg-athena-surface border border-white/5 rounded-athena p-6 text-center mt-2">
+          <span className="text-xs font-mono text-athena-text-tertiary">
             {t("noEngagement")}
           </span>
         </div>
@@ -137,51 +137,51 @@ export function EngagementPanel({ operationId }: { operationId: string }) {
         {t("title")}
       </SectionHeader>
 
-      <div className="mt-2 border border-[#1f2937] rounded-athena-sm bg-[#111827] p-4 space-y-3">
+      <div className="mt-2 border border-athena-border rounded-athena bg-athena-surface p-4 space-y-3">
         {/* Client info */}
         <div className="flex gap-4 text-xs font-mono">
           <div>
-            <span className="text-[#9ca3af]">{t("client")}: </span>
-            <span className="text-[#e5e7eb]">{engagement.clientName}</span>
+            <span className="text-athena-text-tertiary">{t("client")}: </span>
+            <span className="text-athena-text-light">{engagement.clientName}</span>
           </div>
           <div>
-            <span className="text-[#9ca3af]">{t("contact")}: </span>
-            <span className="text-[#e5e7eb]">{engagement.contactEmail}</span>
+            <span className="text-athena-text-tertiary">{t("contact")}: </span>
+            <span className="text-athena-text-light">{engagement.contactEmail}</span>
           </div>
         </div>
 
         {/* Scope */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <p className="text-xs font-mono font-bold text-[#22C55E] uppercase tracking-wider mb-1">
+            <p className="text-xs font-mono font-bold text-athena-success uppercase tracking-wider mb-1">
               {t("inScope")}
             </p>
             {engagement.inScope.length > 0 ? (
-              <ul className="text-xs font-mono text-[#e5e7eb] space-y-0.5">
+              <ul className="text-xs font-mono text-athena-text-light space-y-0.5">
                 {engagement.inScope.map((s, i) => (
                   <li key={i} className="flex items-center gap-1">
-                    <span className="text-[#22C55E]">+</span> {s}
+                    <span className="text-athena-success">+</span> {s}
                   </li>
                 ))}
               </ul>
             ) : (
-              <span className="text-xs font-mono text-[#9ca3af]">--</span>
+              <span className="text-xs font-mono text-athena-text-tertiary">--</span>
             )}
           </div>
           <div>
-            <p className="text-xs font-mono font-bold text-[#EF4444] uppercase tracking-wider mb-1">
+            <p className="text-xs font-mono font-bold text-athena-error uppercase tracking-wider mb-1">
               {t("outOfScope")}
             </p>
             {engagement.outOfScope.length > 0 ? (
-              <ul className="text-xs font-mono text-[#e5e7eb] space-y-0.5">
+              <ul className="text-xs font-mono text-athena-text-light space-y-0.5">
                 {engagement.outOfScope.map((s, i) => (
                   <li key={i} className="flex items-center gap-1">
-                    <span className="text-[#EF4444]">-</span> {s}
+                    <span className="text-athena-error">-</span> {s}
                   </li>
                 ))}
               </ul>
             ) : (
-              <span className="text-xs font-mono text-[#9ca3af]">--</span>
+              <span className="text-xs font-mono text-athena-text-tertiary">--</span>
             )}
           </div>
         </div>
@@ -189,8 +189,8 @@ export function EngagementPanel({ operationId }: { operationId: string }) {
         {/* Emergency contact */}
         {engagement.emergencyContact && (
           <div className="text-xs font-mono">
-            <span className="text-[#9ca3af]">{t("emergency")}: </span>
-            <span className="text-[#e5e7eb]">{engagement.emergencyContact}</span>
+            <span className="text-athena-text-tertiary">{t("emergency")}: </span>
+            <span className="text-athena-text-light">{engagement.emergencyContact}</span>
           </div>
         )}
       </div>

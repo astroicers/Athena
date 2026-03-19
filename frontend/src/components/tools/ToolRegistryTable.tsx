@@ -26,7 +26,7 @@ const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
 
 const RISK_COLORS: Record<string, { bg: string; text: string }> = {
   low: { bg: "rgba(34,197,94,0.125)", text: "#22C55E" },
-  medium: { bg: "rgba(251,191,36,0.125)", text: "#FBBF24" },
+  medium: { bg: "rgba(245,158,11,0.125)", text: "#F59E0B" },
   high: { bg: "rgba(251,146,60,0.125)", text: "#FB923C" },
   critical: { bg: "rgba(239,68,68,0.125)", text: "#EF4444" },
 };
@@ -73,7 +73,7 @@ export function ToolRegistryTable({
   if (tools.length === 0) {
     return (
       <div
-        className="rounded-athena-md text-center p-6"
+        className="rounded-athena text-center p-6"
         style={{
           border: "1px solid rgba(31,41,55,0.25)",
         }}
@@ -161,7 +161,7 @@ export function ToolRegistryTable({
             {/* CATEGORY */}
             <div style={{ width: 120, flexShrink: 0 }}>
               <span
-                className="font-mono inline-block rounded-athena-sm"
+                className="font-mono inline-block rounded-athena"
                 style={{
                   background: catColor.bg,
                   color: catColor.text,
@@ -204,7 +204,7 @@ export function ToolRegistryTable({
             {/* RISK */}
             <div style={{ width: 80, flexShrink: 0 }}>
               <span
-                className="font-mono inline-block rounded-athena-sm"
+                className="font-mono inline-block rounded-athena"
                 style={{
                   background: riskColor.bg,
                   color: riskColor.text,
@@ -224,7 +224,7 @@ export function ToolRegistryTable({
               {tool.mitreTechniques.map((tid) => (
                 <span
                   key={tid}
-                  className="font-mono inline-block rounded-athena-sm"
+                  className="font-mono inline-block rounded-athena"
                   style={{
                     background: "#374151",
                     color: "#9ca3af",

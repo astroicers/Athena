@@ -16,6 +16,6 @@ describe("StatusDot", () => {
   it("renders with correct color class for alive status", () => {
     const { container } = render(<StatusDot status="alive" />);
     const dot = container.querySelector("span span");
-    expect(dot?.className).toContain("bg-[#22C55E20]");
+    expect(dot?.className).toContain("bg-athena-success-bg");
   });
 });

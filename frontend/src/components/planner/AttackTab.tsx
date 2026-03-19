@@ -74,7 +74,7 @@ export function AttackTab({
     <div className="flex-1 space-y-4 min-h-0 overflow-y-auto py-4 px-6">
       {/* Attack Path Timeline */}
       <AttackPathTimeline data={attackPath} loading={false} />
-      <p className="text-sm font-mono text-[#9ca3af] -mt-3 ml-1">{tHints("attackPath")}</p>
+      <p className="text-sm font-mono text-athena-text-tertiary -mt-3 ml-1">{tHints("attackPath")}</p>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         {/* ATT&CK Matrix */}
@@ -86,7 +86,7 @@ export function AttackTab({
                 variant="secondary"
                 size="sm"
                 onClick={() => onSetCompact(!compact)}
-                className="text-[10px] text-[#9ca3af] hover:text-[#3b82f6]"
+                className="text-[10px] text-athena-text-tertiary hover:text-athena-accent"
               >
                 {compact ? t("expandView") : t("compactView")}
               </Button>
@@ -94,12 +94,12 @@ export function AttackTab({
           >
             {t("mitreMatrix")}
           </SectionHeader>
-          <p className="text-sm font-mono text-[#9ca3af] -mt-1 mb-2 ml-1">{tHints("mitreMatrix")}</p>
-          <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md p-3 overflow-x-auto">
+          <p className="text-sm font-mono text-athena-text-tertiary -mt-1 mb-2 ml-1">{tHints("mitreMatrix")}</p>
+          <div className="bg-athena-surface border border-athena-border rounded-athena p-3 overflow-x-auto">
             <div className="flex gap-2 min-w-max">
               {orderedTactics.map((tactic) => (
                 <div key={tactic} className={`${compact ? "w-20" : "w-28"} shrink-0`}>
-                  <div className="text-sm font-mono text-[#3b82f6] font-bold uppercase mb-2 truncate">
+                  <div className="text-sm font-mono text-athena-accent font-bold uppercase mb-2 truncate">
                     {tacticLabel(tactic)}
                   </div>
                   <div className="space-y-1">
@@ -130,8 +130,8 @@ export function AttackTab({
               relatedTools={getToolsForTechnique(allTools, selectedTech.mitreId)}
             />
           ) : (
-            <div className="border border-[#1f293740] rounded-athena-md p-4">
-              <span className="text-xs font-mono text-[#9ca3af]">
+            <div className="border border-athena-border/25 rounded-athena p-4">
+              <span className="text-xs font-mono text-athena-text-tertiary">
                 {tEmpty("navigatorNoSelection")}
               </span>
             </div>

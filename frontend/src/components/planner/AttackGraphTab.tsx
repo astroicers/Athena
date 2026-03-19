@@ -919,14 +919,14 @@ export function AttackGraphTab() {
                 size="sm"
                 onClick={handleRebuild}
                 disabled={rebuilding}
-                className="text-[10px] uppercase tracking-wider text-[#3b82f6] bg-transparent border-[color-mix(in_srgb,var(--color-accent)_31%,transparent)]"
+                className="text-[10px] uppercase tracking-wider text-athena-accent bg-transparent border-[color-mix(in_srgb,var(--color-accent)_31%,transparent)]"
               >
                 {rebuilding ? t("rebuilding") : t("rebuild")}
               </Button>
               <Button
                 variant="secondary"
                 size="sm"
-                className="text-[10px] uppercase tracking-wider text-[#3b82f6] bg-transparent border-[color-mix(in_srgb,var(--color-accent)_31%,transparent)]"
+                className="text-[10px] uppercase tracking-wider text-athena-accent bg-transparent border-[color-mix(in_srgb,var(--color-accent)_31%,transparent)]"
               >
                 DEPTH SCAN
               </Button>

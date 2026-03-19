@@ -152,7 +152,7 @@ export function NotificationCenter({
               variant="secondary"
               size="sm"
               onClick={handleClearAll}
-              className="text-[10px] text-[#3B82F6] bg-transparent border-transparent hover:bg-transparent"
+              className="text-[10px] text-athena-accent bg-transparent border-transparent hover:bg-transparent"
             >
               {t("clearAll")}
             </Button>
@@ -199,7 +199,7 @@ export function NotificationCenter({
                   {constraintAlert.messages.map((msg, i) => (
                     <div
                       key={i}
-                      className="flex flex-col rounded-athena-md"
+                      className="flex flex-col rounded-athena"
                       style={{
                         backgroundColor: "#F59E0B10",
                         border: "1px solid #F59E0B50",
@@ -277,7 +277,7 @@ export function NotificationCenter({
                     return (
                       <div
                         key={alert.id}
-                        className="flex flex-col rounded-athena-md"
+                        className="flex flex-col rounded-athena"
                         style={{
                           backgroundColor: colors.fill,
                           border: `1px solid ${colors.border}`,

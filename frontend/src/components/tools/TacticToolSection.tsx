@@ -46,12 +46,12 @@ export function TacticToolSection({
   return (
     <div
       id={`tactic-${tacticSlug}`}
-      className="border border-[#1f2937] rounded-athena-md overflow-hidden"
+      className="border border-athena-border rounded-athena overflow-hidden"
     >
       {/* Header */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-3 py-2 bg-[#111827] hover:bg-[#1f2937] transition-colors"
+        className="w-full flex items-center justify-between px-3 py-2 bg-athena-surface hover:bg-athena-elevated transition-colors"
       >
         <div className="flex items-center gap-2">
           <span
@@ -59,21 +59,21 @@ export function TacticToolSection({
           >
             ▶
           </span>
-          <span className="text-xs font-mono font-bold text-[#e5e7eb] uppercase">
+          <span className="text-xs font-mono font-bold text-athena-text-light uppercase">
             {tacticLabel}
           </span>
-          <span className="text-sm font-mono text-[#3b82f6] px-1.5 py-0.5 bg-[#3b82f610] rounded-full">
+          <span className="text-sm font-mono text-athena-accent px-1.5 py-0.5 bg-[#3b82f610] rounded-full">
             {tacticId}
           </span>
         </div>
-        <span className="text-sm font-mono text-[#9ca3af]">
+        <span className="text-sm font-mono text-athena-text-tertiary">
           {tools.length} {t("toolCount")}
         </span>
       </button>
 
       {/* Body */}
       {isOpen && (
-        <div className="border-t border-[#1f2937]">
+        <div className="border-t border-athena-border">
           <ToolRegistryTable
             tools={tools}
             onToggleEnabled={onToggleEnabled}

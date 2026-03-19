@@ -170,8 +170,8 @@ export function PlaybookBrowser() {
 
   if (loading) {
     return (
-      <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md p-6 text-center">
-        <span className="text-xs font-mono text-[#9ca3af]">
+      <div className="bg-athena-surface border border-athena-border rounded-athena p-6 text-center">
+        <span className="text-xs font-mono text-athena-text-tertiary">
           {t("loading")}
         </span>
       </div>
@@ -187,7 +187,7 @@ export function PlaybookBrowser() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t("search")}
-          className="flex-1 bg-[#0A0E17] border border-[#1f2937] rounded-athena-sm px-3 py-1.5 text-xs font-mono text-[#e5e7eb] placeholder:text-[#9ca3af] focus:outline-none focus:ring-1 focus:ring-[#3b82f6]"
+          className="flex-1 bg-athena-bg border border-athena-border rounded-athena px-3 py-1.5 text-xs font-mono text-athena-text-light placeholder:text-athena-text-tertiary focus:outline-none focus:ring-1 focus:ring-[#3b82f6]"
         />
         <Button variant="secondary" size="sm" onClick={openCreateForm}>
           {t("addPlaybook")}
@@ -196,13 +196,13 @@ export function PlaybookBrowser() {
 
       {/* Create / Edit Form */}
       {showForm && (
-        <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md p-4 space-y-3">
-          <h3 className="text-xs font-mono font-bold text-[#e5e7eb] uppercase tracking-wider">
+        <div className="bg-athena-surface border border-athena-border rounded-athena p-4 space-y-3">
+          <h3 className="text-xs font-mono font-bold text-athena-text-light uppercase tracking-wider">
             {editingId ? t("editing") : t("addPlaybook")}
           </h3>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-mono text-[#9ca3af] mb-1">
+              <label className="block text-xs font-mono text-athena-text-tertiary mb-1">
                 {t("mitreId")} *
               </label>
               <input
@@ -211,18 +211,18 @@ export function PlaybookBrowser() {
                 onChange={(e) => setForm({ ...form, mitreId: e.target.value })}
                 disabled={!!editingId}
                 placeholder="T1059.001"
-                className="w-full bg-[#0A0E17] border border-[#1f2937] rounded-athena-sm px-3 py-1.5 text-xs font-mono text-[#e5e7eb] disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-[#3b82f6]"
+                className="w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-1.5 text-xs font-mono text-athena-text-light disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-[#3b82f6]"
               />
             </div>
             <div>
-              <label className="block text-xs font-mono text-[#9ca3af] mb-1">
+              <label className="block text-xs font-mono text-athena-text-tertiary mb-1">
                 {t("platform")}
               </label>
               <select
                 value={form.platform}
                 onChange={(e) => setForm({ ...form, platform: e.target.value })}
                 disabled={!!editingId}
-                className="w-full bg-[#0A0E17] border border-[#1f2937] rounded-athena-sm px-3 py-1.5 text-xs font-mono text-[#e5e7eb] disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-[#3b82f6]"
+                className="w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-1.5 text-xs font-mono text-athena-text-light disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-[#3b82f6]"
               >
                 <option value="linux">{t("linux")}</option>
                 <option value="windows">{t("windows")}</option>
@@ -231,19 +231,19 @@ export function PlaybookBrowser() {
             </div>
           </div>
           <div>
-            <label className="block text-xs font-mono text-[#9ca3af] mb-1">
+            <label className="block text-xs font-mono text-athena-text-tertiary mb-1">
               {t("command")} *
             </label>
             <textarea
               value={form.command}
               onChange={(e) => setForm({ ...form, command: e.target.value })}
               rows={3}
-              className="w-full bg-[#0A0E17] border border-[#1f2937] rounded-athena-sm px-3 py-1.5 text-xs font-mono text-[#e5e7eb] focus:outline-none focus:ring-1 focus:ring-[#3b82f6] resize-none"
+              className="w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-1.5 text-xs font-mono text-athena-text-light focus:outline-none focus:ring-1 focus:ring-[#3b82f6] resize-none"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-mono text-[#9ca3af] mb-1">
+              <label className="block text-xs font-mono text-athena-text-tertiary mb-1">
                 {t("outputParser")}
               </label>
               <input
@@ -252,11 +252,11 @@ export function PlaybookBrowser() {
                 onChange={(e) =>
                   setForm({ ...form, outputParser: e.target.value })
                 }
-                className="w-full bg-[#0A0E17] border border-[#1f2937] rounded-athena-sm px-3 py-1.5 text-xs font-mono text-[#e5e7eb] focus:outline-none focus:ring-1 focus:ring-[#3b82f6]"
+                className="w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-1.5 text-xs font-mono text-athena-text-light focus:outline-none focus:ring-1 focus:ring-[#3b82f6]"
               />
             </div>
             <div>
-              <label className="block text-xs font-mono text-[#9ca3af] mb-1">
+              <label className="block text-xs font-mono text-athena-text-tertiary mb-1">
                 {t("factsTraits")}
               </label>
               <input
@@ -266,12 +266,12 @@ export function PlaybookBrowser() {
                   setForm({ ...form, factsTraits: e.target.value })
                 }
                 placeholder="trait1, trait2"
-                className="w-full bg-[#0A0E17] border border-[#1f2937] rounded-athena-sm px-3 py-1.5 text-xs font-mono text-[#e5e7eb] focus:outline-none focus:ring-1 focus:ring-[#3b82f6]"
+                className="w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-1.5 text-xs font-mono text-athena-text-light focus:outline-none focus:ring-1 focus:ring-[#3b82f6]"
               />
             </div>
           </div>
           <div>
-            <label className="block text-xs font-mono text-[#9ca3af] mb-1">
+            <label className="block text-xs font-mono text-athena-text-tertiary mb-1">
               {t("tags")}
             </label>
             <input
@@ -279,7 +279,7 @@ export function PlaybookBrowser() {
               value={form.tags}
               onChange={(e) => setForm({ ...form, tags: e.target.value })}
               placeholder="tag1, tag2"
-              className="w-full bg-[#0A0E17] border border-[#1f2937] rounded-athena-sm px-3 py-1.5 text-xs font-mono text-[#e5e7eb] focus:outline-none focus:ring-1 focus:ring-[#3b82f6]"
+              className="w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-1.5 text-xs font-mono text-athena-text-light focus:outline-none focus:ring-1 focus:ring-[#3b82f6]"
             />
           </div>
           <div className="flex items-center gap-2 justify-end">
@@ -300,32 +300,32 @@ export function PlaybookBrowser() {
 
       {/* Playbook List */}
       {filtered.length === 0 ? (
-        <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md p-6 text-center">
-          <span className="text-xs font-mono text-[#9ca3af]">
+        <div className="bg-athena-surface border border-athena-border rounded-athena p-6 text-center">
+          <span className="text-xs font-mono text-athena-text-tertiary">
             {t("noPlaybooks")}
           </span>
         </div>
       ) : (
-        <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md overflow-hidden">
+        <div className="bg-athena-surface border border-athena-border rounded-athena overflow-hidden">
           <table className="w-full text-xs font-mono">
             <thead>
-              <tr className="border-b border-[#1f2937]">
-                <th className="px-3 py-2 text-left text-[#9ca3af] font-medium uppercase tracking-wider">
+              <tr className="border-b border-athena-border">
+                <th className="px-3 py-2 text-left text-athena-text-tertiary font-medium uppercase tracking-wider">
                   {t("mitreId")}
                 </th>
-                <th className="px-3 py-2 text-center text-[#9ca3af] font-medium uppercase tracking-wider w-24">
+                <th className="px-3 py-2 text-center text-athena-text-tertiary font-medium uppercase tracking-wider w-24">
                   {t("platform")}
                 </th>
-                <th className="px-3 py-2 text-left text-[#9ca3af] font-medium uppercase tracking-wider">
+                <th className="px-3 py-2 text-left text-athena-text-tertiary font-medium uppercase tracking-wider">
                   {t("command")}
                 </th>
-                <th className="px-3 py-2 text-center text-[#9ca3af] font-medium uppercase tracking-wider w-20">
+                <th className="px-3 py-2 text-center text-athena-text-tertiary font-medium uppercase tracking-wider w-20">
                   {t("source")}
                 </th>
-                <th className="px-3 py-2 text-left text-[#9ca3af] font-medium uppercase tracking-wider w-40">
+                <th className="px-3 py-2 text-left text-athena-text-tertiary font-medium uppercase tracking-wider w-40">
                   {t("tags")}
                 </th>
-                <th className="px-3 py-2 text-center text-[#9ca3af] font-medium uppercase tracking-wider w-28">
+                <th className="px-3 py-2 text-center text-athena-text-tertiary font-medium uppercase tracking-wider w-28">
                   {t("actions")}
                 </th>
               </tr>
@@ -334,10 +334,10 @@ export function PlaybookBrowser() {
               {filtered.map((pb) => (
                 <tr
                   key={pb.id}
-                  className="border-b border-[#1f293780] hover:bg-[#1f2937] cursor-pointer"
+                  className="border-b border-athena-border/50 hover:bg-athena-elevated cursor-pointer"
                   onClick={() => openEditForm(pb)}
                 >
-                  <td className="px-3 py-2 text-[#3b82f6] font-bold">
+                  <td className="px-3 py-2 text-athena-accent font-bold">
                     {pb.mitreId}
                   </td>
                   <td className="px-3 py-2 text-center">
@@ -345,8 +345,8 @@ export function PlaybookBrowser() {
                       {t(pb.platform as "linux" | "windows" | "darwin")}
                     </Badge>
                   </td>
-                  <td className="px-3 py-2 text-[#e5e7eb] max-w-[300px]">
-                    <code className="block truncate bg-[#0A0E17] px-2 py-1 rounded-athena-sm text-xs">
+                  <td className="px-3 py-2 text-athena-text-light max-w-[300px]">
+                    <code className="block truncate bg-athena-bg px-2 py-1 rounded-athena text-xs">
                       {pb.command}
                     </code>
                   </td>
@@ -360,7 +360,7 @@ export function PlaybookBrowser() {
                       {pb.tags.map((tag) => (
                         <span
                           key={tag}
-                          className="text-xs font-mono text-[#3b82f6] bg-[#3b82f610] px-1.5 py-0.5 rounded-athena-sm"
+                          className="text-xs font-mono text-athena-accent bg-[#3b82f610] px-1.5 py-0.5 rounded-athena"
                         >
                           {tag}
                         </span>

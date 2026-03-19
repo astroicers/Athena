@@ -18,6 +18,6 @@ describe("OODAIndicator", () => {
   it("highlights the active phase", () => {
     render(<OODAIndicator currentPhase={OODAPhase.ORIENT} />, { wrapper: IntlWrapper });
     const orient = screen.getByText("Orient");
-    expect(orient.closest("div")).toHaveClass("bg-[#3b82f620]");
+    expect(orient.closest("div")).toHaveClass("bg-athena-accent-bg");
   });
 });

@@ -21,6 +21,7 @@ const config: Config = {
         "athena-accent-bg": "var(--color-accent-bg)",
         // Text hierarchy
         "athena-text": "var(--color-text-primary)",
+        "athena-text-light": "var(--color-text-light)",
         "athena-text-secondary": "var(--color-text-secondary)",
         "athena-text-tertiary": "var(--color-text-tertiary)",
         "athena-text-ghost": "var(--color-text-ghost)",
@@ -36,7 +37,6 @@ const config: Config = {
         "athena-success-bg": "var(--color-success-bg)",
         "athena-warning": "var(--color-warning)",
         "athena-warning-bg": "var(--color-warning-bg)",
-        "athena-warning-alt": "var(--color-warning-alt)",
         "athena-error": "var(--color-error)",
         "athena-error-bg": "var(--color-error-bg)",
         "athena-critical": "var(--color-critical)",
@@ -62,9 +62,7 @@ const config: Config = {
         sans: ["var(--font-sans)"],
       },
       borderRadius: {
-        "athena-sm": "var(--radius-sm)",
-        "athena-md": "var(--radius-md)",
-        "athena-lg": "var(--radius-lg)",
+        athena: "var(--radius)",
       },
     },
   },

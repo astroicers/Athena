@@ -48,11 +48,11 @@ function actionBg(a: MatrixAction): string {
     case "GO":
       return "bg-[#22C55E15]";
     case "CAUTION":
-      return "bg-[#FBBF2415]";
+      return "bg-athena-warning-bg";
     case "HOLD":
       return "bg-[#EF444425]";
     case "ABORT":
-      return "bg-[#EF444440]";
+      return "bg-athena-error/25";
   }
 }
 
@@ -61,7 +61,7 @@ function actionTextColor(a: MatrixAction): string {
     case "GO":
       return "#22C55E";
     case "CAUTION":
-      return "#FBBF24";
+      return "#F59E0B";
     case "HOLD":
       return "#EF4444";
     case "ABORT":
@@ -74,7 +74,7 @@ function actionBorderColor(a: MatrixAction): string {
     case "GO":
       return "#22C55E";
     case "CAUTION":
-      return "#FBBF24";
+      return "#F59E0B";
     case "HOLD":
       return "#EF4444";
     case "ABORT":
@@ -101,7 +101,7 @@ function riskToCol(riskPct: number): number {
 
 function confidenceColor(score: number): string {
   if (score >= 0.75) return "#22C55E";
-  if (score >= 0.5) return "#FBBF24";
+  if (score >= 0.5) return "#F59E0B";
   return "#EF4444";
 }
 
@@ -137,7 +137,7 @@ interface BreakdownBar {
 function ProgressBar({ value, color }: { value: number; color: string }) {
   const pct = Math.min(100, Math.max(0, value * 100));
   return (
-    <div className="w-full h-1.5 rounded-full bg-[#1f2937] overflow-hidden">
+    <div className="w-full h-1.5 rounded-full bg-athena-elevated overflow-hidden">
       <div
         className="h-full rounded-full transition-all duration-500"
         style={{ width: `${pct}%`, backgroundColor: color }}
@@ -270,7 +270,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
       {
         label: "NOISE / DETECTION RISK",
         value: noiseScore,
-        color: "#FBBF24",
+        color: "#F59E0B",
       },
       {
         label: "TARGET PROFILE MATCH",
@@ -296,7 +296,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
   if (loading && !recommendation && !dashboard) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-sm font-mono text-[#9ca3af]">
+        <p className="text-sm font-mono text-athena-text-tertiary">
           {t("title")}...
         </p>
       </div>
@@ -307,7 +307,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
   if (error && !recommendation && !dashboard) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-sm font-mono text-[#EF4444]">
+        <p className="text-sm font-mono text-athena-error">
           {t("errorLoading")}
         </p>
       </div>
@@ -328,18 +328,18 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Left Column: Confidence Breakdown */}
         <div
-          className="rounded-athena-md flex flex-col gap-5 bg-[#111827] border border-[#FFFFFF08] px-6 py-5"
+          className="rounded-athena flex flex-col gap-5 bg-athena-surface border border-[#FFFFFF08] px-6 py-5"
         >
           {/* Header */}
           <div className="flex flex-col gap-1">
             <span
-              className="font-mono uppercase tracking-widest text-[#9ca3af]"
+              className="font-mono uppercase tracking-widest text-athena-text-tertiary"
               style={{ fontSize: 10 }}
             >
               {t("confidenceBreakdown")}
             </span>
             <span
-              className="font-mono text-[#9ca3af]"
+              className="font-mono text-athena-text-tertiary"
               style={{ fontSize: 11 }}
             >
               {t("confidenceSubtitle")}
@@ -368,7 +368,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
               <div key={bar.label} className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
                   <span
-                    className="font-mono uppercase tracking-widest text-[#9ca3af]"
+                    className="font-mono uppercase tracking-widest text-athena-text-tertiary"
                     style={{ fontSize: 10 }}
                   >
                     {bar.label}
@@ -387,19 +387,19 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
 
           {/* Recommended Action card */}
           <div
-            className="flex flex-col gap-2 mt-auto rounded-athena-md px-4 py-3"
-            style={{ backgroundColor: "#3B82F610", border: "1px solid #3B82F630" }}
+            className="flex flex-col gap-2 mt-auto rounded-athena px-4 py-3"
+            style={{ backgroundColor: "var(--color-accent-bg)", border: "1px solid color-mix(in srgb, var(--color-accent) 20%, transparent)" }}
           >
             <span
-              className="font-mono uppercase tracking-widest text-[#9ca3af]"
+              className="font-mono uppercase tracking-widest text-athena-text-tertiary"
               style={{ fontSize: 10 }}
             >
               {t("recommendedAction")}
             </span>
-            <span className="font-mono text-sm font-semibold text-[#e5e7eb]">
+            <span className="font-mono text-sm font-semibold text-athena-text-light">
               {recTechnique?.techniqueName ?? t("noTechnique")}
             </span>
-            <span className="font-mono text-xs text-[#6b7280]">
+            <span className="font-mono text-xs text-athena-text-secondary">
               {recTechnique?.reasoning ??
                 recommendation?.situationAssessment ??
                 t("noAssessment")}
@@ -420,7 +420,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
               <Button
                 variant="secondary"
                 size="sm"
-                className="uppercase tracking-wider text-[#6b7280]"
+                className="uppercase tracking-wider text-athena-text-secondary"
               >
                 {t("override")}
               </Button>
@@ -430,18 +430,18 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
 
         {/* Right Column: Noise x Risk Matrix */}
         <div
-          className="rounded-athena-md flex flex-col gap-5 bg-[#111827] border border-[#FFFFFF08] px-6 py-5"
+          className="rounded-athena flex flex-col gap-5 bg-athena-surface border border-[#FFFFFF08] px-6 py-5"
         >
           {/* Header */}
           <div className="flex flex-col gap-1">
             <span
-              className="font-mono uppercase tracking-widest text-[#9ca3af]"
+              className="font-mono uppercase tracking-widest text-athena-text-tertiary"
               style={{ fontSize: 10 }}
             >
               {t("noiseRiskMatrix")}
             </span>
             <span
-              className="font-mono text-[#9ca3af]"
+              className="font-mono text-athena-text-tertiary"
               style={{ fontSize: 11 }}
             >
               {t("matrixSubtitle")}
@@ -453,7 +453,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
             {/* Y-axis label */}
             <div className="flex flex-col items-center justify-center mr-1">
               <span
-                className="font-mono uppercase tracking-widest text-[#9ca3af]"
+                className="font-mono uppercase tracking-widest text-athena-text-tertiary"
                 style={{
                   fontSize: 9,
                   writingMode: "vertical-lr",
@@ -474,7 +474,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
                     className="flex items-center justify-center"
                   >
                     <span
-                      className="font-mono uppercase tracking-wider text-[#9ca3af]"
+                      className="font-mono uppercase tracking-wider text-athena-text-tertiary"
                       style={{ fontSize: 9 }}
                     >
                       {col}
@@ -492,7 +492,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
                   {/* Row label */}
                   <div className="flex items-center justify-center">
                     <span
-                      className="font-mono uppercase tracking-wider text-[#9ca3af]"
+                      className="font-mono uppercase tracking-wider text-athena-text-tertiary"
                       style={{ fontSize: 9 }}
                     >
                       {rowLabel}
@@ -508,7 +508,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
                       <div
                         key={colIdx}
                         className={`
-                          flex items-center justify-center rounded-athena-md py-3
+                          flex items-center justify-center rounded-athena py-3
                           ${actionBg(action)}
                           ${isCurrent ? "ring-2 ring-white/70 scale-105 shadow-lg z-10" : ""}
                           transition-all duration-300
@@ -531,7 +531,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
               {/* X-axis label */}
               <div className="flex justify-center mt-1">
                 <span
-                  className="font-mono uppercase tracking-widest text-[#9ca3af]"
+                  className="font-mono uppercase tracking-widest text-athena-text-tertiary"
                   style={{ fontSize: 9 }}
                 >
                   {t("riskAxisLabel")}
@@ -542,14 +542,14 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
 
           {/* Current Position card */}
           <div
-            className="rounded-athena-md p-4 flex flex-col gap-2 mt-auto"
+            className="rounded-athena p-4 flex flex-col gap-2 mt-auto"
             style={{
               border: `1px solid ${actionBorderColor(curAction)}`,
               backgroundColor: "rgba(0,0,0,0.2)",
             }}
           >
             <span
-              className="font-mono uppercase tracking-widest text-[#9ca3af]"
+              className="font-mono uppercase tracking-widest text-athena-text-tertiary"
               style={{ fontSize: 10 }}
             >
               {t("currentPosition")}
@@ -557,29 +557,29 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
             <div className="flex gap-4">
               <div className="flex flex-col gap-0.5">
                 <span
-                  className="font-mono uppercase tracking-wider text-[#9ca3af]"
+                  className="font-mono uppercase tracking-wider text-athena-text-tertiary"
                   style={{ fontSize: 9 }}
                 >
                   {t("noiseLabel")}
                 </span>
-                <span className="font-mono text-sm athena-tabular-nums text-[#e5e7eb]">
+                <span className="font-mono text-sm athena-tabular-nums text-athena-text-light">
                   {noisePct.toFixed(0)}%
                 </span>
               </div>
               <div className="flex flex-col gap-0.5">
                 <span
-                  className="font-mono uppercase tracking-wider text-[#9ca3af]"
+                  className="font-mono uppercase tracking-wider text-athena-text-tertiary"
                   style={{ fontSize: 9 }}
                 >
                   {t("riskLabel")}
                 </span>
-                <span className="font-mono text-sm athena-tabular-nums text-[#e5e7eb]">
+                <span className="font-mono text-sm athena-tabular-nums text-athena-text-light">
                   {riskPct.toFixed(0)}%
                 </span>
               </div>
               <div className="flex flex-col gap-0.5">
                 <span
-                  className="font-mono uppercase tracking-wider text-[#9ca3af]"
+                  className="font-mono uppercase tracking-wider text-athena-text-tertiary"
                   style={{ fontSize: 9 }}
                 >
                   {t("actionLabel")}
@@ -592,7 +592,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
                 </span>
               </div>
             </div>
-            <span className="font-mono text-xs text-[#6b7280]">
+            <span className="font-mono text-xs text-athena-text-secondary">
               {curAction === "GO"
                 ? "Safe to proceed with current technique."
                 : curAction === "CAUTION"
@@ -608,10 +608,10 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
       {/* Recommendation History */}
       {history.length > 0 && (
         <div
-          className="rounded-athena-md flex flex-col gap-3 bg-[#111827] border border-[#FFFFFF08] px-6 py-5"
+          className="rounded-athena flex flex-col gap-3 bg-athena-surface border border-[#FFFFFF08] px-6 py-5"
         >
           <span
-            className="font-mono uppercase tracking-widest text-[#9ca3af]"
+            className="font-mono uppercase tracking-widest text-athena-text-tertiary"
             style={{ fontSize: 10 }}
           >
             {tRec("history")}
@@ -623,7 +623,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
               return (
                 <div
                   key={rec.id}
-                  className="flex items-center gap-3 px-3 py-2 rounded-athena-sm hover:bg-[#1f2937] transition-colors"
+                  className="flex items-center gap-3 px-3 py-2 rounded-athena hover:bg-athena-elevated transition-colors"
                 >
                   {/* Confidence dot */}
                   <span
@@ -632,7 +632,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
                   />
                   {/* Timestamp */}
                   <span
-                    className="font-mono text-[11px] shrink-0 athena-tabular-nums text-[#9ca3af]"
+                    className="font-mono text-[11px] shrink-0 athena-tabular-nums text-athena-text-tertiary"
                   >
                     {new Date(rec.createdAt).toLocaleTimeString("en-US", {
                       hour: "2-digit",
@@ -643,7 +643,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
                   </span>
                   {/* Technique */}
                   <span
-                    className="font-mono text-xs truncate flex-1 text-[#6b7280]"
+                    className="font-mono text-xs truncate flex-1 text-athena-text-secondary"
                   >
                     {topOption?.techniqueName ??
                       rec.recommendedTechniqueId}
@@ -658,7 +658,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
                   {/* Accepted badge */}
                   {rec.accepted === true && (
                     <span
-                      className="font-mono text-[10px] px-2 py-0.5 rounded-athena-sm shrink-0 bg-[#22C55E20] text-[#22C55E]"
+                      className="font-mono text-[10px] px-2 py-0.5 rounded-athena shrink-0 bg-athena-success-bg text-athena-success"
                     >
                       ACCEPTED
                     </span>
@@ -673,9 +673,9 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
       {/* Empty history state */}
       {history.length === 0 && !loading && (
         <div
-          className="rounded-athena-md flex items-center justify-center bg-[#111827] border border-[#FFFFFF08] px-6 py-5"
+          className="rounded-athena flex items-center justify-center bg-athena-surface border border-[#FFFFFF08] px-6 py-5"
         >
-          <span className="font-mono text-xs text-[#9ca3af]">
+          <span className="font-mono text-xs text-athena-text-tertiary">
             {tRec("noHistory")}
           </span>
         </div>

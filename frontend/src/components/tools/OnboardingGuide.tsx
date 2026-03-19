@@ -32,13 +32,13 @@ export function OnboardingGuide({ isOpen, onClose }: OnboardingGuideProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
-      <div className="bg-[#111827] border-2 border-[#1f2937] rounded-athena-lg p-6 max-w-lg w-full mx-4">
+      <div className="bg-athena-surface border-2 border-athena-border rounded-athena p-6 max-w-lg w-full mx-4">
         {/* Header */}
         <div className="mb-4">
-          <span className="text-xs font-mono text-[#9ca3af] uppercase tracking-wider">
+          <span className="text-xs font-mono text-athena-text-tertiary uppercase tracking-wider">
             {t("guideTitle")}
           </span>
-          <h2 className="text-lg font-mono font-bold text-[#e5e7eb] mt-1">
+          <h2 className="text-lg font-mono font-bold text-athena-text-light mt-1">
             {t("guideSubtitle")}
           </h2>
         </div>
@@ -51,14 +51,14 @@ export function OnboardingGuide({ isOpen, onClose }: OnboardingGuideProps) {
                 <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#3b82f6] text-[#0A0E17] text-sm font-bold">
                   {i + 1}
                 </span>
-                <span className="text-sm font-mono text-[#9ca3af] uppercase tracking-wider font-medium">
+                <span className="text-sm font-mono text-athena-text-tertiary uppercase tracking-wider font-medium">
                   {t(step.titleKey)}
                 </span>
               </div>
-              <pre className="bg-[#0A0E17] border border-[#1f2937] rounded-athena-sm px-3 py-2 text-sm text-[#3b82f6] font-mono select-all whitespace-pre-wrap">
+              <pre className="bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm text-athena-accent font-mono select-all whitespace-pre-wrap">
                 {t(step.cmdKey)}
               </pre>
-              <p className="text-xs font-mono text-[#9ca3af] mt-1">
+              <p className="text-xs font-mono text-athena-text-tertiary mt-1">
                 {t(step.descKey)}
               </p>
             </div>

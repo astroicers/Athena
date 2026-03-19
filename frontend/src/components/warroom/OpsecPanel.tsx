@@ -86,7 +86,7 @@ function ProgressBar({
 }) {
   const pct = Math.min(100, Math.max(0, (value / max) * 100));
   return (
-    <div className="w-full h-1.5 rounded-full bg-[#1f2937] overflow-hidden mt-2">
+    <div className="w-full h-1.5 rounded-full bg-athena-elevated overflow-hidden mt-2">
       <div
         className="h-full rounded-full transition-all duration-500"
         style={{ width: `${pct}%`, backgroundColor: color }}
@@ -114,7 +114,7 @@ function MetricCard({
 }) {
   return (
     <div
-      className="flex-1 min-w-0 rounded-athena-md p-4 flex flex-col gap-1 bg-[#111827] border border-[#1f2937]"
+      className="flex-1 min-w-0 rounded-athena p-4 flex flex-col gap-1 bg-athena-surface border border-athena-border"
       style={{
         height: 120,
       }}
@@ -125,11 +125,11 @@ function MetricCard({
       >
         {value}
       </span>
-      <span className="font-mono text-xs uppercase font-semibold text-[#9ca3af]" style={{ letterSpacing: "1px" }}>
+      <span className="font-mono text-xs uppercase font-semibold text-athena-text-tertiary" style={{ letterSpacing: "1px" }}>
         {label}
       </span>
       {subLabel && (
-        <span className="font-mono text-[10px] text-[#9ca3af]">
+        <span className="font-mono text-[10px] text-athena-text-tertiary">
           {subLabel}
         </span>
       )}
@@ -228,7 +228,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
   if (loading && !opsec) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-sm font-mono text-[#9ca3af]">
+        <p className="text-sm font-mono text-athena-text-tertiary">
           {t("title")}...
         </p>
       </div>
@@ -239,7 +239,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
   if (error && !opsec) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-sm font-mono text-[#EF4444]">
+        <p className="text-sm font-mono text-athena-error">
           {t("errorLoading")}
         </p>
       </div>
@@ -250,7 +250,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
   if (!opsec) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-sm font-mono text-[#9ca3af]">
+        <p className="text-sm font-mono text-athena-text-tertiary">
           {t("noData")}
         </p>
       </div>
@@ -317,7 +317,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
 
       {/* Noise Trend Chart */}
       <div
-        className="rounded-athena-md p-4 flex flex-col gap-2 bg-[#111827] border border-[#1f2937]"
+        className="rounded-athena p-4 flex flex-col gap-2 bg-athena-surface border border-athena-border"
         style={{
           height: 220,
         }}
@@ -348,7 +348,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
 
       {/* OPSEC Events */}
       <div
-        className="rounded-athena-md flex flex-col flex-1 min-h-[200px] bg-[#111827] border border-[#1f2937]"
+        className="rounded-athena flex flex-col flex-1 min-h-[200px] bg-athena-surface border border-athena-border"
       >
         {/* Header */}
         <div className="flex items-center gap-2 h-10 px-4">
@@ -359,8 +359,8 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
             OPSEC EVENTS
           </span>
           <span
-            className="font-mono text-[10px] rounded-athena-sm px-2 py-0.5"
-            style={{ color: "#ef4444", backgroundColor: "#ef444420" }}
+            className="font-mono text-[10px] rounded-athena px-2 py-0.5"
+            style={{ color: "var(--color-error)", backgroundColor: "var(--color-error-bg)" }}
           >
             {t("eventCount", { count: events.length })}
           </span>
@@ -369,7 +369,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
         {/* Event list */}
         <div className="flex-1 overflow-y-auto">
           {events.length === 0 ? (
-            <p className="text-xs font-mono py-4 text-center text-[#9ca3af]">
+            <p className="text-xs font-mono py-4 text-center text-athena-text-tertiary">
               {t("noEvents")}
             </p>
           ) : (
@@ -388,7 +388,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
                 />
                 {/* Timestamp */}
                 <span
-                  className="font-mono text-[11px] shrink-0 athena-tabular-nums text-[#9ca3af]"
+                  className="font-mono text-[11px] shrink-0 athena-tabular-nums text-athena-text-tertiary"
                 >
                   {new Date(event.timestamp).toLocaleTimeString("en-US", {
                     hour: "2-digit",
@@ -399,7 +399,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
                 </span>
                 {/* Message */}
                 <span
-                  className="font-mono text-xs truncate flex-1 text-[#6b7280]"
+                  className="font-mono text-xs truncate flex-1 text-athena-text-secondary"
                 >
                   {event.message}
                 </span>

@@ -62,7 +62,7 @@ function phaseColor(phase: string): string {
     case "orient":
       return "#A855F7";
     case "decide":
-      return "#FBBF24";
+      return "#F59E0B";
     case "act":
       return "#22C55E";
     default:
@@ -77,7 +77,7 @@ function phaseBg(phase: string): string {
     case "orient":
       return "#A855F710";
     case "decide":
-      return "#FBBF2410";
+      return "#F59E0B10";
     case "act":
       return "#22C55E10";
     default:
@@ -93,7 +93,7 @@ function logSeverityColor(severity: string): string {
     case "error":
       return "#EF4444";
     case "warning":
-      return "#FBBF24";
+      return "#F59E0B";
     case "success":
       return "#22C55E";
     default:
@@ -117,7 +117,7 @@ function PhaseCard({
 
   return (
     <div
-      className="rounded-athena-md flex flex-col gap-2 px-3.5 py-3"
+      className="rounded-athena flex flex-col gap-2 px-3.5 py-3"
       style={{
         backgroundColor: bg,
         border: active ? `1px solid ${color}40` : "1px solid #1f2937",
@@ -235,7 +235,7 @@ function WarRoomContent() {
   if (loading && !dashboard) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-sm font-mono text-[#9ca3af]">
+        <p className="text-sm font-mono text-athena-text-tertiary">
           {t("title")}...
         </p>
       </div>
@@ -244,7 +244,7 @@ function WarRoomContent() {
 
   return (
     <div
-      className="flex flex-col h-full overflow-hidden bg-[#0A0E17]"
+      className="flex flex-col h-full overflow-hidden bg-athena-bg"
     >
       {/* Constraint Banner */}
       <ConstraintBanner constraints={bannerData} onOverride={override} />
@@ -253,7 +253,7 @@ function WarRoomContent() {
       <div className="flex flex-1 gap-4 py-4 px-6 min-h-0">
         {/* Left panel: OODA Loop */}
         <div
-          className="rounded-athena-md flex flex-col gap-3 overflow-y-auto shrink-0 bg-[#111827] p-4 w-[200px]"
+          className="rounded-athena flex flex-col gap-3 overflow-y-auto shrink-0 bg-athena-surface p-4 w-[200px]"
         >
           <span
             className="font-mono font-bold"
@@ -280,7 +280,7 @@ function WarRoomContent() {
           {/* Iteration counter */}
           {dashboard && (
             <div
-              className="rounded-athena-md mt-2 px-3 py-2.5"
+              className="rounded-athena mt-2 px-3 py-2.5"
               style={{
                 backgroundColor: "#ffffff05",
                 border: "1px solid #ffffff08",
@@ -345,7 +345,7 @@ function WarRoomContent() {
 
         {/* Right panel: Action Log */}
         <div
-          className="flex flex-col gap-3 overflow-y-auto shrink-0 bg-[#111827] rounded-athena-md p-4 w-[300px]"
+          className="flex flex-col gap-3 overflow-y-auto shrink-0 bg-athena-surface rounded-athena p-4 w-[300px]"
         >
           <span className="font-mono font-bold" style={{ color: "#ffffff60", fontSize: 10 }}>
             ACTION LOG
@@ -362,7 +362,7 @@ function WarRoomContent() {
               {logs.map((entry) => (
                 <div
                   key={entry.id}
-                  className="flex flex-col gap-1 px-3 py-2.5 rounded-athena-sm"
+                  className="flex flex-col gap-1 px-3 py-2.5 rounded-athena"
                   style={{
                     backgroundColor: "#0a0e17",
                     border: "1px solid #1f2937",
@@ -422,7 +422,7 @@ export default function WarRoomPage() {
     <Suspense
       fallback={
         <div className="flex items-center justify-center h-full">
-          <p className="text-sm font-mono text-[#9ca3af]">
+          <p className="text-sm font-mono text-athena-text-tertiary">
             Loading War Room...
           </p>
         </div>

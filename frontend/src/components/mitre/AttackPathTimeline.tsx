@@ -47,16 +47,16 @@ function formatDuration(sec: number | null): string {
 function StatusDot({ status }: { status: TechniqueStatus }) {
   switch (status) {
     case TechniqueStatus.SUCCESS:
-      return <span className="text-[#22C55E] font-bold">●</span>;
+      return <span className="text-athena-success font-bold">●</span>;
     case TechniqueStatus.FAILED:
-      return <span className="text-[#EF4444] font-bold">✗</span>;
+      return <span className="text-athena-error font-bold">✗</span>;
     case TechniqueStatus.RUNNING:
     case TechniqueStatus.QUEUED:
-      return <span className="text-[#3b82f6] font-bold animate-pulse">⟳</span>;
+      return <span className="text-athena-accent font-bold animate-pulse">⟳</span>;
     case TechniqueStatus.PARTIAL:
-      return <span className="text-[#FBBF24] font-bold">◑</span>;
+      return <span className="text-athena-warning font-bold">◑</span>;
     default:
-      return <span className="text-[#9ca3af]">○</span>;
+      return <span className="text-athena-text-tertiary">○</span>;
   }
 }
 
@@ -67,13 +67,13 @@ function pillBg(status: TechniqueStatus): string {
     case TechniqueStatus.FAILED:
       return "bg-[#EF444410] border border-[#EF444466]";
     case TechniqueStatus.RUNNING:
-      return "bg-[#3b82f610] border border-[#3b82f666] animate-pulse";
+      return "bg-[#3b82f610] border border-athena-accent/40 animate-pulse";
     case TechniqueStatus.QUEUED:
-      return "bg-[#3b82f6]/5 border border-[#3b82f6]/20";
+      return "bg-[#3b82f6]/5 border border-athena-accent/20";
     case TechniqueStatus.PARTIAL:
-      return "bg-[#FBBF2410] border border-[#FBBF2466]";
+      return "bg-athena-warning-bg border border-athena-warning/40";
     default:
-      return "border border-[#1f293766]";
+      return "border border-athena-border/40";
   }
 }
 
@@ -94,18 +94,18 @@ function TechniquePill({ entry }: { entry: AttackPathEntry }) {
   return (
     <div className="relative group">
       <div
-        className={`flex items-center gap-1 px-1.5 py-0.5 rounded-athena-sm text-sm font-mono cursor-default ${pillBg(entry.status)}`}
+        className={`flex items-center gap-1 px-1.5 py-0.5 rounded-athena text-sm font-mono cursor-default ${pillBg(entry.status)}`}
         title={tooltipLines}
       >
         <StatusDot status={entry.status} />
-        <span className="text-[#e5e7eb]-primary truncate">{entry.mitreId}</span>
+        <span className="text-athena-text-light-primary truncate">{entry.mitreId}</span>
       </div>
       {/* CSS hover tooltip */}
       <div
         className={
           "absolute z-50 left-0 top-full mt-1 min-w-[180px] max-w-[240px] " +
-          "bg-[#1f2937] border border-[#1f2937] rounded-athena-sm p-2 " +
-          "text-sm font-mono text-[#e5e7eb]-primary shadow-lg " +
+          "bg-athena-elevated border border-athena-border rounded-athena p-2 " +
+          "text-sm font-mono text-athena-text-light-primary shadow-lg " +
           "invisible opacity-0 group-hover:visible group-hover:opacity-100 " +
           "transition-opacity duration-150 pointer-events-none whitespace-pre-wrap"
         }
@@ -122,12 +122,12 @@ function SkeletonColumn() {
   return (
     <div className="w-24 shrink-0 space-y-1">
       {/* header shimmer */}
-      <div className="h-3 bg-[#1f2937]/40 rounded-athena-sm animate-pulse mb-2" />
+      <div className="h-3 bg-athena-elevated/40 rounded-athena animate-pulse mb-2" />
       {/* pill shimmers */}
       {[1, 2].map((i) => (
         <div
           key={i}
-          className="h-5 bg-[#1f2937]/30 rounded-athena-sm animate-pulse"
+          className="h-5 bg-athena-elevated/30 rounded-athena animate-pulse"
           style={{ animationDelay: `${i * 80}ms` }}
         />
       ))}
@@ -156,41 +156,41 @@ function AttackGraphSummaryPanel({ graphData }: { graphData: AttackGraphResponse
   const coveragePct = Math.round(coverageScore * 100);
 
   return (
-    <div className="mb-3 p-2 bg-[#1f2937] border border-[#1f2937] rounded-athena-sm">
+    <div className="mb-3 p-2 bg-athena-elevated border border-athena-border rounded-athena">
       <div className="flex items-center gap-3 text-sm font-mono">
         {/* Coverage bar */}
         <div className="flex items-center gap-1.5 min-w-[120px]">
-          <span className="text-[#9ca3af]">Coverage</span>
-          <div className="flex-1 h-1.5 bg-[#1f2937]/30 rounded-full overflow-hidden">
+          <span className="text-athena-text-tertiary">Coverage</span>
+          <div className="flex-1 h-1.5 bg-athena-elevated/30 rounded-full overflow-hidden">
             <div
               className="h-full bg-[#3b82f6] rounded-full transition-all"
               style={{ width: `${coveragePct}%` }}
             />
           </div>
-          <span className="text-[#e5e7eb]-primary font-bold">{coveragePct}%</span>
+          <span className="text-athena-text-light-primary font-bold">{coveragePct}%</span>
         </div>
 
         {/* Node stats */}
-        <div className="flex items-center gap-2 text-[#9ca3af]">
+        <div className="flex items-center gap-2 text-athena-text-tertiary">
           <span>
-            <span className="text-[#22C55E]">{stats.exploredNodes}</span> explored
+            <span className="text-athena-success">{stats.exploredNodes}</span> explored
           </span>
           <span>
-            <span className="text-[#3b82f6]">{stats.pendingNodes}</span> pending
+            <span className="text-athena-accent">{stats.pendingNodes}</span> pending
           </span>
           <span>
-            <span className="text-[#EF4444]">{stats.failedNodes}</span> failed
+            <span className="text-athena-error">{stats.failedNodes}</span> failed
           </span>
           {stats.prunedNodes > 0 && (
             <span>
-              <span className="text-[#9ca3af]">{stats.prunedNodes}</span> pruned
+              <span className="text-athena-text-tertiary">{stats.prunedNodes}</span> pruned
             </span>
           )}
         </div>
 
         {/* Unexplored count */}
         {unexploredBranches.length > 0 && (
-          <span className="text-[#FBBF24]">
+          <span className="text-athena-warning">
             {unexploredBranches.length} unexplored
           </span>
         )}
@@ -198,9 +198,9 @@ function AttackGraphSummaryPanel({ graphData }: { graphData: AttackGraphResponse
 
       {/* Recommended path */}
       {pathTechniques && (
-        <div className="mt-1.5 text-sm font-mono text-[#9ca3af]">
-          <span className="text-[#3b82f6]">Recommended:</span>{" "}
-          <span className="text-[#e5e7eb]-primary">{pathTechniques}</span>
+        <div className="mt-1.5 text-sm font-mono text-athena-text-tertiary">
+          <span className="text-athena-accent">Recommended:</span>{" "}
+          <span className="text-athena-text-light-primary">{pathTechniques}</span>
         </div>
       )}
     </div>
@@ -226,7 +226,7 @@ export function AttackPathTimeline({ data, loading, graphData }: AttackPathTimel
     : null;
 
   return (
-    <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md p-3">
+    <div className="bg-athena-surface border border-athena-border rounded-athena p-3">
       {/* Section header */}
       <SectionHeader className="mb-3" title={tHints("attackPath")}>
         {tNav("attackPath")}
@@ -252,12 +252,12 @@ export function AttackPathTimeline({ data, loading, graphData }: AttackPathTimel
                   <div
                     key={tid}
                     className={[
-                      "w-24 shrink-0 rounded-athena-sm p-1.5",
+                      "w-24 shrink-0 rounded-athena p-1.5",
                       isHighest
-                        ? "border-b-2 border-[#3b82f6] bg-[#3b82f6]/5"
+                        ? "border-b-2 border-athena-accent bg-[#3b82f6]/5"
                         : isEmpty
-                          ? "border border-dashed border-[#1f29374d]"
-                          : "border border-[#1f2937]/20",
+                          ? "border border-dashed border-athena-border/30"
+                          : "border border-athena-border/20",
                     ].join(" ")}
                     style={
                       isHighest
@@ -273,7 +273,7 @@ export function AttackPathTimeline({ data, loading, graphData }: AttackPathTimel
                       >
                         {tTactic(tid as any)}
                       </div>
-                      <div className="text-sm font-mono text-[#9ca3af] opacity-60">
+                      <div className="text-sm font-mono text-athena-text-tertiary opacity-60">
                         {tid}
                       </div>
                     </div>
@@ -281,7 +281,7 @@ export function AttackPathTimeline({ data, loading, graphData }: AttackPathTimel
                     {/* Technique pills */}
                     <div className="space-y-1">
                       {isEmpty ? (
-                        <div className="text-sm font-mono text-[#9ca3af] italic">
+                        <div className="text-sm font-mono text-athena-text-tertiary italic">
                           —
                         </div>
                       ) : (
@@ -293,7 +293,7 @@ export function AttackPathTimeline({ data, loading, graphData }: AttackPathTimel
 
                     {/* Coverage badge */}
                     {data && data.tacticCoverage[tid] !== undefined && data.tacticCoverage[tid] > 0 && (
-                      <div className="mt-1 text-sm font-mono text-[#9ca3af] opacity-60 text-right">
+                      <div className="mt-1 text-sm font-mono text-athena-text-tertiary opacity-60 text-right">
                         {data.tacticCoverage[tid]}%
                       </div>
                     )}

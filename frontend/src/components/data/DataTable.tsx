@@ -64,22 +64,22 @@ export function DataTable<T extends Record<string, unknown>>({
 
   if (data.length === 0) {
     return (
-      <div className="border border-[#1f293740] rounded-athena-sm p-6 text-center">
-        <span className="text-xs font-mono text-[#6b7280]">{emptyMessage}</span>
+      <div className="border border-athena-border/25 rounded-athena p-6 text-center">
+        <span className="text-xs font-mono text-athena-text-secondary">{emptyMessage}</span>
       </div>
     );
   }
 
   return (
-    <div className="bg-[#111827] border border-[#1f2937] rounded-athena-sm overflow-hidden">
+    <div className="bg-athena-surface border border-athena-border rounded-athena overflow-hidden">
       <table className="w-full text-xs font-mono">
         <thead>
-          <tr className="border-b border-[#1f2937]" style={{ background: "#0f172a" }}>
+          <tr className="border-b border-athena-border" style={{ background: "#0f172a" }}>
             {columns.map((col) => (
               <th
                 key={col.key}
-                className={`px-4 py-3 text-left font-semibold uppercase tracking-wider text-[#6b7280] ${
-                  col.sortable ? "cursor-pointer hover:text-[#3b82f6] select-none" : ""
+                className={`px-4 py-3 text-left font-semibold uppercase tracking-wider text-athena-text-secondary ${
+                  col.sortable ? "cursor-pointer hover:text-athena-accent select-none" : ""
                 }`}
                 style={col.width ? { width: col.width } : undefined}
                 onClick={col.sortable ? () => handleSort(col.key) : undefined}
@@ -102,7 +102,7 @@ export function DataTable<T extends Record<string, unknown>>({
               style={{ borderBottom: "1px solid #1f293740", height: 40 }}
             >
               {columns.map((col) => (
-                <td key={col.key} className="px-4 py-2 text-[#e5e7eb]">
+                <td key={col.key} className="px-4 py-2 text-athena-text-light">
                   {col.render ? col.render(row) : String(row[col.key] ?? "")}
                 </td>
               ))}

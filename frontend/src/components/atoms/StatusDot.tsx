@@ -11,17 +11,17 @@
 "use client";
 
 const STATUS_COLORS: Record<string, string> = {
-  alive: "bg-[#22C55E20]",
-  operational: "bg-[#22C55E20]",
+  alive: "bg-athena-success-bg",
+  operational: "bg-athena-success-bg",
   active: "bg-[#3b82f6]",
-  nominal: "bg-[#22C55E20]",
-  engaged: "bg-[#FBBF2420]",
+  nominal: "bg-athena-success-bg",
+  engaged: "bg-athena-warning-bg",
   scanning: "bg-[#3b82f6]",
-  pending: "bg-[#FBBF2420]",
-  degraded: "bg-[#FBBF2420]",
-  untrusted: "bg-[#EF444420]",
-  offline: "bg-[#1f2937]",
-  dead: "bg-[#EF444420]",
+  pending: "bg-athena-warning-bg",
+  degraded: "bg-athena-warning-bg",
+  untrusted: "bg-athena-error-bg",
+  offline: "bg-athena-elevated",
+  dead: "bg-athena-error-bg",
   critical: "bg-[#DC262620]",
 };
 
@@ -31,7 +31,7 @@ interface StatusDotProps {
 }
 
 export function StatusDot({ status, pulse = false }: StatusDotProps) {
-  const color = STATUS_COLORS[status] || "bg-[#1f2937]";
+  const color = STATUS_COLORS[status] || "bg-athena-elevated";
   return (
     <span className="relative inline-flex h-2.5 w-2.5">
       {pulse && (

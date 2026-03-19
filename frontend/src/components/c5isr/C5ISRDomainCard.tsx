@@ -21,7 +21,7 @@ function healthVariant(pct: number): "success" | "warning" | "error" {
 
 function healthColor(pct: number): string {
   if (pct >= 80) return "var(--color-success)";
-  if (pct >= 50) return "#FBBF24";
+  if (pct >= 50) return "var(--color-warning)";
   return "var(--color-error)";
 }
 
@@ -38,7 +38,7 @@ export function C5ISRDomainCard({ domain, onClick }: C5ISRDomainCardProps) {
   return (
     <button
       onClick={onClick}
-      className="rounded-athena-md flex flex-col gap-1.5 text-left transition-colors bg-[#ffffff0d] border border-[#ffffff10] hover:border-[#3b82f640] px-3 py-2.5"
+      className="rounded-athena flex flex-col gap-1.5 text-left transition-colors bg-[#ffffff0d] border border-[#ffffff10] hover:border-athena-accent/25 px-3 py-2.5"
     >
       <div className="flex items-center justify-between w-full">
         <span
@@ -47,7 +47,7 @@ export function C5ISRDomainCard({ domain, onClick }: C5ISRDomainCardProps) {
           {domain.domain}
         </span>
         <span
-          className="font-mono text-[9px] font-bold uppercase tracking-wider rounded-athena-sm"
+          className="font-mono text-[9px] font-bold uppercase tracking-wider rounded-athena"
           style={{
             color,
             backgroundColor: `${color}15`,

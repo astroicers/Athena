@@ -21,7 +21,7 @@ describe("Button", () => {
   it("applies variant class", () => {
     render(<Button variant="danger">Delete</Button>);
     const btn = screen.getByRole("button");
-    expect(btn.className).toContain("bg-[#EF444420]");
+    expect(btn.className).toContain("bg-athena-error-bg");
   });
 
   it("calls onClick handler", () => {

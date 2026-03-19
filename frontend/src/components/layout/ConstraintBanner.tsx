@@ -82,7 +82,7 @@ export function ConstraintBanner({
               key={domain}
               onClick={() => handleOverride(domain)}
               disabled={overriding === domain}
-              className="px-1.5 py-0.5 bg-white/20 hover:bg-white/5 rounded-athena-sm text-[10px] uppercase font-bold tracking-wider transition-colors disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-white/20"
+              className="px-1.5 py-0.5 bg-white/20 hover:bg-white/5 rounded-athena text-[10px] uppercase font-bold tracking-wider transition-colors disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-white/20"
             >
               {overriding === domain ? "..." : `Override ${domain}`}
             </button>

@@ -23,7 +23,7 @@ export function PageHeader({
 }: PageHeaderProps) {
   return (
     <header
-      className="px-4 flex items-center justify-between border-b border-[#1f2937] h-12"
+      className="px-4 flex items-center justify-between border-b border-athena-border h-12"
       style={{ backgroundColor: "#111827" }}
     >
       <div className="flex items-center gap-3">
@@ -35,10 +35,10 @@ export function PageHeader({
         </h2>
         {operationCode && (
           <span
-            className="font-mono text-[10px] rounded-athena-sm"
+            className="font-mono text-[10px] rounded-athena"
             style={{
               color: "#3b82f6",
-              backgroundColor: "#3b82f620",
+              backgroundColor: "var(--color-accent-bg)",
               padding: "2px 8px",
             }}
           >

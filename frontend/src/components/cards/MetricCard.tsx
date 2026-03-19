@@ -26,7 +26,7 @@ function TrendArrow({ trend }: { trend: "up" | "down" | "stable" }) {
       ? "text-[var(--color-success)]"
       : trend === "down"
         ? "text-[var(--color-error)]"
-        : "text-[#9ca3af]";
+        : "text-athena-text-tertiary";
 
   const path =
     trend === "up"
@@ -102,9 +102,9 @@ export function MetricCard({
   gauge,
 }: MetricCardProps) {
   return (
-    <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md p-4 flex items-start justify-between gap-2">
+    <div className="bg-athena-surface border border-athena-border rounded-athena p-4 flex items-start justify-between gap-2">
       <div className="flex flex-col gap-1 flex-1">
-        <span className="text-sm font-mono text-[#9ca3af] uppercase tracking-wider">
+        <span className="text-sm font-mono text-athena-text-tertiary uppercase tracking-wider">
           {title}
         </span>
         <div className="flex items-center gap-2">
@@ -117,12 +117,12 @@ export function MetricCard({
           {trend && <TrendArrow trend={trend} />}
         </div>
         {trendLabel && (
-          <span className="text-sm font-mono text-[#9ca3af]">
+          <span className="text-sm font-mono text-athena-text-tertiary">
             {trendLabel}
           </span>
         )}
         {subtitle && !trendLabel && (
-          <span className="text-sm font-mono text-[#9ca3af]">
+          <span className="text-sm font-mono text-athena-text-tertiary">
             {subtitle}
           </span>
         )}

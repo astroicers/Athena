@@ -183,15 +183,15 @@ export function MissionTab({
   }
 
   const inputStyles =
-    "w-full bg-[#0A0E17] border border-[#1f2937] rounded-athena-sm px-3 py-2 text-sm font-mono text-[#e5e7eb] placeholder-[#6b7280] focus:outline-none focus:border-[#3b82f6]";
+    "w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-[#6b7280] focus:outline-none focus:border-athena-accent";
 
   const labelStyles =
-    "block text-xs font-mono text-[#6b7280] uppercase tracking-wider mb-1";
+    "block text-xs font-mono text-athena-text-secondary uppercase tracking-wider mb-1";
 
   const STEP_COLUMNS: Column<StepRow>[] = [
     { key: "stepNumber", header: t("colStep"), sortable: true, width: 60 },
     { key: "techniqueId", header: t("colTechnique"), width: 280, render: (r) => (
-      <span><span className="text-[#3b82f6] font-semibold">{r.techniqueId}</span> <span className="text-[#9ca3af]">{r.techniqueName}</span></span>
+      <span><span className="text-athena-accent font-semibold">{r.techniqueId}</span> <span className="text-athena-text-tertiary">{r.techniqueName}</span></span>
     )},
     { key: "targetLabel", header: t("colTarget") },
     { key: "engine", header: t("colEngine"), render: (r) => String(r.engine).toUpperCase() },
@@ -207,7 +207,7 @@ export function MissionTab({
             onChange={(e) => handleStepStatusChange(r.id, e.target.value)}
             onBlur={() => setTimeout(() => setEditingStepId(null), 150)}
             autoFocus
-            className="bg-[#0A0E17] border border-[#3b82f6] rounded-athena-sm px-2 py-1 text-xs font-mono text-[#e5e7eb] focus:outline-none focus:ring-2 focus:ring-[#3b82f6]"
+            className="bg-athena-bg border border-athena-accent rounded-athena px-2 py-1 text-xs font-mono text-athena-text-light focus:outline-none focus:ring-2 focus:ring-[#3b82f6]"
           >
             {Object.values(MissionStepStatus).map((s) => (
               <option key={s} value={s}>{tStatus(s as any)}</option>
@@ -245,7 +245,7 @@ export function MissionTab({
             {t("createStep")}
           </Button>
           {resetStatus === "done" && (
-            <span className="text-sm font-mono text-[#22C55E]">{t("resetOk")}</span>
+            <span className="text-sm font-mono text-athena-success">{t("resetOk")}</span>
           )}
           <Tooltip text={tTips("reset")}>
             <Button
@@ -263,7 +263,7 @@ export function MissionTab({
             </Button>
           </Tooltip>
           {oodaPhase && (
-            <span className="text-xs font-mono font-bold text-[#3b82f6] bg-[#3b82f620] border border-[#3b82f640] rounded-athena-sm px-3 py-1 animate-pulse">
+            <span className="text-xs font-mono font-bold text-athena-accent bg-athena-accent-bg border border-athena-accent/25 rounded-athena px-3 py-1 animate-pulse">
               {tOoda(oodaPhase as "observe" | "orient" | "decide" | "act")}...
             </span>
           )}
@@ -299,7 +299,7 @@ export function MissionTab({
           </Tooltip>
         </div>
       </div>
-      <p className="text-xs font-mono text-[#9ca3af] -mt-3 ml-1">{tHints("missionSteps")}</p>
+      <p className="text-xs font-mono text-athena-text-tertiary -mt-3 ml-1">{tHints("missionSteps")}</p>
       <DataTable columns={STEP_COLUMNS} data={steps as StepRow[]} keyField="id" emptyMessage={t("noSteps")} />
 
       {/* Objectives */}
@@ -309,7 +309,7 @@ export function MissionTab({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
           <OODATimeline entries={timeline} />
-          <p className="text-xs font-mono text-[#9ca3af] mt-1 ml-1">{tHints("oodaTimeline")}</p>
+          <p className="text-xs font-mono text-athena-text-tertiary mt-1 ml-1">{tHints("oodaTimeline")}</p>
         </div>
         <div className="space-y-3">
           <SectionHeader
@@ -333,9 +333,9 @@ export function MissionTab({
           >
             {t("targetHosts")}
           </SectionHeader>
-          <p className="text-xs font-mono text-[#6b7280] -mt-2 ml-1">{tHints("targetHosts")}</p>
+          <p className="text-xs font-mono text-athena-text-secondary -mt-2 ml-1">{tHints("targetHosts")}</p>
           {targets.length === 0 ? (
-            <div className="bg-[#111827] border border-white/5 rounded-athena-md p-6 text-center">
+            <div className="bg-athena-surface border border-white/5 rounded-athena p-6 text-center">
               <span className="text-xs font-mono text-[#4b5563] whitespace-pre-line">{tEmpty("plannerGuide")}</span>
             </div>
           ) : (
@@ -368,7 +368,7 @@ export function MissionTab({
                       variant="secondary"
                       size="sm"
                       onClick={() => onOsintDiscover(tgt.id)}
-                      className="flex-1 text-xs text-[#3b82f6] border-[#3b82f640] bg-transparent hover:bg-[#3b82f610] uppercase tracking-wider"
+                      className="flex-1 text-xs text-athena-accent border-athena-accent/25 bg-transparent hover:bg-[#3b82f610] uppercase tracking-wider"
                     >
                       {t("osintDiscover")}
                     </Button>
@@ -379,7 +379,7 @@ export function MissionTab({
                       size="sm"
                       onClick={() => onInitialAccess(tgt.id)}
                       disabled={scanState?.targetId === tgt.id}
-                      className="flex-1 text-xs text-[#FBBF24] border-[#FBBF2440] bg-transparent hover:bg-[#FBBF2410] uppercase tracking-wider"
+                      className="flex-1 text-xs text-athena-warning border-athena-warning/25 bg-transparent hover:bg-athena-warning-bg uppercase tracking-wider"
                     >
                       {t("initialAccess")}
                     </Button>
@@ -392,7 +392,7 @@ export function MissionTab({
                         prev === tgt.id ? null : tgt.id,
                       )
                     }
-                    className="flex-1 text-xs text-[#9ca3af] hover:text-[#e5e7eb] uppercase tracking-wider"
+                    className="flex-1 text-xs text-athena-text-tertiary hover:text-athena-text-light uppercase tracking-wider"
                   >
                     {t("aiSummary")}
                   </Button>
@@ -401,7 +401,7 @@ export function MissionTab({
                       variant="secondary"
                       size="sm"
                       onClick={() => onSetTerminalTarget(tgt)}
-                      className="flex-1 text-xs text-[#22C55E] border-[#22C55E40] bg-transparent hover:bg-[#22C55E10] uppercase tracking-wider"
+                      className="flex-1 text-xs text-athena-success border-athena-success/25 bg-transparent hover:bg-[#22C55E10] uppercase tracking-wider"
                     >
                       {t("terminal")}
                     </Button>
@@ -477,10 +477,10 @@ export function MissionTab({
       {/* Create Step Modal */}
       {showCreateStep && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "#00000080" }}>
-          <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md p-6 max-w-md w-full mx-4">
+          <div className="bg-athena-surface border border-athena-border rounded-athena p-6 max-w-md w-full mx-4">
             <div className="mb-4">
-              <span className="text-xs font-mono text-[#6b7280]">{t("missionSteps")}</span>
-              <h2 className="text-base font-mono font-bold text-[#e5e7eb] mt-1">{t("createStep")}</h2>
+              <span className="text-xs font-mono text-athena-text-secondary">{t("missionSteps")}</span>
+              <h2 className="text-base font-mono font-bold text-athena-text-light mt-1">{t("createStep")}</h2>
             </div>
             <form onSubmit={handleCreateStep} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
@@ -509,7 +509,7 @@ export function MissionTab({
               </div>
               <div>
                 <label className={labelStyles}>
-                  {t("techniqueId")} <span className="text-[#EF4444]">*</span>
+                  {t("techniqueId")} <span className="text-athena-error">*</span>
                 </label>
                 <input
                   type="text"
@@ -521,7 +521,7 @@ export function MissionTab({
               </div>
               <div>
                 <label className={labelStyles}>
-                  {t("techniqueName")} <span className="text-[#EF4444]">*</span>
+                  {t("techniqueName")} <span className="text-athena-error">*</span>
                 </label>
                 <input
                   type="text"
@@ -533,7 +533,7 @@ export function MissionTab({
               </div>
               <div>
                 <label className={labelStyles}>
-                  {t("targetId")} <span className="text-[#EF4444]">*</span>
+                  {t("targetId")} <span className="text-athena-error">*</span>
                 </label>
                 <select
                   value={newStep.targetId}

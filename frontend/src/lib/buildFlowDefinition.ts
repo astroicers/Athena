@@ -168,7 +168,7 @@ export function buildOODAC5ISRFlow(
   // --- Style classes ---
   lines.push("  classDef active stroke:#3b82f6,stroke-width:2px,fill:#111827");
   lines.push("  classDef healthy stroke:#22C55E,fill:#111827");
-  lines.push("  classDef degraded stroke:#FBBF24,fill:#111827");
+  lines.push("  classDef degraded stroke:#F59E0B,fill:#111827");
   lines.push("  classDef critical stroke:#EF4444,fill:#111827");
 
   // Apply active class to current OODA phase

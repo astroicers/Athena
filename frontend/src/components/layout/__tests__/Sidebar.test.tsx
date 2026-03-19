@@ -62,11 +62,11 @@ describe("Sidebar", () => {
     render(<Sidebar />, { wrapper: IntlWrapper });
 
     const plannerLink = screen.getByTitle("Mission Planner");
-    expect(plannerLink.className).toContain("bg-[#3b82f620]");
+    expect(plannerLink.className).toContain("bg-athena-accent-bg");
 
     // Non-active items should not have the active class
     const operationsLink = screen.getByTitle("Operations");
-    expect(operationsLink.className).not.toContain("bg-[#3b82f620]");
+    expect(operationsLink.className).not.toContain("bg-athena-accent-bg");
   });
 
   it("renders the GitHub star link", () => {

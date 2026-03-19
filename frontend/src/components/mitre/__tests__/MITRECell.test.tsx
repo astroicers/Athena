@@ -20,6 +20,6 @@ describe("MITRECell", () => {
     );
     expect(screen.getByText("T1003.001")).toBeInTheDocument();
     const button = screen.getByRole("button");
-    expect(button.className).toContain("bg-[#22C55E20]");
+    expect(button.className).toContain("bg-athena-success-bg");
   });
 });

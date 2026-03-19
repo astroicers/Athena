@@ -20,6 +20,6 @@ describe("Badge", () => {
 
   it("applies variant styles", () => {
     render(<Badge variant="success">OK</Badge>);
-    expect(screen.getByText("OK").className).toContain("text-[#22C55E]");
+    expect(screen.getByText("OK").className).toContain("text-athena-success");
   });
 });

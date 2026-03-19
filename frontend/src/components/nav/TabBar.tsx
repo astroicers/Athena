@@ -23,7 +23,7 @@ interface TabBarProps {
 
 export function TabBar({ tabs, activeTab, onChange }: TabBarProps) {
   return (
-    <div className="flex items-center h-10 px-4 bg-[#0f1729] border-b border-[#1f2937]">
+    <div className="flex items-center h-10 px-4 bg-[#0f1729] border-b border-athena-border">
       {tabs.map((tab) => (
         <button
           key={tab.id}
@@ -31,8 +31,8 @@ export function TabBar({ tabs, activeTab, onChange }: TabBarProps) {
           className={`relative h-full px-4 text-xs font-mono transition-colors flex items-center
             ${
               activeTab === tab.id
-                ? "text-[#3b82f6] font-semibold"
-                : "text-[#6b7280] hover:text-[#9ca3af]"
+                ? "text-athena-accent font-semibold"
+                : "text-athena-text-secondary hover:text-athena-text-tertiary"
             }`}
         >
           {tab.label}

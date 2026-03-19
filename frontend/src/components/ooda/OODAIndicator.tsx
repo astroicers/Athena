@@ -30,11 +30,11 @@ export function OODAIndicator({ currentPhase }: OODAIndicatorProps) {
   const tHints = useTranslations("Hints");
 
   return (
-    <div className="bg-[#111827] border border-[#1f2937] rounded-athena-md p-4">
+    <div className="bg-athena-surface border border-athena-border rounded-athena p-4">
       <SectionHeader level="card" className="mb-1">
         {t("cycle")}
       </SectionHeader>
-      <p className="text-sm font-mono text-[#9ca3af] mb-3">{tHints("oodaCycle")}</p>
+      <p className="text-sm font-mono text-athena-text-tertiary mb-3">{tHints("oodaCycle")}</p>
       <div className="flex items-center gap-1">
         {PHASE_KEYS.map((phase, i) => {
           const isActive = currentPhase === phase.key;
@@ -44,18 +44,18 @@ export function OODAIndicator({ currentPhase }: OODAIndicatorProps) {
           return (
             <div key={phase.key} className="flex items-center gap-1 flex-1">
               <div
-                className={`flex flex-col items-center justify-center w-full py-2 rounded-athena-sm text-sm font-mono font-bold transition-all ${
+                className={`flex flex-col items-center justify-center w-full py-2 rounded-athena text-sm font-mono font-bold transition-all ${
                   isActive
-                    ? "bg-[#3b82f620] text-[#3b82f6] border border-[#3b82f6]"
+                    ? "bg-athena-accent-bg text-athena-accent border border-athena-accent"
                     : isPast
-                      ? "bg-[#3b82f620] text-[#3b82f6]"
-                      : "bg-[#1f2937]/30 text-[#9ca3af]"
+                      ? "bg-athena-accent-bg text-athena-accent"
+                      : "bg-athena-elevated/30 text-athena-text-tertiary"
                 }`}
               >
                 {t(phase.tKey)}
               </div>
               {i < PHASE_KEYS.length - 1 && (
-                <span className="text-[#9ca3af] text-xs shrink-0">→</span>
+                <span className="text-athena-text-tertiary text-xs shrink-0">→</span>
               )}
             </div>
           );

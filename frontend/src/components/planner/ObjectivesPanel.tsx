@@ -126,16 +126,16 @@ export function ObjectivesPanel({ operationId }: { operationId: string }) {
   }
 
   const inputStyles =
-    "w-full bg-[#0A0E17] border border-[#1f2937] rounded-athena-sm px-3 py-2 text-sm font-mono text-[#e5e7eb] placeholder-[#6b7280] focus:outline-none focus:border-[#3b82f6]";
+    "w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-[#6b7280] focus:outline-none focus:border-athena-accent";
 
   const labelStyles =
-    "block text-sm font-mono text-[#9ca3af] uppercase tracking-wider mb-1";
+    "block text-sm font-mono text-athena-text-tertiary uppercase tracking-wider mb-1";
 
   if (loading) {
     return (
       <div className="animate-pulse">
-        <div className="h-6 w-32 bg-[#111827] rounded-athena-sm mb-2" />
-        <div className="h-20 bg-[#111827] rounded-athena-sm" />
+        <div className="h-6 w-32 bg-athena-surface rounded-athena mb-2" />
+        <div className="h-20 bg-athena-surface rounded-athena" />
       </div>
     );
   }
@@ -164,10 +164,10 @@ export function ObjectivesPanel({ operationId }: { operationId: string }) {
 
       {/* Add Objective Form */}
       {showForm && (
-        <form onSubmit={handleAdd} className="mt-2 border border-[#1f2937] rounded-athena-sm bg-[#111827] p-3 space-y-3">
+        <form onSubmit={handleAdd} className="mt-2 border border-athena-border rounded-athena bg-athena-surface p-3 space-y-3">
           <div>
             <label className={labelStyles}>
-              {t("objective")} <span className="text-[#EF4444]">*</span>
+              {t("objective")} <span className="text-athena-error">*</span>
             </label>
             <input
               type="text"
@@ -215,8 +215,8 @@ export function ObjectivesPanel({ operationId }: { operationId: string }) {
 
       {/* Objectives List */}
       {objectives.length === 0 ? (
-        <div className="bg-[#111827] border border-white/5 rounded-athena-md p-6 text-center mt-2">
-          <span className="text-xs font-mono text-[#9ca3af]">
+        <div className="bg-athena-surface border border-white/5 rounded-athena p-6 text-center mt-2">
+          <span className="text-xs font-mono text-athena-text-tertiary">
             {t("noObjectives")}
           </span>
         </div>
@@ -225,17 +225,17 @@ export function ObjectivesPanel({ operationId }: { operationId: string }) {
           {objectives.map((obj) => (
             <div
               key={obj.id}
-              className="border border-[#1f2937] rounded-athena-sm bg-[#111827] p-3 flex items-center gap-3"
+              className="border border-athena-border rounded-athena bg-athena-surface p-3 flex items-center gap-3"
             >
               <div className="flex-1 min-w-0">
-                <p className={`text-sm font-mono ${obj.status === "achieved" ? "text-[#9ca3af] line-through" : "text-[#e5e7eb]"}`}>
+                <p className={`text-sm font-mono ${obj.status === "achieved" ? "text-athena-text-tertiary line-through" : "text-athena-text-light"}`}>
                   {obj.objective}
                 </p>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant={CATEGORY_VARIANT[obj.category] ?? "info"}>
                     {t(obj.category as "tactical" | "strategic" | "compliance")}
                   </Badge>
-                  <span className="text-xs font-mono text-[#9ca3af]">
+                  <span className="text-xs font-mono text-athena-text-tertiary">
                     P{obj.priority}
                   </span>
                 </div>

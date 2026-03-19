@@ -14,11 +14,11 @@ import React, { ButtonHTMLAttributes } from "react";
 
 const VARIANT_STYLES = {
   primary:
-    "bg-[#3b82f6] text-white font-bold border border-[#3b82f6] hover:bg-[#2563eb]",
+    "bg-athena-accent text-athena-text font-bold border border-athena-accent hover:bg-[#2563eb]",
   secondary:
-    "bg-[#111827] text-[#e5e7eb] border border-[#374151] hover:bg-[#1f2937]",
+    "bg-athena-surface text-athena-text-light border border-athena-border hover:bg-athena-elevated",
   danger:
-    "bg-[#EF444420] text-[#EF4444] border border-[#EF444440] hover:bg-[#EF444430]",
+    "bg-athena-error-bg text-athena-error border border-athena-error/25 hover:bg-athena-error/20",
 } as const;
 
 const SIZE_STYLES = {
@@ -44,7 +44,7 @@ export function Button({
 }: ButtonProps) {
   return (
     <button
-      className={`inline-flex items-center justify-center gap-1.5 font-mono font-semibold rounded-athena-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#3b82f6]
+      className={`inline-flex items-center justify-center gap-1.5 font-mono font-semibold rounded-athena transition-colors focus:outline-none focus:ring-2 focus:ring-athena-accent
         ${VARIANT_STYLES[variant]} ${SIZE_STYLES[size]}
         ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
         ${className}`}

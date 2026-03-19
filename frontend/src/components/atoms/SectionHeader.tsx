@@ -29,7 +29,7 @@ export function SectionHeader({
   ...rest
 }: SectionHeaderProps) {
   const Tag = level === "page" ? "h2" : "h3";
-  const colorClass = level === "page" ? "text-[#e5e7eb]" : "text-[#e5e7eb]";
+  const colorClass = level === "page" ? "text-athena-text-light" : "text-athena-text-light";
 
   if (trailing) {
     return (

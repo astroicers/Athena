@@ -18,7 +18,7 @@ function severityColor(severity: string): string {
     case "CRIT":
       return "var(--color-error)";
     case "WARN":
-      return "#FBBF24";
+      return "var(--color-warning)";
     default:
       return "var(--color-accent)";
   }
@@ -34,12 +34,12 @@ export function C5ISRDomainDetail({ domain, report, onClose }: C5ISRDomainDetail
 
   return (
     <div
-      className="rounded-athena-md flex flex-col gap-3 overflow-y-auto bg-[#111827] border border-[#1f2937] p-4 max-h-[400px]"
+      className="rounded-athena flex flex-col gap-3 overflow-y-auto bg-athena-surface border border-athena-border p-4 max-h-[400px]"
     >
       {/* Header */}
       <div className="flex items-center justify-between">
         <span
-          className="font-mono text-xs font-bold uppercase text-[#e5e7eb]"
+          className="font-mono text-xs font-bold uppercase text-athena-text-light"
         >
           {domain.domain} REPORT
         </span>
@@ -114,7 +114,7 @@ export function C5ISRDomainDetail({ domain, report, onClose }: C5ISRDomainDetail
             {report.riskVectors.map((rv, i) => (
               <div key={i} className="flex items-center gap-2">
                 <span
-                  className="font-mono text-[7px] font-bold px-1 py-0.5 rounded-athena-sm"
+                  className="font-mono text-[7px] font-bold px-1 py-0.5 rounded-athena"
                   style={{
                     backgroundColor: `color-mix(in srgb, ${severityColor(rv.severity)} 20%, transparent)`,
                     color: severityColor(rv.severity),
@@ -167,7 +167,7 @@ export function C5ISRDomainDetail({ domain, report, onClose }: C5ISRDomainDetail
               {report.crossDomainImpacts.map((impact, i) => (
                 <p
                   key={i}
-                  className="font-mono text-[8px] text-[#3b82f6]"
+                  className="font-mono text-[8px] text-athena-accent"
                 >
                   {impact}
                 </p>

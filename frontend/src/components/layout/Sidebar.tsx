@@ -20,14 +20,14 @@ export function Sidebar() {
   const tNav = useTranslations("Nav");
 
   return (
-    <aside className="w-14 h-full bg-[#111827] flex flex-col shrink-0">
+    <aside className="w-14 h-full bg-athena-surface flex flex-col shrink-0">
       {/* Logo */}
       <div className="pt-4 pb-3 flex justify-center">
-        <span className="text-xl font-mono font-bold text-[#3B82F6]">A</span>
+        <span className="text-xl font-mono font-bold text-athena-accent">A</span>
       </div>
 
       {/* Separator */}
-      <div className="mx-2 border-b border-[#1f2937]" />
+      <div className="mx-2 border-b border-athena-border" />
 
       {/* Navigation */}
       <nav className="flex-1 pt-4 px-2 flex flex-col gap-1">

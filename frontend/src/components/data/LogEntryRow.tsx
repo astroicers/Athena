@@ -15,10 +15,10 @@ import { LogSeverity } from "@/types/enums";
 import type { LogEntry } from "@/types/log";
 
 const SEVERITY_STYLES: Record<string, string> = {
-  [LogSeverity.INFO]: "border-l-[#3b82f6] text-[#3b82f6]",
-  [LogSeverity.SUCCESS]: "border-l-[#22C55E] text-[#22C55E]",
-  [LogSeverity.WARNING]: "border-l-[#FBBF24] text-[#FBBF24]",
-  [LogSeverity.ERROR]: "border-l-[#EF4444] text-[#EF4444]",
+  [LogSeverity.INFO]: "border-l-athena-accent text-athena-accent",
+  [LogSeverity.SUCCESS]: "border-l-[#22C55E] text-athena-success",
+  [LogSeverity.WARNING]: "border-l-athena-warning text-athena-warning",
+  [LogSeverity.ERROR]: "border-l-[#EF4444] text-athena-error",
   [LogSeverity.CRITICAL]: "border-l-[#DC2626] text-[#DC2626] animate-pulse",
 };
 
@@ -33,11 +33,11 @@ export function LogEntryRow({ entry }: LogEntryRowProps) {
 
   return (
     <div className={`flex items-center gap-1.5 px-2 py-0.5 border-l-2 text-xs font-mono ${style}`}>
-      <span className="text-[#9ca3af] shrink-0 w-[4.5rem]">{time}</span>
+      <span className="text-athena-text-tertiary shrink-0 w-[4.5rem]">{time}</span>
       <span className="shrink-0 text-sm">
         [{tSev(entry.severity as any)}]
       </span>
-      <span className="text-[#e5e7eb] flex-1 truncate">{entry.message}</span>
+      <span className="text-athena-text-light flex-1 truncate">{entry.message}</span>
     </div>
   );
 }

@@ -78,33 +78,33 @@ export function TerminalPanel({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0A0E17]/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-athena-bg/80 backdrop-blur-sm">
       <div
-        className="bg-[#0A0E17] border border-[#1f2937] rounded-athena-md shadow-2xl flex flex-col"
+        className="bg-athena-bg border border-athena-border rounded-athena shadow-2xl flex flex-col"
         style={{ width: "720px", height: "480px" }}
         onClick={() => inputRef.current?.focus()}
       >
         {/* Title bar */}
-        <div className="flex items-center justify-between px-3 py-2 border-b border-[#1f2937] bg-[#111827] rounded-t-lg shrink-0">
+        <div className="flex items-center justify-between px-3 py-2 border-b border-athena-border bg-athena-surface rounded-t-lg shrink-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-mono text-[#22C55E]">●</span>
-            <span className="text-xs font-mono text-[#e5e7eb]">
+            <span className="text-sm font-mono text-athena-success">●</span>
+            <span className="text-xs font-mono text-athena-text-light">
               {t("title")} {targetName} ({targetIp})
             </span>
             {!isConnected && (
-              <span className="text-sm font-mono text-[#EF4444]">{tCommon("disconnected")}</span>
+              <span className="text-sm font-mono text-athena-error">{tCommon("disconnected")}</span>
             )}
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={clear}
-              className="text-sm font-mono text-[#9ca3af] hover:text-[#3b82f6] px-1"
+              className="text-sm font-mono text-athena-text-tertiary hover:text-athena-accent px-1"
             >
               {tCommon("clear")}
             </button>
             <button
               onClick={onClose}
-              className="text-sm font-mono text-[#9ca3af] hover:text-[#EF4444] px-1"
+              className="text-sm font-mono text-athena-text-tertiary hover:text-athena-error px-1"
             >
               ✕
             </button>
@@ -116,16 +116,16 @@ export function TerminalPanel({
           {entries.map((entry, i) => (
             <div key={i}>
               {entry.type === "input" ? (
-                <div className="text-[#3b82f6]">
-                  <span className="text-[#9ca3af]">{prompt}</span>
+                <div className="text-athena-accent">
+                  <span className="text-athena-text-tertiary">{prompt}</span>
                   {entry.text}
                 </div>
               ) : entry.type === "error" ? (
-                <div className="text-[#EF4444]">{entry.text}</div>
+                <div className="text-athena-error">{entry.text}</div>
               ) : entry.type === "system" ? (
-                <div className="text-[#9ca3af] italic">{entry.text}</div>
+                <div className="text-athena-text-tertiary italic">{entry.text}</div>
               ) : (
-                <pre className="text-[#e5e7eb] whitespace-pre-wrap break-all">{entry.text}</pre>
+                <pre className="text-athena-text-light whitespace-pre-wrap break-all">{entry.text}</pre>
               )}
             </div>
           ))}
@@ -135,9 +135,9 @@ export function TerminalPanel({
         {/* Input bar */}
         <form
           onSubmit={handleSubmit}
-          className="flex items-center gap-2 px-3 py-2 border-t border-[#1f2937] shrink-0"
+          className="flex items-center gap-2 px-3 py-2 border-t border-athena-border shrink-0"
         >
-          <span className="text-[#9ca3af] font-mono text-xs shrink-0">
+          <span className="text-athena-text-tertiary font-mono text-xs shrink-0">
             {prompt}
           </span>
           <input
@@ -148,7 +148,7 @@ export function TerminalPanel({
             onKeyDown={handleKeyDown}
             disabled={!isConnected}
             placeholder={isConnected ? "" : t("connecting")}
-            className="flex-1 bg-transparent font-mono text-xs text-[#3b82f6] outline-none placeholder-[#6b7280]/70 focus:outline-none focus:ring-2 focus:ring-[#3b82f6]"
+            className="flex-1 bg-transparent font-mono text-xs text-athena-accent outline-none placeholder-[#6b7280]/70 focus:outline-none focus:ring-2 focus:ring-[#3b82f6]"
             autoComplete="off"
             autoCorrect="off"
             spellCheck={false}
@@ -156,7 +156,7 @@ export function TerminalPanel({
           <button
             type="submit"
             disabled={!isConnected || !input.trim()}
-            className="text-sm font-mono text-[#9ca3af] hover:text-[#3b82f6] disabled:opacity-30 px-1"
+            className="text-sm font-mono text-athena-text-tertiary hover:text-athena-accent disabled:opacity-30 px-1"
           >
             {tCommon("send")}
           </button>

@@ -1,52 +1,52 @@
 @import "tailwindcss";
 
 /* ============================================
-   Athena Design Tokens (CSS Custom Properties)
-   Mapped from athena-design-system.pen
+   Athena Design Tokens — Deep Gemstone Palette v3
+   Source of Truth: design/pencil-new-v2.pen
+   Synced from: design-system/tokens.yaml
    ============================================ */
 
 :root {
-  /* -- Background Colors (v2 tokens) -- */
-  --color-bg-primary: #0A0E17;
-  --color-bg-surface: #111827;
-  --color-bg-elevated: #1F2937;
+  /* -- Background Colors -- */
+  --color-bg-primary: #09090B;
+  --color-bg-surface: #18181B;
+  --color-bg-elevated: #27272A;
 
-  /* -- Accent Colors (v2 tokens) -- */
-  --color-accent: #3B82F6;
-  --color-accent-hover: #60A5FA;
+  /* -- Accent Colors (Sapphire Blue) -- */
+  --color-accent: #1E6091;
+  --color-accent-hover: #1A5276;
 
-  /* -- Text Colors (v2 tokens) -- */
-  --color-text-primary: #ffffff;
-  --color-text-secondary: #6B7280;
+  /* -- Text Colors (Zinc Scale) -- */
+  --color-text-primary: #D4D4D8;
+  --color-text-light: #D4D4D8;
+  --color-text-secondary: #71717A;
+  --color-text-tertiary: #52525B;
 
-  /* -- Border (v2: solid dark) -- */
-  --color-border: #1f2937;
+  /* -- Border (Zinc) -- */
+  --color-border: #27272A;
+  --color-border-subtle: #3F3F46;
 
-  /* -- Status Colors (v2 tokens) -- */
-  --color-success: #22C55E;
-  --color-warning: #F59E0B;
-  --color-error: #EF4444;
-  --color-critical: #DC2626;
-  --color-info: #3B82F6;
+  /* -- Status Colors (Gemstone) -- */
+  --color-success: #059669;
+  --color-warning: #B45309;
+  --color-error: #B91C1C;
+  --color-critical: #991B1B;
+  --color-info: #1E6091;
 
-  /* -- Text Colors (improved contrast) -- */
-  --color-text-light: #e5e7eb;
-  --color-text-tertiary: #9CA3AF;
-
-  /* -- Error text (higher contrast than --color-error) -- */
-  --color-error-text: #F87171;
+  /* -- Error text (higher contrast) -- */
+  --color-error-text: #DC2626;
 
   /* -- Typography -- */
   --font-mono: "JetBrains Mono", "Fira Code", monospace;
   --font-sans: "Inter", system-ui, sans-serif;
 
-  /* -- Font Size Scale (Executive-Ready) -- */
+  /* -- Font Size Scale -- */
   --fs-floor: 12px;
-  --fs-caption: 12px;
+  --fs-caption: 10px;
   --fs-body: 14px;
   --fs-heading-card: 13px;
-  --fs-heading-section: 15px;
-  --fs-heading-page: 18px;
+  --fs-heading-section: 18px;
+  --fs-heading-page: 28px;
   --fs-metric: 32px;
   --fs-metric-label: 11px;
 
@@ -56,45 +56,44 @@
   --sp-cell: 14px;
   --sp-card: 20px;
 
-  /* -- Red Team Aesthetic (v2 tokens) -- */
-  --color-grid-line: rgba(255, 255, 255, 0.04);
-  --color-scanline: rgba(59, 130, 246, 0.03);
-  --color-glow-green: rgba(34, 197, 94, 0.4);
-  --color-glow-red: rgba(239, 68, 68, 0.4);
-  --color-glow-cyan: rgba(59, 130, 246, 0.3);
+  /* -- Red Team Aesthetic -- */
+  --color-grid-line: rgba(63, 63, 70, 0.25);
+  --color-scanline: rgba(30, 96, 145, 0.03);
+  --color-glow-green: rgba(5, 150, 105, 0.4);
+  --color-glow-red: rgba(185, 28, 28, 0.4);
+  --color-glow-cyan: rgba(30, 96, 145, 0.3);
 
   /* -- Border Radius (unified) -- */
   --radius: 4px;
 
-  /* -- White Opacity Scale (v2: backgrounds & overlays) -- */
+  /* -- White Opacity Scale (backgrounds & overlays) -- */
   --color-white-5: rgba(255, 255, 255, 0.02);
   --color-white-8: rgba(255, 255, 255, 0.03);
   --color-white-10: rgba(255, 255, 255, 0.06);
 
-  /* -- Text Opacity Scale (v2: label hierarchy) -- */
-  --color-text-ghost: rgba(255, 255, 255, 0.125);
-  --color-text-faint: rgba(255, 255, 255, 0.19);
-  --color-text-muted: rgba(255, 255, 255, 0.25);
-  --color-text-dim: rgba(255, 255, 255, 0.375);
-  --color-text-soft: rgba(255, 255, 255, 0.50);
-  --color-text-subtle: rgba(255, 255, 255, 0.63);
+  /* -- Text Opacity Scale (label hierarchy) -- */
+  --color-text-ghost: rgba(212, 212, 216, 0.125);
+  --color-text-faint: rgba(212, 212, 216, 0.19);
+  --color-text-muted: rgba(212, 212, 216, 0.25);
+  --color-text-dim: rgba(212, 212, 216, 0.375);
+  --color-text-soft: rgba(212, 212, 216, 0.50);
+  --color-text-subtle: rgba(212, 212, 216, 0.63);
 
-  /* -- Surface Variants (v2) -- */
+  /* -- Surface Variants -- */
   --color-bg-surface-hover: rgba(255, 255, 255, 0.03);
   --color-bg-overlay: rgba(0, 0, 0, 0.60);
 
-  /* -- OODA Phase Colors (v2: War Room / Decisions) -- */
-  --color-phase-observe: #3B82F6;
-  --color-phase-orient: #A855F7;
-  --color-phase-decide: #F59E0B;
-  --color-phase-act: #22C55E;
+  /* -- OODA Phase Colors (War Room / Decisions) -- */
+  --color-phase-observe: #1E6091;
+  --color-phase-orient: #7C3AED;
+  --color-phase-decide: #B45309;
+  --color-phase-act: #059669;
 
-  /* -- Status Background Tints (v2: severity badges) -- */
-  --color-error-bg: rgba(239, 68, 68, 0.12);
-  --color-warning-bg: rgba(245, 158, 11, 0.12);
-  /* --color-warning-alt removed: consolidated to --color-warning */
-  --color-success-bg: rgba(34, 197, 94, 0.12);
-  --color-accent-bg: rgba(59, 130, 246, 0.12);
+  /* -- Status Background Tints (severity badges) -- */
+  --color-error-bg: rgba(185, 28, 28, 0.12);
+  --color-warning-bg: rgba(180, 83, 9, 0.12);
+  --color-success-bg: rgba(5, 150, 105, 0.12);
+  --color-accent-bg: rgba(30, 96, 145, 0.12);
 }
 
 /* Animations */

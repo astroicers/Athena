@@ -20,33 +20,7 @@
 
 ## 📐 Design Token 定義（Single Source of Truth）
 
-### 色彩 Token
-
-| Token 名稱 | Hex 值 | 用途 |
-|-----------|--------|------|
-| `--bg-base` | `#0a0e17` | 頁面背景 |
-| `--bg-surface` | `#111827` | 卡片、面板背景 |
-| `--border-default` | `#1f2937` | 一般卡片邊框（有內容時） |
-| `--border-subtle` | `white/5`（≈ `#FFFFFF0D`） | 空狀態、低調邊框 |
-| `--border-input` | `#1f2937` | 輸入框邊框 |
-| `--text-primary` | `#e5e7eb` | 主要文字 |
-| `--text-secondary` | `#9ca3af` | 次要文字、label |
-| `--text-tertiary` | `#6b7280` | 提示文字、hint |
-| `--accent` | `#3b82f6` | 主強調色 |
-| `--success` | `#22C55E` | 成功、通過 |
-| `--warning` | `#FBBF24` | 警告 |
-| `--error` | `#EF4444` | 錯誤、危險 |
-| `--orange` | `#F97316` | 次要警告 |
-| `--cyan` | `#06B6D4` | 資訊強調 |
-| `--purple` | `#A855F7` | 類別標記 |
-
-### 字體 Token
-
-| Token | Value |
-|-------|-------|
-| `--font-mono` | `IBM Plex Mono` |
-| `--corner-card` | `6px`（小卡片）/ `8px`（大面板） |
-| `--corner-badge` | `4px` |
+> 完整色票定義見 `design-system/tokens.yaml`，CSS 實作見 `frontend/src/styles/globals.css`
 
 ---
 

@@ -80,34 +80,3 @@ Tools       →  /tools
 
 Defined in `src/lib/constants.ts` → `NAV_ITEMS`.
 
-## Design Token Quick Reference
-
-> 完整定義見 `docs/specs/SPEC-051-design-token-and-pen-sync-protocol.md`
-
-| 用途 | Token |
-|------|-------|
-| 頁面背景 | `#0a0e17` |
-| 卡片背景 | `#111827` |
-| 有內容卡片邊框 | `border-[#1f2937]` |
-| 空狀態/低調邊框 | `border-white/5` |
-| 輸入框邊框 | `border-[#1f2937]` |
-| 主文字 | `#e5e7eb` |
-| 次文字 | `#9ca3af` |
-| 提示文字 | `#6b7280` |
-| 字體 | `IBM Plex Mono` |
-
-### 禁止模式
-
-- ❌ `border border rounded`（缺色）
-- ❌ `border-[#374151]`（用 `#1f2937`）
-- ❌ `border-[#1f293740]`（用 `border-white/5` 或不帶 alpha）
-- ❌ `items-end` on TabBar（用 `items-center`）
-
-### 部署
-
-```bash
-# Docker 環境（正確）
-docker compose build frontend && docker compose up -d frontend
-
-# ❌ npx next start 在 Docker 環境下無效
-```

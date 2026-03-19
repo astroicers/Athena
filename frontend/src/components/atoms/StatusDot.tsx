@@ -13,16 +13,16 @@
 const STATUS_COLORS: Record<string, string> = {
   alive: "bg-athena-success-bg",
   operational: "bg-athena-success-bg",
-  active: "bg-[#3b82f6]",
+  active: "bg-athena-accent",
   nominal: "bg-athena-success-bg",
   engaged: "bg-athena-warning-bg",
-  scanning: "bg-[#3b82f6]",
+  scanning: "bg-athena-accent",
   pending: "bg-athena-warning-bg",
   degraded: "bg-athena-warning-bg",
   untrusted: "bg-athena-error-bg",
   offline: "bg-athena-elevated",
   dead: "bg-athena-error-bg",
-  critical: "bg-[#DC262620]",
+  critical: "bg-athena-critical/10",
 };
 
 interface StatusDotProps {

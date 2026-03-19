@@ -58,13 +58,13 @@ interface OodaDashboard {
 function phaseColor(phase: string): string {
   switch (phase?.toLowerCase()) {
     case "observe":
-      return "#3b82f6";
+      return "var(--color-accent)";
     case "orient":
-      return "#A855F7";
+      return "var(--color-phase-orient)";
     case "decide":
-      return "#F59E0B";
+      return "var(--color-warning)";
     case "act":
-      return "#22C55E";
+      return "var(--color-success)";
     default:
       return "#6b728060";
   }
@@ -73,13 +73,13 @@ function phaseColor(phase: string): string {
 function phaseBg(phase: string): string {
   switch (phase?.toLowerCase()) {
     case "observe":
-      return "#3b82f610";
+      return "color-mix(in srgb, var(--color-accent) 6%, transparent)";
     case "orient":
-      return "#A855F710";
+      return "color-mix(in srgb, var(--color-phase-orient) 6%, transparent)";
     case "decide":
-      return "#F59E0B10";
+      return "color-mix(in srgb, var(--color-warning) 6%, transparent)";
     case "act":
-      return "#22C55E10";
+      return "color-mix(in srgb, var(--color-success) 6%, transparent)";
     default:
       return "#ffffff05";
   }
@@ -91,13 +91,13 @@ function logSeverityColor(severity: string): string {
   switch (severity) {
     case "critical":
     case "error":
-      return "#EF4444";
+      return "var(--color-error)";
     case "warning":
-      return "#F59E0B";
+      return "var(--color-warning)";
     case "success":
-      return "#22C55E";
+      return "var(--color-success)";
     default:
-      return "#6b7280";
+      return "var(--color-text-secondary)";
   }
 }
 
@@ -364,8 +364,8 @@ function WarRoomContent() {
                   key={entry.id}
                   className="flex flex-col gap-1 px-3 py-2.5 rounded-athena"
                   style={{
-                    backgroundColor: "#0a0e17",
-                    border: "1px solid #1f2937",
+                    backgroundColor: "var(--color-bg-primary)",
+                    border: "1px solid var(--color-border)",
                   }}
                 >
                   <div className="flex items-center justify-between">

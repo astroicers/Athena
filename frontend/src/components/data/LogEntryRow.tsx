@@ -16,10 +16,10 @@ import type { LogEntry } from "@/types/log";
 
 const SEVERITY_STYLES: Record<string, string> = {
   [LogSeverity.INFO]: "border-l-athena-accent text-athena-accent",
-  [LogSeverity.SUCCESS]: "border-l-[#22C55E] text-athena-success",
+  [LogSeverity.SUCCESS]: "border-l-athena-success text-athena-success",
   [LogSeverity.WARNING]: "border-l-athena-warning text-athena-warning",
-  [LogSeverity.ERROR]: "border-l-[#EF4444] text-athena-error",
-  [LogSeverity.CRITICAL]: "border-l-[#DC2626] text-[#DC2626] animate-pulse",
+  [LogSeverity.ERROR]: "border-l-athena-error text-athena-error",
+  [LogSeverity.CRITICAL]: "border-l-athena-critical text-athena-critical animate-pulse",
 };
 
 interface LogEntryRowProps {

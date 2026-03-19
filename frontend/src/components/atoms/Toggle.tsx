@@ -23,8 +23,8 @@ export function Toggle({ checked, onChange, label }: ToggleProps) {
         role="switch"
         aria-checked={checked}
         onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#3b82f6]
-          ${checked ? "bg-[#3b82f6]" : "bg-athena-elevated"}`}
+        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-athena-accent
+          ${checked ? "bg-athena-accent" : "bg-athena-elevated"}`}
       >
         <span
           className={`inline-block h-3.5 w-3.5 rounded-full bg-athena-bg transition-transform

@@ -41,10 +41,10 @@ interface HostNodeCardProps {
 
 function ShieldIcon({ isCompromised, isScanning }: { isCompromised: boolean; isScanning: boolean }) {
   const bgColor = isScanning
-    ? "bg-[#3b82f610]"
+    ? "bg-athena-accent/10"
     : isCompromised
-      ? "bg-[#EF444410]"
-      : "bg-[#22C55E10]";
+      ? "bg-athena-error/10"
+      : "bg-athena-success/10";
 
   return (
     <div className={`shrink-0 w-8 h-8 rounded-athena flex items-center justify-center ${bgColor}`}>
@@ -96,7 +96,7 @@ export function HostNodeCard({
     <div
       className={`bg-athena-surface border rounded-athena p-4 ${
         isCompromised
-          ? "border-[#EF4444]/60"
+          ? "border-athena-error/60"
           : isActive
             ? "border-athena-accent"
             : "border-athena-border"

@@ -11,11 +11,11 @@
 "use client";
 
 const VARIANT_COLORS = {
-  default: { text: "text-athena-accent", bg: "bg-[#3b82f610]" },
-  success: { text: "text-athena-success", bg: "bg-[#22C55E10]" },
+  default: { text: "text-athena-accent", bg: "bg-athena-accent/10" },
+  success: { text: "text-athena-success", bg: "bg-athena-success/10" },
   warning: { text: "text-athena-warning", bg: "bg-athena-warning-bg" },
-  error: { text: "text-athena-error", bg: "bg-[#EF444410]" },
-  muted: { text: "text-athena-text-tertiary", bg: "bg-[#9ca3af]/10" },
+  error: { text: "text-athena-error", bg: "bg-athena-error/10" },
+  muted: { text: "text-athena-text-tertiary", bg: "bg-athena-text-tertiary/10" },
 } as const;
 
 const SIZE_MAP = {

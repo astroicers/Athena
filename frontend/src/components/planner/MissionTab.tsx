@@ -183,7 +183,7 @@ export function MissionTab({
   }
 
   const inputStyles =
-    "w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-[#6b7280] focus:outline-none focus:border-athena-accent";
+    "w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-athena-accent";
 
   const labelStyles =
     "block text-xs font-mono text-athena-text-secondary uppercase tracking-wider mb-1";
@@ -207,7 +207,7 @@ export function MissionTab({
             onChange={(e) => handleStepStatusChange(r.id, e.target.value)}
             onBlur={() => setTimeout(() => setEditingStepId(null), 150)}
             autoFocus
-            className="bg-athena-bg border border-athena-accent rounded-athena px-2 py-1 text-xs font-mono text-athena-text-light focus:outline-none focus:ring-2 focus:ring-[#3b82f6]"
+            className="bg-athena-bg border border-athena-accent rounded-athena px-2 py-1 text-xs font-mono text-athena-text-light focus:outline-none focus:ring-2 focus:ring-athena-accent"
           >
             {Object.values(MissionStepStatus).map((s) => (
               <option key={s} value={s}>{tStatus(s as any)}</option>
@@ -368,7 +368,7 @@ export function MissionTab({
                       variant="secondary"
                       size="sm"
                       onClick={() => onOsintDiscover(tgt.id)}
-                      className="flex-1 text-xs text-athena-accent border-athena-accent/25 bg-transparent hover:bg-[#3b82f610] uppercase tracking-wider"
+                      className="flex-1 text-xs text-athena-accent border-athena-accent/25 bg-transparent hover:bg-athena-accent/10 uppercase tracking-wider"
                     >
                       {t("osintDiscover")}
                     </Button>
@@ -401,7 +401,7 @@ export function MissionTab({
                       variant="secondary"
                       size="sm"
                       onClick={() => onSetTerminalTarget(tgt)}
-                      className="flex-1 text-xs text-athena-success border-athena-success/25 bg-transparent hover:bg-[#22C55E10] uppercase tracking-wider"
+                      className="flex-1 text-xs text-athena-success border-athena-success/25 bg-transparent hover:bg-athena-success/10 uppercase tracking-wider"
                     >
                       {t("terminal")}
                     </Button>

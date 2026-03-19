@@ -15,10 +15,10 @@ import { RiskLevel } from "@/types/enums";
 import { Button } from "@/components/atoms/Button";
 
 const RISK_STYLES: Record<string, { border: string; labelKey: "lowRisk" | "mediumRisk" | "highRisk" | "critical" }> = {
-  [RiskLevel.LOW]: { border: "border-[#22C55E]", labelKey: "lowRisk" },
+  [RiskLevel.LOW]: { border: "border-athena-success", labelKey: "lowRisk" },
   [RiskLevel.MEDIUM]: { border: "border-athena-warning", labelKey: "mediumRisk" },
-  [RiskLevel.HIGH]: { border: "border-[#EF4444]", labelKey: "highRisk" },
-  [RiskLevel.CRITICAL]: { border: "border-[#DC2626]", labelKey: "critical" },
+  [RiskLevel.HIGH]: { border: "border-athena-error", labelKey: "highRisk" },
+  [RiskLevel.CRITICAL]: { border: "border-athena-critical", labelKey: "critical" },
 };
 
 interface HexConfirmModalProps {
@@ -59,7 +59,7 @@ export function HexConfirmModal({
         </div>
 
         {isCritical && (
-          <p className="text-xs text-[#DC2626] text-center mb-4 font-mono">
+          <p className="text-xs text-athena-critical text-center mb-4 font-mono">
             {t("criticalWarning")}
           </p>
         )}

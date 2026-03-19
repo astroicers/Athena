@@ -17,7 +17,7 @@ const STATUS_STYLES: Record<string, { dot: string; text: string }> = {
   [AgentStatus.ALIVE]: { dot: "bg-athena-success-bg animate-pulse", text: "text-athena-success" },
   [AgentStatus.DEAD]: { dot: "bg-athena-error-bg", text: "text-athena-error" },
   [AgentStatus.PENDING]: { dot: "bg-athena-warning-bg", text: "text-athena-warning" },
-  [AgentStatus.UNTRUSTED]: { dot: "bg-[#9ca3af]", text: "text-athena-text-tertiary" },
+  [AgentStatus.UNTRUSTED]: { dot: "bg-athena-text-tertiary", text: "text-athena-text-tertiary" },
 };
 
 interface AgentBeaconProps {

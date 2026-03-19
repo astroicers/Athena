@@ -91,7 +91,7 @@ export function TechniqueCard({ technique, relatedTools }: TechniqueCardProps) {
               >
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span
-                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${tool.enabled ? "bg-athena-success-bg" : "bg-[#9ca3af]/40"}`}
+                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${tool.enabled ? "bg-athena-success-bg" : "bg-athena-text-tertiary/40"}`}
                   />
                   <span className="text-xs font-mono text-athena-text-light truncate group-hover:text-athena-accent transition-colors">
                     {tool.name}

@@ -60,7 +60,7 @@ export function RecommendCard({ recommendation }: RecommendCardProps) {
             key={opt.techniqueId}
             className={`flex items-center gap-2 p-2 rounded-athena text-xs font-mono ${
               opt.techniqueId === recommendation.recommendedTechniqueId
-                ? "bg-[#3b82f610] border border-athena-accent/30"
+                ? "bg-athena-accent/10 border border-athena-accent/30"
                 : "bg-athena-elevated/50"
             }`}
           >

@@ -31,19 +31,19 @@ const SEVERITY_ORDER: VulnSeverity[] = [
 ];
 
 const SEVERITY_COLORS: Record<VulnSeverity, string> = {
-  critical: "#EF4444",
+  critical: "var(--color-error)",
   high: "#F97316",
   medium: "#EAB308",
-  low: "#22C55E",
-  info: "#6B7280",
+  low: "var(--color-success)",
+  info: "var(--color-text-secondary)",
 };
 
 const STATUS_COLORS: Record<VulnStatus, string> = {
-  discovered: "#3B82F6",
-  confirmed: "#22C55E",
+  discovered: "var(--color-accent)",
+  confirmed: "var(--color-success)",
   exploited: "#F97316",
-  reported: "#A855F7",
-  false_positive: "#6B7280",
+  reported: "var(--color-phase-orient)",
+  false_positive: "var(--color-text-secondary)",
 };
 
 const STATUS_LIST: VulnStatus[] = [
@@ -215,7 +215,7 @@ function VulnTable({
       {/* Table header */}
       <div
         className="flex items-center gap-3 px-3 py-2 shrink-0"
-        style={{ backgroundColor: "#1F2937", borderBottom: "1px solid var(--color-white-8)" }}
+        style={{ backgroundColor: "var(--color-bg-elevated)", borderBottom: "1px solid var(--color-white-8)" }}
       >
         <span className="w-1 shrink-0" />
         <span
@@ -265,9 +265,9 @@ function VulnTable({
                 className="flex items-center gap-3 w-full px-3 text-left transition-colors"
                 style={{
                   height: 44,
-                  backgroundColor: isSelected ? "#3B82F615" : "transparent",
-                  border: isSelected ? "1px solid #3B82F630" : "1px solid transparent",
-                  borderBottom: isSelected ? "1px solid #3B82F630" : "1px solid var(--color-white-8)",
+                  backgroundColor: isSelected ? "color-mix(in srgb, var(--color-accent) 8%, transparent)" : "transparent",
+                  border: isSelected ? "1px solid color-mix(in srgb, var(--color-accent) 19%, transparent)" : "1px solid transparent",
+                  borderBottom: isSelected ? "1px solid color-mix(in srgb, var(--color-accent) 19%, transparent)" : "1px solid var(--color-white-8)",
                 }}
                 onMouseEnter={(e) => {
                   if (!isSelected) {
@@ -292,7 +292,7 @@ function VulnTable({
                 <span
                   className="font-mono text-xs w-[120px] shrink-0 truncate"
                   style={{
-                    color: isSelected ? "#3B82F6" : "var(--color-accent)",
+                    color: isSelected ? "var(--color-accent)" : "var(--color-accent)",
                     fontWeight: isSelected ? 700 : 400,
                   }}
                 >
@@ -302,7 +302,7 @@ function VulnTable({
                 {/* Title */}
                 <span
                   className="font-mono text-xs flex-1 min-w-0 truncate"
-                  style={{ color: "#E5E7EB" }}
+                  style={{ color: "var(--color-text-light)" }}
                 >
                   {vuln.title}
                 </span>
@@ -392,7 +392,7 @@ function DetailPanel({
       <div className="flex flex-col gap-1">
         <span
           className="font-mono text-xs font-bold"
-          style={{ color: "#E5E7EB" }}
+          style={{ color: "var(--color-text-light)" }}
         >
           {vuln.title}
         </span>
@@ -423,7 +423,7 @@ function DetailPanel({
         </span>
         <span
           className="font-mono text-xs uppercase"
-          style={{ color: "#E5E7EB" }}
+          style={{ color: "var(--color-text-light)" }}
         >
           {t(`status.${vuln.status}`)}
         </span>

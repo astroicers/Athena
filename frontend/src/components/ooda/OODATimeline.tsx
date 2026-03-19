@@ -123,7 +123,7 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
               onClick={() => setPhaseFilter([])}
               className={`text-sm font-mono px-1.5 py-0.5 rounded-athena border transition-colors ${
                 phaseFilter.length === 0
-                  ? "border-athena-accent text-athena-accent bg-[#3b82f610]"
+                  ? "border-athena-accent text-athena-accent bg-athena-accent/10"
                   : "border-athena-border text-athena-text-tertiary hover:border-athena-accent/50"
               }`}
             >
@@ -135,7 +135,7 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
                 onClick={() => togglePhaseFilter(p)}
                 className={`text-sm font-mono px-1.5 py-0.5 rounded-athena border transition-colors ${
                   phaseFilter.includes(p)
-                    ? "border-athena-accent text-athena-accent bg-[#3b82f610]"
+                    ? "border-athena-accent text-athena-accent bg-athena-accent/10"
                     : "border-athena-border text-athena-text-tertiary hover:border-athena-accent/50"
                 }`}
               >
@@ -179,7 +179,7 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
                     {t("iteration", { number: iterNum })}
                   </span>
                   {iterNum === maxIteration && (
-                    <span className="text-sm font-mono text-athena-success bg-[#22C55E10] px-1 rounded-athena">
+                    <span className="text-sm font-mono text-athena-success bg-athena-success/10 px-1 rounded-athena">
                       {t("latest")}
                     </span>
                   )}
@@ -207,7 +207,7 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
                     return (
                       <div key={i} className="flex items-start gap-3">
                         <div className="flex flex-col items-center shrink-0">
-                          <div className="w-1.5 h-1.5 rounded-full bg-[#3b82f6] mt-1.5" />
+                          <div className="w-1.5 h-1.5 rounded-full bg-athena-accent mt-1.5" />
                           {i < filtered.length - 1 && (
                             <div className="w-px flex-1 bg-[#1f293780] mt-1 min-h-[12px]" />
                           )}
@@ -255,7 +255,7 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
               return (
                 <div key={`recon-${i}`} className="flex items-start gap-3">
                   <div className="flex flex-col items-center shrink-0">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#3b82f6] mt-1.5" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-athena-accent mt-1.5" />
                     {i < reconEntries.length - 1 && (
                       <div className="w-px flex-1 bg-[#1f293780] mt-1 min-h-[12px]" />
                     )}

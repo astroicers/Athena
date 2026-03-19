@@ -62,7 +62,7 @@ export function TacticToolSection({
           <span className="text-xs font-mono font-bold text-athena-text-light uppercase">
             {tacticLabel}
           </span>
-          <span className="text-sm font-mono text-athena-accent px-1.5 py-0.5 bg-[#3b82f610] rounded-full">
+          <span className="text-sm font-mono text-athena-accent px-1.5 py-0.5 bg-athena-accent/10 rounded-full">
             {tacticId}
           </span>
         </div>

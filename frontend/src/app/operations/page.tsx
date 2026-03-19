@@ -52,16 +52,16 @@ interface Operation {
 
 const STATUS_COLORS: Record<string, string> = {
   planning: "#FB923C",
-  active: "#22C55E",
-  paused: "#F59E0B",
-  completed: "#3b82f6",
-  failed: "#EF4444",
+  active: "var(--color-success)",
+  paused: "var(--color-warning)",
+  completed: "var(--color-accent)",
+  failed: "var(--color-error)",
 };
 
 const PROFILE_COLORS: Record<string, string> = {
   SR: "#22D3EE",
   CO: "#A78BFA",
-  SP: "#EF4444",
+  SP: "var(--color-error)",
 };
 
 /* ------------------------------------------------------------------ */
@@ -286,7 +286,7 @@ function CreateOperationModal({ onCreated, onCancel }: CreateModalProps) {
   }
 
   const inputClass =
-    "w-full bg-athena-bg border border-[#374151] rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-[#6b7280] focus:outline-none focus:border-athena-accent";
+    "w-full bg-athena-bg border border-[#374151] rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-athena-accent";
   const labelClass =
     "block text-xs font-mono text-athena-text-secondary uppercase tracking-wider mb-1";
 
@@ -436,7 +436,7 @@ function EditOperationModal({ operation, onSaved, onCancel }: EditModalProps) {
   }
 
   const inputClass =
-    "w-full bg-athena-bg border border-[#374151] rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-[#6b7280] focus:outline-none focus:border-athena-accent";
+    "w-full bg-athena-bg border border-[#374151] rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-athena-accent";
   const labelClass =
     "block text-xs font-mono text-athena-text-secondary uppercase tracking-wider mb-1";
 

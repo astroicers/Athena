@@ -59,11 +59,11 @@ function actionBg(a: MatrixAction): string {
 function actionTextColor(a: MatrixAction): string {
   switch (a) {
     case "GO":
-      return "#22C55E";
+      return "var(--color-success)";
     case "CAUTION":
-      return "#F59E0B";
+      return "var(--color-warning)";
     case "HOLD":
-      return "#EF4444";
+      return "var(--color-error)";
     case "ABORT":
       return "#991B1B";
   }
@@ -72,11 +72,11 @@ function actionTextColor(a: MatrixAction): string {
 function actionBorderColor(a: MatrixAction): string {
   switch (a) {
     case "GO":
-      return "#22C55E";
+      return "var(--color-success)";
     case "CAUTION":
-      return "#F59E0B";
+      return "var(--color-warning)";
     case "HOLD":
-      return "#EF4444";
+      return "var(--color-error)";
     case "ABORT":
       return "#991B1B";
   }
@@ -100,9 +100,9 @@ function riskToCol(riskPct: number): number {
 /* ── Confidence helpers ── */
 
 function confidenceColor(score: number): string {
-  if (score >= 0.75) return "#22C55E";
-  if (score >= 0.5) return "#F59E0B";
-  return "#EF4444";
+  if (score >= 0.75) return "var(--color-success)";
+  if (score >= 0.5) return "var(--color-warning)";
+  return "var(--color-error)";
 }
 
 /* ── Dashboard response shape ── */
@@ -261,16 +261,16 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
     );
 
     return [
-      { label: "C5ISR READINESS", value: c5isrAvg, color: "#3b82f6" },
+      { label: "C5ISR READINESS", value: c5isrAvg, color: "var(--color-accent)" },
       {
         label: "FRAMEWORK / TECHNIQUE MATCH",
         value: frameworkMatch,
-        color: "#22C55E",
+        color: "var(--color-success)",
       },
       {
         label: "NOISE / DETECTION RISK",
         value: noiseScore,
-        color: "#F59E0B",
+        color: "var(--color-warning)",
       },
       {
         label: "TARGET PROFILE MATCH",
@@ -319,7 +319,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
       {/* Section label */}
       <h2
         className="font-mono uppercase"
-        style={{ color: "#6b7280", fontSize: 10, fontWeight: 600, letterSpacing: "2px" }}
+        style={{ color: "var(--color-text-secondary)", fontSize: 10, fontWeight: 600, letterSpacing: "2px" }}
       >
         AI DECISION ENGINE
       </h2>

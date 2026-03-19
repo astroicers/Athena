@@ -54,7 +54,7 @@ const SEVERITY_STYLES: Record<OpsecSeverity, SeverityStyle> = {
 };
 
 function severityColors(sev: OpsecSeverity) {
-  if (sev === "error") return { fill: "#EF444410", border: "#EF444425", text: "#EF4444" };
+  if (sev === "error") return { fill: "color-mix(in srgb, var(--color-error) 6%, transparent)", border: "color-mix(in srgb, var(--color-error) 15%, transparent)", text: "var(--color-error)" };
   return { fill: "#F9731610", border: "#F9731625", text: "#F97316" };
 }
 
@@ -113,7 +113,7 @@ export function NotificationCenter({
         className="fixed inset-y-0 right-0 z-50 flex flex-col animate-in slide-in-from-right duration-200"
         style={{
           width: 384,
-          backgroundColor: "#111827",
+          backgroundColor: "var(--color-bg-surface)",
           borderLeft: "1px solid #FFFFFF10",
           fontFamily: "'JetBrains Mono', 'Courier New', monospace",
         }}
@@ -123,7 +123,7 @@ export function NotificationCenter({
         {/* ── Header ── */}
         <div
           className="flex items-center justify-between shrink-0"
-          style={{ height: 56, backgroundColor: "#1F2937", padding: "0 20px" }}
+          style={{ height: 56, backgroundColor: "var(--color-bg-elevated)", padding: "0 20px" }}
         >
           <div className="flex items-center gap-2">
             <h2
@@ -139,7 +139,7 @@ export function NotificationCenter({
                   minWidth: 20,
                   height: 20,
                   padding: "2px 8px",
-                  backgroundColor: "#EF4444",
+                  backgroundColor: "var(--color-error)",
                   fontSize: 9,
                 }}
               >
@@ -201,8 +201,8 @@ export function NotificationCenter({
                       key={i}
                       className="flex flex-col rounded-athena"
                       style={{
-                        backgroundColor: "#F59E0B10",
-                        border: "1px solid #F59E0B50",
+                        backgroundColor: "color-mix(in srgb, var(--color-warning) 6%, transparent)",
+                        border: "1px solid color-mix(in srgb, var(--color-warning) 30%, transparent)",
                         padding: "12px 14px",
                         gap: 6,
                       }}
@@ -212,11 +212,11 @@ export function NotificationCenter({
                         <div className="flex items-center gap-2">
                           <span
                             className="w-2 h-2 rounded-full shrink-0"
-                            style={{ backgroundColor: "#F59E0B" }}
+                            style={{ backgroundColor: "var(--color-warning)" }}
                           />
                           <span
                             className="font-mono font-bold uppercase tracking-wider"
-                            style={{ fontSize: 10, color: "#F59E0B" }}
+                            style={{ fontSize: 10, color: "var(--color-warning)" }}
                           >
                             {t("constraintActive")}
                           </span>

@@ -31,7 +31,7 @@ const TACTIC_TO_COLOR: Record<string, string> = {
   TA0005: "var(--color-warning)",   TA0006: "var(--color-warning)",
   TA0007: "var(--color-warning)",   TA0008: "var(--color-error)",
   TA0009: "var(--color-error)",     TA0011: "var(--color-error)",
-  TA0010: "#DC2626",                TA0040: "#DC2626",
+  TA0010: "var(--color-critical)",   TA0040: "var(--color-critical)",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -63,13 +63,13 @@ function StatusDot({ status }: { status: TechniqueStatus }) {
 function pillBg(status: TechniqueStatus): string {
   switch (status) {
     case TechniqueStatus.SUCCESS:
-      return "bg-[#22C55E10] border border-[#22C55E66]";
+      return "bg-athena-success/10 border border-[#22C55E66]";
     case TechniqueStatus.FAILED:
-      return "bg-[#EF444410] border border-[#EF444466]";
+      return "bg-athena-error/10 border border-[#EF444466]";
     case TechniqueStatus.RUNNING:
-      return "bg-[#3b82f610] border border-athena-accent/40 animate-pulse";
+      return "bg-athena-accent/10 border border-athena-accent/40 animate-pulse";
     case TechniqueStatus.QUEUED:
-      return "bg-[#3b82f6]/5 border border-athena-accent/20";
+      return "bg-athena-accent/5 border border-athena-accent/20";
     case TechniqueStatus.PARTIAL:
       return "bg-athena-warning-bg border border-athena-warning/40";
     default:
@@ -163,7 +163,7 @@ function AttackGraphSummaryPanel({ graphData }: { graphData: AttackGraphResponse
           <span className="text-athena-text-tertiary">Coverage</span>
           <div className="flex-1 h-1.5 bg-athena-elevated/30 rounded-full overflow-hidden">
             <div
-              className="h-full bg-[#3b82f6] rounded-full transition-all"
+              className="h-full bg-athena-accent rounded-full transition-all"
               style={{ width: `${coveragePct}%` }}
             />
           </div>
@@ -254,7 +254,7 @@ export function AttackPathTimeline({ data, loading, graphData }: AttackPathTimel
                     className={[
                       "w-24 shrink-0 rounded-athena p-1.5",
                       isHighest
-                        ? "border-b-2 border-athena-accent bg-[#3b82f6]/5"
+                        ? "border-b-2 border-athena-accent bg-athena-accent/5"
                         : isEmpty
                           ? "border border-dashed border-athena-border/30"
                           : "border border-athena-border/20",

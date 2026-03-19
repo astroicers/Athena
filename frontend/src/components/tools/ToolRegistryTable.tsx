@@ -18,20 +18,20 @@ import { Button } from "@/components/atoms/Button";
 import type { ToolRegistryEntry } from "@/types/tool";
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
-  recon: { bg: "rgba(59,130,246,0.125)", text: "#3b82f6" },
+  recon: { bg: "rgba(59,130,246,0.125)", text: "var(--color-accent)" },
   execution: { bg: "rgba(167,139,250,0.125)", text: "#A78BFA" },
-  vuln_scan: { bg: "rgba(34,197,94,0.125)", text: "#22C55E" },
-  credential: { bg: "rgba(239,68,68,0.125)", text: "#EF4444" },
+  vuln_scan: { bg: "rgba(34,197,94,0.125)", text: "var(--color-success)" },
+  credential: { bg: "rgba(239,68,68,0.125)", text: "var(--color-error)" },
 };
 
 const RISK_COLORS: Record<string, { bg: string; text: string }> = {
-  low: { bg: "rgba(34,197,94,0.125)", text: "#22C55E" },
-  medium: { bg: "rgba(245,158,11,0.125)", text: "#F59E0B" },
+  low: { bg: "rgba(34,197,94,0.125)", text: "var(--color-success)" },
+  medium: { bg: "rgba(245,158,11,0.125)", text: "var(--color-warning)" },
   high: { bg: "rgba(251,146,60,0.125)", text: "#FB923C" },
-  critical: { bg: "rgba(239,68,68,0.125)", text: "#EF4444" },
+  critical: { bg: "rgba(239,68,68,0.125)", text: "var(--color-error)" },
 };
 
-const DEFAULT_CATEGORY_COLOR = { bg: "rgba(107,114,128,0.125)", text: "#6b7280" };
+const DEFAULT_CATEGORY_COLOR = { bg: "rgba(107,114,128,0.125)", text: "var(--color-text-secondary)" };
 
 interface ToolRegistryTableProps {
   tools: ToolRegistryEntry[];
@@ -78,7 +78,7 @@ export function ToolRegistryTable({
           border: "1px solid rgba(31,41,55,0.25)",
         }}
       >
-        <span className="font-mono text-xs" style={{ color: "#4b5563" }}>
+        <span className="font-mono text-xs" style={{ color: "var(--color-text-secondary)" }}>
           {t("noTools")}
         </span>
       </div>
@@ -93,10 +93,10 @@ export function ToolRegistryTable({
         style={{
           height: 36,
           padding: "0 12px",
-          color: "#6b7280",
+          color: "var(--color-text-secondary)",
           fontSize: 10,
           fontWeight: 600,
-          borderBottom: "1px solid #1f2937",
+          borderBottom: "1px solid var(--color-border)",
         }}
       >
         <div style={{ width: 260, flexShrink: 0 }}>{t("colName")}</div>
@@ -132,7 +132,7 @@ export function ToolRegistryTable({
               <div className="flex items-center gap-2">
                 <span
                   className="font-semibold truncate"
-                  style={{ color: "#3b82f6", fontSize: 12 }}
+                  style={{ color: "var(--color-accent)", fontSize: 12 }}
                 >
                   {tool.name}
                 </span>
@@ -151,7 +151,7 @@ export function ToolRegistryTable({
               {tool.description && (
                 <span
                   className="truncate"
-                  style={{ color: "#6b7280", fontSize: 9, maxWidth: 240 }}
+                  style={{ color: "var(--color-text-secondary)", fontSize: 9, maxWidth: 240 }}
                 >
                   {tool.description}
                 </span>
@@ -186,7 +186,7 @@ export function ToolRegistryTable({
                 style={{
                   width: 8,
                   height: 8,
-                  background: tool.enabled ? "#22C55E" : "#6b7280",
+                  background: tool.enabled ? "var(--color-success)" : "var(--color-text-secondary)",
                   flexShrink: 0,
                 }}
               />
@@ -194,7 +194,7 @@ export function ToolRegistryTable({
                 className="font-semibold"
                 style={{
                   fontSize: 10,
-                  color: tool.enabled ? "#22C55E" : "#6b7280",
+                  color: tool.enabled ? "var(--color-success)" : "var(--color-text-secondary)",
                 }}
               >
                 {tool.enabled ? t("on") : t("off")}
@@ -227,7 +227,7 @@ export function ToolRegistryTable({
                   className="font-mono inline-block rounded-athena"
                   style={{
                     background: "#374151",
-                    color: "#9ca3af",
+                    color: "var(--color-text-tertiary)",
                     padding: "2px 6px",
                     fontSize: 10,
                   }}
@@ -246,9 +246,9 @@ export function ToolRegistryTable({
                 <>
                   <span
                     className="inline-block rounded-full"
-                    style={{ width: 6, height: 6, background: "#22C55E", flexShrink: 0 }}
+                    style={{ width: 6, height: 6, background: "var(--color-success)", flexShrink: 0 }}
                   />
-                  <span style={{ color: "#22C55E", fontSize: 10 }}>
+                  <span style={{ color: "var(--color-success)", fontSize: 10 }}>
                     {t("containerOnline")}
                   </span>
                 </>
@@ -257,15 +257,15 @@ export function ToolRegistryTable({
                 <>
                   <span
                     className="inline-block rounded-full"
-                    style={{ width: 6, height: 6, background: "#EF4444", flexShrink: 0 }}
+                    style={{ width: 6, height: 6, background: "var(--color-error)", flexShrink: 0 }}
                   />
-                  <span style={{ color: "#EF4444", fontSize: 10 }}>
+                  <span style={{ color: "var(--color-error)", fontSize: 10 }}>
                     {t("containerOffline")}
                   </span>
                 </>
               )}
               {status === "none" && (
-                <span className="font-mono" style={{ color: "#4b5563", fontSize: 10 }}>
+                <span className="font-mono" style={{ color: "var(--color-text-secondary)", fontSize: 10 }}>
                   --
                 </span>
               )}
@@ -286,7 +286,7 @@ export function ToolRegistryTable({
                   {t("execute")}
                 </Button>
               ) : (
-                <span className="font-mono" style={{ color: "#4b5563", fontSize: 10 }}>
+                <span className="font-mono" style={{ color: "var(--color-text-secondary)", fontSize: 10 }}>
                   --
                 </span>
               )}

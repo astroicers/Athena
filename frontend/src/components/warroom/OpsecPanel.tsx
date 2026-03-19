@@ -37,9 +37,9 @@ const EVENTS_PAGE_SIZE = 20;
 /* ── Color helpers ── */
 
 function noiseScoreColor(score: number): string {
-  if (score >= 80) return "#ef4444"; // critical red
-  if (score >= 50) return "#f59e0b"; // warning orange
-  return "#22c55e"; // success green
+  if (score >= 80) return "var(--color-error)"; // critical red
+  if (score >= 50) return "var(--color-warning)"; // warning orange
+  return "var(--color-success)"; // success green
 }
 
 function noiseScoreLabel(
@@ -53,23 +53,23 @@ function noiseScoreLabel(
 }
 
 function detectionRiskColor(risk: number): string {
-  if (risk >= 70) return "#ef4444";
-  if (risk >= 40) return "#f59e0b";
-  return "#22c55e";
+  if (risk >= 70) return "var(--color-error)";
+  if (risk >= 40) return "var(--color-warning)";
+  return "var(--color-success)";
 }
 
 function severityDotColor(severity: string): string {
   switch (severity) {
     case "critical":
-      return "#ef4444";
+      return "var(--color-error)";
     case "error":
-      return "#f59e0b";
+      return "var(--color-warning)";
     case "warning":
       return "#eab308";
     case "success":
-      return "#22c55e";
+      return "var(--color-success)";
     default:
-      return "#6b7280";
+      return "var(--color-text-secondary)";
   }
 }
 
@@ -182,7 +182,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
         id: "noise",
         label: t("noiseScore"),
         data: trendData,
-        color: "#f59e0b",
+        color: "var(--color-warning)",
       },
     ],
     [trendData, t],
@@ -272,7 +272,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
       {/* Section label */}
       <h2
         className="font-mono uppercase"
-        style={{ color: "#6b7280", fontSize: 10, fontWeight: 600, letterSpacing: "2px" }}
+        style={{ color: "var(--color-text-secondary)", fontSize: 10, fontWeight: 600, letterSpacing: "2px" }}
       >
         OPERATIONAL SECURITY STATUS
       </h2>
@@ -303,13 +303,13 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
           label={t("exposureCount")}
           value={String(opsec.exposureCount)}
           subLabel={t("activeExposures")}
-          color={opsec.exposureCount > 0 ? "#f59e0b" : "#22c55e"}
+          color={opsec.exposureCount > 0 ? "var(--color-warning)" : "var(--color-success)"}
         />
         <MetricCard
           label={t("noiseBudget")}
           value={`${budgetPct}%`}
           subLabel={t("remainingBudget")}
-          color={budgetPct < 20 ? "#ef4444" : budgetPct < 50 ? "#f59e0b" : "#22c55e"}
+          color={budgetPct < 20 ? "var(--color-error)" : budgetPct < 50 ? "var(--color-warning)" : "var(--color-success)"}
           progressValue={opsec.noiseBudgetRemaining}
           progressMax={opsec.noiseBudgetTotal}
         />
@@ -325,13 +325,13 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
         <div className="flex items-center justify-between">
           <span
             className="font-mono uppercase font-semibold"
-            style={{ color: "#e5e7eb", fontSize: 11, letterSpacing: "1px" }}
+            style={{ color: "var(--color-text-light)", fontSize: 11, letterSpacing: "1px" }}
           >
             NOISE SCORE TREND
           </span>
           <span
             className="font-mono"
-            style={{ color: "#6b7280", fontSize: 10 }}
+            style={{ color: "var(--color-text-secondary)", fontSize: 10 }}
           >
             Last 6 hours
           </span>
@@ -354,7 +354,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
         <div className="flex items-center gap-2 h-10 px-4">
           <span
             className="font-mono uppercase font-semibold"
-            style={{ color: "#e5e7eb", fontSize: 11, letterSpacing: "1px" }}
+            style={{ color: "var(--color-text-light)", fontSize: 11, letterSpacing: "1px" }}
           >
             OPSEC EVENTS
           </span>
@@ -377,7 +377,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
               <div
                 key={event.id}
                 className="flex items-center gap-3 px-4"
-                style={{ height: 36, borderBottom: "1px solid #1f2937" }}
+                style={{ height: 36, borderBottom: "1px solid var(--color-border)" }}
               >
                 {/* Severity dot */}
                 <span

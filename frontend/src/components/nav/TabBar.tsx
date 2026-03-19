@@ -23,7 +23,7 @@ interface TabBarProps {
 
 export function TabBar({ tabs, activeTab, onChange }: TabBarProps) {
   return (
-    <div className="flex items-center h-10 px-4 bg-[#0f1729] border-b border-athena-border">
+    <div className="flex items-center h-10 px-4 bg-athena-bg border-b border-athena-border">
       {tabs.map((tab) => (
         <button
           key={tab.id}
@@ -37,7 +37,7 @@ export function TabBar({ tabs, activeTab, onChange }: TabBarProps) {
         >
           {tab.label}
           {activeTab === tab.id && (
-            <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-[#3b82f6]" />
+            <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-athena-accent" />
           )}
         </button>
       ))}

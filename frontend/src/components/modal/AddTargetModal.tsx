@@ -170,7 +170,7 @@ export function AddTargetModal({
   }
 
   const inputStyles =
-    "w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-[#6b7280] focus:outline-none focus:border-athena-accent";
+    "w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-athena-accent";
 
   const labelStyles =
     "block text-sm font-mono text-athena-text-tertiary uppercase tracking-wider mb-1";

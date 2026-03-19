@@ -81,7 +81,7 @@ export function KillChainIndicator({ stageCounts }: KillChainIndicatorProps) {
               >
                 {successH > 0 && (
                   <div
-                    className="w-full bg-[#3b82f6]/70 transition-all"
+                    className="w-full bg-athena-accent/70 transition-all"
                     style={{ height: `${(successH / 100) * BAR_H}px` }}
                   />
                 )}
@@ -107,7 +107,7 @@ export function KillChainIndicator({ stageCounts }: KillChainIndicatorProps) {
       </div>
       <div className="flex items-center gap-3 mt-2">
         <div className="flex items-center gap-1">
-          <div className="w-2 h-2 rounded-athena bg-[#3b82f6]/70" />
+          <div className="w-2 h-2 rounded-athena bg-athena-accent/70" />
           <span className="text-sm font-mono text-athena-text-tertiary">
             {t("tested")}
           </span>

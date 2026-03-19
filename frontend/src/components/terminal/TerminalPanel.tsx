@@ -148,7 +148,7 @@ export function TerminalPanel({
             onKeyDown={handleKeyDown}
             disabled={!isConnected}
             placeholder={isConnected ? "" : t("connecting")}
-            className="flex-1 bg-transparent font-mono text-xs text-athena-accent outline-none placeholder-[#6b7280]/70 focus:outline-none focus:ring-2 focus:ring-[#3b82f6]"
+            className="flex-1 bg-transparent font-mono text-xs text-athena-accent outline-none placeholder-athena-text-secondary/70 focus:outline-none focus:ring-2 focus:ring-athena-accent"
             autoComplete="off"
             autoCorrect="off"
             spellCheck={false}

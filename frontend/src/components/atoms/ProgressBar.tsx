@@ -11,7 +11,7 @@
 "use client";
 
 const VARIANT_COLORS = {
-  default: "bg-[#3b82f6]",
+  default: "bg-athena-accent",
   success: "bg-athena-success-bg",
   warning: "bg-athena-warning-bg",
   error: "bg-athena-error-bg",

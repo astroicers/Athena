@@ -112,7 +112,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
               value={toolId}
               onChange={(e) => setToolId(e.target.value)}
               placeholder="my-custom-scanner"
-              className="w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-[#6b7280] focus:outline-none focus:border-athena-accent"
+              className="w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-athena-accent"
             />
           </div>
 
@@ -126,7 +126,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Custom Scanner"
-              className="w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-[#6b7280] focus:outline-none focus:border-athena-accent"
+              className="w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-athena-accent"
             />
           </div>
 
@@ -191,7 +191,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Brief description of the tool..."
               rows={3}
-              className="w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-[#6b7280] focus:outline-none focus:border-athena-accent resize-none"
+              className="w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-athena-accent resize-none"
             />
           </div>
 

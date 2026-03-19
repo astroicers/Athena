@@ -76,7 +76,7 @@ export function KillChainIndicator({ stageCounts }: KillChainIndicatorProps) {
                 {data.total > 0 ? `${data.tested}/${data.total}` : ""}
               </span>
               <div
-                className="w-full bg-[#1f293733] rounded-athena overflow-hidden flex flex-col justify-end"
+                className="w-full bg-athena-border/20 rounded-athena overflow-hidden flex flex-col justify-end"
                 style={{ height: `${BAR_H}px` }}
               >
                 {successH > 0 && (

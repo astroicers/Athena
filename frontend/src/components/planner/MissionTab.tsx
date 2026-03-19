@@ -336,7 +336,7 @@ export function MissionTab({
           <p className="text-xs font-mono text-athena-text-secondary -mt-2 ml-1">{tHints("targetHosts")}</p>
           {targets.length === 0 ? (
             <div className="bg-athena-surface border border-white/5 rounded-athena p-6 text-center">
-              <span className="text-xs font-mono text-[#4b5563] whitespace-pre-line">{tEmpty("plannerGuide")}</span>
+              <span className="text-xs font-mono text-athena-text-tertiary whitespace-pre-line">{tEmpty("plannerGuide")}</span>
             </div>
           ) : (
             targets.map((tgt) => (

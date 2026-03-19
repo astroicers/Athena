@@ -201,7 +201,7 @@ function OperationsContent() {
               className="flex items-center justify-center border border-athena-border/25 rounded-athena hover:border-athena-accent/25 transition-colors cursor-pointer"
               style={{ height: 140 }}
             >
-              <span className="font-mono text-xs text-[#4b5563]">
+              <span className="font-mono text-xs text-athena-text-tertiary">
                 + {t("createOp")}
               </span>
             </button>
@@ -286,7 +286,7 @@ function CreateOperationModal({ onCreated, onCancel }: CreateModalProps) {
   }
 
   const inputClass =
-    "w-full bg-athena-bg border border-[#374151] rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-athena-accent";
+    "w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-athena-accent";
   const labelClass =
     "block text-xs font-mono text-athena-text-secondary uppercase tracking-wider mb-1";
 
@@ -436,7 +436,7 @@ function EditOperationModal({ operation, onSaved, onCancel }: EditModalProps) {
   }
 
   const inputClass =
-    "w-full bg-athena-bg border border-[#374151] rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-athena-accent";
+    "w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-athena-accent";
   const labelClass =
     "block text-xs font-mono text-athena-text-secondary uppercase tracking-wider mb-1";
 

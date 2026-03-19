@@ -63,9 +63,9 @@ function StatusDot({ status }: { status: TechniqueStatus }) {
 function pillBg(status: TechniqueStatus): string {
   switch (status) {
     case TechniqueStatus.SUCCESS:
-      return "bg-athena-success/10 border border-[#22C55E66]";
+      return "bg-athena-success/10 border border-athena-success/40";
     case TechniqueStatus.FAILED:
-      return "bg-athena-error/10 border border-[#EF444466]";
+      return "bg-athena-error/10 border border-athena-error/40";
     case TechniqueStatus.RUNNING:
       return "bg-athena-accent/10 border border-athena-accent/40 animate-pulse";
     case TechniqueStatus.QUEUED:

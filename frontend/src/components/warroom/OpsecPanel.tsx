@@ -407,7 +407,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="text-[10px] px-2 py-0.5 shrink-0 text-[#f59e0b]"
+                  className="text-[10px] px-2 py-0.5 shrink-0 text-athena-warning"
                 >
                   {t("view")}
                 </Button>

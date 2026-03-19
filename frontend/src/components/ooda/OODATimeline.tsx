@@ -209,7 +209,7 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
                         <div className="flex flex-col items-center shrink-0">
                           <div className="w-1.5 h-1.5 rounded-full bg-athena-accent mt-1.5" />
                           {i < filtered.length - 1 && (
-                            <div className="w-px flex-1 bg-[#1f293780] mt-1 min-h-[12px]" />
+                            <div className="w-px flex-1 bg-athena-border/50 mt-1 min-h-[12px]" />
                           )}
                         </div>
                         <div className="flex-1 min-w-0 pb-1">
@@ -257,7 +257,7 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
                   <div className="flex flex-col items-center shrink-0">
                     <div className="w-1.5 h-1.5 rounded-full bg-athena-accent mt-1.5" />
                     {i < reconEntries.length - 1 && (
-                      <div className="w-px flex-1 bg-[#1f293780] mt-1 min-h-[12px]" />
+                      <div className="w-px flex-1 bg-athena-border/50 mt-1 min-h-[12px]" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0 pb-1">

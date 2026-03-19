@@ -46,11 +46,11 @@ const MATRIX: MatrixAction[][] = [
 function actionBg(a: MatrixAction): string {
   switch (a) {
     case "GO":
-      return "bg-[#22C55E15]";
+      return "bg-athena-success/[0.08]";
     case "CAUTION":
       return "bg-athena-warning-bg";
     case "HOLD":
-      return "bg-[#EF444425]";
+      return "bg-athena-error/[0.14]";
     case "ABORT":
       return "bg-athena-error/25";
   }

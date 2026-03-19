@@ -58,6 +58,6 @@ spacing:
   card:    { value: "20px", css: "--sp-card",     description: "卡片內距" }
 
 radius:
-  sm: { value: "4px",  css: "--radius-sm", tw: "rounded-athena-sm", description: "小圓角（Badge, 輸入框）" }
-  md: { value: "8px",  css: "--radius-md", tw: "rounded-athena-md", description: "中圓角（卡片）" }
-  lg: { value: "12px", css: "--radius-lg", tw: "rounded-athena-lg", description: "大圓角（Modal）" }
+  sm: { value: "4px",  css: "--radius-sm", tw: "rounded-athena", description: "小圓角（Badge, 輸入框）" }
+  md: { value: "8px",  css: "--radius-md", tw: "rounded-athena", description: "中圓角（卡片）" }
+  lg: { value: "12px", css: "--radius-lg", tw: "rounded-athena", description: "大圓角（Modal）" }

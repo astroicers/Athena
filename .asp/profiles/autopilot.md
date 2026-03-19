@@ -204,13 +204,19 @@ FUNCTION autopilot_main():
   LOG("Architecture: {roadmap.architecture}")
 
   // ═══ Phase 1.5: Update CLAUDE.md Project Description ═══
-  ensure_project_description()  // .asp/scripts/update-project-description.py
+  IF exists(".asp/scripts/update-project-description.py"):
+    ensure_project_description()
+  ELSE:
+    WARN("Script .asp/scripts/update-project-description.py 不存在，跳過專案描述更新")
 
   // ═══ Phase 2: Validate Prerequisites ═══
   errors = []
 
-  // 驗證前置文件
-  detect_required_documents(roadmap)  // 缺少時自動建立
+  // 驗證前置文件（自動建立缺少的模板）
+  IF exists("Makefile") AND make_target_exists("autopilot-validate"):
+    detect_required_documents(roadmap)
+  ELSE:
+    WARN("detect_required_documents 無法執行（Makefile 或 target 不存在），跳過前置文件檢查")
 
   // ─── 強制為所有任務建立 SPEC（提前至 Phase 2）───
   FOR task IN roadmap.all_tasks():

@@ -196,10 +196,17 @@ hotfix/描述        緊急修復，從 main 建立，修復後合併回 main
        └── ADR 為 Draft → 先完成 ADR 審議，不建 SPEC、不寫生產代碼
 
 4. Design Gate（僅 design: enabled 時）
-   └── 需求涉及 UI → CALL design_gate(requirement)
-       ├── 設計已存在且與需求一致 → 繼續
-       └── 設計不存在或不一致 → 建立/更新設計 → 等待人類確認
-       └── 純後端需求 → 豁免（需說明理由）
+   └── 需求涉及 UI →
+       ├── STEP 4a: CALL before_ui_work()          // 必須先執行，讀取設計系統
+       │     ├── 讀取 design-system/MASTER.md（若存在）
+       │     ├── 讀取 design-system/tokens.yaml（若存在）
+       │     ├── 讀取 frontend/DESIGN_MAP.md（若存在）← 路由↔元件對應、Frame ID
+       │     ├── 讀取設計相關 SPEC（若存在）← 設計防錯規則
+       │     └── design-system/ 不存在 → BLOCK（必須先建立 design system）
+       └── STEP 4b: CALL design_gate(requirement)  // 確認設計稿存在且一致
+           ├── 設計已存在且與需求一致 → 繼續
+           └── 設計不存在或不一致 → 建立/更新設計 → 等待人類確認
+           └── 純後端需求 → 豁免（需說明理由）
        └── design_dev profile 未載入 → WARN("design: enabled 未設定，跳過 Design Gate") → 繼續
            // ─── design: disabled 最低 UI 品質兜底 ───
            // 即使 design_dev profile 未載入，以下規則仍然生效：
@@ -217,6 +224,14 @@ hotfix/描述        緊急修復，從 main 建立，修復後合併回 main
        └── spec 不存在或不一致 → 建立/更新 spec → 等待人類確認
        └── 純前端需求（不涉及 API） → 豁免（需說明理由）
        └── openapi profile 未載入 → WARN("openapi: enabled 未設定，跳過 OpenAPI Gate") → 繼續
+
+5b. API Test Gate（後端 API 修改時）
+    └── 新增/修改 API endpoint 時：
+        ├── 對應測試檔案必須存在（命名慣例依專案而定）
+        ├── 每個端點至少測試：happy path + 主要 error case（404、422 等）
+        ├── 寫入操作（POST/PUT/PATCH/DELETE）必須驗證 DB 狀態變更
+        ├── 不可 mock 資料庫（整合測試必須連真實 DB 或 test container）
+        └── 豁免：WebSocket、health check、純代理轉發端點
 
 6. 歷史教訓查詢（僅 rag: enabled 時）
    └── make rag-search Q="SPEC 相關關鍵字"
@@ -389,7 +404,27 @@ FUNCTION verify_stable_state(spec):
   ├── 資料驅動元件覆蓋 loading / empty / error 三態
   ├── 互動元件（表單、Modal、有 onClick 的按鈕）有基本測試
   └── 語系檔案 key 數量一致（`make i18n-check`）
+  └── （design: enabled）Design Token ↔ CSS 變數核對：
+        CALL verify_token_sync("design-system/tokens.yaml", ["frontend/src/styles/globals.css", "frontend/tailwind.config.ts"])
+        // 通過：無 WARN，或所有 WARN 已登記 tech-debt: token-pending
+  └── 新增/修改 API endpoint → 對應整合測試已涵蓋 happy path + error cases + DB 狀態驗證
 ```
+
+⚡ 提交前自審完成後，必須輸出以下結論（不可省略）：
+
+```
+提交前自審結論
+═══════════════════
+□ 清潔度    ✅/🔴
+□ 一致性    ✅/🔴
+□ 安全性    ✅/🔴
+□ 完整性    ✅/🔴
+□ 前端品質  ✅/🔴/⏭️（非前端跳過）
+═══════════════════
+結論：✅ 可提交 / 🔴 阻擋（原因：...）
+```
+
+🔴 任一項為 FAIL → 禁止提交，修復後重新自審。
 
 ---
 

@@ -150,18 +150,25 @@ FUNCTION review_code_style(file, codebase_conventions):
   IF imports NOT sorted_by(stdlib, external, internal):
     violations.append("import 順序不符慣例")
 
-  // ─── 第 4 步：穩定度與安全檢查 ───
-  IF any_external_call.has_no_timeout():
-    violations.append("穩定度：外部呼叫缺少 timeout 設定")
+  // ─── 第 4 步：安全檢查（BLOCK，無豁免）───
+  security_violations = []
 
   IF code.has_string_concatenation_in_query():
-    violations.append("安全：禁止字串拼接 SQL 查詢，使用 parameterized query")
+    security_violations.append("安全：禁止字串拼接 SQL 查詢，使用 parameterized query")
 
   IF code.has_raw_html_injection():
-    violations.append("安全：禁止未經 sanitize 的 raw HTML 注入")
+    security_violations.append("安全：禁止未經 sanitize 的 raw HTML 注入")
 
   IF code.has_hardcoded_secret_pattern():
-    violations.append("安全：疑似硬編碼 credentials，應使用環境變數")
+    security_violations.append("安全：疑似硬編碼 credentials，應使用環境變數")
+
+  IF security_violations:
+    BLOCK("安全違規，禁止提交：" + security_violations)
+    // 安全違規無豁免，不可標記 tech-debt 延後
+
+  // ─── 第 5 步：穩定度檢查（WARN）───
+  IF any_external_call.has_no_timeout():
+    violations.append("穩定度：外部呼叫缺少 timeout 設定")
 
   IF violations:
     RETURN suggest_improvements(violations)

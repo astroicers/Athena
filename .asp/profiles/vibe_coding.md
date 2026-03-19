@@ -64,6 +64,7 @@ FUNCTION should_pause(operation, hitl_level):
         - operation.modifies_db_schema() AND NOT spec.covers_schema_change()
         - operation.scope_exceeds_current_spec()            // 超出 SPEC 範圍
         - operation.auto_fix_retries >= 3                   // Bug 修復連續失敗
+        - design_gate.requires_human_confirmation()        // Design Gate 需確認（設計不存在或不一致）
       OTHERWISE:
         RETURN PASS  // 在 SPEC 範圍內的所有操作自主執行
 
@@ -85,6 +86,7 @@ FUNCTION should_pause(operation, hitl_level):
 | `make test` 失敗後自動修復（≤3次） | 修改 DB schema（除非 SPEC 明確指定）|
 | 建立新 SPEC（前提：ADR 已 Accepted） | 發現需求超出 SPEC/版本範圍 |
 | 更新文件（ROADMAP、README、CHANGELOG） | git push / rebase（鐵則） |
+| | 設計不存在或與需求不一致（Design Gate 需確認） |
 
 **自動修復上限**：同一測試失敗連續修復 3 次仍未通過 → 暫停並向人類報告失敗細節。
 

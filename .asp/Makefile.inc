@@ -18,7 +18,8 @@ ASP_TYPE := $(shell grep '^type:' .ai_profile 2>/dev/null | awk '{print $$2}')
         rag-index rag-search rag-stats rag-rebuild \
         guardrail-log guardrail-reset \
         audit-health audit-quick doc-audit tech-debt-list \
-        task-start task-status task-report
+        task-start task-status task-report \
+        profile-validate
 
 #---------------------------------------------------------------------------
 # Help
@@ -44,6 +45,7 @@ endif
 	@echo "🛡  Guardrail:   guardrail-log | guardrail-reset"
 	@echo "🏥 Audit:       audit-health | audit-quick | doc-audit | tech-debt-list"
 	@echo "📌 Task:        task-start DESC=... | task-status | task-report"
+	@echo "🔍 Profile:     profile-validate"
 	@echo "🚀 Autopilot:   autopilot-init | autopilot-validate | autopilot-status | autopilot-reset"
 	@echo "📝 Documents:   srs-new | sds-new | uiux-spec-new | deploy-spec-new"
 	@echo ""
@@ -345,7 +347,7 @@ audit-health:
 	echo "── 1. 測試覆蓋 ──"; \
 	SRC_COUNT=0; TEST_COUNT=0; \
 	for ext in go ts tsx js jsx py java rb; do \
-		SRC_COUNT=$$((SRC_COUNT + $$(find . -name "*.$$ext" ! -path '*/node_modules/*' ! -path '*/.git/*' ! -path '*/vendor/*' ! -path '*/.next/*' ! -name '*_test.*' ! -name '*.test.*' ! -name '*.spec.*' ! -name 'test_*' ! -path '*/test*/*' 2>/dev/null | wc -l))); \
+		SRC_COUNT=$$((SRC_COUNT + $$(find . -name "*.$$ext" ! -path '*/node_modules/*' ! -path '*/.git/*' ! -path '*/vendor/*' ! -name '*_test.*' ! -name '*.test.*' ! -name '*.spec.*' ! -name 'test_*' ! -path '*/test*/*' 2>/dev/null | wc -l))); \
 		TEST_COUNT=$$((TEST_COUNT + $$(find . \( -name "*_test.$$ext" -o -name "*.test.$$ext" -o -name "*.spec.$$ext" -o -name "test_*.$$ext" \) ! -path '*/node_modules/*' ! -path '*/.git/*' 2>/dev/null | wc -l))); \
 	done; \
 	if [ $$SRC_COUNT -gt 0 ]; then \
@@ -405,9 +407,9 @@ audit-health:
 	echo ""; \
 	\
 	echo "── 5. 程式碼衛生 ──"; \
-	DEP_COUNT=$$(grep -r "DEPRECATED\|@deprecated" --include="*.go" --include="*.ts" --include="*.py" --include="*.java" --include="*.js" . 2>/dev/null | grep -v node_modules | grep -v .git | grep -v .next | wc -l | tr -d ' '); \
-	TODO_NO_OWNER=$$(grep -rn "TODO[^(]" --include="*.go" --include="*.ts" --include="*.py" --include="*.java" --include="*.js" . 2>/dev/null | grep -v node_modules | grep -v .git | grep -v .next | wc -l | tr -d ' '); \
-	FIXME_COUNT=$$(grep -rn "FIXME" --include="*.go" --include="*.ts" --include="*.py" --include="*.java" --include="*.js" . 2>/dev/null | grep -v node_modules | grep -v .git | grep -v .next | wc -l | tr -d ' '); \
+	DEP_COUNT=$$(grep -r "DEPRECATED\|@deprecated" --include="*.go" --include="*.ts" --include="*.py" --include="*.java" --include="*.js" . 2>/dev/null | grep -v node_modules | grep -v .git | wc -l | tr -d ' '); \
+	TODO_NO_OWNER=$$(grep -rn "TODO[^(]" --include="*.go" --include="*.ts" --include="*.py" --include="*.java" --include="*.js" . 2>/dev/null | grep -v node_modules | grep -v .git | wc -l | tr -d ' '); \
+	FIXME_COUNT=$$(grep -rn "FIXME" --include="*.go" --include="*.ts" --include="*.py" --include="*.java" --include="*.js" . 2>/dev/null | grep -v node_modules | grep -v .git | wc -l | tr -d ' '); \
 	TECH_DEBT=$$(grep -rn "tech-debt:" . 2>/dev/null | grep -v node_modules | grep -v .git | grep -v .asp/profiles | wc -l | tr -d ' '); \
 	if [ $$DEP_COUNT -gt 0 ]; then echo "  🟡 WARNING: $$DEP_COUNT 個 DEPRECATED 標記待清理"; WARNINGS=$$((WARNINGS + 1)); fi; \
 	if [ $$TODO_NO_OWNER -gt 0 ]; then echo "  🟡 WARNING: $$TODO_NO_OWNER 個 TODO 無 owner"; WARNINGS=$$((WARNINGS + 1)); fi; \
@@ -485,8 +487,8 @@ audit-quick:
 			fi; \
 		fi; \
 	done; \
-	SRC_COUNT=$$(find . -name "*.go" -o -name "*.ts" -o -name "*.py" -o -name "*.java" | grep -v node_modules | grep -v .git | grep -v vendor | grep -v '.next' | wc -l); \
-	TEST_COUNT=$$(find . \( -name "*_test.*" -o -name "*.test.*" -o -name "*.spec.*" -o -name "test_*" \) | grep -v node_modules | grep -v .git | grep -v '.next' | wc -l); \
+	SRC_COUNT=$$(find . -name "*.go" -o -name "*.ts" -o -name "*.py" -o -name "*.java" | grep -v node_modules | grep -v .git | grep -v vendor | wc -l); \
+	TEST_COUNT=$$(find . \( -name "*_test.*" -o -name "*.test.*" -o -name "*.spec.*" -o -name "test_*" \) | grep -v node_modules | grep -v .git | wc -l); \
 	if [ $$TEST_COUNT -eq 0 ] && [ $$SRC_COUNT -gt 5 ]; then \
 		echo "  🔴 BLOCKER: $$SRC_COUNT source files, 0 test files"; \
 		BLOCKERS=$$((BLOCKERS + 1)); \
@@ -648,3 +650,10 @@ deploy-spec-new:
 		cp .asp/templates/DEPLOY_SPEC_Template.md docs/DEPLOY_SPEC.md; \
 		echo "✅ Created docs/DEPLOY_SPEC.md from template"; \
 	else echo "ℹ️  docs/DEPLOY_SPEC.md already exists"; fi
+
+#---------------------------------------------------------------------------
+# Profile 驗證
+#---------------------------------------------------------------------------
+
+profile-validate:
+	@bash .asp/scripts/validate-profile.sh

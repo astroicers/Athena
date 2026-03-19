@@ -206,12 +206,72 @@ FUNCTION before_ui_work():
   IF exists("design-system/pages/{current_page}.md"):
     READ("design-system/pages/{current_page}.md")
 
-  // 3. 無 design system 時
+  // 3. 讀取專案級設計對應表（若存在）
+  IF exists("frontend/DESIGN_MAP.md"):
+    READ("frontend/DESIGN_MAP.md")
+    // 包含：route ↔ 元件對應、.pen Frame ID、元件精確尺寸
+
+  // 4. 讀取已確認的設計防錯規則（若存在）
+  FOR spec IN glob("docs/specs/SPEC-*-design-*.md"):
+    READ(spec)
+    // 包含：anti-pattern 禁止列表、token 速查表、元件樣式模板
+
+  // 5. 無 design system 時 → BLOCK（design: enabled 代表專案承諾設計驅動）
   IF NOT exists("design-system/"):
-    SUGGEST("建議使用 UI/UX Skill 產生 design system，或手動建立 design-system/MASTER.md")
+    BLOCK("design: enabled 但 design-system/ 不存在。必須先建立 design system 再實作 UI。")
+    SUGGEST("執行 UI/UX Skill 產生 design system，或手動建立以下必要檔案：")
+    //   design-system/MASTER.md    — 設計系統總覽（色彩、字型、間距、圓角等規範）
+    //   design-system/tokens.yaml  — Design Token 定義（所有 semantic token 的鍵值對）
+    // autopilot 模式：標記 task 為 blocked，跳至下一個 task
+
+  // 5b. Design Token 檔案存在但不完整 → WARN
+  IF exists("design-system/") AND NOT exists("design-system/tokens.yaml"):
+    WARN("design-system/ 存在但缺少 tokens.yaml。建議補齊 token 定義以啟用 verify_token_sync 驗證。")
+    // 不 BLOCK——有 MASTER.md 仍可推進，但 token sync 驗證會失效
 ```
 
 > Design system 檔案由各專案自行維護，ASP 只規範讀取順序和覆寫規則。
+
+---
+
+## Pencil MCP 操作注意事項
+
+> 適用條件：使用 Pencil MCP 工具操作 .pen 設計檔時
+
+### 已知問題速查表
+
+| 問題 | 說明 | 解法 |
+|------|------|------|
+| batch_design false error | 回傳 error 但操作實際已成功 | 用 `batch_get` 驗證實際狀態 |
+| batch 大小限制 | 超過 25 個操作會不穩定 | 每次最多 25 個操作 |
+| filePath 必填 | `open_document` 需要完整路徑或 `new` | 先用 `get_editor_state` 確認狀態 |
+| fill 必填 | 建立有背景的節點時 fill 不可省略 | 明確指定 `fill: { type: "solid", color: "..." }` |
+| Unicode 文字 | 中文等 Unicode 字元可能截斷 | 建立後用 `batch_get` 驗證文字完整性 |
+
+### 標準流程
+
+```
+FUNCTION edit_pen_design(pen_file, changes):
+  // 1. 開啟並讀取現狀
+  open_document(pen_file)
+  current = batch_get(relevant_patterns)
+
+  // 2. 執行修改（每批 ≤ 25 個操作）
+  batch_design(changes)
+
+  // 3. 必須驗證（不可省略）
+  result = batch_get(modified_node_ids)
+  IF result != expected:
+    RETRY or WARN
+
+  // 4. 視覺確認（建議）
+  get_screenshot(root_node)
+```
+
+### Frame ID 索引
+
+各專案的 .pen Frame ID 應記錄在 `frontend/DESIGN_MAP.md` 中。
+`before_ui_work()` 步驟 3 會自動讀取此檔案。
 
 ---
 
@@ -233,7 +293,9 @@ FUNCTION before_ui_work():
 ```
 - [ ] 畫面設計已完成且經人類確認（docs/designs/xxx）
 - [ ] 實作與設計稿一致（visual regression 或人工比對）
-- [ ] Design Token 與實作 CSS 變數一致
+- [ ] CALL verify_token_sync("design-system/tokens.yaml", ["frontend/src/styles/globals.css", "frontend/tailwind.config.ts"])
+      // 通過條件：無 WARN，或所有 WARN 已登記 tech-debt: token-pending
+- [ ] 無設計規範文件中禁止的 anti-pattern（參照專案的設計相關 SPEC）
 ```
 
 ---

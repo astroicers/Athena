@@ -135,6 +135,15 @@ FUNCTION openapi_gate(requirement, openapi_spec_path = "docs/openapi.yaml"):
       fallback = "若 spec 有誤，先更新 spec 再修正實作"
     )
 
+  // ─── 第 3b 步：Breaking Change 偵測 ───
+  IF change.removes_endpoint OR change.removes_field OR change.changes_field_type
+     OR change.changes_required_status OR change.changes_method_or_status_semantics:
+    BLOCK("Breaking change 偵測到，必須完成以下 4 項才可繼續：")
+    //   1. 遞增 major version（v1 → v2）
+    //   2. 在 api-changelog.md 標記 ⚠️ BREAKING
+    //   3. 更新 openapi.yaml info.version
+    //   4. 若有舊版 endpoint，提供 deprecation 時程
+
   // ─── 第 4 步：更新變更紀錄 ───
   update_api_changelog("docs/api-changelog.md", requirement)
   update_openapi_info(openapi_spec_path, latest_change_summary)

@@ -18,13 +18,37 @@
 ## 啟動程序
 
 1. 讀取 `.ai_profile`，依欄位載入對應 profile
-2. **Profile 依賴與衝突驗證**：每個 profile 頂部有 `<!-- requires: ... -->` 和 `<!-- conflicts: ... -->` 註解。載入時確認依賴已載入、衝突 Profile 未同時啟用。缺少依賴 → WARN 並建議補充。衝突 → WARN 並說明哪兩個 Profile 互斥
+2. **Profile 依賴與衝突驗證**：CALL `validate_profile_config()`（見下方），確認依賴已載入、衝突 Profile 未同時啟用
 3. **自動載入規則**：`design: enabled` 時自動載入 `frontend_quality.md`（不需額外設定）
 4. **若 `autonomous: enabled`，或 `workflow: vibe-coding` + `hitl: minimal`**：額外載入 `autonomous_dev.md`（同時確保 `vibe_coding.md` 已載入，未設定時自動補載）。若同時 `mode: multi-agent`，autonomous 規則分層套用（見 `autonomous_dev.md`「Multi-Agent 整合」）
 4a. **若 `orchestrator: enabled`，或 `autonomous: enabled`**：額外載入 `task_orchestrator.md`。首次介入專案時自動執行專案健康審計（`project_health_audit()`），偵測缺失的測試、SPEC、ADR、文件並強制補齊
 4b. **若 `autopilot: enabled`**：額外載入 `autopilot.md`（自動確保 `autonomous_dev.md` + `task_orchestrator.md` 已載入）。Session 啟動時檢查 `.asp-autopilot-state.json`——若存在且 status == "in_progress"，自動續接（零確認）
 5. **RAG 已啟用時**：回答任何專案架構/規格問題前，先執行 `make rag-search Q="..."`
 6. 無 `.ai_profile` 時：只套用本檔案鐵則，詢問使用者專案類型
+
+```
+FUNCTION validate_profile_config(ai_profile):
+  loaded = parse_ai_profile(ai_profile)
+
+  // ─── 依賴檢查 ───
+  FOR profile IN loaded.profiles:
+    requires = parse_requires_comment(profile)  // <!-- requires: ... -->
+    FOR dep IN requires:
+      IF dep NOT IN loaded.profiles:
+        WARN("Profile '{profile.name}' 依賴 '{dep}' 但未載入。建議在 .ai_profile 中啟用。")
+
+  // ─── 衝突檢查 ───
+  FOR profile IN loaded.profiles:
+    conflicts = parse_conflicts_comment(profile)  // <!-- conflicts: ... -->
+    FOR conflict IN conflicts:
+      IF conflict IN loaded.profiles:
+        WARN("Profile '{profile.name}' 與 '{conflict}' 互斥，不可同時啟用。停用其中一個。")
+
+  // ─── 自動載入規則驗證 ───
+  IF loaded.design == "enabled" AND "frontend_quality" NOT IN loaded.profiles:
+    AUTO_LOAD("frontend_quality.md")
+    LOG("design: enabled → 自動載入 frontend_quality.md")
+```
 
 ```yaml
 # .ai_profile 完整欄位參考

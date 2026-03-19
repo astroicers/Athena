@@ -6,9 +6,32 @@
 適用：具有前端介面的專案，確保程式碼層級的 UI 品質。不需要設計稿，只需要工程紀律。
 載入條件：`design: enabled` 時自動載入，或手動設定 `frontend_quality: enabled`
 
-> 本 profile 與 `design_dev.md` 互補但獨立：
-> - `design_dev.md` 管理「設計稿」的品質（需要設計稿才能驗證）
-> - 本 profile 管理「前端程式碼」的品質（不需要設計稿）
+> 本 profile 與 `design_dev.md` 分工如下（無重疊）：
+>
+> | 職責 | 主管 profile |
+> |------|-------------|
+> | 設計稿存在性、設計確認流程 | `design_dev.md` |
+> | Design Token 定義與 token ↔ 設計稿一致性 | `design_dev.md` |
+> | Token ↔ CSS 變數雙向同步（`verify_token_sync`） | `design_dev.md` |
+> | **元件三態程式碼驗證** | **本 profile** |
+> | **i18n 硬編碼偵測** | **本 profile** |
+> | **硬編碼顏色值偵測** | **本 profile** |
+> | **Accessibility 自動化驗證** | **本 profile** |
+>
+> 衝突時以 `design_dev.md` 為準（設計即規格）。
+
+### 前置讀取（design: enabled 時）
+
+當與 `design_dev.md` 同時載入時，以下讀取由 `system_dev.md` Step 4a 統一觸發。
+此為冗餘宣告，確保 profile 自文檔化：
+
+```
+PRE_IMPLEMENTATION（design: enabled 時）:
+  IF exists("frontend/DESIGN_MAP.md"):
+    READ("frontend/DESIGN_MAP.md")   // route ↔ 元件對應、Frame ID、元件尺寸
+  FOR spec IN glob("docs/specs/SPEC-*-design-*.md"):
+    READ(spec)                       // 禁止的 anti-pattern、token 速查
+```
 
 ---
 
@@ -20,6 +43,19 @@
 - `design: disabled` 時 — `system_dev.md` Pre-Implementation Gate 的 ui_baseline_rules 引用本 profile
 
 > 這些規則不需要設計稿，只需要工程紀律。
+
+---
+
+## 驗證觸發時機
+
+| 函數 | 觸發時機 | 觸發方式 |
+|------|---------|---------|
+| `verify_component_states()` | 修改/新增前端元件時 | 提交前自審「前端元件完整性」自動呼叫 |
+| `verify_i18n()` | 修改含使用者可見文字的檔案時 | 提交前自審「清潔度」自動呼叫 |
+| `verify_color_usage()` | 修改含樣式的前端檔案時 | 提交前自審「清潔度」自動呼叫 |
+| `verify_a11y()` | 修改含互動元件的前端檔案時 | 提交前自審「完整性」自動呼叫 |
+
+> 所有驗證函數回傳 FAIL 時，對應的提交前自審項目為 🔴，阻擋提交。
 
 ---
 

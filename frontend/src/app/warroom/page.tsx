@@ -17,20 +17,16 @@ import { api } from "@/lib/api";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useC5ISRData } from "@/hooks/useC5ISRData";
 import { ConstraintBanner } from "@/components/layout/ConstraintBanner";
-import { OODAFlowDiagram } from "@/components/c5isr/OODAFlowDiagram";
-import { C5ISRHealthGrid } from "@/components/c5isr/C5ISRHealthGrid";
-import { ConstraintStatusPanel } from "@/components/c5isr/ConstraintStatusPanel";
-import { C5ISRDomainDetail } from "@/components/c5isr/C5ISRDomainDetail";
-import { OpsecPanel } from "@/components/warroom/OpsecPanel";
-import { DecisionPanel } from "@/components/warroom/DecisionPanel";
-import type { LogEntry } from "@/types/log";
-import type { C5ISRDomain } from "@/types/enums";
-import type { DomainReport } from "@/types/c5isr";
+import { ReconBlock } from "@/components/warroom/ReconBlock";
+import { OODATimelineBlock } from "@/components/warroom/OODATimelineBlock";
+import { DirectiveInput } from "@/components/warroom/DirectiveInput";
+import { MissionObjective } from "@/components/warroom/MissionObjective";
+import { StatusPanel } from "@/components/warroom/StatusPanel";
+import type { OODATimelineEntry } from "@/types/ooda";
 
 /* ── Constants ── */
 
 const POLL_MS = 15_000;
-const LOG_PAGE_SIZE = 30;
 
 /* ── Types ── */
 
@@ -53,104 +49,6 @@ interface OodaDashboard {
   recentIterations?: OodaIteration[];
 }
 
-/* ── OODA phase colors ── */
-
-function phaseColor(phase: string): string {
-  switch (phase?.toLowerCase()) {
-    case "observe":
-      return "var(--color-accent)";
-    case "orient":
-      return "var(--color-phase-orient)";
-    case "decide":
-      return "var(--color-warning)";
-    case "act":
-      return "var(--color-success)";
-    default:
-      return "#6b728060";
-  }
-}
-
-function phaseBg(phase: string): string {
-  switch (phase?.toLowerCase()) {
-    case "observe":
-      return "color-mix(in srgb, var(--color-accent) 6%, transparent)";
-    case "orient":
-      return "color-mix(in srgb, var(--color-phase-orient) 6%, transparent)";
-    case "decide":
-      return "color-mix(in srgb, var(--color-warning) 6%, transparent)";
-    case "act":
-      return "color-mix(in srgb, var(--color-success) 6%, transparent)";
-    default:
-      return "#ffffff05";
-  }
-}
-
-/* ── Severity colors for log entries ── */
-
-function logSeverityColor(severity: string): string {
-  switch (severity) {
-    case "critical":
-    case "error":
-      return "var(--color-error)";
-    case "warning":
-      return "var(--color-warning)";
-    case "success":
-      return "var(--color-success)";
-    default:
-      return "var(--color-text-secondary)";
-  }
-}
-
-/* ── OODA Phase Card ── */
-
-function PhaseCard({
-  phase,
-  summary,
-  active,
-}: {
-  phase: string;
-  summary?: string;
-  active: boolean;
-}) {
-  const color = phaseColor(phase);
-  const bg = phaseBg(phase);
-
-  return (
-    <div
-      className="rounded-athena flex flex-col gap-2 px-3.5 py-3"
-      style={{
-        backgroundColor: bg,
-        border: active ? `1px solid ${color}40` : "1px solid #1f2937",
-      }}
-    >
-      <div className="flex items-center gap-2">
-        {active && (
-          <span
-            className="w-1.5 h-1.5 rounded-full shrink-0 animate-pulse"
-            style={{ backgroundColor: color }}
-          />
-        )}
-        <span
-          className="font-mono text-[10px] font-bold uppercase tracking-wider"
-          style={{ color: active ? color : "#ffffff40" }}
-        >
-          {phase}
-        </span>
-      </div>
-      {summary && (
-        <p className="font-mono text-[9px] leading-relaxed text-[#ffffff50]">
-          {summary}
-        </p>
-      )}
-      {!summary && !active && (
-        <p className="font-mono text-[9px]" style={{ color: "#ffffff20" }}>
-          Awaiting data...
-        </p>
-      )}
-    </div>
-  );
-}
-
 /* ── Main Content ── */
 
 function WarRoomContent() {
@@ -158,38 +56,33 @@ function WarRoomContent() {
   const operationId = useOperationId();
 
   const [dashboard, setDashboard] = useState<OodaDashboard | null>(null);
-  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [timeline, setTimeline] = useState<OODATimelineEntry[]>([]);
+  const [autoMode, setAutoMode] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [selectedDomain, setSelectedDomain] = useState<C5ISRDomain | null>(
-    null,
-  );
-  const [selectedReport, setSelectedReport] = useState<DomainReport | null>(
-    null,
-  );
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // WebSocket + C5ISR data hook
   const ws = useWebSocket(operationId);
-  const { domains, constraints, override, fetchReport } = useC5ISRData(operationId, ws);
+  const { domains, constraints, override } = useC5ISRData(operationId, ws);
 
   const fetchData = useCallback(async () => {
     if (!operationId) return;
     try {
-      const [dashData, logData] = await Promise.allSettled([
+      const [dashData, timelineData] = await Promise.allSettled([
         api.get<OodaDashboard>(
           `/operations/${operationId}/ooda/dashboard`,
         ),
-        api.get<{ items: LogEntry[] }>(
-          `/operations/${operationId}/logs?page_size=${LOG_PAGE_SIZE}`,
+        api.get<OODATimelineEntry[]>(
+          `/operations/${operationId}/ooda/timeline`,
         ),
       ]);
 
       if (dashData.status === "fulfilled" && dashData.value) {
         setDashboard(dashData.value);
       }
-      if (logData.status === "fulfilled" && logData.value?.items) {
-        setLogs(
-          Array.isArray(logData.value.items) ? logData.value.items : [],
+      if (timelineData.status === "fulfilled" && timelineData.value) {
+        setTimeline(
+          Array.isArray(timelineData.value) ? timelineData.value : [],
         );
       }
     } catch {
@@ -207,18 +100,9 @@ function WarRoomContent() {
     };
   }, [fetchData]);
 
-  // Fetch domain report on selection
-  useEffect(() => {
-    if (selectedDomain) {
-      fetchReport(selectedDomain).then(setSelectedReport);
-    } else {
-      setSelectedReport(null);
-    }
-  }, [selectedDomain, fetchReport]);
-
-  const currentPhase = dashboard?.currentPhase ?? "idle";
-  const iteration = dashboard?.latestIteration;
-  const phases = ["observe", "orient", "decide", "act"];
+  // Build iteration list from dashboard
+  const iterations = dashboard?.recentIterations ?? (dashboard?.latestIteration ? [dashboard.latestIteration] : []);
+  const reconEntries = timeline.filter((e) => e.iterationNumber === 0);
 
   // Constraint banner data
   const bannerData = {
@@ -227,10 +111,28 @@ function WarRoomContent() {
     domains: constraints?.hardLimits?.map((l) => l.domain) ?? [],
   };
 
-  // Find selected domain object
-  const selectedDomainObj = selectedDomain
-    ? domains.find((d) => d.domain === selectedDomain) ?? null
-    : null;
+  // Noise/Risk from dashboard (fallback to safe values)
+  const noiseLevel = 32; // TODO: wire from opsec metrics
+  const riskLevel = "LOW"; // TODO: wire from recommendation
+  const matrixAction = "GO"; // TODO: wire from recommendation
+  const confidence = 0.78; // TODO: wire from recommendation
+
+  // Directive handler
+  const handleDirective = useCallback(
+    async (directive: string) => {
+      if (!operationId || !dashboard?.latestIteration) return;
+      try {
+        await api.post(
+          `/operations/${operationId}/ooda/${dashboard.latestIteration.id}/directive`,
+          { directive },
+        );
+        fetchData();
+      } catch {
+        // silent — API may not support this yet
+      }
+    },
+    [operationId, dashboard, fetchData],
+  );
 
   if (loading && !dashboard) {
     return (
@@ -243,173 +145,104 @@ function WarRoomContent() {
   }
 
   return (
-    <div
-      className="flex flex-col h-full overflow-hidden bg-athena-bg"
-    >
+    <div className="flex flex-col h-full overflow-hidden bg-athena-bg">
       {/* Constraint Banner */}
       <ConstraintBanner constraints={bannerData} onOverride={override} />
 
-      {/* Three-column layout */}
-      <div className="flex flex-1 gap-4 py-4 px-6 min-h-0">
-        {/* Left panel: OODA Loop */}
-        <div
-          className="rounded-athena flex flex-col gap-3 overflow-y-auto shrink-0 bg-athena-surface p-4 w-[200px]"
-        >
-          <span
-            className="font-mono font-bold"
-            style={{ color: "#ffffff60", fontSize: 10 }}
-          >
-            OODA LOOP
-          </span>
-
-          {phases.map((phase) => (
-            <PhaseCard
-              key={phase}
-              phase={phase}
-              active={currentPhase.toLowerCase() === phase}
-              summary={
-                iteration
-                  ? (iteration[
-                      `${phase}Summary` as keyof OodaIteration
-                    ] as string | undefined)
-                  : undefined
-              }
-            />
-          ))}
-
-          {/* Iteration counter */}
-          {dashboard && (
-            <div
-              className="rounded-athena mt-2 px-3 py-2.5"
-              style={{
-                backgroundColor: "#ffffff05",
-                border: "1px solid #ffffff08",
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <span
-                  className="font-mono uppercase tracking-wider"
-                  style={{ color: "#ffffff40", fontSize: 8 }}
-                >
-                  {t("sidePanel.iteration")}
+      {/* Two-column layout: Timeline + Status */}
+      <div className="flex flex-1 min-h-0">
+        {/* Main: Vertical Campaign Timeline */}
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h2 className="font-mono text-xs font-bold text-athena-text-tertiary uppercase tracking-widest">
+                CAMPAIGN TIMELINE
+              </h2>
+              {dashboard && (
+                <span className="font-mono text-xs text-athena-accent font-bold">
+                  OODA #{dashboard.iterationCount}
                 </span>
-                <span
-                  className="font-mono font-bold athena-tabular-nums"
-                  style={{ color: "#ffffff", fontSize: 14 }}
-                >
-                  #{dashboard.iterationCount}
-                </span>
-              </div>
+              )}
             </div>
-          )}
-        </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setAutoMode(!autoMode)}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-athena text-xs font-mono font-semibold transition-colors ${
+                  autoMode
+                    ? "bg-athena-accent-bg text-athena-accent border border-athena-accent/25"
+                    : "bg-athena-surface text-athena-text-tertiary border border-athena-border"
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${autoMode ? "bg-athena-accent" : "bg-athena-text-tertiary"}`} />
+                {autoMode ? "AUTO" : "MANUAL"}
+              </button>
+            </div>
+          </div>
 
-        {/* Center panel: C5ISR + Mermaid Flow + Constraints */}
-        <div className="flex-1 flex flex-col gap-4 overflow-y-auto min-w-0">
-          {/* Mermaid Decision Flow Diagram */}
-          <OODAFlowDiagram
-            dashboard={dashboard}
-            constraints={constraints}
-            c5isrDomains={domains}
-          />
-
-          {/* C5ISR Domain Health Grid */}
-          <C5ISRHealthGrid
-            domains={domains}
-            onDomainClick={(d) =>
-              setSelectedDomain(selectedDomain === d ? null : d)
-            }
-          />
-
-          {/* Domain Detail (expandable) */}
-          {selectedDomainObj && (
-            <C5ISRDomainDetail
-              domain={selectedDomainObj}
-              report={selectedReport}
-              onClose={() => setSelectedDomain(null)}
-            />
+          {/* Recon Block */}
+          {reconEntries.length > 0 && (
+            <ReconBlock entries={reconEntries} />
           )}
 
-          {/* Constraint Status Panel */}
-          <ConstraintStatusPanel
-            constraints={constraints}
-            onOverride={override}
-          />
-
-          {/* OPSEC Status Panel */}
-          <OpsecPanel operationId={operationId} />
-
-          {/* AI Decision Engine Panel */}
-          <DecisionPanel operationId={operationId} />
-        </div>
-
-        {/* Right panel: Action Log */}
-        <div
-          className="flex flex-col gap-3 overflow-y-auto shrink-0 bg-athena-surface rounded-athena p-4 w-[300px]"
-        >
-          <span className="font-mono font-bold" style={{ color: "#ffffff60", fontSize: 10 }}>
-            ACTION LOG
-          </span>
-
-          {logs.length === 0 ? (
-            <div className="flex items-center justify-center flex-1">
-              <p className="font-mono text-[10px] text-[#ffffff25]">
-                {t("sidePanel.waitingForLogs")}
-              </p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {logs.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="flex flex-col gap-1 px-3 py-2.5 rounded-athena"
-                  style={{
-                    backgroundColor: "var(--color-bg-primary)",
-                    border: "1px solid var(--color-border)",
-                  }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="w-1.5 h-1.5 rounded-full shrink-0"
-                        style={{
-                          backgroundColor: logSeverityColor(entry.severity),
-                        }}
-                      />
-                      <span
-                        className="font-mono text-[8px] font-bold uppercase tracking-wider"
-                        style={{
-                          color: logSeverityColor(entry.severity),
-                        }}
-                      >
-                        {entry.severity}
-                      </span>
-                    </div>
-                    <span
-                      className="font-mono text-[8px] athena-tabular-nums"
-                      style={{ color: "#ffffff25" }}
-                    >
-                      {new Date(entry.timestamp).toLocaleTimeString("en-US", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        second: "2-digit",
-                        hour12: false,
-                      })}
-                    </span>
+          {/* OODA Iteration Blocks */}
+          {iterations.map((iter, idx) => {
+            const isCurrent = idx === iterations.length - 1 && !iter.completedAt;
+            return (
+              <div key={iter.id}>
+                {/* Connector line */}
+                {idx > 0 || reconEntries.length > 0 ? (
+                  <div className="flex justify-center py-1">
+                    <div className="w-px h-4 bg-athena-border" />
                   </div>
-                  <p className="font-mono text-[9px] leading-relaxed text-[#ffffff50]">
-                    {entry.message}
-                  </p>
-                  {entry.source && (
-                    <span className="font-mono text-[8px]" style={{ color: "#ffffff25" }}>
-                      Source: {entry.source}
-                    </span>
-                  )}
-                </div>
-              ))}
+                ) : null}
+
+                {/* OODA Block */}
+                <OODATimelineBlock
+                  iteration={iter}
+                  c5isrDomains={domains}
+                  constraints={constraints ?? undefined}
+                  isCurrent={isCurrent}
+                />
+
+                {/* Directive Input (after completed iterations) */}
+                {iter.completedAt && (
+                  <div className="mt-2">
+                    <DirectiveInput
+                      iterationId={iter.id}
+                      autoMode={autoMode}
+                      onToggleAutoMode={() => setAutoMode(!autoMode)}
+                      onSubmit={handleDirective}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Connector to Mission */}
+          {iterations.length > 0 && (
+            <div className="flex justify-center py-1">
+              <div className="w-px h-4 bg-athena-border" />
             </div>
           )}
+
+          {/* Mission Objective */}
+          <MissionObjective
+            objective="Domain Admin on corp.local"
+            targetsCompromised={iterations.filter((i) => i.completedAt).length}
+            targetsTotal={5}
+          />
         </div>
+
+        {/* Right: Status Panel */}
+        <StatusPanel
+          c5isrDomains={domains}
+          noiseLevel={noiseLevel}
+          riskLevel={riskLevel}
+          matrixAction={matrixAction}
+          confidence={confidence}
+        />
       </div>
     </div>
   );

@@ -16,13 +16,13 @@ const VARIANT_STYLES = {
   primary:
     "bg-athena-accent text-athena-text font-bold border border-athena-accent hover:bg-athena-accent",
   secondary:
-    "bg-athena-surface text-athena-text-light border border-athena-border hover:bg-athena-elevated",
+    "bg-athena-surface text-athena-text-light border border-[var(--color-border-subtle)] hover:bg-athena-elevated",
   danger:
     "bg-athena-error/[0.12] text-athena-error border border-athena-error/[0.25] hover:bg-athena-error/20",
 } as const;
 
 const SIZE_STYLES = {
-  sm: "px-3 py-1 text-xs",
+  sm: "px-3 py-1 text-[11px]",
   md: "px-4 py-2 text-sm",
   lg: "px-6 py-3 text-base",
 } as const;

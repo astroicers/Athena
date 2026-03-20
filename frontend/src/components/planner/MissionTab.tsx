@@ -183,7 +183,7 @@ export function MissionTab({
   }
 
   const inputStyles =
-    "w-full bg-athena-bg border border-athena-border rounded-athena px-2.5 py-1.5 text-xs font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-athena-accent focus:ring-1 focus:ring-athena-accent";
+    "w-full bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-2.5 py-1.5 text-xs font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-athena-accent";
 
   const labelStyles =
     "block text-[10px] font-mono text-athena-text-tertiary uppercase tracking-wider mb-0.5";
@@ -207,7 +207,7 @@ export function MissionTab({
             onChange={(e) => handleStepStatusChange(r.id, e.target.value)}
             onBlur={() => setTimeout(() => setEditingStepId(null), 150)}
             autoFocus
-            className="bg-athena-bg border border-athena-accent rounded-athena px-2 py-1 text-xs font-mono text-athena-text-light focus:outline-none focus:ring-2 focus:ring-athena-accent"
+            className="bg-athena-bg border border-[var(--color-accent)] rounded-[var(--radius)] px-2 py-1 text-xs font-mono text-athena-text-light focus:outline-none focus:ring-2 focus:ring-athena-accent"
           >
             {Object.values(MissionStepStatus).map((s) => (
               <option key={s} value={s}>{tStatus(s as any)}</option>
@@ -225,12 +225,12 @@ export function MissionTab({
   ];
 
   return (
-    <div className="flex-1 space-y-3 min-h-0 overflow-y-auto pt-4 pb-3 px-4">
+    <div className="flex-1 space-y-5 min-h-0 overflow-y-auto py-5 px-6">
       {/* Mission Steps + Execute */}
       <div className="flex items-center justify-between">
-        <SectionHeader>
+        <h2 className="font-mono text-[13px] font-bold text-[var(--color-text-primary)] tracking-wide uppercase">
           {t("missionSteps")} — {codename || "PHANTOM-EYE"}
-        </SectionHeader>
+        </h2>
         <div className="flex items-center gap-2">
           <Button
             variant="secondary"
@@ -263,7 +263,7 @@ export function MissionTab({
             </Button>
           </Tooltip>
           {oodaPhase && (
-            <span className="text-xs font-mono font-bold text-athena-accent bg-athena-accent-bg border border-athena-accent/25 rounded-athena px-3 py-1 animate-pulse">
+            <span className="text-xs font-mono font-bold text-athena-accent bg-athena-accent-bg border border-[var(--color-accent)]/25 rounded-[var(--radius)] px-3 py-1 animate-pulse">
               {tOoda(oodaPhase as "observe" | "orient" | "decide" | "act")}...
             </span>
           )}
@@ -299,19 +299,19 @@ export function MissionTab({
           </Tooltip>
         </div>
       </div>
-      <p className="text-[10px] font-mono text-athena-text-tertiary -mt-2 ml-0.5">{tHints("missionSteps")}</p>
+      <p className="text-[10px] font-mono text-athena-text-tertiary -mt-3 ml-0.5">{tHints("missionSteps")}</p>
       <DataTable columns={STEP_COLUMNS} data={steps as StepRow[]} keyField="id" emptyMessage={t("noSteps")} />
 
       {/* Objectives */}
       <ObjectivesPanel operationId={operationId} />
 
       {/* OODA Timeline + Host Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2">
           <OODATimeline entries={timeline} />
           <p className="text-[10px] font-mono text-athena-text-tertiary mt-1 ml-0.5">{tHints("oodaTimeline")}</p>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2 w-full lg:w-[360px]">
           <SectionHeader
             level="card"
             trailing={
@@ -333,9 +333,9 @@ export function MissionTab({
           >
             {t("targetHosts")}
           </SectionHeader>
-          <p className="text-[10px] font-mono text-athena-text-tertiary -mt-1 ml-0.5">{tHints("targetHosts")}</p>
+          <p className="text-[10px] font-mono text-athena-text-tertiary -mt-0.5 ml-0.5">{tHints("targetHosts")}</p>
           {targets.length === 0 ? (
-            <div className="bg-athena-surface border border-athena-border rounded-athena p-4 text-center">
+            <div className="bg-athena-surface border border-[var(--color-border)] rounded-[var(--radius)] p-4 text-center">
               <span className="text-[10px] font-mono text-athena-text-tertiary whitespace-pre-line">{tEmpty("plannerGuide")}</span>
             </div>
           ) : (
@@ -362,13 +362,13 @@ export function MissionTab({
                   onDelete={onDeleteRequest}
                   onViewScanResult={targetScans[tgt.id] ? () => onSetReconResult(targetScans[tgt.id]) : undefined}
                 />
-                <div className="flex gap-1 mt-1">
+                <div className="flex gap-1.5 mt-1.5">
                   {onOsintDiscover && (
                     <Button
                       variant="secondary"
                       size="sm"
                       onClick={() => onOsintDiscover(tgt.id)}
-                      className="flex-1 text-xs text-athena-accent border-athena-accent/25 bg-transparent hover:bg-athena-accent/10 uppercase tracking-wider"
+                      className="flex-1 text-[10px] text-athena-accent border-[var(--color-accent)]/25 bg-transparent hover:bg-athena-accent/10 uppercase tracking-wider"
                     >
                       {t("osintDiscover")}
                     </Button>
@@ -379,7 +379,7 @@ export function MissionTab({
                       size="sm"
                       onClick={() => onInitialAccess(tgt.id)}
                       disabled={scanState?.targetId === tgt.id}
-                      className="flex-1 text-xs text-athena-warning border-athena-warning/25 bg-transparent hover:bg-athena-warning-bg uppercase tracking-wider"
+                      className="flex-1 text-[10px] text-athena-warning border-[var(--color-warning)]/25 bg-transparent hover:bg-athena-warning-bg uppercase tracking-wider"
                     >
                       {t("initialAccess")}
                     </Button>
@@ -392,7 +392,7 @@ export function MissionTab({
                         prev === tgt.id ? null : tgt.id,
                       )
                     }
-                    className="flex-1 text-xs text-athena-text-tertiary hover:text-athena-text-light uppercase tracking-wider"
+                    className="flex-1 text-[10px] bg-[rgba(30,96,145,0.12)] border-[var(--color-accent)]/40 text-athena-accent hover:bg-athena-accent/20 uppercase tracking-wider"
                   >
                     {t("aiSummary")}
                   </Button>
@@ -401,14 +401,14 @@ export function MissionTab({
                       variant="secondary"
                       size="sm"
                       onClick={() => onSetTerminalTarget(tgt)}
-                      className="flex-1 text-xs text-athena-success border-athena-success/25 bg-transparent hover:bg-athena-success/10 uppercase tracking-wider"
+                      className="flex-1 text-[10px] text-athena-success border-[var(--color-success)]/25 bg-transparent hover:bg-athena-success/10 uppercase tracking-wider"
                     >
                       {t("terminal")}
                     </Button>
                   )}
                 </div>
                 {summaryTargetId === tgt.id && (
-                  <div className="mt-2">
+                  <div className="mt-2.5">
                     <TargetSummaryPanel
                       operationId={operationId}
                       targetId={tgt.id}
@@ -477,7 +477,7 @@ export function MissionTab({
       {/* Create Step Modal */}
       {showCreateStep && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-athena-surface border border-athena-border rounded-athena p-4 max-w-md w-full mx-4">
+          <div className="bg-athena-surface border border-[var(--color-border)] rounded-[var(--radius)] p-4 max-w-md w-full mx-4">
             <div className="mb-3">
               <span className="text-[10px] font-mono text-athena-text-tertiary uppercase tracking-wider">{t("missionSteps")}</span>
               <h2 className="text-sm font-mono font-bold text-athena-text-light mt-0.5">{t("createStep")}</h2>

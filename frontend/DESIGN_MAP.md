@@ -1,15 +1,15 @@
 # Design Map — .pen Frame ↔ Frontend Code
 
-> Auto-generated during page consolidation (2026-03-13).
-> Update this file whenever design or routing changes.
+> Updated: 2026-03-20 — Deep Gemstone v3 Design System
+> Design file: `design/pencil-new-v2.pen`（唯一真相來源）
 
-## Navigation (Post-Consolidation: 9 → 5 pages)
+## Navigation (5 routes)
 
 | Route | Page Name | Main File | Status |
 |-------|-----------|-----------|--------|
 | `/operations` | Operations | `app/operations/page.tsx` | Active |
 | `/planner` | Planner (3 tabs: Mission / ATT&CK / Attack Graph) | `app/planner/page.tsx` | Active |
-| `/warroom` | War Room (+ OPSEC + Decisions panels) | `app/warroom/page.tsx` | Active |
+| `/warroom` | War Room (Campaign Timeline + Status Panel) | `app/warroom/page.tsx` | Active |
 | `/vulns` | Vulnerabilities (+ PoC Evidence panel) | `app/vulns/page.tsx` | Active |
 | `/tools` | Tool Registry | `app/tools/page.tsx` | Active |
 
@@ -22,61 +22,57 @@
 | `/opsec` | `/warroom` | `app/opsec/page.tsx` |
 | `/decisions` | `/warroom` | `app/decisions/page.tsx` |
 
-## Component Extraction Map
-
-| Original Page | Extracted Component | Location |
-|--------------|---------------------|----------|
-| `/attack-graph` | `AttackGraphTab` | `components/planner/AttackGraphTab.tsx` |
-| `/poc` | `PocEvidencePanel` | `components/vulns/PocEvidencePanel.tsx` |
-| `/opsec` | `OpsecPanel` | `components/warroom/OpsecPanel.tsx` |
-| `/decisions` | `DecisionPanel` | `components/warroom/DecisionPanel.tsx` |
-
 ## .pen Frame ID 對應表
 
-> 設計檔案：`design/pencil-new-v2.pen`（唯一真相來源）
+| Frame ID | 名稱 | 位置 (x, y) | Route |
+|----------|------|------------|-------|
+| `ItHzi` | Operations | (0, 0) | `/operations` |
+| `dUlxq` | Planner - Mission Tab | (1640, 0) | `/planner` |
+| `XP8YS` | Planner - ATT&CK Tab | (3280, 0) | `/planner?tab=attack` |
+| `2qyS3` | Planner - Attack Graph Tab | (0, 1000) | `/planner?tab=attack-graph` |
+| `OoOXX` | War Room | (1640, 1000) | `/warroom` |
+| `EEbwu` | War Room — OPSEC Detail | (3280, 1000) | `/warroom` (inline) |
+| `Nntpe` | War Room — Decision Detail | (0, 2000) | `/warroom` (inline) |
+| `avyIZ` | Vulnerability Dashboard | (1640, 2000) | `/vulns` |
+| `EMRMB` | Tools - Registry | (3280, 2000) | `/tools` |
+| `tCMir` | NotificationCenter | (0, 3000) | modal overlay |
 
-| Frame ID | 名稱 | 位置 (x, y) | 狀態 |
-|----------|------|------------|------|
-| `ItHzi` | Operations | (0, 5000) | ✅ |
-| `dUlxq` | Planner - Mission Tab | (0, 6000) | ✅ |
-| `XP8YS` | Planner - ATT&CK Tab | (1540, 6000) | ✅ |
-| `2qyS3` | Planner - Attack Graph Tab | (3080, 6000) | ✅ |
-| `EMRMB` | Tools - Registry | (0, 7000) | ✅ |
-| `avyIZ` | Vulnerability Dashboard | (0, 3000) | ✅ |
-| `OoOXX` | War Room | (0, 8000) | ✅ |
-| `EEbwu` | War Room V2 - OPSEC | (3080, 8000) | ✅ |
-| `Nntpe` | War Room V2 - Decision | (4620, 8000) | ✅ |
-| `fbLqg` | Attack Graph | (1540, 0) | ✅ |
-| `OexrL` | Attack Graph - Credentials Tab | (3080, 0) | ✅ |
-| `tCMir` | NotificationCenter | (0, 2000) | ✅ |
-| `TNwwh` | NotificationCenter - Empty | (1540, 2000) | ✅ |
-| `uSy6i` | PoC Report | (0, 4000) | ✅ |
-| `k79tR` | PoC Report - Empty/Error | (1540, 4000) | ✅ |
-| `lVZKT` | [DEPRECATED] OPSEC Dashboard | (0, 0) | 🏷️ |
-| `nPItC` | [DEPRECATED] AI Decision Breakdown | (0, 1000) | 🏷️ |
+### Design System Frames
 
-## Key Dimensions (from .pen design v2)
+| Frame ID | 名稱 | 位置 (x, y) |
+|----------|------|------------|
+| `ukJKX` | Design Tokens | (5200, 0) |
+| `18nk0` | Icons | (5200, 2600) |
+| `keVgf` | Atoms | (5200, 3900) |
+| `c4rJq` | Composites | (5200, 7200) |
 
-| Element | Property | Value |
-|---------|----------|-------|
-| Operations card | height | 140px |
-| War Room left panel (OODA) | width | 200px |
-| War Room right panel (Action Log) | width | 300px |
-| Planner TECHNIQUE column | width | 280px |
-| Planner STATUS column | width | 100px |
-| Attack Graph threat gauge | segment size | 24×12px (5 segments) |
-| OPSEC metric card | height | 120px |
-| OPSEC trend chart | height | 220px |
-
-## Sidebar Navigation (5 items)
+## War Room 新架構
 
 ```
-Operations  →  /operations
-Planner     →  /planner
-War Room    →  /warroom
-Vulns       →  /vulns
-Tools       →  /tools
+┌─ Sidebar ─┬─── Campaign Timeline (scrollable) ───┬─ Status Panel ─┐
+│ 200px     │ Recon → OODA#1 → Directive →          │ C5ISR Health  │
+│ icon+label│ OODA#2 → Directive →                   │ Noise / Risk  │
+│           │ OODA#3 (active) →                      │ Decision: GO  │
+│           │ Mission Objective                      │ Confidence    │
+└───────────┴────────────────────────────────────────┴───────────────┘
+```
+
+## Sidebar Navigation (5 items, 200px with labels)
+
+```
+Operations  →  /operations    (layout-grid icon)
+Planner     →  /planner       (flag icon)
+War Room    →  /warroom       (activity icon)
+Vulns       →  /vulns         (bug icon)
+Tools       →  /tools         (settings icon)
 ```
 
 Defined in `src/lib/constants.ts` → `NAV_ITEMS`.
 
+## Design Token Trust Chain
+
+```
+pen → tokens.yaml → globals.css → tailwind.config → code
+```
+
+JS token constants: `src/lib/designTokens.ts`

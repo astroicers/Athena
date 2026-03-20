@@ -30,20 +30,47 @@ const SEVERITY_ORDER: VulnSeverity[] = [
   "info",
 ];
 
-const SEVERITY_COLORS: Record<VulnSeverity, string> = {
-  critical: "var(--color-error)",
-  high: "#F97316",
-  medium: "#EAB308",
-  low: "var(--color-success)",
-  info: "var(--color-text-secondary)",
+/* Tailwind class maps for severity backgrounds */
+const SEVERITY_BG_CLASSES: Record<VulnSeverity, string> = {
+  critical: "bg-athena-critical",
+  high: "bg-athena-error",
+  medium: "bg-athena-warning",
+  low: "bg-athena-accent",
+  info: "bg-athena-text-tertiary",
 };
 
-const STATUS_COLORS: Record<VulnStatus, string> = {
+/* Tailwind badge classes for severity badges */
+const SEVERITY_BADGE_CLASSES: Record<VulnSeverity, string> = {
+  critical: "bg-athena-critical/12 border-athena-critical/25 text-athena-critical",
+  high: "bg-athena-error/12 border-athena-error/25 text-athena-error",
+  medium: "bg-athena-warning/12 border-athena-warning/25 text-athena-warning",
+  low: "bg-athena-accent/12 border-athena-accent/25 text-athena-accent",
+  info: "bg-athena-text-tertiary/12 border-athena-text-tertiary/25 text-athena-text-tertiary",
+};
+
+/* Text-only color classes for inline severity references */
+const SEVERITY_TEXT_CLASSES: Record<VulnSeverity, string> = {
+  critical: "text-athena-critical",
+  high: "text-athena-error",
+  medium: "text-athena-warning",
+  low: "text-athena-accent",
+  info: "text-athena-text-tertiary",
+};
+
+const STATUS_CSS: Record<VulnStatus, string> = {
   discovered: "var(--color-accent)",
   confirmed: "var(--color-success)",
-  exploited: "#F97316",
+  exploited: "var(--color-error)",
   reported: "var(--color-phase-orient)",
   false_positive: "var(--color-text-secondary)",
+};
+
+const STATUS_TEXT_CLASSES: Record<VulnStatus, string> = {
+  discovered: "text-athena-accent",
+  confirmed: "text-athena-success",
+  exploited: "text-athena-error",
+  reported: "text-athena-phase-orient",
+  false_positive: "text-athena-text-secondary",
 };
 
 const STATUS_LIST: VulnStatus[] = [
@@ -64,13 +91,11 @@ function SeverityHeatStrip({
   total: number;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <span
-        className="font-mono text-[8px] font-bold uppercase tracking-[1.5px] text-[#FFFFFF40]"
-      >
+    <div className="flex flex-col gap-1">
+      <span className="font-mono text-[8px] font-bold uppercase tracking-[1.5px] text-athena-text-dim">
         SEVERITY DISTRIBUTION
       </span>
-      <div className="flex gap-0.5 h-6">
+      <div className="flex gap-0.5 h-5">
         {SEVERITY_ORDER.map((sev) => {
           const count = bySeverity[sev] ?? 0;
           if (count === 0) return null;
@@ -78,17 +103,11 @@ function SeverityHeatStrip({
           return (
             <div
               key={sev}
-              className="flex items-center justify-center rounded-athena transition-all duration-300"
-              style={{
-                width: `${widthPct}%`,
-                minWidth: count > 0 ? 24 : 0,
-                backgroundColor: SEVERITY_COLORS[sev],
-              }}
+              className={`flex items-center justify-center rounded-athena transition-all duration-300 ${SEVERITY_BG_CLASSES[sev]}`}
+              style={{ width: `${widthPct}%`, minWidth: count > 0 ? 24 : 0 }}
             >
               {widthPct > 6 && (
-                <span
-                  className={`font-mono text-[8px] font-bold athena-tabular-nums ${sev === "medium" || sev === "low" ? "text-black" : "text-white"}`}
-                >
+                <span className="font-mono text-[8px] font-bold athena-tabular-nums text-white">
                   {sev.toUpperCase().slice(0, 4)} {count}
                 </span>
               )}
@@ -96,9 +115,7 @@ function SeverityHeatStrip({
           );
         })}
         {total === 0 && (
-          <div
-            className="flex-1 rounded-athena bg-athena-elevated"
-          />
+          <div className="flex-1 rounded-athena bg-athena-elevated" />
         )}
       </div>
     </div>
@@ -115,10 +132,8 @@ function StatusPipeline({
   t: (key: string) => string;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <span
-        className="font-mono text-[8px] font-bold uppercase tracking-[1.5px] text-[#FFFFFF40]"
-      >
+    <div className="flex flex-col gap-1">
+      <span className="font-mono text-[8px] font-bold uppercase tracking-[1.5px] text-athena-text-dim">
         STATUS PIPELINE
       </span>
       <div className="flex items-center justify-around">
@@ -126,25 +141,20 @@ function StatusPipeline({
           <React.Fragment key={status}>
             <div className="flex flex-col items-center gap-0.5">
               <span
-                className="font-mono text-[28px] font-bold athena-tabular-nums"
-                style={{ color: STATUS_COLORS[status] }}
+                className={`font-mono text-[28px] font-bold athena-tabular-nums ${STATUS_TEXT_CLASSES[status]}`}
               >
                 {byStatus[status] ?? 0}
               </span>
-              <span
-                className="font-mono text-[8px] font-semibold uppercase tracking-wider text-[#FFFFFF50]"
-              >
+              <span className="font-mono text-[8px] font-semibold uppercase tracking-wider text-athena-text-dim">
                 {t(`status.${status}`)}
               </span>
               <div
                 className="w-full h-[3px] rounded-[2px]"
-                style={{ backgroundColor: STATUS_COLORS[status] }}
+                style={{ backgroundColor: STATUS_CSS[status] }}
               />
             </div>
             {idx < STATUS_LIST.length - 1 && (
-              <span
-                className="font-mono text-base font-bold text-[#FFFFFF20]"
-              >
+              <span className="font-mono text-base font-bold text-athena-text-ghost">
                 {">>"}
               </span>
             )}
@@ -160,10 +170,7 @@ function StatusPipeline({
 function SeverityBadge({ severity }: { severity: VulnSeverity }) {
   return (
     <span
-      className={`font-mono text-[10px] font-bold uppercase rounded-athena px-2 py-0.5 w-[70px] text-center border-none ${severity === "medium" || severity === "low" ? "text-black" : "text-white"}`}
-      style={{
-        backgroundColor: SEVERITY_COLORS[severity],
-      }}
+      className={`font-mono text-[10px] font-bold uppercase rounded-athena px-2 py-0.5 w-[70px] text-center border ${SEVERITY_BADGE_CLASSES[severity]}`}
     >
       {severity}
     </span>
@@ -196,28 +203,18 @@ function VulnTable({
       className="flex-1 min-w-0 rounded-athena overflow-hidden flex flex-col bg-athena-surface border border-athena-border"
     >
       {/* Table header */}
-      <div
-        className="flex items-center gap-3 px-3 py-2 shrink-0 bg-athena-elevated border-b border-athena-border"
-      >
+      <div className="flex items-center gap-3 px-3 h-8 shrink-0 bg-athena-elevated border-b border-athena-border">
         <span className="w-1 shrink-0" />
-        <span
-          className="font-mono text-[9px] font-bold uppercase tracking-wider w-[120px] shrink-0 text-[#FFFFFF50]"
-        >
+        <span className="font-mono text-[9px] font-bold uppercase tracking-wider w-[120px] shrink-0 text-athena-text-dim">
           {t("columns.cveId")}
         </span>
-        <span
-          className="font-mono text-[9px] font-bold uppercase tracking-wider flex-1 min-w-0 text-[#FFFFFF50]"
-        >
+        <span className="font-mono text-[9px] font-bold uppercase tracking-wider flex-1 min-w-0 text-athena-text-dim">
           Title
         </span>
-        <span
-          className="font-mono text-[9px] font-bold uppercase tracking-wider w-[80px] shrink-0 text-center text-[#FFFFFF50]"
-        >
+        <span className="font-mono text-[9px] font-bold uppercase tracking-wider w-[80px] shrink-0 text-center text-athena-text-dim">
           {t("columns.severity")}
         </span>
-        <span
-          className="font-mono text-[9px] font-bold uppercase tracking-wider w-[90px] shrink-0 text-center text-[#FFFFFF50]"
-        >
+        <span className="font-mono text-[9px] font-bold uppercase tracking-wider w-[90px] shrink-0 text-center text-athena-text-dim">
           {t("columns.status")}
         </span>
       </div>
@@ -240,30 +237,15 @@ function VulnTable({
                 key={vuln.id}
                 type="button"
                 onClick={() => onSelect(vuln)}
-                className="flex items-center gap-3 w-full px-3 text-left transition-colors"
-                style={{
-                  height: 44,
-                  backgroundColor: isSelected ? "color-mix(in srgb, var(--color-accent) 8%, transparent)" : "transparent",
-                  border: isSelected ? "1px solid color-mix(in srgb, var(--color-accent) 19%, transparent)" : "1px solid transparent",
-                  borderBottom: isSelected ? "1px solid color-mix(in srgb, var(--color-accent) 19%, transparent)" : "1px solid var(--color-white-8)",
-                }}
-                onMouseEnter={(e) => {
-                  if (!isSelected) {
-                    e.currentTarget.style.backgroundColor = "var(--color-bg-surface)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isSelected) {
-                    e.currentTarget.style.backgroundColor = "transparent";
-                  }
-                }}
+                className={`flex items-center gap-3 w-full px-3 h-10 text-left transition-colors border-l-2 border-b border-b-athena-white-8 hover:bg-athena-surface-hover ${
+                  isSelected
+                    ? "border-l-athena-accent bg-athena-accent/8 border-b-athena-accent/20"
+                    : "border-l-transparent"
+                }`}
               >
                 {/* Severity color bar */}
                 <span
-                  className="w-1 h-6 rounded-full shrink-0"
-                  style={{
-                    backgroundColor: SEVERITY_COLORS[vuln.severity],
-                  }}
+                  className={`w-1 h-5 rounded-full shrink-0 ${SEVERITY_BG_CLASSES[vuln.severity]}`}
                 />
 
                 {/* CVE ID */}
@@ -274,9 +256,7 @@ function VulnTable({
                 </span>
 
                 {/* Title */}
-                <span
-                  className="font-mono text-xs flex-1 min-w-0 truncate text-athena-text-light"
-                >
+                <span className="font-mono text-xs flex-1 min-w-0 truncate text-athena-text-light">
                   {vuln.title}
                 </span>
 
@@ -286,9 +266,7 @@ function VulnTable({
                 </span>
 
                 {/* Status */}
-                <span
-                  className="font-mono text-[10px] uppercase w-[90px] shrink-0 text-center text-athena-text-secondary"
-                >
+                <span className="font-mono text-[10px] uppercase w-[90px] shrink-0 text-center text-athena-text-secondary">
                   {t(`status.${vuln.status}`)}
                 </span>
               </button>
@@ -335,7 +313,7 @@ function DetailPanel({
 
   return (
     <div
-      className="rounded-athena flex flex-col gap-5 shrink-0 overflow-y-auto bg-athena-surface p-5 w-[380px] border border-athena-border"
+      className="rounded-athena flex flex-col gap-3 shrink-0 overflow-y-auto bg-athena-surface p-4 w-[360px] border border-athena-border"
     >
       {/* Header with close button */}
       <div className="flex items-start justify-between gap-2">
@@ -435,8 +413,7 @@ function DetailPanel({
             {t("columns.cvss")}
           </span>
           <span
-            className="font-mono text-xs font-bold athena-tabular-nums"
-            style={{ color: SEVERITY_COLORS[vuln.severity] }}
+            className={`font-mono text-xs font-bold athena-tabular-nums ${SEVERITY_TEXT_CLASSES[vuln.severity]}`}
           >
             {vuln.cvssScore.toFixed(1)}
           </span>
@@ -638,9 +615,9 @@ function VulnsContent() {
 
   return (
     <div className="flex flex-col h-full overflow-y-auto bg-athena-bg">
-      <div className="flex flex-col gap-4 min-h-full max-w-[1440px] w-full mx-auto">
+      <div className="flex flex-col gap-3 min-h-full max-w-[1440px] w-full mx-auto">
         {/* Stats Row */}
-        <div className="flex gap-4 py-4 px-6 shrink-0">
+        <div className="flex gap-3 py-3 px-4 shrink-0">
           {/* Severity Heat Strip */}
           <div className="flex-1 min-w-0">
             <SeverityHeatStrip
@@ -659,7 +636,7 @@ function VulnsContent() {
         </div>
 
         {/* Body: Table + Detail Panel */}
-        <div className="flex gap-4 flex-1 min-h-0 px-6 pb-4">
+        <div className="flex gap-3 flex-1 min-h-0 px-4 pb-3">
           {/* Left: Vulnerability Table */}
           <VulnTable
             vulns={vulns}
@@ -680,13 +657,9 @@ function VulnsContent() {
         </div>
 
         {/* PoC Evidence Section */}
-        <div className="flex flex-col gap-3 shrink-0">
-          <div
-            className="flex items-center gap-2 border-t border-athena-border pt-4"
-          >
-            <span
-              className="font-mono text-[8px] font-bold uppercase tracking-[1.5px] text-athena-text-tertiary"
-            >
+        <div className="flex flex-col gap-2 shrink-0 px-4">
+          <div className="flex items-center gap-2 border-t border-athena-border pt-3">
+            <span className="font-mono text-[8px] font-bold uppercase tracking-[1.5px] text-athena-text-tertiary">
               POC EVIDENCE
             </span>
           </div>

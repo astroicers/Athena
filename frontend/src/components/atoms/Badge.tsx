@@ -13,10 +13,10 @@
 import { ReactNode } from "react";
 
 const VARIANT_STYLES = {
-  success: "bg-athena-success-bg text-athena-success border-athena-success/25",
-  warning: "bg-athena-warning-bg text-athena-warning border-athena-warning/25",
-  error: "bg-athena-error-bg text-athena-error border-athena-error/25",
-  info: "bg-athena-accent-bg text-athena-accent border-athena-accent/25",
+  success: "bg-athena-success/[0.12] text-athena-success border-athena-success/[0.25]",
+  warning: "bg-athena-warning/[0.12] text-athena-warning border-athena-warning/[0.25]",
+  error: "bg-athena-error/[0.12] text-athena-error border-athena-error/[0.25]",
+  info: "bg-athena-accent/[0.12] text-athena-accent border-athena-accent/[0.25]",
 } as const;
 
 interface BadgeProps {
@@ -27,7 +27,7 @@ interface BadgeProps {
 export function Badge({ variant = "info", children }: BadgeProps) {
   return (
     <span
-      className={`inline-flex items-center shrink-0 whitespace-nowrap px-3 py-1 rounded-full text-xs font-mono border
+      className={`inline-flex items-center shrink-0 whitespace-nowrap px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold border
         ${VARIANT_STYLES[variant]}`}
     >
       {children}

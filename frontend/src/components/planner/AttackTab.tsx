@@ -71,12 +71,12 @@ export function AttackTab({
   const stageCounts = useStageCounts(techniques);
 
   return (
-    <div className="flex-1 space-y-4 min-h-0 overflow-y-auto py-4 px-6">
+    <div className="flex-1 space-y-3 min-h-0 overflow-y-auto py-3 px-4">
       {/* Attack Path Timeline */}
       <AttackPathTimeline data={attackPath} loading={false} />
-      <p className="text-sm font-mono text-athena-text-tertiary -mt-3 ml-1">{tHints("attackPath")}</p>
+      <p className="text-[10px] font-mono text-athena-text-tertiary -mt-2 ml-0.5">{tHints("attackPath")}</p>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
         {/* ATT&CK Matrix */}
         <div className="lg:col-span-3">
           <SectionHeader
@@ -94,12 +94,12 @@ export function AttackTab({
           >
             {t("mitreMatrix")}
           </SectionHeader>
-          <p className="text-sm font-mono text-athena-text-tertiary -mt-1 mb-2 ml-1">{tHints("mitreMatrix")}</p>
-          <div className="bg-athena-surface border border-athena-border rounded-athena p-3 overflow-x-auto">
-            <div className="flex gap-2 min-w-max">
+          <p className="text-[10px] font-mono text-athena-text-tertiary -mt-1 mb-1.5 ml-0.5">{tHints("mitreMatrix")}</p>
+          <div className="bg-athena-surface border border-athena-border rounded-athena p-2.5 overflow-x-auto">
+            <div className="flex gap-1.5 min-w-max">
               {orderedTactics.map((tactic) => (
                 <div key={tactic} className={`${compact ? "w-20" : "w-28"} shrink-0`}>
-                  <div className="text-sm font-mono text-athena-accent font-bold uppercase mb-2 truncate">
+                  <div className="text-[10px] font-mono text-athena-accent font-bold uppercase mb-1.5 truncate tracking-wider">
                     {tacticLabel(tactic)}
                   </div>
                   <div className="space-y-1">
@@ -122,7 +122,7 @@ export function AttackTab({
         </div>
 
         {/* Right sidebar -- Kill Chain + Technique Card */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           <KillChainIndicator stageCounts={stageCounts} />
           {selectedTech ? (
             <TechniqueCard
@@ -130,8 +130,8 @@ export function AttackTab({
               relatedTools={getToolsForTechnique(allTools, selectedTech.mitreId)}
             />
           ) : (
-            <div className="border border-athena-border/25 rounded-athena p-4">
-              <span className="text-xs font-mono text-athena-text-tertiary">
+            <div className="bg-athena-surface border border-athena-border rounded-athena p-3">
+              <span className="text-[10px] font-mono text-athena-text-tertiary">
                 {tEmpty("navigatorNoSelection")}
               </span>
             </div>

@@ -183,10 +183,10 @@ export function MissionTab({
   }
 
   const inputStyles =
-    "w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-athena-accent";
+    "w-full bg-athena-bg border border-athena-border rounded-athena px-2.5 py-1.5 text-xs font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-athena-accent focus:ring-1 focus:ring-athena-accent";
 
   const labelStyles =
-    "block text-xs font-mono text-athena-text-secondary uppercase tracking-wider mb-1";
+    "block text-[10px] font-mono text-athena-text-tertiary uppercase tracking-wider mb-0.5";
 
   const STEP_COLUMNS: Column<StepRow>[] = [
     { key: "stepNumber", header: t("colStep"), sortable: true, width: 60 },
@@ -225,7 +225,7 @@ export function MissionTab({
   ];
 
   return (
-    <div className="flex-1 space-y-4 min-h-0 overflow-y-auto pt-6 pb-4 px-6">
+    <div className="flex-1 space-y-3 min-h-0 overflow-y-auto pt-4 pb-3 px-4">
       {/* Mission Steps + Execute */}
       <div className="flex items-center justify-between">
         <SectionHeader>
@@ -299,19 +299,19 @@ export function MissionTab({
           </Tooltip>
         </div>
       </div>
-      <p className="text-xs font-mono text-athena-text-tertiary -mt-3 ml-1">{tHints("missionSteps")}</p>
+      <p className="text-[10px] font-mono text-athena-text-tertiary -mt-2 ml-0.5">{tHints("missionSteps")}</p>
       <DataTable columns={STEP_COLUMNS} data={steps as StepRow[]} keyField="id" emptyMessage={t("noSteps")} />
 
       {/* Objectives */}
       <ObjectivesPanel operationId={operationId} />
 
       {/* OODA Timeline + Host Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <div className="lg:col-span-2">
           <OODATimeline entries={timeline} />
-          <p className="text-xs font-mono text-athena-text-tertiary mt-1 ml-1">{tHints("oodaTimeline")}</p>
+          <p className="text-[10px] font-mono text-athena-text-tertiary mt-1 ml-0.5">{tHints("oodaTimeline")}</p>
         </div>
-        <div className="space-y-3">
+        <div className="space-y-2">
           <SectionHeader
             level="card"
             trailing={
@@ -333,10 +333,10 @@ export function MissionTab({
           >
             {t("targetHosts")}
           </SectionHeader>
-          <p className="text-xs font-mono text-athena-text-secondary -mt-2 ml-1">{tHints("targetHosts")}</p>
+          <p className="text-[10px] font-mono text-athena-text-tertiary -mt-1 ml-0.5">{tHints("targetHosts")}</p>
           {targets.length === 0 ? (
-            <div className="bg-athena-surface border border-white/5 rounded-athena p-6 text-center">
-              <span className="text-xs font-mono text-athena-text-tertiary whitespace-pre-line">{tEmpty("plannerGuide")}</span>
+            <div className="bg-athena-surface border border-athena-border rounded-athena p-4 text-center">
+              <span className="text-[10px] font-mono text-athena-text-tertiary whitespace-pre-line">{tEmpty("plannerGuide")}</span>
             </div>
           ) : (
             targets.map((tgt) => (
@@ -477,10 +477,10 @@ export function MissionTab({
       {/* Create Step Modal */}
       {showCreateStep && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-athena-surface border border-athena-border rounded-athena p-6 max-w-md w-full mx-4">
-            <div className="mb-4">
-              <span className="text-xs font-mono text-athena-text-secondary">{t("missionSteps")}</span>
-              <h2 className="text-base font-mono font-bold text-athena-text-light mt-1">{t("createStep")}</h2>
+          <div className="bg-athena-surface border border-athena-border rounded-athena p-4 max-w-md w-full mx-4">
+            <div className="mb-3">
+              <span className="text-[10px] font-mono text-athena-text-tertiary uppercase tracking-wider">{t("missionSteps")}</span>
+              <h2 className="text-sm font-mono font-bold text-athena-text-light mt-0.5">{t("createStep")}</h2>
             </div>
             <form onSubmit={handleCreateStep} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">

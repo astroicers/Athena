@@ -107,7 +107,7 @@ export function ToolRegistryTable({
         return (
           <div
             key={tool.id}
-            className="flex items-center transition-colors hover:bg-white/5 h-[52px] px-3 border-b border-athena-border/25"
+            className="flex items-center transition-colors hover:bg-white/5 h-12 px-3 border-b border-athena-border/25"
           >
             {/* NAME */}
             <div
@@ -115,7 +115,7 @@ export function ToolRegistryTable({
             >
               <div className="flex items-center gap-2">
                 <span
-                  className="font-semibold truncate text-athena-accent text-xs"
+                  className="font-semibold truncate text-athena-text text-xs"
                 >
                   {tool.name}
                 </span>
@@ -190,7 +190,7 @@ export function ToolRegistryTable({
               {tool.mitreTechniques.map((tid) => (
                 <span
                   key={tid}
-                  className="font-mono inline-block rounded-athena bg-[#374151] text-athena-text-tertiary px-1.5 py-0.5 text-[10px]"
+                  className="font-mono inline-block rounded-athena bg-athena-elevated text-athena-text-tertiary px-1.5 py-0.5 text-[10px]"
                 >
                   {tid}
                 </span>

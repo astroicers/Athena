@@ -18,7 +18,7 @@ const VARIANT_STYLES = {
   secondary:
     "bg-athena-surface text-athena-text-light border border-athena-border hover:bg-athena-elevated",
   danger:
-    "bg-athena-error-bg text-athena-error border border-athena-error/25 hover:bg-athena-error/20",
+    "bg-athena-error/[0.12] text-athena-error border border-athena-error/[0.25] hover:bg-athena-error/20",
 } as const;
 
 const SIZE_STYLES = {

@@ -77,7 +77,7 @@ function ShellInner({ children }: { children: ReactNode }) {
             </button>
           }
         />
-        <main className="flex-1 overflow-auto p-4">{children}</main>
+        <main className="flex-1 overflow-auto p-0">{children}</main>
       </div>
       <NotificationCenter
         isOpen={notifOpen}

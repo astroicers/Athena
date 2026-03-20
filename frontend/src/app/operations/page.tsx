@@ -50,18 +50,18 @@ interface Operation {
 /*  Status / Profile badge helpers                                     */
 /* ------------------------------------------------------------------ */
 
-const STATUS_COLORS: Record<string, string> = {
-  planning: "#FB923C",
-  active: "var(--color-success)",
-  paused: "var(--color-warning)",
-  completed: "var(--color-accent)",
-  failed: "var(--color-error)",
+const STATUS_BADGE_CLASSES: Record<string, string> = {
+  planning:  "bg-athena-warning/12 border-athena-warning/25 text-athena-warning",
+  active:    "bg-athena-success/12 border-athena-success/25 text-athena-success",
+  paused:    "bg-athena-warning/12 border-athena-warning/25 text-athena-warning",
+  completed: "bg-athena-accent/12 border-athena-accent/25 text-athena-accent",
+  failed:    "bg-athena-error/12 border-athena-error/25 text-athena-error",
 };
 
-const PROFILE_COLORS: Record<string, string> = {
-  SR: "#22D3EE",
-  CO: "#A78BFA",
-  SP: "var(--color-error)",
+const PROFILE_BADGE_CLASSES: Record<string, string> = {
+  SR: "bg-athena-accent/12 border-athena-accent/25 text-athena-accent",
+  CO: "bg-athena-phase-orient/12 border-athena-phase-orient/25 text-athena-phase-orient",
+  SP: "bg-athena-error/12 border-athena-error/25 text-athena-error",
 };
 
 /* ------------------------------------------------------------------ */
@@ -123,7 +123,7 @@ function OperationsContent() {
         }
       />
 
-      <div className="flex-1 overflow-auto px-6 py-4">
+      <div className="flex-1 overflow-auto px-4 py-3">
         {operations.length === 0 ? (
           /* -- Empty state ------------------------------------------ */
           <div className="flex items-center justify-center h-full">
@@ -138,24 +138,20 @@ function OperationsContent() {
           </div>
         ) : (
           /* -- Operations grid -------------------------------------- */
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {operations.map((op) => (
               <button
                 key={op.id}
                 onClick={() => handleSelect(op)}
-                className="text-left bg-athena-surface border border-athena-border rounded-athena hover:border-athena-accent/25 transition-colors cursor-pointer flex flex-col gap-2 p-4 h-[140px]"
+                className="text-left bg-athena-surface border border-athena-border rounded-athena hover:border-athena-accent/25 transition-colors cursor-pointer flex flex-col gap-1.5 p-3 h-[130px]"
               >
                 {/* Header row: codename + status badge */}
                 <div className="flex items-center justify-between w-full">
-                  <span className="font-mono text-base font-bold text-athena-accent truncate">
+                  <span className="font-mono text-sm font-bold text-athena-accent truncate">
                     {op.codename}
                   </span>
                   <span
-                    className="text-[10px] font-mono font-semibold uppercase border rounded-athena shrink-0 px-2 py-0.5"
-                    style={{
-                      color: STATUS_COLORS[op.status],
-                      borderColor: (STATUS_COLORS[op.status] || "") + "66",
-                    }}
+                    className={`text-[10px] font-mono font-semibold uppercase border rounded-athena shrink-0 px-2 py-0.5 ${STATUS_BADGE_CLASSES[op.status] ?? ""}`}
                   >
                     {op.status}
                   </span>
@@ -170,11 +166,7 @@ function OperationsContent() {
                 <div className="flex items-center gap-3 mt-auto">
                   {/* Mission profile badge */}
                   <span
-                    className="text-[10px] font-mono font-semibold border rounded-athena px-1.5 py-0.5"
-                    style={{
-                      color: PROFILE_COLORS[op.missionProfile],
-                      borderColor: (PROFILE_COLORS[op.missionProfile] || "") + "66",
-                    }}
+                    className={`text-[10px] font-mono font-semibold border rounded-athena px-2 py-0.5 ${PROFILE_BADGE_CLASSES[op.missionProfile] ?? ""}`}
                   >
                     {op.missionProfile}
                   </span>
@@ -195,7 +187,7 @@ function OperationsContent() {
             {/* Empty card placeholder — "+ New Operation" */}
             <button
               onClick={() => setShowCreate(true)}
-              className="flex items-center justify-center border border-athena-border/25 rounded-athena hover:border-athena-accent/25 transition-colors cursor-pointer h-[140px]"
+              className="flex items-center justify-center border border-athena-border/25 rounded-athena hover:border-athena-accent/25 transition-colors cursor-pointer h-[130px]"
             >
               <span className="font-mono text-xs text-athena-text-tertiary">
                 + {t("createOp")}

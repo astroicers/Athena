@@ -22,16 +22,14 @@ const POLL_MS = 30_000;
 
 /* ── Color helpers ── */
 
-function reproducibleColor(
-  status: PocRecord["reproducible"],
-): { bg: string; border: string; text: string } {
+function reproducibleClasses(status: PocRecord["reproducible"]): string {
   switch (status) {
     case "reproducible":
-      return { bg: "var(--color-success-bg)", border: "rgba(34,197,94,0.25)", text: "var(--color-success)" };
+      return "bg-athena-success/12 border border-athena-success/25 text-athena-success";
     case "partial":
-      return { bg: "rgba(255,165,0,0.125)", border: "rgba(255,165,0,0.25)", text: "var(--color-warning-alt)" };
+      return "bg-athena-warning/12 border border-athena-warning/25 text-athena-warning";
     default:
-      return { bg: "var(--color-error-bg)", border: "rgba(239,68,68,0.25)", text: "var(--color-error)" };
+      return "bg-athena-error/12 border border-athena-error/25 text-athena-error";
   }
 }
 
@@ -51,24 +49,19 @@ function reproducibleLabel(status: PocRecord["reproducible"]): string {
 function SummaryCard({
   label,
   value,
-  color,
+  colorClass,
 }: {
   label: string;
   value: number;
-  color: string;
+  colorClass: string;
 }) {
   return (
-    <div
-      className="flex-1 min-w-0 rounded-athena flex flex-col gap-1 bg-athena-surface border border-athena-border px-4 py-3.5"
-    >
-      <span
-        className="font-mono text-[8px] font-bold uppercase tracking-wider text-athena-text-tertiary"
-      >
+    <div className="flex-1 min-w-0 rounded-athena flex flex-col gap-1 bg-athena-surface border border-athena-border px-3 py-2.5">
+      <span className="font-mono text-[8px] font-bold uppercase tracking-wider text-athena-text-tertiary">
         {label}
       </span>
       <span
-        className="font-mono text-[28px] font-bold leading-tight athena-tabular-nums"
-        style={{ color }}
+        className={`font-mono text-[28px] font-bold leading-tight athena-tabular-nums ${colorClass}`}
       >
         {value}
       </span>
@@ -79,21 +72,16 @@ function SummaryCard({
 /* ── PoC Card ── */
 
 function PocCard({ record, index }: { record: PocRecord; index: number }) {
-  const repColor = reproducibleColor(record.reproducible);
-
   return (
-    <div
-      className="rounded-athena flex flex-col gap-3 bg-athena-surface border border-athena-border px-5 py-4"
-    >
+    <div className="rounded-athena flex flex-col gap-2 bg-athena-surface border border-athena-border px-4 py-3">
       {/* Header row: ID + badges + vuln ref */}
       <div className="flex items-center justify-between w-full">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <span className="font-mono text-xs font-bold text-athena-accent">
             POC-{String(index + 1).padStart(3, "0")}
           </span>
           <span
-            className="font-mono text-[9px] font-bold rounded-athena px-2 py-0.5"
-            style={{ ...repColor, backgroundColor: repColor.bg, border: `1px solid ${repColor.border}`, color: repColor.text }}
+            className={`font-mono text-[9px] font-bold rounded-athena px-2 py-0.5 ${reproducibleClasses(record.reproducible)}`}
           >
             {reproducibleLabel(record.reproducible)}
           </span>
@@ -111,7 +99,7 @@ function PocCard({ record, index }: { record: PocRecord; index: number }) {
       </span>
 
       {/* Metadata row */}
-      <div className="flex items-center gap-6 w-full">
+      <div className="flex items-center gap-4 w-full">
         <div className="flex items-center gap-1.5">
           <span className="font-mono text-[9px] text-athena-text-tertiary">
             Target:
@@ -367,10 +355,10 @@ export default function PocEvidencePanel({ operationId }: PocEvidencePanelProps)
 
   // Normal state
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       {/* Header row */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <span className="font-mono text-sm font-bold text-athena-text-light">
             PoC RECORDS
           </span>
@@ -384,31 +372,31 @@ export default function PocEvidencePanel({ operationId }: PocEvidencePanelProps)
       </div>
 
       {/* Summary bar */}
-      <div className="flex gap-4">
+      <div className="flex gap-3">
         <SummaryCard
           label={t("totalPocs").toUpperCase()}
           value={summary.total}
-          color="var(--color-text-primary)"
+          colorClass="text-athena-text"
         />
         <SummaryCard
           label={t("reproducible").toUpperCase()}
           value={summary.reproducible}
-          color="var(--color-success)"
+          colorClass="text-athena-success"
         />
         <SummaryCard
           label={t("targets").toUpperCase()}
           value={summary.targets}
-          color="var(--color-accent)"
+          colorClass="text-athena-accent"
         />
         <SummaryCard
           label={t("techniques").toUpperCase()}
           value={summary.techniques}
-          color="var(--color-warning-alt)"
+          colorClass="text-athena-warning"
         />
       </div>
 
       {/* PoC cards */}
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         {records.map((record, i) => (
           <PocCard key={record.id ?? i} record={record} index={i} />
         ))}

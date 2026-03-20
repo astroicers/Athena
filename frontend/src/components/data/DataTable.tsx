@@ -74,11 +74,11 @@ export function DataTable<T extends Record<string, unknown>>({
     <div className="bg-athena-surface border border-athena-border rounded-athena overflow-hidden">
       <table className="w-full text-xs font-mono">
         <thead>
-          <tr className="border-b border-athena-border bg-athena-bg">
+          <tr className="border-b border-athena-border bg-athena-surface">
             {columns.map((col) => (
               <th
                 key={col.key}
-                className={`px-4 py-3 text-left font-semibold uppercase tracking-wider text-athena-text-secondary ${
+                className={`px-4 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-athena-text-secondary ${
                   col.sortable ? "cursor-pointer hover:text-athena-accent select-none" : ""
                 }`}
                 style={col.width ? { width: col.width } : undefined}
@@ -98,7 +98,7 @@ export function DataTable<T extends Record<string, unknown>>({
           {sorted.map((row) => (
             <tr
               key={String(row[keyField])}
-              className="hover:bg-white/5 border-b border-athena-border/25 h-10"
+              className="hover:bg-white/5 border-b border-athena-border/25 h-10 transition-colors"
             >
               {columns.map((col) => (
                 <td key={col.key} className="px-4 py-2 text-athena-text-light">

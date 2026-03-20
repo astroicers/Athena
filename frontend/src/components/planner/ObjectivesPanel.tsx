@@ -126,10 +126,10 @@ export function ObjectivesPanel({ operationId }: { operationId: string }) {
   }
 
   const inputStyles =
-    "w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-athena-accent";
+    "w-full bg-athena-bg border border-athena-border rounded-athena px-2.5 py-1.5 text-xs font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-athena-accent focus:ring-1 focus:ring-athena-accent";
 
   const labelStyles =
-    "block text-sm font-mono text-athena-text-tertiary uppercase tracking-wider mb-1";
+    "block text-[10px] font-mono text-athena-text-tertiary uppercase tracking-wider mb-0.5";
 
   if (loading) {
     return (
@@ -164,7 +164,7 @@ export function ObjectivesPanel({ operationId }: { operationId: string }) {
 
       {/* Add Objective Form */}
       {showForm && (
-        <form onSubmit={handleAdd} className="mt-2 border border-athena-border rounded-athena bg-athena-surface p-3 space-y-3">
+        <form onSubmit={handleAdd} className="mt-2 border border-athena-border rounded-athena bg-athena-surface p-3 space-y-2">
           <div>
             <label className={labelStyles}>
               {t("objective")} <span className="text-athena-error">*</span>
@@ -215,8 +215,8 @@ export function ObjectivesPanel({ operationId }: { operationId: string }) {
 
       {/* Objectives List */}
       {objectives.length === 0 ? (
-        <div className="bg-athena-surface border border-white/5 rounded-athena p-6 text-center mt-2">
-          <span className="text-xs font-mono text-athena-text-tertiary">
+        <div className="bg-athena-surface border border-athena-border rounded-athena p-4 text-center mt-2">
+          <span className="text-[10px] font-mono text-athena-text-tertiary">
             {t("noObjectives")}
           </span>
         </div>
@@ -225,10 +225,10 @@ export function ObjectivesPanel({ operationId }: { operationId: string }) {
           {objectives.map((obj) => (
             <div
               key={obj.id}
-              className="border border-athena-border rounded-athena bg-athena-surface p-3 flex items-center gap-3"
+              className="border border-athena-border rounded-athena bg-athena-surface px-3 py-2 flex items-center gap-2"
             >
               <div className="flex-1 min-w-0">
-                <p className={`text-sm font-mono ${obj.status === "achieved" ? "text-athena-text-tertiary line-through" : "text-athena-text-light"}`}>
+                <p className={`text-xs font-mono ${obj.status === "achieved" ? "text-athena-text-tertiary line-through" : "text-athena-text-light"}`}>
                   {obj.objective}
                 </p>
                 <div className="flex items-center gap-2 mt-1">

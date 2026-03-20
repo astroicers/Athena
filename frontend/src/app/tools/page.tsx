@@ -56,7 +56,7 @@ function ToolsContent() {
   if (loading) return <PageLoading />;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full px-4 py-3">
       {/* Page Header */}
       <PageHeader
         title={t("title")}

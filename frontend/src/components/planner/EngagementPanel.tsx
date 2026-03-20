@@ -93,8 +93,8 @@ export function EngagementPanel({ operationId }: { operationId: string }) {
     return (
       <div>
         <SectionHeader level="card">{t("title")}</SectionHeader>
-        <div className="bg-athena-surface border border-white/5 rounded-athena p-6 text-center mt-2">
-          <span className="text-xs font-mono text-athena-text-tertiary">
+        <div className="bg-athena-surface border border-athena-border rounded-athena p-4 text-center mt-2">
+          <span className="text-[10px] font-mono text-athena-text-tertiary">
             {t("noEngagement")}
           </span>
         </div>
@@ -137,9 +137,9 @@ export function EngagementPanel({ operationId }: { operationId: string }) {
         {t("title")}
       </SectionHeader>
 
-      <div className="mt-2 border border-athena-border rounded-athena bg-athena-surface p-4 space-y-3">
+      <div className="mt-2 border border-athena-border rounded-athena bg-athena-surface px-3 py-2.5 space-y-2">
         {/* Client info */}
-        <div className="flex gap-4 text-xs font-mono">
+        <div className="flex gap-3 text-[11px] font-mono">
           <div>
             <span className="text-athena-text-tertiary">{t("client")}: </span>
             <span className="text-athena-text-light">{engagement.clientName}</span>
@@ -151,13 +151,13 @@ export function EngagementPanel({ operationId }: { operationId: string }) {
         </div>
 
         {/* Scope */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           <div>
-            <p className="text-xs font-mono font-bold text-athena-success uppercase tracking-wider mb-1">
+            <p className="text-[10px] font-mono font-bold text-athena-success uppercase tracking-wider mb-1">
               {t("inScope")}
             </p>
             {engagement.inScope.length > 0 ? (
-              <ul className="text-xs font-mono text-athena-text-light space-y-0.5">
+              <ul className="text-[11px] font-mono text-athena-text-light space-y-0.5">
                 {engagement.inScope.map((s, i) => (
                   <li key={i} className="flex items-center gap-1">
                     <span className="text-athena-success">+</span> {s}
@@ -169,11 +169,11 @@ export function EngagementPanel({ operationId }: { operationId: string }) {
             )}
           </div>
           <div>
-            <p className="text-xs font-mono font-bold text-athena-error uppercase tracking-wider mb-1">
+            <p className="text-[10px] font-mono font-bold text-athena-error uppercase tracking-wider mb-1">
               {t("outOfScope")}
             </p>
             {engagement.outOfScope.length > 0 ? (
-              <ul className="text-xs font-mono text-athena-text-light space-y-0.5">
+              <ul className="text-[11px] font-mono text-athena-text-light space-y-0.5">
                 {engagement.outOfScope.map((s, i) => (
                   <li key={i} className="flex items-center gap-1">
                     <span className="text-athena-error">-</span> {s}
@@ -188,7 +188,7 @@ export function EngagementPanel({ operationId }: { operationId: string }) {
 
         {/* Emergency contact */}
         {engagement.emergencyContact && (
-          <div className="text-xs font-mono">
+          <div className="text-[11px] font-mono">
             <span className="text-athena-text-tertiary">{t("emergency")}: </span>
             <span className="text-athena-text-light">{engagement.emergencyContact}</span>
           </div>

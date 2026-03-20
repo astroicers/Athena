@@ -143,20 +143,18 @@ function OperationsContent() {
               <button
                 key={op.id}
                 onClick={() => handleSelect(op)}
-                className="text-left bg-athena-surface border border-athena-border rounded-athena hover:border-athena-accent/25 transition-colors cursor-pointer flex flex-col gap-2"
-                style={{ padding: 16, height: 140 }}
+                className="text-left bg-athena-surface border border-athena-border rounded-athena hover:border-athena-accent/25 transition-colors cursor-pointer flex flex-col gap-2 p-4 h-[140px]"
               >
                 {/* Header row: codename + status badge */}
                 <div className="flex items-center justify-between w-full">
-                  <span className="font-mono font-bold text-athena-accent truncate" style={{ fontSize: 16 }}>
+                  <span className="font-mono text-base font-bold text-athena-accent truncate">
                     {op.codename}
                   </span>
                   <span
-                    className="text-[10px] font-mono font-semibold uppercase border rounded-athena shrink-0"
+                    className="text-[10px] font-mono font-semibold uppercase border rounded-athena shrink-0 px-2 py-0.5"
                     style={{
                       color: STATUS_COLORS[op.status],
                       borderColor: (STATUS_COLORS[op.status] || "") + "66",
-                      padding: "2px 8px",
                     }}
                   >
                     {op.status}
@@ -164,7 +162,7 @@ function OperationsContent() {
                 </div>
 
                 {/* Name / strategic intent */}
-                <div className="font-mono text-athena-text-tertiary truncate" style={{ fontSize: 11 }}>
+                <div className="font-mono text-[11px] text-athena-text-tertiary truncate">
                   {op.name}
                 </div>
 
@@ -172,11 +170,10 @@ function OperationsContent() {
                 <div className="flex items-center gap-3 mt-auto">
                   {/* Mission profile badge */}
                   <span
-                    className="text-[10px] font-mono font-semibold border rounded-athena"
+                    className="text-[10px] font-mono font-semibold border rounded-athena px-1.5 py-0.5"
                     style={{
                       color: PROFILE_COLORS[op.missionProfile],
                       borderColor: (PROFILE_COLORS[op.missionProfile] || "") + "66",
-                      padding: "2px 6px",
                     }}
                   >
                     {op.missionProfile}
@@ -198,8 +195,7 @@ function OperationsContent() {
             {/* Empty card placeholder — "+ New Operation" */}
             <button
               onClick={() => setShowCreate(true)}
-              className="flex items-center justify-center border border-athena-border/25 rounded-athena hover:border-athena-accent/25 transition-colors cursor-pointer"
-              style={{ height: 140 }}
+              className="flex items-center justify-center border border-athena-border/25 rounded-athena hover:border-athena-accent/25 transition-colors cursor-pointer h-[140px]"
             >
               <span className="font-mono text-xs text-athena-text-tertiary">
                 + {t("createOp")}

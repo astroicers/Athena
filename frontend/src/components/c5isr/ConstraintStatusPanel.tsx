@@ -130,11 +130,7 @@ export function ConstraintStatusPanel({
           {constraints.hardLimits.map((limit, i) => (
             <div
               key={i}
-              className="rounded-athena flex items-center justify-between px-2.5 py-1.5"
-              style={{
-                backgroundColor: "var(--color-error-bg)",
-                border: "1px solid color-mix(in srgb, var(--color-error) 20%, transparent)",
-              }}
+              className="rounded-athena flex items-center justify-between px-2.5 py-1.5 bg-athena-error-bg border border-athena-error/20"
             >
               <div className="flex items-center gap-2">
                 <span
@@ -174,20 +170,13 @@ export function ConstraintStatusPanel({
           {constraints.warnings.map((warn, i) => (
             <div
               key={i}
-              className="rounded-athena flex items-center gap-2"
-              style={{
-                backgroundColor: "var(--color-warning-bg)",
-                border: "1px solid color-mix(in srgb, var(--color-warning) 15%, transparent)",
-                padding: "5px 10px",
-              }}
+              className="rounded-athena flex items-center gap-2 bg-athena-warning-bg border border-athena-warning/15 py-[5px] px-2.5"
             >
               <span
-                className="w-1.5 h-1.5 rounded-full shrink-0"
-                style={{ backgroundColor: "var(--color-warning)" }}
+                className="w-1.5 h-1.5 rounded-full shrink-0 bg-athena-warning"
               />
               <span
-                className="font-mono text-[8px] font-bold uppercase"
-                style={{ color: "var(--color-warning)" }}
+                className="font-mono text-[8px] font-bold uppercase text-athena-warning"
               >
                 {warn.domain}
               </span>
@@ -204,11 +193,7 @@ export function ConstraintStatusPanel({
       {/* All nominal */}
       {!hasIssues && (
         <div
-          className="rounded-athena font-mono text-[9px] text-center bg-athena-success-bg text-athena-success"
-          style={{
-            border: "1px solid color-mix(in srgb, var(--color-success) 15%, transparent)",
-            padding: "8px 12px",
-          }}
+          className="rounded-athena font-mono text-[9px] text-center bg-athena-success-bg text-athena-success border border-athena-success/15 py-2 px-3"
         >
           All domains nominal — no active constraints
         </div>

@@ -114,10 +114,7 @@ function MetricCard({
 }) {
   return (
     <div
-      className="flex-1 min-w-0 rounded-athena p-4 flex flex-col gap-1 bg-athena-surface border border-athena-border"
-      style={{
-        height: 120,
-      }}
+      className="flex-1 min-w-0 rounded-athena p-4 flex flex-col gap-1 bg-athena-surface border border-athena-border h-[120px]"
     >
       <span
         className="font-mono text-2xl font-bold athena-tabular-nums leading-tight"
@@ -125,7 +122,7 @@ function MetricCard({
       >
         {value}
       </span>
-      <span className="font-mono text-xs uppercase font-semibold text-athena-text-tertiary" style={{ letterSpacing: "1px" }}>
+      <span className="font-mono text-xs uppercase font-semibold text-athena-text-tertiary tracking-wider">
         {label}
       </span>
       {subLabel && (
@@ -271,8 +268,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
     <section className="flex flex-col gap-4">
       {/* Section label */}
       <h2
-        className="font-mono uppercase"
-        style={{ color: "var(--color-text-secondary)", fontSize: 10, fontWeight: 600, letterSpacing: "2px" }}
+        className="font-mono uppercase text-athena-text-secondary text-[10px] font-semibold tracking-widest"
       >
         OPERATIONAL SECURITY STATUS
       </h2>
@@ -317,21 +313,16 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
 
       {/* Noise Trend Chart */}
       <div
-        className="rounded-athena p-4 flex flex-col gap-2 bg-athena-surface border border-athena-border"
-        style={{
-          height: 220,
-        }}
+        className="rounded-athena p-4 flex flex-col gap-2 bg-athena-surface border border-athena-border h-[220px]"
       >
         <div className="flex items-center justify-between">
           <span
-            className="font-mono uppercase font-semibold"
-            style={{ color: "var(--color-text-light)", fontSize: 11, letterSpacing: "1px" }}
+            className="font-mono uppercase font-semibold text-athena-text-light text-[11px] tracking-wider"
           >
             NOISE SCORE TREND
           </span>
           <span
-            className="font-mono"
-            style={{ color: "var(--color-text-secondary)", fontSize: 10 }}
+            className="font-mono text-athena-text-secondary text-[10px]"
           >
             Last 6 hours
           </span>
@@ -353,14 +344,12 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
         {/* Header */}
         <div className="flex items-center gap-2 h-10 px-4">
           <span
-            className="font-mono uppercase font-semibold"
-            style={{ color: "var(--color-text-light)", fontSize: 11, letterSpacing: "1px" }}
+            className="font-mono uppercase font-semibold text-athena-text-light text-[11px] tracking-wider"
           >
             OPSEC EVENTS
           </span>
           <span
-            className="font-mono text-[10px] rounded-athena px-2 py-0.5"
-            style={{ color: "var(--color-error)", backgroundColor: "var(--color-error-bg)" }}
+            className="font-mono text-[10px] rounded-athena px-2 py-0.5 text-athena-error bg-athena-error-bg"
           >
             {t("eventCount", { count: events.length })}
           </span>
@@ -376,8 +365,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
             events.map((event) => (
               <div
                 key={event.id}
-                className="flex items-center gap-3 px-4"
-                style={{ height: 36, borderBottom: "1px solid var(--color-border)" }}
+                className="flex items-center gap-3 px-4 h-9 border-b border-athena-border"
               >
                 {/* Severity dot */}
                 <span

@@ -318,8 +318,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
     <section className="flex flex-col gap-4">
       {/* Section label */}
       <h2
-        className="font-mono uppercase"
-        style={{ color: "var(--color-text-secondary)", fontSize: 10, fontWeight: 600, letterSpacing: "2px" }}
+        className="font-mono uppercase text-athena-text-secondary text-[10px] font-semibold tracking-widest"
       >
         AI DECISION ENGINE
       </h2>
@@ -333,14 +332,12 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
           {/* Header */}
           <div className="flex flex-col gap-1">
             <span
-              className="font-mono uppercase tracking-widest text-athena-text-tertiary"
-              style={{ fontSize: 10 }}
+              className="font-mono uppercase tracking-widest text-athena-text-tertiary text-[10px]"
             >
               {t("confidenceBreakdown")}
             </span>
             <span
-              className="font-mono text-athena-text-tertiary"
-              style={{ fontSize: 11 }}
+              className="font-mono text-athena-text-tertiary text-[11px]"
             >
               {t("confidenceSubtitle")}
             </span>
@@ -349,8 +346,8 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
           {/* Big score */}
           <div className="flex flex-col items-center gap-1 py-4">
             <span
-              className="font-mono athena-tabular-nums"
-              style={{ fontSize: 36, fontWeight: 700, color: confColor }}
+              className="font-mono athena-tabular-nums text-4xl font-bold"
+              style={{ color: confColor }}
             >
               {confidence.toFixed(2)}
             </span>
@@ -368,8 +365,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
               <div key={bar.label} className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
                   <span
-                    className="font-mono uppercase tracking-widest text-athena-text-tertiary"
-                    style={{ fontSize: 10 }}
+                    className="font-mono uppercase tracking-widest text-athena-text-tertiary text-[10px]"
                   >
                     {bar.label}
                   </span>
@@ -387,12 +383,10 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
 
           {/* Recommended Action card */}
           <div
-            className="flex flex-col gap-2 mt-auto rounded-athena px-4 py-3"
-            style={{ backgroundColor: "var(--color-accent-bg)", border: "1px solid color-mix(in srgb, var(--color-accent) 20%, transparent)" }}
+            className="flex flex-col gap-2 mt-auto rounded-athena px-4 py-3 bg-athena-accent-bg border border-athena-accent/20"
           >
             <span
-              className="font-mono uppercase tracking-widest text-athena-text-tertiary"
-              style={{ fontSize: 10 }}
+              className="font-mono uppercase tracking-widest text-athena-text-tertiary text-[10px]"
             >
               {t("recommendedAction")}
             </span>
@@ -435,14 +429,12 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
           {/* Header */}
           <div className="flex flex-col gap-1">
             <span
-              className="font-mono uppercase tracking-widest text-athena-text-tertiary"
-              style={{ fontSize: 10 }}
+              className="font-mono uppercase tracking-widest text-athena-text-tertiary text-[10px]"
             >
               {t("noiseRiskMatrix")}
             </span>
             <span
-              className="font-mono text-athena-text-tertiary"
-              style={{ fontSize: 11 }}
+              className="font-mono text-athena-text-tertiary text-[11px]"
             >
               {t("matrixSubtitle")}
             </span>
@@ -453,9 +445,8 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
             {/* Y-axis label */}
             <div className="flex flex-col items-center justify-center mr-1">
               <span
-                className="font-mono uppercase tracking-widest text-athena-text-tertiary"
+                className="font-mono uppercase tracking-widest text-athena-text-tertiary text-[9px]"
                 style={{
-                  fontSize: 9,
                   writingMode: "vertical-lr",
                   transform: "rotate(180deg)",
                 }}
@@ -474,8 +465,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
                     className="flex items-center justify-center"
                   >
                     <span
-                      className="font-mono uppercase tracking-wider text-athena-text-tertiary"
-                      style={{ fontSize: 9 }}
+                      className="font-mono uppercase tracking-wider text-athena-text-tertiary text-[9px]"
                     >
                       {col}
                     </span>
@@ -492,8 +482,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
                   {/* Row label */}
                   <div className="flex items-center justify-center">
                     <span
-                      className="font-mono uppercase tracking-wider text-athena-text-tertiary"
-                      style={{ fontSize: 9 }}
+                      className="font-mono uppercase tracking-wider text-athena-text-tertiary text-[9px]"
                     >
                       {rowLabel}
                     </span>
@@ -531,8 +520,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
               {/* X-axis label */}
               <div className="flex justify-center mt-1">
                 <span
-                  className="font-mono uppercase tracking-widest text-athena-text-tertiary"
-                  style={{ fontSize: 9 }}
+                  className="font-mono uppercase tracking-widest text-athena-text-tertiary text-[9px]"
                 >
                   {t("riskAxisLabel")}
                 </span>
@@ -542,23 +530,20 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
 
           {/* Current Position card */}
           <div
-            className="rounded-athena p-4 flex flex-col gap-2 mt-auto"
+            className="rounded-athena p-4 flex flex-col gap-2 mt-auto bg-black/20"
             style={{
               border: `1px solid ${actionBorderColor(curAction)}`,
-              backgroundColor: "rgba(0,0,0,0.2)",
             }}
           >
             <span
-              className="font-mono uppercase tracking-widest text-athena-text-tertiary"
-              style={{ fontSize: 10 }}
+              className="font-mono uppercase tracking-widest text-athena-text-tertiary text-[10px]"
             >
               {t("currentPosition")}
             </span>
             <div className="flex gap-4">
               <div className="flex flex-col gap-0.5">
                 <span
-                  className="font-mono uppercase tracking-wider text-athena-text-tertiary"
-                  style={{ fontSize: 9 }}
+                  className="font-mono uppercase tracking-wider text-athena-text-tertiary text-[9px]"
                 >
                   {t("noiseLabel")}
                 </span>
@@ -568,8 +553,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
               </div>
               <div className="flex flex-col gap-0.5">
                 <span
-                  className="font-mono uppercase tracking-wider text-athena-text-tertiary"
-                  style={{ fontSize: 9 }}
+                  className="font-mono uppercase tracking-wider text-athena-text-tertiary text-[9px]"
                 >
                   {t("riskLabel")}
                 </span>
@@ -579,8 +563,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
               </div>
               <div className="flex flex-col gap-0.5">
                 <span
-                  className="font-mono uppercase tracking-wider text-athena-text-tertiary"
-                  style={{ fontSize: 9 }}
+                  className="font-mono uppercase tracking-wider text-athena-text-tertiary text-[9px]"
                 >
                   {t("actionLabel")}
                 </span>
@@ -611,8 +594,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
           className="rounded-athena flex flex-col gap-3 bg-athena-surface border border-[#FFFFFF08] px-6 py-5"
         >
           <span
-            className="font-mono uppercase tracking-widest text-athena-text-tertiary"
-            style={{ fontSize: 10 }}
+            className="font-mono uppercase tracking-widest text-athena-text-tertiary text-[10px]"
           >
             {tRec("history")}
           </span>

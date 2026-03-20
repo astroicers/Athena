@@ -13,6 +13,7 @@
 import { useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/atoms/Button";
+import { COLORS } from "@/lib/designTokens";
 import type { OpsecAlert } from "@/hooks/useGlobalAlerts";
 import type { ConstraintAlert } from "@/hooks/useGlobalAlerts";
 
@@ -54,8 +55,8 @@ const SEVERITY_STYLES: Record<OpsecSeverity, SeverityStyle> = {
 };
 
 function severityColors(sev: OpsecSeverity) {
-  if (sev === "error") return { fill: "color-mix(in srgb, var(--color-error) 6%, transparent)", border: "color-mix(in srgb, var(--color-error) 15%, transparent)", text: "var(--color-error)" };
-  return { fill: "#F9731610", border: "#F9731625", text: "#F97316" };
+  if (sev === "error") return { fill: "color-mix(in srgb, var(--color-error) 6%, transparent)", border: "color-mix(in srgb, var(--color-error) 15%, transparent)", text: `var(--color-error)` };
+  return { fill: `${COLORS.warning}10`, border: `${COLORS.warning}25`, text: COLORS.warning };
 }
 
 export function NotificationCenter({
@@ -102,46 +103,30 @@ export function NotificationCenter({
     <>
       {/* Backdrop overlay */}
       <div
-        className="fixed inset-0 z-40"
-        style={{ backgroundColor: "#00000060" }}
+        className="fixed inset-0 z-40 bg-athena-overlay"
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* Slide-in panel */}
       <aside
-        className="fixed inset-y-0 right-0 z-50 flex flex-col animate-in slide-in-from-right duration-200"
-        style={{
-          width: 384,
-          backgroundColor: "var(--color-bg-surface)",
-          borderLeft: "1px solid #FFFFFF10",
-          fontFamily: "'JetBrains Mono', 'Courier New', monospace",
-        }}
+        className="fixed inset-y-0 right-0 z-50 flex flex-col animate-in slide-in-from-right duration-200 w-96 bg-athena-surface border-l border-athena-border font-mono"
         role="dialog"
         aria-label={t("title")}
       >
         {/* ── Header ── */}
         <div
-          className="flex items-center justify-between shrink-0"
-          style={{ height: 56, backgroundColor: "var(--color-bg-elevated)", padding: "0 20px" }}
+          className="flex items-center justify-between shrink-0 h-14 bg-athena-elevated px-5"
         >
           <div className="flex items-center gap-2">
             <h2
-              className="font-mono font-bold uppercase"
-              style={{ fontSize: 13, color: "#FFFFFF" }}
+              className="font-mono font-bold uppercase text-athena-heading-card text-white"
             >
               {t("title")}
             </h2>
             {totalCount > 0 && (
               <span
-                className="inline-flex items-center justify-center font-mono font-bold text-white leading-none rounded-[10px]"
-                style={{
-                  minWidth: 20,
-                  height: 20,
-                  padding: "2px 8px",
-                  backgroundColor: "var(--color-error)",
-                  fontSize: 9,
-                }}
+                className="inline-flex items-center justify-center font-mono font-bold text-white leading-none rounded-[10px] min-w-5 h-5 px-2 py-0.5 bg-athena-error text-[9px]"
               >
                 {totalCount > 99 ? "99+" : totalCount}
               </span>
@@ -158,8 +143,7 @@ export function NotificationCenter({
             </Button>
             <button
               onClick={onClose}
-              className="transition-colors p-1"
-              style={{ color: "#FFFFFF50", fontSize: 14, fontWeight: 700 }}
+              className="transition-colors p-1 text-athena-text-soft text-sm font-bold"
               aria-label="Close"
             >
               X
@@ -172,14 +156,12 @@ export function NotificationCenter({
           {isEmpty ? (
             <div className="flex flex-col items-center justify-center h-64 gap-3">
               <span
-                className="font-mono font-bold"
-                style={{ fontSize: 40, color: "#FFFFFF15" }}
+                className="font-mono font-bold text-[40px] text-athena-text-ghost"
               >
                 {"[ ]"}
               </span>
               <span
-                className="font-mono"
-                style={{ fontSize: 13, fontWeight: 600, color: "#FFFFFF30" }}
+                className="font-mono text-[13px] font-semibold text-athena-text-faint"
               >
                 {t("empty")}
               </span>
@@ -188,10 +170,9 @@ export function NotificationCenter({
             <>
               {/* ── Pinned Constraints section ── */}
               {hasConstraint && (
-                <section style={{ padding: "12px 16px" }} className="flex flex-col gap-2">
+                <section className="flex flex-col gap-2 px-4 py-3">
                   <p
-                    className="font-mono font-bold uppercase"
-                    style={{ fontSize: 8, color: "#FFFFFF40", letterSpacing: "1.5px" }}
+                    className="font-mono font-bold uppercase text-[8px] text-athena-text-dim tracking-[1.5px]"
                   >
                     {t("pinnedConstraints")}
                   </p>
@@ -199,31 +180,26 @@ export function NotificationCenter({
                   {constraintAlert.messages.map((msg, i) => (
                     <div
                       key={i}
-                      className="flex flex-col rounded-athena"
+                      className="flex flex-col rounded-athena gap-1.5 px-3.5 py-3"
                       style={{
                         backgroundColor: "color-mix(in srgb, var(--color-warning) 6%, transparent)",
                         border: "1px solid color-mix(in srgb, var(--color-warning) 30%, transparent)",
-                        padding: "12px 14px",
-                        gap: 6,
                       }}
                     >
                       {/* Card header row */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span
-                            className="w-2 h-2 rounded-full shrink-0"
-                            style={{ backgroundColor: "var(--color-warning)" }}
+                            className="w-2 h-2 rounded-full shrink-0 bg-athena-warning"
                           />
                           <span
-                            className="font-mono font-bold uppercase tracking-wider"
-                            style={{ fontSize: 10, color: "var(--color-warning)" }}
+                            className="font-mono font-bold uppercase tracking-wider text-[10px] text-athena-warning"
                           >
                             {t("constraintActive")}
                           </span>
                         </div>
                         <span
-                          className="font-mono"
-                          style={{ fontSize: 8, color: "#FFFFFF30" }}
+                          className="font-mono text-[8px] text-athena-text-faint"
                         >
                           {new Date().toLocaleTimeString(undefined, {
                             hour: "2-digit",
@@ -234,16 +210,14 @@ export function NotificationCenter({
                       </div>
                       {/* Message */}
                       <p
-                        className="font-mono leading-relaxed"
-                        style={{ fontSize: 10, color: "#FFFFFFB0" }}
+                        className="font-mono leading-relaxed text-[10px] text-athena-text-subtle"
                       >
                         {msg}
                       </p>
                       {/* Source */}
                       {constraintAlert.domains.length > 0 && (
                         <span
-                          className="font-mono"
-                          style={{ fontSize: 8, color: "#FFFFFF30" }}
+                          className="font-mono text-[8px] text-athena-text-faint"
                         >
                           {t("source")}: constraint_engine / {constraintAlert.domains[i] ?? constraintAlert.domains[0]}
                         </span>
@@ -255,34 +229,30 @@ export function NotificationCenter({
 
               {/* ── Divider between sections ── */}
               {hasConstraint && hasOpsec && (
-                <div style={{ borderTop: "1px solid #FFFFFF08", margin: "0 16px" }} />
+                <div className="border-t border-athena-white-8 mx-4" />
               )}
 
               {/* ── OPSEC Warnings section ── */}
               {hasOpsec && (
                 <section
-                  className="flex flex-col gap-2 flex-1 overflow-y-auto"
-                  style={{ padding: "12px 16px" }}
+                  className="flex flex-col gap-2 flex-1 overflow-y-auto px-4 py-3"
                 >
                   <p
-                    className="font-mono font-bold uppercase"
-                    style={{ fontSize: 8, color: "#FFFFFF40", letterSpacing: "1.5px" }}
+                    className="font-mono font-bold uppercase text-[8px] text-athena-text-dim tracking-[1.5px]"
                   >
                     {t("opsecWarnings")}
                   </p>
 
                   {displayAlerts.map((alert) => {
                     const colors = severityColors(alert.severity);
-                    const style = SEVERITY_STYLES[alert.severity];
+                    const sevStyle = SEVERITY_STYLES[alert.severity];
                     return (
                       <div
                         key={alert.id}
-                        className="flex flex-col rounded-athena"
+                        className="flex flex-col rounded-athena gap-1.5 px-3 py-2.5"
                         style={{
                           backgroundColor: colors.fill,
                           border: `1px solid ${colors.border}`,
-                          padding: "10px 12px",
-                          gap: 6,
                         }}
                       >
                         {/* Card header row */}
@@ -293,30 +263,27 @@ export function NotificationCenter({
                               style={{ backgroundColor: colors.text }}
                             />
                             <span
-                              className="font-mono font-bold uppercase tracking-wider"
-                              style={{ fontSize: 10, color: colors.text }}
+                              className="font-mono font-bold uppercase tracking-wider text-[10px]"
+                              style={{ color: colors.text }}
                             >
-                              {style.badgeText}
+                              {sevStyle.badgeText}
                             </span>
                           </div>
                           <span
-                            className="font-mono"
-                            style={{ fontSize: 8, color: "#FFFFFF30" }}
+                            className="font-mono text-[8px] text-athena-text-faint"
                           >
                             {formatTimestamp(alert.timestamp)}
                           </span>
                         </div>
                         {/* Message */}
                         <p
-                          className="font-mono leading-relaxed break-words"
-                          style={{ fontSize: 9, color: "#FFFFFFA0" }}
+                          className="font-mono leading-relaxed break-words text-[9px] text-athena-text-subtle"
                         >
                           {alert.message}
                         </p>
                         {/* Source */}
                         <span
-                          className="font-mono"
-                          style={{ fontSize: 8, color: "#FFFFFF25" }}
+                          className="font-mono text-[8px] text-athena-text-ghost"
                         >
                           {t("source")}: {t("sourceOpsec")}
                         </span>

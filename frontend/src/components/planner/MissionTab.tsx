@@ -476,7 +476,7 @@ export function MissionTab({
 
       {/* Create Step Modal */}
       {showCreateStep && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "#00000080" }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-athena-surface border border-athena-border rounded-athena p-6 max-w-md w-full mx-4">
             <div className="mb-4">
               <span className="text-xs font-mono text-athena-text-secondary">{t("missionSteps")}</span>

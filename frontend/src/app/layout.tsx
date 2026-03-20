@@ -9,10 +9,21 @@
 // For commercial licensing, contact: azz093093.830330@gmail.com
 
 import type { Metadata } from "next";
+import { JetBrains_Mono, Inter } from "next/font/google";
 import "@/styles/globals.css";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { ClientShell } from "./client-shell";
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
 
 export const metadata: Metadata = {
   title: "Athena — C5ISR Command Platform",
@@ -28,7 +39,7 @@ export default async function RootLayout({
   const messages = await getMessages();
   return (
     <html lang={locale}>
-      <body className="antialiased">
+      <body className={`${jetbrainsMono.variable} ${inter.variable} antialiased`}>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ClientShell>{children}</ClientShell>
         </NextIntlClientProvider>

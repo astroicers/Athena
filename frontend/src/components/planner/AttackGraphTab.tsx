@@ -21,15 +21,16 @@ import {
   type CredentialNode,
   type CredentialEdge,
 } from "@/hooks/useAttackGraph";
+import { COLORS } from "@/lib/designTokens";
 
 /* ── Design Tokens ── */
 
-const BG_BASE = "#050508";
-const BG_SURFACE = "#111827";
-const BORDER = "#FFFFFF10";
-const ACCENT = "#3b82f6";
-const TEXT_MUTED = "#FFFFFF50";
-const GRID_COLOR = "#0D0D15";
+const BG_BASE = COLORS.bgPrimary;
+const BG_SURFACE = COLORS.bgSurface;
+const BORDER = `${COLORS.textPrimary}10`;
+const ACCENT = COLORS.accent;
+const TEXT_MUTED = `${COLORS.textPrimary}50`;
+const GRID_COLOR = COLORS.bgPrimary;
 
 /* ── Status Color Map ── */
 
@@ -37,29 +38,29 @@ const STATUS_COLORS: Record<
   string,
   { fill: string; glow: string; text: string }
 > = {
-  explored: { fill: "#22C55E", glow: "#22C55E12", text: "#22C55E70" },
-  pending: { fill: "#F59E0B", glow: "#F59E0B10", text: "#F59E0B80" },
-  failed: { fill: "#EF4444", glow: "#EF444412", text: "#EF444480" },
-  unreachable: { fill: "#6A6A6A", glow: "#6A6A6A0C", text: "#6A6A6A60" },
+  explored: { fill: COLORS.success, glow: `${COLORS.success}12`, text: `${COLORS.success}70` },
+  pending: { fill: COLORS.warning, glow: `${COLORS.warning}10`, text: `${COLORS.warning}80` },
+  failed: { fill: COLORS.error, glow: `${COLORS.error}12`, text: `${COLORS.error}80` },
+  unreachable: { fill: COLORS.textTertiary, glow: `${COLORS.textTertiary}0C`, text: `${COLORS.textTertiary}60` },
 };
 
 const DEFAULT_STATUS_COLOR = {
-  fill: "#6A6A6A",
-  glow: "#6A6A6A0C",
-  text: "#6A6A6A60",
+  fill: COLORS.textTertiary,
+  glow: `${COLORS.textTertiary}0C`,
+  text: `${COLORS.textTertiary}60`,
 };
 
 /* ── Edge Color Map ── */
 
 const EDGE_COLORS: Record<string, string> = {
   enables: "color-mix(in srgb, var(--color-success) 19%, transparent)",
-  lateral: "#A855F730",
-  alternative: "#FF880030",
+  lateral: `${COLORS.phaseOrient}30`,
+  alternative: `${COLORS.warning}30`,
 };
 
 /* ── Credential Node Colors ── */
 
-const CRED_COLORS = ["#22C55E", "#3B82F6", "#F97316", "#A855F7", "#EAB308"];
+const CRED_COLORS = [COLORS.success, COLORS.accent, COLORS.warning, COLORS.phaseOrient, COLORS.warning];
 
 /* ── Canvas Dimensions ── */
 
@@ -508,28 +509,11 @@ function GraphStatsPanel({
   t: (key: string) => string;
 }) {
   return (
-    <div
-      style={{
-        background: BG_SURFACE,
-        border: `1px solid ${BORDER}`,
-        borderRadius: 6,
-        padding: "12px 14px",
-        minWidth: 160,
-      }}
-    >
-      <div
-        style={{
-          fontFamily: "monospace",
-          fontSize: 10,
-          color: TEXT_MUTED,
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
-          marginBottom: 10,
-        }}
-      >
+    <div className="bg-athena-surface border border-athena-border rounded-athena px-3.5 py-3 min-w-[160px]">
+      <div className="font-mono text-[10px] uppercase tracking-wider mb-2.5" style={{ color: TEXT_MUTED }}>
         {t("statsTitle")}
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div className="flex flex-col gap-2">
         <StatRow label={t("totalNodes")} value={String(totalNodes)} color="var(--color-text-soft)" />
         <StatRow label={t("exploredNodes")} value={String(exploredNodes)} color="var(--color-success)" />
         <StatRow
@@ -537,20 +521,17 @@ function GraphStatsPanel({
           value={`${Math.round(coverageScore * 100)}%`}
           color={ACCENT}
         />
-        {/* Threat Gauge Bar — 5 segments */}
-        <div style={{ display: "flex", gap: 2, marginTop: 6 }}>
+        {/* Threat Gauge Bar -- 5 segments */}
+        <div className="flex gap-0.5 mt-1.5">
           {[0.2, 0.4, 0.6, 0.8, 1.0].map((threshold, i) => (
             <div
               key={i}
+              className="w-6 h-3 rounded-sm transition-colors duration-300"
               style={{
-                width: 24,
-                height: 12,
-                borderRadius: 2,
                 backgroundColor:
                   coverageScore >= threshold
                     ? i < 2 ? "var(--color-error)" : i < 4 ? "var(--color-warning-alt)" : "var(--color-success)"
                     : "var(--color-white-8)",
-                transition: "background-color 0.3s",
               }}
             />
           ))}
@@ -570,31 +551,11 @@ function StatRow({
   color: string;
 }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        gap: 12,
-      }}
-    >
-      <span
-        style={{
-          fontFamily: "monospace",
-          fontSize: 10,
-          color: TEXT_MUTED,
-        }}
-      >
+    <div className="flex justify-between items-center gap-3">
+      <span className="font-mono text-[10px]" style={{ color: TEXT_MUTED }}>
         {label}
       </span>
-      <span
-        style={{
-          fontFamily: "monospace",
-          fontSize: 12,
-          color,
-          fontWeight: 600,
-        }}
-      >
+      <span className="font-mono text-xs font-semibold" style={{ color }}>
         {value}
       </span>
     </div>
@@ -611,49 +572,21 @@ function LegendPanel({
   title: string;
 }) {
   return (
-    <div
-      style={{
-        background: BG_SURFACE,
-        border: `1px solid ${BORDER}`,
-        borderRadius: 6,
-        padding: "12px 14px",
-        minWidth: 160,
-      }}
-    >
-      <div
-        style={{
-          fontFamily: "monospace",
-          fontSize: 10,
-          color: TEXT_MUTED,
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
-          marginBottom: 10,
-        }}
-      >
+    <div className="bg-athena-surface border border-athena-border rounded-athena px-3.5 py-3 min-w-[160px]">
+      <div className="font-mono text-[10px] uppercase tracking-wider mb-2.5" style={{ color: TEXT_MUTED }}>
         {title}
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div className="flex flex-col gap-1.5">
         {items.map((item) => (
           <div
             key={item.label}
-            style={{ display: "flex", alignItems: "center", gap: 8 }}
+            className="flex items-center gap-2"
           >
             <div
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: item.color,
-                flexShrink: 0,
-              }}
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{ background: item.color }}
             />
-            <span
-              style={{
-                fontFamily: "monospace",
-                fontSize: 10,
-                color: "var(--color-text-subtle)",
-              }}
-            >
+            <span className="font-mono text-[10px] text-athena-text-secondary">
               {item.label}
             </span>
           </div>
@@ -682,28 +615,11 @@ function CredStatsPanel({
   );
 
   return (
-    <div
-      style={{
-        background: BG_SURFACE,
-        border: `1px solid ${BORDER}`,
-        borderRadius: 6,
-        padding: "12px 14px",
-        minWidth: 160,
-      }}
-    >
-      <div
-        style={{
-          fontFamily: "monospace",
-          fontSize: 10,
-          color: TEXT_MUTED,
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
-          marginBottom: 10,
-        }}
-      >
+    <div className="bg-athena-surface border border-athena-border rounded-athena px-3.5 py-3 min-w-[160px]">
+      <div className="font-mono text-[10px] uppercase tracking-wider mb-2.5" style={{ color: TEXT_MUTED }}>
         {t("statsTitle")}
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div className="flex flex-col gap-2">
         <StatRow
           label={t("credCount")}
           value={String(credNodes.length)}
@@ -734,19 +650,7 @@ function SubTabButton({
   return (
     <button
       onClick={onClick}
-      style={{
-        fontFamily: "monospace",
-        fontSize: 10,
-        textTransform: "uppercase",
-        letterSpacing: "0.08em",
-        color: active ? ACCENT : TEXT_MUTED,
-        background: "transparent",
-        border: "none",
-        borderBottom: active ? `2px solid ${ACCENT}` : "2px solid transparent",
-        padding: "0 4px",
-        cursor: "pointer",
-        transition: "color 150ms, border-color 150ms",
-      }}
+      className={`font-mono text-[10px] uppercase tracking-wider bg-transparent border-none border-b-2 px-1 cursor-pointer transition-colors duration-150 ${active ? "text-athena-accent border-b-athena-accent" : "text-athena-text-tertiary border-b-transparent"}`}
     >
       {label}
     </button>
@@ -797,18 +701,8 @@ export function AttackGraphTab() {
 
   if (loading) {
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-          background: BG_BASE,
-        }}
-      >
-        <span
-          style={{ fontFamily: "monospace", fontSize: 12, color: TEXT_MUTED }}
-        >
+      <div className="flex items-center justify-center h-full bg-athena-bg">
+        <span className="font-mono text-xs text-athena-text-tertiary">
           Loading...
         </span>
       </div>
@@ -817,18 +711,8 @@ export function AttackGraphTab() {
 
   if (error) {
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-          background: BG_BASE,
-        }}
-      >
-        <span
-          style={{ fontFamily: "monospace", fontSize: 12, color: "var(--color-error)" }}
-        >
+      <div className="flex items-center justify-center h-full bg-athena-bg">
+        <span className="font-mono text-xs text-athena-error">
           {error}
         </span>
       </div>
@@ -836,27 +720,9 @@ export function AttackGraphTab() {
   }
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        background: BG_BASE,
-        overflow: "hidden",
-      }}
-    >
+    <div className="flex flex-col h-full bg-athena-bg overflow-hidden">
       {/* ── Sub-Tab Bar ── */}
-      <div
-        style={{
-          height: 40,
-          display: "flex",
-          alignItems: "stretch",
-          gap: 24,
-          padding: "0 24px",
-          background: BG_SURFACE,
-          flexShrink: 0,
-        }}
-      >
+      <div className="h-10 flex items-stretch gap-6 px-6 bg-athena-surface shrink-0">
         <SubTabButton
           label={t("tabGraph").toUpperCase()}
           active={activeTab === "graph"}
@@ -870,50 +736,22 @@ export function AttackGraphTab() {
       </div>
 
       {/* ── Canvas Area ── */}
-      <div
-        style={{
-          flex: 1,
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
+      <div className="flex-1 relative overflow-hidden">
         {/* ── Attack Graph Sub-Tab ── */}
         {activeTab === "graph" && (
           <>
             {graph && graph.nodes.length > 0 ? (
               <AttackGraphCanvas nodes={graph.nodes} edges={graph.edges} />
             ) : (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  height: "100%",
-                  background: BG_BASE,
-                }}
-              >
-                <span
-                  style={{
-                    fontFamily: "monospace",
-                    fontSize: 12,
-                    color: TEXT_MUTED,
-                  }}
-                >
+              <div className="flex items-center justify-center h-full bg-athena-bg">
+                <span className="font-mono text-xs text-athena-text-tertiary">
                   {t("noData")}
                 </span>
               </div>
             )}
 
             {/* Action buttons */}
-            <div
-              style={{
-                position: "absolute",
-                top: 12,
-                left: 16,
-                display: "flex",
-                gap: 8,
-              }}
-            >
+            <div className="absolute top-3 left-4 flex gap-2">
               <Button
                 variant="secondary"
                 size="sm"
@@ -934,17 +772,7 @@ export function AttackGraphTab() {
 
             {/* Right-side panels */}
             {graph && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: 12,
-                  right: 12,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 10,
-                  zIndex: 10,
-                }}
-              >
+              <div className="absolute top-3 right-3 flex flex-col gap-2.5 z-10">
                 <GraphStatsPanel
                   totalNodes={graph.stats.totalNodes}
                   exploredNodes={graph.stats.exploredNodes}
@@ -966,22 +794,8 @@ export function AttackGraphTab() {
                 credEdges={credentialGraph.edges}
               />
             ) : (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  height: "100%",
-                  background: BG_BASE,
-                }}
-              >
-                <span
-                  style={{
-                    fontFamily: "monospace",
-                    fontSize: 12,
-                    color: TEXT_MUTED,
-                  }}
-                >
+              <div className="flex items-center justify-center h-full bg-athena-bg">
+                <span className="font-mono text-xs text-athena-text-tertiary">
                   {t("noCredentials")}
                 </span>
               </div>
@@ -989,17 +803,7 @@ export function AttackGraphTab() {
 
             {/* Right-side panels */}
             {credentialGraph && credentialGraph.nodes.length > 0 && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: 12,
-                  right: 12,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 10,
-                  zIndex: 10,
-                }}
-              >
+              <div className="absolute top-3 right-3 flex flex-col gap-2.5 z-10">
                 <CredStatsPanel credNodes={credentialGraph.nodes} t={t} />
                 <LegendPanel items={credLegend} title={t("legendTitle")} />
               </div>

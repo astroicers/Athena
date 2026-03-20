@@ -16,7 +16,6 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useToast } from "@/contexts/ToastContext";
 import { useOperationContext } from "@/contexts/OperationContext";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/atoms/Button";
 import { PageLoading } from "@/components/ui/PageLoading";
 
@@ -51,17 +50,17 @@ interface Operation {
 /* ------------------------------------------------------------------ */
 
 const STATUS_BADGE_CLASSES: Record<string, string> = {
-  planning:  "bg-athena-warning/12 border-athena-warning/25 text-athena-warning",
-  active:    "bg-athena-success/12 border-athena-success/25 text-athena-success",
-  paused:    "bg-athena-warning/12 border-athena-warning/25 text-athena-warning",
-  completed: "bg-athena-accent/12 border-athena-accent/25 text-athena-accent",
-  failed:    "bg-athena-error/12 border-athena-error/25 text-athena-error",
+  planning:  "bg-[#1E609120] border-[#1E609140] text-[var(--color-accent)]",
+  active:    "bg-[#05966920] border-[#05966940] text-[var(--color-success)]",
+  paused:    "bg-[#B4530920] border-[#B4530940] text-[var(--color-warning)]",
+  completed: "bg-[#71717A20] border-[#71717A40] text-[var(--color-text-secondary)]",
+  failed:    "bg-[#B91C1C20] border-[#B91C1C40] text-[var(--color-error)]",
 };
 
 const PROFILE_BADGE_CLASSES: Record<string, string> = {
-  SR: "bg-athena-accent/12 border-athena-accent/25 text-athena-accent",
-  CO: "bg-athena-phase-orient/12 border-athena-phase-orient/25 text-athena-phase-orient",
-  SP: "bg-athena-error/12 border-athena-error/25 text-athena-error",
+  SR: "bg-[#1E609120] border-[#1E609140] text-[var(--color-accent)]",
+  CO: "bg-[#7C3AED20] border-[#7C3AED40] text-[var(--color-phase-orient)]",
+  SP: "bg-[#B91C1C20] border-[#B91C1C40] text-[var(--color-error)]",
 };
 
 /* ------------------------------------------------------------------ */
@@ -113,52 +112,91 @@ function OperationsContent() {
   if (loading) return <PageLoading />;
 
   return (
-    <div className="flex flex-col h-full">
-      <PageHeader
-        title={t("title")}
-        trailing={
-          <Button variant="secondary" size="sm" onClick={() => setShowCreate(true)}>
-            {t("createOp")}
-          </Button>
-        }
-      />
+    <div className="flex flex-col h-full bg-[var(--color-bg-primary)]">
+      {/* ── Page Header (48px, #18181B surface) ────────────────────── */}
+      <header className="h-12 shrink-0 flex items-center justify-between px-4 bg-[var(--color-bg-surface)]">
+        {/* Left: Title + Operation badge */}
+        <div className="flex items-center gap-3">
+          <h2 className="font-mono text-[13px] font-bold tracking-wider text-[var(--color-text-primary)]">
+            {t("title")}
+          </h2>
+          <span className="font-mono text-[10px] font-semibold text-[var(--color-accent)] bg-[#1E609120] border border-[#1E609140] rounded-[var(--radius)] px-2.5 py-1">
+            PHANTOM-EYE
+          </span>
+        </div>
 
-      <div className="flex-1 overflow-auto px-4 py-3">
+        {/* Center: Create Operation button */}
+        <button
+          onClick={() => setShowCreate(true)}
+          className="font-mono text-[11px] font-semibold text-[var(--color-text-primary)] bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] rounded-[var(--radius)] px-3 py-1 hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer"
+        >
+          + {t("createOp")}
+        </button>
+
+        {/* Right: Notification bell */}
+        <div className="relative">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--color-text-secondary)"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="w-4 h-4"
+          >
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+          </svg>
+          <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-3.5 h-3.5 rounded-full bg-red-600 text-white font-mono text-[8px] font-bold">
+            3
+          </span>
+        </div>
+      </header>
+
+      {/* ── Separator ─────────────────────────────────────────────── */}
+      <div className="h-px bg-[var(--color-border)]" />
+
+      {/* ── Content Area (padding 20px 24px) ──────────────────────── */}
+      <div className="flex-1 overflow-auto py-5 px-6">
         {operations.length === 0 ? (
           /* -- Empty state ------------------------------------------ */
           <div className="flex items-center justify-center h-full">
             <div className="text-center space-y-4">
-              <div className="text-sm font-mono text-athena-text-tertiary">
+              <div className="text-sm font-mono text-[var(--color-text-tertiary)]">
                 {t("noOperations")}
               </div>
-              <Button variant="secondary" size="sm" onClick={() => setShowCreate(true)}>
-                {t("createOp")}
-              </Button>
+              <button
+                onClick={() => setShowCreate(true)}
+                className="font-mono text-[11px] font-semibold text-[var(--color-text-primary)] bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] rounded-[var(--radius)] px-3 py-1 hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer"
+              >
+                + {t("createOp")}
+              </button>
             </div>
           </div>
         ) : (
-          /* -- Operations grid -------------------------------------- */
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          /* -- Operations grid (3 cols, gap 16px) ------------------- */
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {operations.map((op) => (
               <button
                 key={op.id}
                 onClick={() => handleSelect(op)}
-                className="text-left bg-athena-surface border border-athena-border rounded-athena hover:border-athena-accent/25 transition-colors cursor-pointer flex flex-col gap-1.5 p-3 h-[130px]"
+                className="group text-left bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-[var(--radius)] hover:bg-[var(--color-bg-elevated)] hover:border-[var(--color-border-subtle)] transition-colors cursor-pointer flex flex-col gap-2 p-4 h-[140px]"
               >
-                {/* Header row: codename + status badge */}
+                {/* Top row: codename + status badge */}
                 <div className="flex items-center justify-between w-full">
-                  <span className="font-mono text-sm font-bold text-athena-accent truncate">
+                  <span className="font-mono text-sm font-bold text-[var(--color-text-primary)] truncate">
                     {op.codename}
                   </span>
                   <span
-                    className={`text-[10px] font-mono font-semibold uppercase border rounded-athena shrink-0 px-2 py-0.5 ${STATUS_BADGE_CLASSES[op.status] ?? ""}`}
+                    className={`text-[10px] font-mono font-semibold uppercase border rounded-[var(--radius)] shrink-0 px-2.5 py-1 ${STATUS_BADGE_CLASSES[op.status] ?? ""}`}
                   >
                     {op.status}
                   </span>
                 </div>
 
-                {/* Name / strategic intent */}
-                <div className="font-mono text-[11px] text-athena-text-tertiary truncate">
+                {/* Description */}
+                <div className="font-mono text-[11px] text-[var(--color-text-secondary)] truncate">
                   {op.name}
                 </div>
 
@@ -166,31 +204,31 @@ function OperationsContent() {
                 <div className="flex items-center gap-3 mt-auto">
                   {/* Mission profile badge */}
                   <span
-                    className={`text-[10px] font-mono font-semibold border rounded-athena px-2 py-0.5 ${PROFILE_BADGE_CLASSES[op.missionProfile] ?? ""}`}
+                    className={`text-[10px] font-mono font-semibold border rounded-[var(--radius)] px-2.5 py-1 ${PROFILE_BADGE_CLASSES[op.missionProfile] ?? ""}`}
                   >
                     {op.missionProfile}
                   </span>
 
                   {/* OODA phase */}
-                  <span className="text-[10px] font-mono text-athena-text-tertiary">
+                  <span className="text-[10px] font-mono text-[var(--color-text-secondary)]">
                     OODA: {op.currentOodaPhase}
                   </span>
 
                   {/* Created date */}
-                  <span className="text-[10px] font-mono text-athena-text-secondary ml-auto">
+                  <span className="text-[10px] font-mono text-[var(--color-text-tertiary)] ml-auto">
                     {new Date(op.createdAt).toLocaleDateString()}
                   </span>
                 </div>
               </button>
             ))}
 
-            {/* Empty card placeholder — "+ New Operation" */}
+            {/* Empty card placeholder -- "+ New Operation" */}
             <button
               onClick={() => setShowCreate(true)}
-              className="flex items-center justify-center border border-athena-border/25 rounded-athena hover:border-athena-accent/25 transition-colors cursor-pointer h-[130px]"
+              className="flex items-center justify-center border border-[var(--color-border)] rounded-[var(--radius)] hover:border-[var(--color-border-subtle)] transition-colors cursor-pointer h-[140px]"
             >
-              <span className="font-mono text-xs text-athena-text-tertiary">
-                + {t("createOp")}
+              <span className="font-mono text-xs text-[var(--color-text-tertiary)]">
+                +
               </span>
             </button>
           </div>
@@ -274,18 +312,18 @@ function CreateOperationModal({ onCreated, onCancel }: CreateModalProps) {
   }
 
   const inputClass =
-    "w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-athena-accent";
+    "w-full bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-2 text-sm font-mono text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-accent)]";
   const labelClass =
-    "block text-xs font-mono text-athena-text-secondary uppercase tracking-wider mb-1";
+    "block text-xs font-mono text-[var(--color-text-secondary)] uppercase tracking-wider mb-1";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
-      <div className="bg-athena-surface border-2 border-athena-border rounded-athena p-6 max-w-md w-full mx-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-bg-overlay)]">
+      <div className="bg-[var(--color-bg-surface)] border-2 border-[var(--color-border)] rounded-[var(--radius)] p-6 max-w-md w-full mx-4">
         <div className="mb-4">
-          <h2 className="text-lg font-mono font-bold text-athena-text-light">
+          <h2 className="text-lg font-mono font-bold text-[var(--color-text-primary)]">
             {t("createOp")}
           </h2>
-          <p className="text-xs font-mono text-athena-text-tertiary mt-1">
+          <p className="text-xs font-mono text-[var(--color-text-tertiary)] mt-1">
             {t("subtitle")}
           </p>
         </div>
@@ -294,7 +332,7 @@ function CreateOperationModal({ onCreated, onCancel }: CreateModalProps) {
           {/* Code */}
           <div>
             <label className={labelClass}>
-              {t("code")} <span className="text-athena-error">*</span>
+              {t("code")} <span className="text-[var(--color-error)]">*</span>
             </label>
             <input
               type="text"
@@ -308,7 +346,7 @@ function CreateOperationModal({ onCreated, onCancel }: CreateModalProps) {
           {/* Name */}
           <div>
             <label className={labelClass}>
-              {t("name")} <span className="text-athena-error">*</span>
+              {t("name")} <span className="text-[var(--color-error)]">*</span>
             </label>
             <input
               type="text"
@@ -322,7 +360,7 @@ function CreateOperationModal({ onCreated, onCancel }: CreateModalProps) {
           {/* Codename */}
           <div>
             <label className={labelClass}>
-              {t("codename")} <span className="text-athena-error">*</span>
+              {t("codename")} <span className="text-[var(--color-error)]">*</span>
             </label>
             <input
               type="text"
@@ -360,7 +398,7 @@ function CreateOperationModal({ onCreated, onCancel }: CreateModalProps) {
           </div>
 
           {error && (
-            <p className="text-xs font-mono text-athena-error">{error}</p>
+            <p className="text-xs font-mono text-[var(--color-error)]">{error}</p>
           )}
 
           <div className="flex gap-3 justify-end pt-2">
@@ -424,18 +462,18 @@ function EditOperationModal({ operation, onSaved, onCancel }: EditModalProps) {
   }
 
   const inputClass =
-    "w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-athena-accent";
+    "w-full bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-2 text-sm font-mono text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-accent)]";
   const labelClass =
-    "block text-xs font-mono text-athena-text-secondary uppercase tracking-wider mb-1";
+    "block text-xs font-mono text-[var(--color-text-secondary)] uppercase tracking-wider mb-1";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
-      <div className="bg-athena-surface border-2 border-athena-border rounded-athena p-6 max-w-md w-full mx-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-bg-overlay)]">
+      <div className="bg-[var(--color-bg-surface)] border-2 border-[var(--color-border)] rounded-[var(--radius)] p-6 max-w-md w-full mx-4">
         <div className="mb-4">
-          <h2 className="text-lg font-mono font-bold text-athena-text-light">
+          <h2 className="text-lg font-mono font-bold text-[var(--color-text-primary)]">
             {t("editOp")}
           </h2>
-          <p className="text-xs font-mono text-athena-text-tertiary mt-1">
+          <p className="text-xs font-mono text-[var(--color-text-tertiary)] mt-1">
             {operation.codename}
           </p>
         </div>
@@ -501,7 +539,7 @@ function EditOperationModal({ operation, onSaved, onCancel }: EditModalProps) {
           </div>
 
           {error && (
-            <p className="text-xs font-mono text-athena-error">{error}</p>
+            <p className="text-xs font-mono text-[var(--color-error)]">{error}</p>
           )}
 
           <div className="flex gap-3 justify-end pt-2">

@@ -10,6 +10,8 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
+
 interface MissionObjectiveProps {
   objective: string;
   targetsCompromised: number;
@@ -21,6 +23,7 @@ export function MissionObjective({
   targetsCompromised,
   targetsTotal,
 }: MissionObjectiveProps) {
+  const t = useTranslations("WarRoom");
   const pct =
     targetsTotal > 0
       ? Math.round((targetsCompromised / targetsTotal) * 100)
@@ -85,7 +88,7 @@ export function MissionObjective({
         </svg>
 
         <span className="text-sm font-bold text-athena-text-light">
-          OBJECTIVE: {objective}
+          {t("objective", { name: objective })}
         </span>
       </div>
 
@@ -100,7 +103,7 @@ export function MissionObjective({
 
         <div className="flex items-center justify-between">
           <span className="text-[10px] text-athena-text-tertiary athena-tabular-nums">
-            {targetsCompromised}/{targetsTotal} targets
+            {t("targetsProgress", { current: targetsCompromised, total: targetsTotal })}
           </span>
           <span className="text-[10px] text-athena-accent font-bold athena-tabular-nums">
             {pct}%

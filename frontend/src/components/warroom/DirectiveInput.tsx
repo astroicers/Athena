@@ -11,6 +11,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 interface DirectiveInputProps {
   iterationId: string;
@@ -29,6 +30,7 @@ export function DirectiveInput({
   submittedDirective,
   aiSuggestion,
 }: DirectiveInputProps) {
+  const t = useTranslations("WarRoom");
   const [draft, setDraft] = useState("");
 
   const handleSubmit = () => {
@@ -50,7 +52,7 @@ export function DirectiveInput({
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <span className="text-[10px] text-athena-text-tertiary uppercase tracking-wider font-semibold">
-          NEXT DIRECTIVE
+          {t("nextDirective")}
         </span>
 
         {/* Auto Mode toggle */}
@@ -59,7 +61,7 @@ export function DirectiveInput({
           className="flex items-center gap-2 text-[10px] uppercase tracking-wider"
           type="button"
         >
-          <span className="text-athena-text-tertiary">AUTO</span>
+          <span className="text-athena-text-tertiary">{t("autoMode")}</span>
           <span
             className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
               autoMode ? "bg-athena-accent" : "bg-athena-border"
@@ -77,7 +79,7 @@ export function DirectiveInput({
       {/* Auto mode ON */}
       {autoMode && (
         <p className="text-xs text-athena-accent">
-          AUTO MODE: ON -- AI proceeds automatically
+          {t("autoModeOn")}
         </p>
       )}
 
@@ -108,7 +110,7 @@ export function DirectiveInput({
             type="button"
             className="self-start bg-athena-surface border border-[var(--color-border)] text-athena-text text-[10px] uppercase tracking-wider font-semibold px-3 py-1.5 rounded-[var(--radius)] hover:bg-athena-elevated transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Submit Directive
+            {t("submitDirective")}
           </button>
         </div>
       )}

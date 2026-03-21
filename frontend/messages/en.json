@@ -262,7 +262,12 @@
     "lowConfidence": "LOW CONFIDENCE",
     "errorLoading": "Failed to load AI decision data",
     "noTechnique": "— NO TECHNIQUE —",
-    "noAssessment": "No assessment available."
+    "noAssessment": "No assessment available.",
+    "c5isrReadiness": "C5ISR Readiness",
+    "frameworkMatch": "Framework / Technique Match",
+    "noiseDetectionRisk": "Noise / Detection Risk",
+    "targetProfileMatch": "Target Profile Match",
+    "opsecViability": "OPSEC Viability Score"
   },
   "KillChain": {
     "progress": "Kill Chain Progress",
@@ -604,7 +609,27 @@
     "viewFullLogs": "View full logs",
     "reconStarted": "Recon scan started",
     "initialAccessStarted": "Initial access started",
-    "battleRhythm": "BATTLE RHYTHM"
+    "battleRhythm": "BATTLE RHYTHM",
+    "campaignTimeline": "Campaign Timeline",
+    "oodaIteration": "OODA #{num}",
+    "autoMode": "Auto",
+    "manualMode": "Manual",
+    "c5isrHealth": "C5ISR Health",
+    "tacticalStatus": "Tactical Status",
+    "noise": "Noise",
+    "risk": "Risk",
+    "decision": "Decision",
+    "confidence": "Confidence",
+    "nextDirective": "Next Directive",
+    "autoModeOn": "Auto Mode: ON — AI proceeds automatically",
+    "submitDirective": "Submit Directive",
+    "recon": "Recon",
+    "noReconData": "No recon data yet",
+    "completed": "Completed",
+    "inProgress": "In Progress",
+    "objective": "Objective: {name}",
+    "targetsProgress": "{current}/{total} targets",
+    "active": "Active"
   },
   "Legend": {
     "title": "LEGEND",
@@ -731,6 +756,7 @@
       "status": "Status",
       "discovered": "Discovered"
     },
+    "severityDistribution": "Severity Distribution",
     "noVulns": "No vulnerabilities found",
     "detail": {
       "title": "Vulnerability Detail",

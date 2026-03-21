@@ -10,6 +10,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { OODATimelineEntry } from "@/types/ooda";
 
 interface ReconBlockProps {
@@ -17,6 +18,7 @@ interface ReconBlockProps {
 }
 
 export function ReconBlock({ entries }: ReconBlockProps) {
+  const t = useTranslations("WarRoom");
   const reconEntries = entries.filter((e) => e.iterationNumber === 0);
 
   return (
@@ -24,14 +26,14 @@ export function ReconBlock({ entries }: ReconBlockProps) {
       {/* Header */}
       <div className="flex items-center gap-2 mb-3">
         <span className="bg-athena-accent/[0.12] border border-[var(--color-accent)]/[0.25] text-athena-accent text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-[var(--radius)]">
-          RECON
+          {t("recon")}
         </span>
       </div>
 
       {/* Entries */}
       {reconEntries.length === 0 ? (
         <p className="text-xs text-athena-text-tertiary">
-          No recon data yet
+          {t("noReconData")}
         </p>
       ) : (
         <div className="flex flex-col gap-2">

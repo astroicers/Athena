@@ -157,11 +157,11 @@ function WarRoomContent() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <h2 className="font-mono text-xs font-bold text-athena-text-tertiary uppercase tracking-widest">
-                CAMPAIGN TIMELINE
+                {t("campaignTimeline")}
               </h2>
               {dashboard && (
                 <span className="font-mono text-xs text-athena-accent font-bold">
-                  OODA #{dashboard.iterationCount}
+                  {t("oodaIteration", { num: dashboard.iterationCount })}
                 </span>
               )}
             </div>
@@ -175,7 +175,7 @@ function WarRoomContent() {
                 }`}
               >
                 <span className={`w-1.5 h-1.5 rounded-full ${autoMode ? "bg-athena-accent" : "bg-athena-text-tertiary"}`} />
-                {autoMode ? "AUTO" : "MANUAL"}
+                {autoMode ? t("autoMode") : t("manualMode")}
               </button>
             </div>
           </div>

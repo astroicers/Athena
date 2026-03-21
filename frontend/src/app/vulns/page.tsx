@@ -86,14 +86,16 @@ const STATUS_LIST: VulnStatus[] = [
 function SeverityHeatStrip({
   bySeverity,
   total,
+  t,
 }: {
   bySeverity: Record<VulnSeverity, number>;
   total: number;
+  t: (key: string) => string;
 }) {
   return (
     <div className="flex flex-col gap-1">
       <span className="font-mono text-[11px] font-bold uppercase tracking-[2px] text-[var(--color-text-secondary)]">
-        SEVERITY DISTRIBUTION
+        {t("severityDistribution")}
       </span>
       <div className="flex gap-0.5 h-6 rounded-[var(--radius)]">
         {SEVERITY_ORDER.map((sev) => {
@@ -623,6 +625,7 @@ function VulnsContent() {
             <SeverityHeatStrip
               bySeverity={computedSummary.bySeverity}
               total={computedSummary.total}
+              t={t}
             />
           </div>
 

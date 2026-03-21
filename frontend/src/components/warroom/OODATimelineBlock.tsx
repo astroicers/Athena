@@ -10,6 +10,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { OODAPhase } from "@/types/enums";
 import type { C5ISRStatus } from "@/types/c5isr";
 import type { OperationalConstraints } from "@/types/constraint";
@@ -47,11 +48,11 @@ const PHASE_COLORS: Record<OODAPhase, string> = {
   [OODAPhase.ACT]: "var(--color-success)",
 };
 
-const PHASE_LABELS: Record<OODAPhase, string> = {
-  [OODAPhase.OBSERVE]: "OBSERVE",
-  [OODAPhase.ORIENT]: "ORIENT",
-  [OODAPhase.DECIDE]: "DECIDE",
-  [OODAPhase.ACT]: "ACT",
+const PHASE_KEYS: Record<OODAPhase, string> = {
+  [OODAPhase.OBSERVE]: "observe",
+  [OODAPhase.ORIENT]: "orient",
+  [OODAPhase.DECIDE]: "decide",
+  [OODAPhase.ACT]: "act",
 };
 
 function getSummary(
@@ -89,6 +90,8 @@ export function OODATimelineBlock({
   constraints,
   isCurrent = false,
 }: OODATimelineBlockProps) {
+  const t = useTranslations("WarRoom");
+  const tOoda = useTranslations("OODA");
   const isCompleted = iteration.completedAt !== null;
 
   return (
@@ -103,7 +106,7 @@ export function OODATimelineBlock({
       <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--color-border)]">
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold text-athena-text-light">
-            OODA #{iteration.iterationNumber}
+            {t("oodaIteration", { num: iteration.iterationNumber })}
           </span>
         </div>
         <span
@@ -113,7 +116,7 @@ export function OODATimelineBlock({
               : "bg-athena-accent/[0.12] border border-[var(--color-accent)]/[0.25] text-athena-accent"
           }`}
         >
-          {isCompleted ? "COMPLETED" : "IN PROGRESS"}
+          {isCompleted ? t("completed") : t("inProgress")}
         </span>
       </div>
 
@@ -158,11 +161,11 @@ export function OODATimelineBlock({
                           : color,
                       }}
                     >
-                      {PHASE_LABELS[phase]}
+                      {tOoda(PHASE_KEYS[phase])}
                     </span>
                     {isActive && (
                       <span className="text-[10px] font-bold uppercase tracking-wider text-athena-accent bg-athena-accent/[0.12] border border-[var(--color-accent)]/[0.25] px-1.5 py-0.5 rounded-[var(--radius)]">
-                        ACTIVE
+                        {t("active")}
                       </span>
                     )}
                   </div>

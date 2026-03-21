@@ -10,6 +10,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { C5ISRStatus } from "@/types/c5isr";
 
 interface StatusPanelProps {
@@ -87,6 +88,7 @@ export function StatusPanel({
   matrixAction,
   confidence,
 }: StatusPanelProps) {
+  const t = useTranslations("WarRoom");
   const action = actionStyle(matrixAction);
 
   return (
@@ -94,7 +96,7 @@ export function StatusPanel({
       {/* Section 1: C5ISR HEALTH */}
       <div className="flex flex-col gap-2">
         <span className="text-[10px] text-athena-text-tertiary uppercase tracking-wider font-semibold">
-          C5ISR HEALTH
+          {t("c5isrHealth")}
         </span>
 
         <div className="flex flex-col gap-1.5">
@@ -132,14 +134,14 @@ export function StatusPanel({
       {/* Section 2: TACTICAL STATUS */}
       <div className="flex flex-col gap-2">
         <span className="text-[10px] text-athena-text-tertiary uppercase tracking-wider font-semibold">
-          TACTICAL STATUS
+          {t("tacticalStatus")}
         </span>
 
         <div className="flex gap-2">
           {/* Noise box */}
           <div className="flex-1 bg-athena-bg rounded-[var(--radius)] p-2 flex flex-col items-center gap-0.5">
             <span className="text-[9px] text-athena-text-tertiary uppercase tracking-wider">
-              NOISE
+              {t("noise")}
             </span>
             <span
               className="text-lg font-bold athena-tabular-nums"
@@ -152,7 +154,7 @@ export function StatusPanel({
           {/* Risk box */}
           <div className="flex-1 bg-athena-bg rounded-[var(--radius)] p-2 flex flex-col items-center gap-0.5">
             <span className="text-[9px] text-athena-text-tertiary uppercase tracking-wider">
-              RISK
+              {t("risk")}
             </span>
             <span
               className="text-lg font-bold uppercase"
@@ -170,7 +172,7 @@ export function StatusPanel({
       {/* Section 3: DECISION */}
       <div className="flex flex-col gap-2">
         <span className="text-[10px] text-athena-text-tertiary uppercase tracking-wider font-semibold">
-          DECISION
+          {t("decision")}
         </span>
 
         <div
@@ -188,7 +190,7 @@ export function StatusPanel({
       {/* Section 4: CONFIDENCE */}
       <div className="flex flex-col gap-2">
         <span className="text-[10px] text-athena-text-tertiary uppercase tracking-wider font-semibold">
-          CONFIDENCE
+          {t("confidence")}
         </span>
 
         <div className="flex items-center justify-center py-1">

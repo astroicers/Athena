@@ -262,7 +262,12 @@
     "lowConfidence": "低信心度",
     "errorLoading": "載入 AI 決策資料失敗",
     "noTechnique": "— 無技術 —",
-    "noAssessment": "無可用評估。"
+    "noAssessment": "無可用評估。",
+    "c5isrReadiness": "C5ISR 就緒度",
+    "frameworkMatch": "框架/技術匹配",
+    "noiseDetectionRisk": "雜訊/偵測風險",
+    "targetProfileMatch": "目標輪廓匹配",
+    "opsecViability": "OPSEC 可行性"
   },
   "KillChain": {
     "progress": "殺傷鏈進度",
@@ -604,7 +609,27 @@
     "autoLoopStart": "自動",
     "autoLoopStop": "停止自動",
     "autoLoopStartHint": "啟動自動 OODA 循環（30 秒間隔）",
-    "autoLoopStopHint": "停止自動 OODA 循環"
+    "autoLoopStopHint": "停止自動 OODA 循環",
+    "campaignTimeline": "戰役時間軸",
+    "oodaIteration": "OODA #{num}",
+    "autoMode": "自動",
+    "manualMode": "手動",
+    "c5isrHealth": "C5ISR 健康",
+    "tacticalStatus": "戰術狀態",
+    "noise": "雜訊",
+    "risk": "風險",
+    "decision": "決策",
+    "confidence": "信心指數",
+    "nextDirective": "下一步指令",
+    "autoModeOn": "自動模式：開啟 — AI 自動執行",
+    "submitDirective": "提交指令",
+    "recon": "偵察",
+    "noReconData": "尚無偵察資料",
+    "completed": "已完成",
+    "inProgress": "進行中",
+    "objective": "目標：{name}",
+    "targetsProgress": "{current}/{total} 目標",
+    "active": "執行中"
   },
   "Legend": {
     "title": "圖例",
@@ -731,6 +756,7 @@
       "status": "狀態",
       "discovered": "發現時間"
     },
+    "severityDistribution": "嚴重度分佈",
     "noVulns": "未發現漏洞",
     "detail": {
       "title": "漏洞詳情",

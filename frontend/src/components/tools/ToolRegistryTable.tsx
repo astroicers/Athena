@@ -14,25 +14,25 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { ToolExecuteModal } from "@/components/tools/ToolExecuteModal";
-import { Button } from "@/components/atoms/Button";
 import type { ToolRegistryEntry } from "@/types/tool";
-import { COLORS } from "@/lib/designTokens";
 
-const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
-  recon: { bg: `${COLORS.accent}20`, text: COLORS.accent },
-  execution: { bg: "#7C3AED20", text: "#A78BFA" },
-  vuln_scan: { bg: `${COLORS.success}20`, text: COLORS.success },
-  credential: { bg: `${COLORS.error}20`, text: COLORS.error },
+/* ── Badge color maps (hex with alpha suffixes) ── */
+
+const CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  recon:      { bg: "#1E609120", border: "#1E609140", text: "#1E6091" },
+  execution:  { bg: "#7C3AED20", border: "#7C3AED40", text: "#7C3AED" },
+  vuln_scan:  { bg: "#05966920", border: "#05966940", text: "#059669" },
+  credential: { bg: "#B91C1C20", border: "#B91C1C40", text: "#B91C1C" },
 };
 
-const RISK_COLORS: Record<string, { bg: string; text: string }> = {
-  low: { bg: `${COLORS.success}20`, text: COLORS.success },
-  medium: { bg: `${COLORS.warning}20`, text: COLORS.warning },
-  high: { bg: "#FB923C20", text: "#FB923C" },
-  critical: { bg: `${COLORS.error}20`, text: COLORS.error },
+const RISK_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  low:      { bg: "#05966920", border: "#05966940", text: "#059669" },
+  medium:   { bg: "#B4530920", border: "#B4530940", text: "#B45309" },
+  high:     { bg: "#FB923C20", border: "#FB923C40", text: "#FB923C" },
+  critical: { bg: "#B91C1C20", border: "#B91C1C40", text: "#B91C1C" },
 };
 
-const DEFAULT_CATEGORY_COLOR = { bg: `${COLORS.textSecondary}20`, text: COLORS.textSecondary };
+const DEFAULT_COLOR = { bg: "#71717A20", border: "#71717A40", text: "#71717A" };
 
 interface ToolRegistryTableProps {
   tools: ToolRegistryEntry[];
@@ -73,10 +73,8 @@ export function ToolRegistryTable({
 
   if (tools.length === 0) {
     return (
-      <div
-        className="rounded-athena text-center p-6 border border-athena-border/25"
-      >
-        <span className="font-mono text-xs text-athena-text-secondary">
+      <div className="rounded-[var(--radius)] text-center p-6 border border-[var(--color-border)]">
+        <span className="font-mono text-xs text-[var(--color-text-secondary)]">
           {t("noTools")}
         </span>
       </div>
@@ -85,67 +83,74 @@ export function ToolRegistryTable({
 
   return (
     <div>
-      {/* Header row */}
-      <div
-        className="flex items-center font-mono uppercase tracking-wider h-9 px-3 text-athena-text-secondary text-[10px] font-semibold border-b border-athena-border"
-      >
-        <div className="w-[260px] shrink-0">{t("colName")}</div>
-        <div className="w-[120px] shrink-0">{t("colCategory")}</div>
-        <div className="w-[70px] shrink-0">{t("colStatus")}</div>
-        <div className="w-[80px] shrink-0">{t("colRisk")}</div>
-        <div className="w-[180px] shrink-0">{t("colMitre")}</div>
-        <div className="w-[100px] shrink-0">{t("colContainer")}</div>
-        <div className="w-[80px] shrink-0 text-center">{t("colActions")}</div>
+      {/* Table Header — 36px, fill #18181B */}
+      <div className="flex items-center h-9 px-3 bg-[var(--color-bg-surface)]">
+        <div className="w-[260px] shrink-0 font-mono text-[10px] font-bold uppercase tracking-[1px] text-[var(--color-text-secondary)]">
+          {t("colName")}
+        </div>
+        <div className="w-[120px] shrink-0 font-mono text-[10px] font-bold uppercase tracking-[1px] text-[var(--color-text-secondary)]">
+          {t("colCategory")}
+        </div>
+        <div className="w-[70px] shrink-0 font-mono text-[10px] font-bold uppercase tracking-[1px] text-[var(--color-text-secondary)]">
+          {t("colStatus")}
+        </div>
+        <div className="w-[80px] shrink-0 font-mono text-[10px] font-bold uppercase tracking-[1px] text-[var(--color-text-secondary)]">
+          {t("colRisk")}
+        </div>
+        <div className="w-[180px] shrink-0 font-mono text-[10px] font-bold uppercase tracking-[1px] text-[var(--color-text-secondary)]">
+          {t("colMitre")}
+        </div>
+        <div className="w-[100px] shrink-0 font-mono text-[10px] font-bold uppercase tracking-[1px] text-[var(--color-text-secondary)]">
+          {t("colContainer")}
+        </div>
+        <div className="w-[80px] shrink-0 font-mono text-[10px] font-bold uppercase tracking-[1px] text-[var(--color-text-secondary)] text-center">
+          {t("colActions")}
+        </div>
       </div>
 
       {/* Data rows */}
       {tools.map((tool) => {
         const status = getContainerStatus(tool, containerStatuses);
-        const catColor = CATEGORY_COLORS[tool.category] ?? DEFAULT_CATEGORY_COLOR;
-        const riskColor = RISK_COLORS[tool.riskLevel] ?? DEFAULT_CATEGORY_COLOR;
+        const catColor = CATEGORY_COLORS[tool.category] ?? DEFAULT_COLOR;
+        const riskColor = RISK_COLORS[tool.riskLevel] ?? DEFAULT_COLOR;
 
         return (
           <div
             key={tool.id}
-            className="flex items-center transition-colors hover:bg-white/5 h-12 px-3 border-b border-athena-border/25"
+            className="flex items-center h-[52px] px-3 border-b border-[var(--color-border)] transition-colors hover:bg-[rgba(255,255,255,0.02)]"
           >
-            {/* NAME */}
-            <div
-              className="flex flex-col w-[260px] shrink-0 gap-0.5"
-            >
+            {/* NAME — 12px semibold #D4D4D8 */}
+            <div className="flex flex-col w-[260px] shrink-0 gap-0.5">
               <div className="flex items-center gap-2">
-                <span
-                  className="font-semibold truncate text-athena-text text-xs"
-                >
+                <span className="font-mono text-[12px] font-semibold text-[var(--color-text-primary)] truncate">
                   {tool.name}
                 </span>
                 {tool.source === "user" && (
-                  <Button
-                    variant="danger"
-                    size="sm"
+                  <button
                     onClick={() => handleDelete(tool.toolId)}
                     disabled={deletingId === tool.toolId}
-                    className="text-[10px] px-1.5 py-0.5 shrink-0"
+                    className="font-mono text-[10px] font-semibold text-[var(--color-error)] bg-[#B91C1C14] border border-[#B91C1C40] rounded-[var(--radius)] px-1.5 py-0.5 shrink-0 cursor-pointer hover:bg-[#B91C1C20] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {deletingId === tool.toolId ? "..." : t("del")}
-                  </Button>
+                  </button>
                 )}
               </div>
               {tool.description && (
-                <span
-                  className="truncate text-athena-text-secondary text-[9px] max-w-[240px]"
-                >
+                <span className="font-mono text-[9px] font-normal text-[var(--color-text-secondary)] truncate max-w-[240px]">
                   {tool.description}
                 </span>
               )}
             </div>
 
-            {/* CATEGORY */}
+            {/* CATEGORY — badge with color coding */}
             <div className="w-[120px] shrink-0">
               <span
-                className="font-mono inline-block rounded-athena px-1.5 py-0.5 text-[10px]"
+                className="font-mono text-[10px] inline-block rounded-[var(--radius)] px-1.5 py-0.5"
                 style={{
                   backgroundColor: catColor.bg,
+                  borderWidth: "1px",
+                  borderStyle: "solid",
+                  borderColor: catColor.border,
                   color: catColor.text,
                 }}
               >
@@ -153,29 +158,36 @@ export function ToolRegistryTable({
               </span>
             </div>
 
-            {/* STATUS */}
+            {/* STATUS — dot 8px + ON/OFF 10px 600 */}
             <button
               role="switch"
               aria-checked={tool.enabled}
               onClick={() => onToggleEnabled(tool.toolId, !tool.enabled)}
-              className="flex items-center transition-opacity hover:opacity-75 w-[70px] shrink-0 gap-1.5 bg-transparent border-none cursor-pointer p-0"
+              className="flex items-center w-[70px] shrink-0 gap-1.5 bg-transparent border-none cursor-pointer p-0 transition-opacity hover:opacity-75"
             >
               <span
-                className={`inline-block rounded-full w-2 h-2 shrink-0 ${tool.enabled ? "bg-athena-success" : "bg-athena-text-secondary"}`}
+                className={`inline-block rounded-full w-2 h-2 shrink-0 ${
+                  tool.enabled ? "bg-[var(--color-success)]" : "bg-[var(--color-text-secondary)]"
+                }`}
               />
               <span
-                className={`font-semibold text-[10px] ${tool.enabled ? "text-athena-success" : "text-athena-text-secondary"}`}
+                className={`font-mono text-[10px] font-semibold ${
+                  tool.enabled ? "text-[var(--color-success)]" : "text-[var(--color-text-secondary)]"
+                }`}
               >
                 {tool.enabled ? t("on") : t("off")}
               </span>
             </button>
 
-            {/* RISK */}
+            {/* RISK — badge with color coding */}
             <div className="w-[80px] shrink-0">
               <span
-                className="font-mono inline-block rounded-athena px-1.5 py-0.5 text-[10px]"
+                className="font-mono text-[10px] inline-block rounded-[var(--radius)] px-1.5 py-0.5"
                 style={{
                   backgroundColor: riskColor.bg,
+                  borderWidth: "1px",
+                  borderStyle: "solid",
+                  borderColor: riskColor.border,
                   color: riskColor.text,
                 }}
               >
@@ -183,66 +195,54 @@ export function ToolRegistryTable({
               </span>
             </div>
 
-            {/* MITRE */}
-            <div
-              className="flex flex-wrap w-[180px] shrink-0 gap-1"
-            >
+            {/* MITRE — bg #27272A, text #52525B */}
+            <div className="flex flex-wrap w-[180px] shrink-0 gap-1">
               {tool.mitreTechniques.map((tid) => (
                 <span
                   key={tid}
-                  className="font-mono inline-block rounded-athena bg-athena-elevated text-athena-text-tertiary px-1.5 py-0.5 text-[10px]"
+                  className="font-mono text-[10px] inline-block rounded-[var(--radius)] bg-[var(--color-bg-elevated)] text-[var(--color-text-tertiary)] px-1.5 py-0.5"
                 >
                   {tid}
                 </span>
               ))}
             </div>
 
-            {/* CONTAINER */}
-            <div
-              className="flex items-center w-[100px] shrink-0 gap-1.5"
-            >
+            {/* CONTAINER — dot 6px + text 10px */}
+            <div className="flex items-center w-[100px] shrink-0 gap-1.5">
               {status === "online" && (
                 <>
-                  <span
-                    className="inline-block rounded-full w-1.5 h-1.5 shrink-0 bg-athena-success"
-                  />
-                  <span className="text-athena-success text-[10px]">
+                  <span className="inline-block rounded-full w-1.5 h-1.5 shrink-0 bg-[var(--color-success)]" />
+                  <span className="font-mono text-[10px] text-[var(--color-success)]">
                     {t("containerOnline")}
                   </span>
                 </>
               )}
               {status === "offline" && (
                 <>
-                  <span
-                    className="inline-block rounded-full w-1.5 h-1.5 shrink-0 bg-athena-error"
-                  />
-                  <span className="text-athena-error text-[10px]">
+                  <span className="inline-block rounded-full w-1.5 h-1.5 shrink-0 bg-[var(--color-error)]" />
+                  <span className="font-mono text-[10px] text-[var(--color-error)]">
                     {t("containerOffline")}
                   </span>
                 </>
               )}
               {status === "none" && (
-                <span className="font-mono text-athena-text-secondary text-[10px]">
+                <span className="font-mono text-[10px] text-[var(--color-text-secondary)]">
                   --
                 </span>
               )}
             </div>
 
-            {/* ACTIONS */}
-            <div
-              className="flex items-center justify-center w-[80px] shrink-0"
-            >
+            {/* ACTIONS — execute button */}
+            <div className="flex items-center justify-center w-[80px] shrink-0">
               {tool.enabled ? (
-                <Button
-                  variant="secondary"
-                  size="sm"
+                <button
                   onClick={() => setSelectedTool(tool)}
-                  className="text-[10px]"
+                  className="font-mono text-[10px] font-semibold text-[var(--color-text-primary)] bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] rounded-[var(--radius)] px-3 py-1 cursor-pointer hover:bg-[var(--color-bg-elevated)] transition-colors"
                 >
                   {t("execute")}
-                </Button>
+                </button>
               ) : (
-                <span className="font-mono text-athena-text-secondary text-[10px]">
+                <span className="font-mono text-[10px] text-[var(--color-text-secondary)]">
                   --
                 </span>
               )}

@@ -126,16 +126,16 @@ export function ObjectivesPanel({ operationId }: { operationId: string }) {
   }
 
   const inputStyles =
-    "w-full bg-athena-bg border border-athena-border rounded-athena px-2.5 py-1.5 text-xs font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-athena-accent focus:ring-1 focus:ring-athena-accent";
+    "w-full bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-[var(--radius)] px-2.5 py-1.5 text-xs font-mono text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]";
 
   const labelStyles =
-    "block text-[10px] font-mono text-athena-text-tertiary uppercase tracking-wider mb-0.5";
+    "block text-[10px] font-mono text-[var(--color-text-secondary)] uppercase tracking-wider mb-0.5";
 
   if (loading) {
     return (
       <div className="animate-pulse">
-        <div className="h-6 w-32 bg-athena-surface rounded-athena mb-2" />
-        <div className="h-20 bg-athena-surface rounded-athena" />
+        <div className="h-6 w-32 bg-[var(--color-bg-surface)] rounded-[var(--radius)] mb-2" />
+        <div className="h-20 bg-[var(--color-bg-surface)] rounded-[var(--radius)]" />
       </div>
     );
   }
@@ -164,10 +164,10 @@ export function ObjectivesPanel({ operationId }: { operationId: string }) {
 
       {/* Add Objective Form */}
       {showForm && (
-        <form onSubmit={handleAdd} className="mt-2 border border-athena-border rounded-athena bg-athena-surface p-3 space-y-2">
+        <form onSubmit={handleAdd} className="mt-2 border border-[var(--color-border)] rounded-[var(--radius)] bg-[var(--color-bg-surface)] p-3 space-y-2">
           <div>
             <label className={labelStyles}>
-              {t("objective")} <span className="text-athena-error">*</span>
+              {t("objective")} <span className="text-[var(--color-error)]">*</span>
             </label>
             <input
               type="text"
@@ -215,8 +215,8 @@ export function ObjectivesPanel({ operationId }: { operationId: string }) {
 
       {/* Objectives List */}
       {objectives.length === 0 ? (
-        <div className="bg-athena-surface border border-athena-border rounded-athena p-4 text-center mt-2">
-          <span className="text-[10px] font-mono text-athena-text-tertiary">
+        <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-[var(--radius)] p-4 text-center mt-2">
+          <span className="text-[10px] font-mono text-[var(--color-text-tertiary)]">
             {t("noObjectives")}
           </span>
         </div>
@@ -225,17 +225,17 @@ export function ObjectivesPanel({ operationId }: { operationId: string }) {
           {objectives.map((obj) => (
             <div
               key={obj.id}
-              className="border border-athena-border rounded-athena bg-athena-surface px-3 py-2 flex items-center gap-2"
+              className="border border-[var(--color-border)] rounded-[var(--radius)] bg-[var(--color-bg-surface)] px-3 py-2 flex items-center gap-2"
             >
               <div className="flex-1 min-w-0">
-                <p className={`text-xs font-mono ${obj.status === "achieved" ? "text-athena-text-tertiary line-through" : "text-athena-text-light"}`}>
+                <p className={`text-xs font-mono ${obj.status === "achieved" ? "text-[var(--color-text-tertiary)] line-through" : "text-[var(--color-text-primary)]"}`}>
                   {obj.objective}
                 </p>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant={CATEGORY_VARIANT[obj.category] ?? "info"}>
                     {t(obj.category as "tactical" | "strategic" | "compliance")}
                   </Badge>
-                  <span className="text-xs font-mono text-athena-text-tertiary">
+                  <span className="text-xs font-mono text-[var(--color-text-tertiary)]">
                     P{obj.priority}
                   </span>
                 </div>

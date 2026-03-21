@@ -29,13 +29,13 @@ export function SectionHeader({
   ...rest
 }: SectionHeaderProps) {
   const Tag = level === "page" ? "h2" : "h3";
-  const colorClass = level === "page" ? "text-athena-text-secondary" : "text-athena-text-secondary";
+  const colorClass = "text-[var(--color-text-primary)]";
 
   if (trailing) {
     return (
       <div className={`flex items-center justify-between ${className}`}>
         <Tag
-          className={`text-[11px] font-mono font-bold ${colorClass} uppercase tracking-wider`}
+          className={`text-[13px] font-mono font-bold ${colorClass} uppercase tracking-wider`}
           {...rest}
         >
           {children}
@@ -47,7 +47,7 @@ export function SectionHeader({
 
   return (
     <Tag
-      className={`text-[11px] font-mono font-bold ${colorClass} uppercase tracking-wider ${className}`}
+      className={`text-[13px] font-mono font-bold ${colorClass} uppercase tracking-wider ${className}`}
       {...rest}
     >
       {children}

@@ -22,13 +22,13 @@ export function PageHeader({
   trailing,
 }: PageHeaderProps) {
   return (
-    <header className="px-6 flex items-center justify-between border-b border-athena-border h-12 bg-athena-surface">
+    <header className="px-6 flex items-center justify-between border-b border-[var(--color-border)] h-12 bg-[var(--color-bg-surface)]">
       <div className="flex items-center gap-3">
-        <h2 className="font-mono text-[13px] font-bold tracking-wider text-athena-text">
+        <h2 className="font-mono text-[13px] font-bold tracking-wider text-[var(--color-text-primary)]">
           {title}
         </h2>
         {operationCode && (
-          <span className="font-mono text-[10px] rounded-athena text-athena-accent bg-athena-accent-bg px-2 py-0.5">
+          <span className="font-mono text-[10px] font-semibold rounded-[var(--radius)] text-[var(--color-accent)] bg-[var(--color-accent)]/[0.12] border border-[var(--color-accent)]/[0.25] px-2 py-0.5">
             {operationCode}
           </span>
         )}

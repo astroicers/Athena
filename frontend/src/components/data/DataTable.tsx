@@ -64,22 +64,22 @@ export function DataTable<T extends Record<string, unknown>>({
 
   if (data.length === 0) {
     return (
-      <div className="border border-athena-border/25 rounded-athena p-6 text-center">
-        <span className="text-xs font-mono text-athena-text-secondary">{emptyMessage}</span>
+      <div className="border border-[var(--color-border)] rounded-[var(--radius)] p-6 text-center">
+        <span className="text-xs font-mono text-[var(--color-text-secondary)]">{emptyMessage}</span>
       </div>
     );
   }
 
   return (
-    <div className="bg-athena-surface border border-athena-border rounded-athena overflow-hidden">
+    <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-[var(--radius)] overflow-hidden">
       <table className="w-full text-xs font-mono">
         <thead>
-          <tr className="border-b border-athena-border bg-athena-surface">
+          <tr className="border-b border-[var(--color-border)] bg-[var(--color-bg-surface)]">
             {columns.map((col) => (
               <th
                 key={col.key}
-                className={`px-4 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-athena-text-secondary ${
-                  col.sortable ? "cursor-pointer hover:text-athena-accent select-none" : ""
+                className={`h-9 px-4 text-left text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-secondary)] ${
+                  col.sortable ? "cursor-pointer hover:text-[var(--color-accent)] select-none" : ""
                 }`}
                 style={col.width ? { width: col.width } : undefined}
                 onClick={col.sortable ? () => handleSort(col.key) : undefined}
@@ -98,10 +98,10 @@ export function DataTable<T extends Record<string, unknown>>({
           {sorted.map((row) => (
             <tr
               key={String(row[keyField])}
-              className="hover:bg-white/5 border-b border-athena-border/25 h-10 transition-colors"
+              className="hover:bg-white/5 border-b border-[var(--color-border)] h-10 transition-colors"
             >
               {columns.map((col) => (
-                <td key={col.key} className="px-4 py-2 text-athena-text-light">
+                <td key={col.key} className="px-4 py-2 text-[var(--color-text-primary)]">
                   {col.render ? col.render(row) : String(row[col.key] ?? "")}
                 </td>
               ))}

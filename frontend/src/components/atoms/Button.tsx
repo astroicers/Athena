@@ -14,11 +14,11 @@ import React, { ButtonHTMLAttributes } from "react";
 
 const VARIANT_STYLES = {
   primary:
-    "bg-athena-accent text-athena-text font-bold border border-athena-accent hover:bg-athena-accent",
+    "bg-[var(--color-accent)] text-[var(--color-text-primary)] font-bold border border-[var(--color-accent)] hover:bg-[var(--color-accent-hover)]",
   secondary:
-    "bg-athena-surface text-athena-text-light border border-[var(--color-border-subtle)] hover:bg-athena-elevated",
+    "bg-[var(--color-bg-surface)] text-[var(--color-text-primary)] border border-[var(--color-border-subtle)] hover:bg-[var(--color-bg-elevated)]",
   danger:
-    "bg-athena-error/[0.12] text-athena-error border border-athena-error/[0.25] hover:bg-athena-error/20",
+    "bg-[var(--color-error)]/[0.12] text-[var(--color-error)] border border-[var(--color-error)]/[0.25] hover:bg-[var(--color-error)]/20",
 } as const;
 
 const SIZE_STYLES = {
@@ -44,7 +44,7 @@ export function Button({
 }: ButtonProps) {
   return (
     <button
-      className={`inline-flex items-center justify-center gap-1.5 font-mono font-semibold rounded-athena transition-colors focus:outline-none focus:ring-2 focus:ring-athena-accent
+      className={`inline-flex items-center justify-center gap-1.5 font-mono font-semibold rounded-[var(--radius)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]
         ${VARIANT_STYLES[variant]} ${SIZE_STYLES[size]}
         ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
         ${className}`}

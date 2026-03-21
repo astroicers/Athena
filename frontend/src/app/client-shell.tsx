@@ -10,7 +10,9 @@
 
 "use client";
 
-import { ReactNode, useCallback, useEffect, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { MockBanner } from "@/components/layout/MockBanner";
@@ -30,6 +32,17 @@ function ShellInner({ children }: { children: ReactNode }) {
   const { constraints, opsecAlerts } = useGlobalAlerts(ws);
   const [notifOpen, setNotifOpen] = useState(false);
   const [opCodename, setOpCodename] = useState<string | null>(null);
+
+  const pathname = usePathname();
+  const tNav = useTranslations("Nav");
+  const pageTitle = useMemo(() => {
+    if (pathname.startsWith("/operations")) return tNav("operations");
+    if (pathname.startsWith("/planner")) return tNav("planner");
+    if (pathname.startsWith("/warroom")) return tNav("warRoom");
+    if (pathname.startsWith("/vulns")) return tNav("vulns");
+    if (pathname.startsWith("/tools")) return tNav("tools");
+    return "Athena";
+  }, [pathname, tNav]);
 
   useEffect(() => {
     if (!operationId) return;
@@ -57,7 +70,7 @@ function ShellInner({ children }: { children: ReactNode }) {
         <MockBanner />
         <ConstraintBanner constraints={constraints} onOverride={handleConstraintOverride} />
         <PageHeader
-          title="Athena"
+          title={pageTitle}
           operationCode={opCodename ?? undefined}
           trailing={
             <button

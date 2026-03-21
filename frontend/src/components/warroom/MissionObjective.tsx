@@ -27,7 +27,7 @@ export function MissionObjective({
       : 0;
 
   return (
-    <div className="border-2 border-athena-accent rounded-athena p-3 font-mono">
+    <div className="border-2 border-[var(--color-accent)] rounded-[var(--radius)] p-3 font-mono">
       {/* Header */}
       <div className="flex items-center gap-2 mb-2">
         {/* Crosshair icon */}

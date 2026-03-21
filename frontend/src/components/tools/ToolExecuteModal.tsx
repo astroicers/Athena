@@ -81,9 +81,9 @@ export function ToolExecuteModal({ tool, onClose }: ToolExecuteModalProps) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={handleBackdropClick}
     >
-      <div className="bg-athena-surface border border-athena-border rounded-athena w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col">
+      <div className="bg-athena-surface border border-[var(--color-border)] rounded-[var(--radius)] w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-athena-border">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)]">
           <div>
             <h2 className="text-sm font-mono font-bold text-athena-accent">
               {tool.name}
@@ -110,7 +110,7 @@ export function ToolExecuteModal({ tool, onClose }: ToolExecuteModalProps) {
               {t("arguments")}
             </label>
             <textarea
-              className="w-full h-32 bg-athena-bg border border-athena-border rounded-athena p-3 font-mono text-xs text-athena-text-light resize-y focus:outline-none focus:border-athena-accent"
+              className="w-full h-32 bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] p-3 font-mono text-xs text-athena-text-light resize-y focus:outline-none focus:border-[var(--color-accent)]"
               value={argsText}
               onChange={(e) => setArgsText(e.target.value)}
               spellCheck={false}
@@ -134,14 +134,14 @@ export function ToolExecuteModal({ tool, onClose }: ToolExecuteModalProps) {
 
           {/* Error display */}
           {error && (
-            <div className="bg-athena-bg border border-red-500/30 rounded-athena p-3">
+            <div className="bg-athena-bg border border-red-500/30 rounded-[var(--radius)] p-3">
               <p className="font-mono text-xs text-red-400">{error}</p>
             </div>
           )}
 
           {/* Result display */}
           {result && (
-            <div className="bg-athena-bg border border-athena-border rounded-athena p-3 max-h-80 overflow-y-auto">
+            <div className="bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] p-3 max-h-80 overflow-y-auto">
               <pre className="font-mono text-xs text-athena-success whitespace-pre-wrap break-words">
                 {result}
               </pre>

@@ -113,52 +113,17 @@ function OperationsContent() {
 
   return (
     <div className="flex flex-col h-full bg-[var(--color-bg-primary)]">
-      {/* ── Page Header (48px, #18181B surface) ────────────────────── */}
-      <header className="h-12 shrink-0 flex items-center justify-between px-4 bg-[var(--color-bg-surface)]">
-        {/* Left: Title + Operation badge */}
-        <div className="flex items-center gap-3">
-          <h2 className="font-mono text-[13px] font-bold tracking-wider text-[var(--color-text-primary)]">
-            {t("title")}
-          </h2>
-          <span className="font-mono text-[10px] font-semibold text-[var(--color-accent)] bg-[#1E609120] border border-[#1E609140] rounded-[var(--radius)] px-2.5 py-1">
-            PHANTOM-EYE
-          </span>
-        </div>
-
-        {/* Center: Create Operation button */}
-        <button
-          onClick={() => setShowCreate(true)}
-          className="font-mono text-[11px] font-semibold text-[var(--color-text-primary)] bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] rounded-[var(--radius)] px-3 py-1 hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer"
-        >
-          + {t("createOp")}
-        </button>
-
-        {/* Right: Notification bell */}
-        <div className="relative">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="var(--color-text-secondary)"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="w-4 h-4"
-          >
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-          </svg>
-          <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-3.5 h-3.5 rounded-full bg-red-600 text-white font-mono text-[8px] font-bold">
-            3
-          </span>
-        </div>
-      </header>
-
-      {/* ── Separator ─────────────────────────────────────────────── */}
-      <div className="h-px bg-[var(--color-border)]" />
-
       {/* ── Content Area (padding 20px 24px) ──────────────────────── */}
       <div className="flex-1 overflow-auto py-5 px-6">
+        {/* Top action bar */}
+        <div className="flex items-center justify-end mb-4">
+          <button
+            onClick={() => setShowCreate(true)}
+            className="font-mono text-[11px] font-semibold text-[var(--color-text-primary)] bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] rounded-[var(--radius)] px-3 py-1 hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer"
+          >
+            + {t("createOp")}
+          </button>
+        </div>
         {operations.length === 0 ? (
           /* -- Empty state ------------------------------------------ */
           <div className="flex items-center justify-center h-full">

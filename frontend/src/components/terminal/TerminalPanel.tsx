@@ -80,12 +80,12 @@ export function TerminalPanel({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-athena-bg/80 backdrop-blur-sm">
       <div
-        className="bg-athena-bg border border-athena-border rounded-athena shadow-2xl flex flex-col"
+        className="bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] shadow-2xl flex flex-col"
         style={{ width: "720px", height: "480px" }}
         onClick={() => inputRef.current?.focus()}
       >
         {/* Title bar */}
-        <div className="flex items-center justify-between px-3 py-2 border-b border-athena-border bg-athena-surface rounded-t-lg shrink-0">
+        <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--color-border)] bg-athena-surface rounded-t-lg shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-sm font-mono text-athena-success">●</span>
             <span className="text-xs font-mono text-athena-text-light">
@@ -135,7 +135,7 @@ export function TerminalPanel({
         {/* Input bar */}
         <form
           onSubmit={handleSubmit}
-          className="flex items-center gap-2 px-3 py-2 border-t border-athena-border shrink-0"
+          className="flex items-center gap-2 px-3 py-2 border-t border-[var(--color-border)] shrink-0"
         >
           <span className="text-athena-text-tertiary font-mono text-xs shrink-0">
             {prompt}
@@ -148,7 +148,7 @@ export function TerminalPanel({
             onKeyDown={handleKeyDown}
             disabled={!isConnected}
             placeholder={isConnected ? "" : t("connecting")}
-            className="flex-1 bg-transparent font-mono text-xs text-athena-accent outline-none placeholder-athena-text-secondary/70 focus:outline-none focus:ring-2 focus:ring-athena-accent"
+            className="flex-1 bg-transparent font-mono text-xs text-athena-accent outline-none placeholder-athena-text-secondary/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             autoComplete="off"
             autoCorrect="off"
             spellCheck={false}

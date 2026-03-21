@@ -46,7 +46,7 @@ export function TacticToolSection({
   return (
     <div
       id={`tactic-${tacticSlug}`}
-      className="border border-athena-border rounded-athena overflow-hidden"
+      className="border border-[var(--color-border)] rounded-[var(--radius)] overflow-hidden"
     >
       {/* Header */}
       <button
@@ -73,7 +73,7 @@ export function TacticToolSection({
 
       {/* Body */}
       {isOpen && (
-        <div className="border-t border-athena-border">
+        <div className="border-t border-[var(--color-border)]">
           <ToolRegistryTable
             tools={tools}
             onToggleEnabled={onToggleEnabled}

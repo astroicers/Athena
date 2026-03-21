@@ -509,7 +509,7 @@ function GraphStatsPanel({
   t: (key: string) => string;
 }) {
   return (
-    <div className="bg-athena-surface border border-athena-border rounded-athena px-3.5 py-3 min-w-[160px]">
+    <div className="bg-athena-surface border border-[var(--color-border)] rounded-[var(--radius)] px-3.5 py-3 min-w-[160px]">
       <div className="font-mono text-[10px] uppercase tracking-wider mb-2.5" style={{ color: TEXT_MUTED }}>
         {t("statsTitle")}
       </div>
@@ -572,7 +572,7 @@ function LegendPanel({
   title: string;
 }) {
   return (
-    <div className="bg-athena-surface border border-athena-border rounded-athena px-3.5 py-3 min-w-[160px]">
+    <div className="bg-athena-surface border border-[var(--color-border)] rounded-[var(--radius)] px-3.5 py-3 min-w-[160px]">
       <div className="font-mono text-[10px] uppercase tracking-wider mb-2.5" style={{ color: TEXT_MUTED }}>
         {title}
       </div>
@@ -615,7 +615,7 @@ function CredStatsPanel({
   );
 
   return (
-    <div className="bg-athena-surface border border-athena-border rounded-athena px-3.5 py-3 min-w-[160px]">
+    <div className="bg-athena-surface border border-[var(--color-border)] rounded-[var(--radius)] px-3.5 py-3 min-w-[160px]">
       <div className="font-mono text-[10px] uppercase tracking-wider mb-2.5" style={{ color: TEXT_MUTED }}>
         {t("statsTitle")}
       </div>
@@ -650,7 +650,7 @@ function SubTabButton({
   return (
     <button
       onClick={onClick}
-      className={`font-mono text-[10px] uppercase tracking-wider bg-transparent border-none border-b-2 px-1 cursor-pointer transition-colors duration-150 ${active ? "text-athena-accent border-b-athena-accent" : "text-athena-text-tertiary border-b-transparent"}`}
+      className={`font-mono text-[10px] uppercase tracking-wider bg-transparent border-none border-b-2 px-1 cursor-pointer transition-colors duration-150 ${active ? "text-athena-accent border-b-[var(--color-accent)]" : "text-athena-text-tertiary border-b-transparent"}`}
     >
       {label}
     </button>

@@ -38,7 +38,7 @@ export function HexIcon({
   const { text, bg } = VARIANT_COLORS[variant];
   return (
     <div
-      className={`inline-flex items-center justify-center font-mono font-bold rounded-athena
+      className={`inline-flex items-center justify-center font-mono font-bold rounded-[var(--radius)]
         ${SIZE_MAP[size]} ${text} ${bg}`}
     >
       <span>{icon}</span>

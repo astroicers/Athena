@@ -35,8 +35,8 @@ function OptionCard({ option, index }: { option: TacticalOption; index: number }
 
   return (
     <div
-      className={`bg-athena-bg border rounded-athena p-3 cursor-pointer transition-colors ${
-        index === 0 ? "border-athena-accent/50" : "border-athena-border"
+      className={`bg-athena-bg border rounded-[var(--radius)] p-3 cursor-pointer transition-colors ${
+        index === 0 ? "border-[var(--color-accent)]/50" : "border-[var(--color-border)]"
       }`}
       onClick={() => setExpanded(!expanded)}
     >
@@ -46,7 +46,7 @@ function OptionCard({ option, index }: { option: TacticalOption; index: number }
             {option.techniqueId}
           </span>
           {index === 0 && (
-            <span className="text-sm font-mono text-athena-accent bg-athena-accent/10 px-1.5 py-0.5 rounded-athena">
+            <span className="text-sm font-mono text-athena-accent bg-athena-accent/10 px-1.5 py-0.5 rounded-[var(--radius)]">
               {t("recommended")}
             </span>
           )}
@@ -66,7 +66,7 @@ function OptionCard({ option, index }: { option: TacticalOption; index: number }
       </p>
 
       {expanded && (
-        <div className="mt-2 pt-2 border-t border-athena-border/50 space-y-2">
+        <div className="mt-2 pt-2 border-t border-[var(--color-border)]/50 space-y-2">
           <p className="text-xs font-mono text-athena-text-tertiary leading-relaxed">
             {option.reasoning}
           </p>
@@ -98,7 +98,7 @@ export function RecommendationPanel({
 
   if (!recommendation) {
     return (
-      <div className="bg-athena-surface border border-athena-border rounded-athena p-4">
+      <div className="bg-athena-surface border border-[var(--color-border)] rounded-[var(--radius)] p-4">
         <SectionHeader level="card" className="mb-3" title={tHints("recommendation")}>
           {t("title")}
         </SectionHeader>
@@ -114,7 +114,7 @@ export function RecommendationPanel({
   const isDecided = recommendation.accepted !== null;
 
   return (
-    <div className="bg-athena-surface border border-athena-border rounded-athena p-4">
+    <div className="bg-athena-surface border border-[var(--color-border)] rounded-[var(--radius)] p-4">
       <SectionHeader
         level="card"
         className="mb-3"
@@ -136,7 +136,7 @@ export function RecommendationPanel({
       </SectionHeader>
 
       {/* Situation Assessment */}
-      <div className="bg-athena-bg border border-athena-border/50 rounded-athena p-3 mb-3">
+      <div className="bg-athena-bg border border-[var(--color-border)]/50 rounded-[var(--radius)] p-3 mb-3">
         <span className="text-sm font-mono text-athena-text-tertiary uppercase tracking-wider">
           {t("situationAssessment")}
         </span>

@@ -29,7 +29,7 @@ export function ConstraintStatusPanel({
   if (!constraints) {
     return (
       <div
-        className="rounded-athena font-mono text-[9px] text-center bg-[#ffffff0d] border border-[#ffffff10] text-[#ffffff25] px-3 py-2.5"
+        className="rounded-[var(--radius)] font-mono text-[9px] text-center bg-[#ffffff0d] border border-[#ffffff10] text-[#ffffff25] px-3 py-2.5"
       >
         Waiting for constraint data...
       </div>
@@ -62,7 +62,7 @@ export function ConstraintStatusPanel({
         {/* Forced Mode */}
         {constraints.forcedMode && (
           <span
-            className="font-mono text-[8px] font-bold uppercase px-2 py-0.5 rounded-athena bg-athena-error-bg text-athena-error"
+            className="font-mono text-[8px] font-bold uppercase px-2 py-0.5 rounded-[var(--radius)] bg-athena-error-bg text-athena-error"
           >
             MODE: {constraints.forcedMode}
           </span>
@@ -70,7 +70,7 @@ export function ConstraintStatusPanel({
 
         {/* Noise Budget */}
         <div
-          className="flex items-center gap-1.5 px-2 py-0.5 rounded-athena bg-[#ffffff14]"
+          className="flex items-center gap-1.5 px-2 py-0.5 rounded-[var(--radius)] bg-[#ffffff14]"
         >
           <span
             className="font-mono text-[8px] text-[#ffffff20]"
@@ -99,7 +99,7 @@ export function ConstraintStatusPanel({
         {/* Orient Options (only if reduced) */}
         {constraints.orientMaxOptions < 3 && (
           <span
-            className="font-mono text-[8px] font-bold px-2 py-0.5 rounded-athena bg-athena-warning-bg text-athena-warning"
+            className="font-mono text-[8px] font-bold px-2 py-0.5 rounded-[var(--radius)] bg-athena-warning-bg text-athena-warning"
           >
             OPTIONS: {constraints.orientMaxOptions}/3
           </span>
@@ -108,7 +108,7 @@ export function ConstraintStatusPanel({
         {/* Blocked Targets */}
         {constraints.blockedTargets.length > 0 && (
           <span
-            className="font-mono text-[8px] font-bold px-2 py-0.5 rounded-athena bg-athena-error-bg text-athena-error"
+            className="font-mono text-[8px] font-bold px-2 py-0.5 rounded-[var(--radius)] bg-athena-error-bg text-athena-error"
           >
             BLOCKED: {constraints.blockedTargets.length}
           </span>
@@ -117,7 +117,7 @@ export function ConstraintStatusPanel({
         {/* Active Overrides */}
         {constraints.activeOverrides.length > 0 && (
           <span
-            className="font-mono text-[8px] font-bold px-2 py-0.5 rounded-athena bg-athena-accent-bg text-athena-accent"
+            className="font-mono text-[8px] font-bold px-2 py-0.5 rounded-[var(--radius)] bg-athena-accent-bg text-athena-accent"
           >
             OVERRIDES: {constraints.activeOverrides.join(", ")}
           </span>
@@ -130,7 +130,7 @@ export function ConstraintStatusPanel({
           {constraints.hardLimits.map((limit, i) => (
             <div
               key={i}
-              className="rounded-athena flex items-center justify-between px-2.5 py-1.5 bg-athena-error-bg border border-athena-error/20"
+              className="rounded-[var(--radius)] flex items-center justify-between px-2.5 py-1.5 bg-athena-error-bg border border-[var(--color-error)]/20"
             >
               <div className="flex items-center gap-2">
                 <span
@@ -170,7 +170,7 @@ export function ConstraintStatusPanel({
           {constraints.warnings.map((warn, i) => (
             <div
               key={i}
-              className="rounded-athena flex items-center gap-2 bg-athena-warning-bg border border-athena-warning/15 py-[5px] px-2.5"
+              className="rounded-[var(--radius)] flex items-center gap-2 bg-athena-warning-bg border border-[var(--color-warning)]/15 py-[5px] px-2.5"
             >
               <span
                 className="w-1.5 h-1.5 rounded-full shrink-0 bg-athena-warning"
@@ -193,7 +193,7 @@ export function ConstraintStatusPanel({
       {/* All nominal */}
       {!hasIssues && (
         <div
-          className="rounded-athena font-mono text-[9px] text-center bg-athena-success-bg text-athena-success border border-athena-success/15 py-2 px-3"
+          className="rounded-[var(--radius)] font-mono text-[9px] text-center bg-athena-success-bg text-athena-success border border-[var(--color-success)]/15 py-2 px-3"
         >
           All domains nominal — no active constraints
         </div>

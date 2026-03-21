@@ -25,10 +25,10 @@ export function NavItem({ href, icon: Icon, label, isActive }: NavItemProps) {
     <Link
       href={href}
       title={label}
-      className={`flex items-center gap-2.5 h-9 w-full px-2 rounded-athena transition-colors
+      className={`flex items-center gap-2.5 h-9 w-full px-2 rounded-[var(--radius)] transition-colors
         ${
           isActive
-            ? "bg-athena-accent-bg border-l-[3px] border-athena-accent text-athena-accent font-semibold"
+            ? "bg-athena-accent-bg border-l-[3px] border-[var(--color-accent)] text-athena-accent font-semibold"
             : "text-athena-text-tertiary hover:text-athena-text-light hover:bg-athena-elevated"
         }`}
     >

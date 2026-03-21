@@ -47,7 +47,7 @@ export function KillChainIndicator({ stageCounts }: KillChainIndicatorProps) {
   );
 
   return (
-    <div className="bg-athena-surface border border-athena-border rounded-athena p-4">
+    <div className="bg-athena-surface border border-[var(--color-border)] rounded-[var(--radius)] p-4">
       <SectionHeader level="card" className="mb-1">
         {t("progress")}
       </SectionHeader>
@@ -76,7 +76,7 @@ export function KillChainIndicator({ stageCounts }: KillChainIndicatorProps) {
                 {data.total > 0 ? `${data.tested}/${data.total}` : ""}
               </span>
               <div
-                className="w-full bg-athena-border/20 rounded-athena overflow-hidden flex flex-col justify-end"
+                className="w-full bg-athena-border/20 rounded-[var(--radius)] overflow-hidden flex flex-col justify-end"
                 style={{ height: `${BAR_H}px` }}
               >
                 {successH > 0 && (
@@ -107,19 +107,19 @@ export function KillChainIndicator({ stageCounts }: KillChainIndicatorProps) {
       </div>
       <div className="flex items-center gap-3 mt-2">
         <div className="flex items-center gap-1">
-          <div className="w-2 h-2 rounded-athena bg-athena-accent/70" />
+          <div className="w-2 h-2 rounded-[var(--radius)] bg-athena-accent/70" />
           <span className="text-sm font-mono text-athena-text-tertiary">
             {t("tested")}
           </span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-2 h-2 rounded-athena bg-athena-error-bg/50" />
+          <div className="w-2 h-2 rounded-[var(--radius)] bg-athena-error-bg/50" />
           <span className="text-sm font-mono text-athena-text-tertiary">
             {t("failed")}
           </span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-2 h-2 rounded-athena bg-athena-elevated/40" />
+          <div className="w-2 h-2 rounded-[var(--radius)] bg-athena-elevated/40" />
           <span className="text-sm font-mono text-athena-text-tertiary">
             {t("untested")}
           </span>

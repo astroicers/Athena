@@ -51,8 +51,8 @@ export function ReconResultModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-athena-bg/80 backdrop-blur-sm">
-      <div className="bg-athena-surface border-2 border-athena-border rounded-athena p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
-        <div className="mb-4 border-b border-athena-border pb-3">
+      <div className="bg-athena-surface border-2 border-[var(--color-border)] rounded-[var(--radius)] p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <div className="mb-4 border-b border-[var(--color-border)] pb-3">
           <span className="text-xs font-mono text-athena-text-tertiary">{t("scanComplete")}</span>
           <h2 className="text-lg font-mono font-bold text-athena-text-light mt-1">{t("title")}</h2>
         </div>
@@ -83,7 +83,7 @@ export function ReconResultModal({
 
         {/* Open Ports */}
         {result.services && result.services.length > 0 && (
-          <div className="border-t border-athena-border pt-3 mb-4">
+          <div className="border-t border-[var(--color-border)] pt-3 mb-4">
             <p className="text-sm font-mono text-athena-text-tertiary uppercase tracking-wider mb-2">
               {t("openPorts")}
             </p>
@@ -100,7 +100,7 @@ export function ReconResultModal({
         )}
 
         {/* Initial Access */}
-        <div className="border-t border-athena-border pt-3 mb-4">
+        <div className="border-t border-[var(--color-border)] pt-3 mb-4">
           <p className="text-sm font-mono text-athena-text-tertiary uppercase tracking-wider mb-2">
             {t("initialAccess")}
           </p>
@@ -136,7 +136,7 @@ export function ReconResultModal({
           </div>
         </div>
 
-        <div className="flex gap-3 justify-end pt-2 border-t border-athena-border">
+        <div className="flex gap-3 justify-end pt-2 border-t border-[var(--color-border)]">
           {ia.agentDeployed && !triggered && (
             <Button variant="secondary" onClick={handleTriggerOoda} disabled={triggering}>
               {triggering ? t("triggering") : t("triggerOoda")}

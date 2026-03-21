@@ -615,29 +615,6 @@ function VulnsContent() {
 
   return (
     <div className="flex flex-col h-full overflow-y-auto bg-[var(--color-bg-primary)]">
-      {/* Page Header */}
-      <div className="flex items-center justify-between h-12 px-6 shrink-0 bg-[var(--color-bg-surface)]">
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-[13px] font-bold text-[var(--color-text-primary)]">
-            VULNERABILITIES
-          </span>
-          <span className="font-mono text-[11px] font-semibold rounded-[var(--radius)] px-2.5 py-1 bg-[var(--color-accent-bg)] text-[var(--color-accent)]">
-            {operationId?.slice(0, 12).toUpperCase()}
-          </span>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-[11px] font-semibold text-[var(--color-text-secondary)]">
-            Total: {computedSummary.total}
-          </span>
-          <div className="relative">
-            <span className="font-mono text-sm text-[var(--color-text-tertiary)]">
-              &#x1F514;
-            </span>
-            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[var(--color-error)]" />
-          </div>
-        </div>
-      </div>
-
       <div className="flex flex-col gap-4 min-h-full max-w-[1440px] w-full mx-auto">
         {/* Stats Row */}
         <div className="flex gap-4 py-4 px-6 shrink-0">

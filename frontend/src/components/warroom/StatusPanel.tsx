@@ -90,7 +90,7 @@ export function StatusPanel({
   const action = actionStyle(matrixAction);
 
   return (
-    <div className="w-[260px] bg-athena-surface border-l border-athena-border p-3 flex flex-col gap-0 font-mono h-full overflow-y-auto">
+    <div className="w-[260px] bg-athena-surface border-l border-[var(--color-border)] p-3 flex flex-col gap-0 font-mono h-full overflow-y-auto">
       {/* Section 1: C5ISR HEALTH */}
       <div className="flex flex-col gap-2">
         <span className="text-[10px] text-athena-text-tertiary uppercase tracking-wider font-semibold">
@@ -127,7 +127,7 @@ export function StatusPanel({
       </div>
 
       {/* Divider */}
-      <div className="border-t border-athena-border my-3" />
+      <div className="border-t border-[var(--color-border)] my-3" />
 
       {/* Section 2: TACTICAL STATUS */}
       <div className="flex flex-col gap-2">
@@ -137,7 +137,7 @@ export function StatusPanel({
 
         <div className="flex gap-2">
           {/* Noise box */}
-          <div className="flex-1 bg-athena-bg rounded-athena p-2 flex flex-col items-center gap-0.5">
+          <div className="flex-1 bg-athena-bg rounded-[var(--radius)] p-2 flex flex-col items-center gap-0.5">
             <span className="text-[9px] text-athena-text-tertiary uppercase tracking-wider">
               NOISE
             </span>
@@ -150,7 +150,7 @@ export function StatusPanel({
           </div>
 
           {/* Risk box */}
-          <div className="flex-1 bg-athena-bg rounded-athena p-2 flex flex-col items-center gap-0.5">
+          <div className="flex-1 bg-athena-bg rounded-[var(--radius)] p-2 flex flex-col items-center gap-0.5">
             <span className="text-[9px] text-athena-text-tertiary uppercase tracking-wider">
               RISK
             </span>
@@ -165,7 +165,7 @@ export function StatusPanel({
       </div>
 
       {/* Divider */}
-      <div className="border-t border-athena-border my-3" />
+      <div className="border-t border-[var(--color-border)] my-3" />
 
       {/* Section 3: DECISION */}
       <div className="flex flex-col gap-2">
@@ -174,7 +174,7 @@ export function StatusPanel({
         </span>
 
         <div
-          className={`${action.bg} rounded-athena p-3 flex items-center justify-center`}
+          className={`${action.bg} rounded-[var(--radius)] p-3 flex items-center justify-center`}
         >
           <span className={`text-2xl font-bold uppercase ${action.text}`}>
             {matrixAction}
@@ -183,7 +183,7 @@ export function StatusPanel({
       </div>
 
       {/* Divider */}
-      <div className="border-t border-athena-border my-3" />
+      <div className="border-t border-[var(--color-border)] my-3" />
 
       {/* Section 4: CONFIDENCE */}
       <div className="flex flex-col gap-2">

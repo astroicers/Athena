@@ -22,7 +22,7 @@ export function TargetPivotMarker({
   reason,
 }: TargetPivotMarkerProps) {
   return (
-    <div className="bg-athena-warning/[0.06] border border-athena-warning/[0.25] rounded-athena px-3 py-1.5 font-mono">
+    <div className="bg-athena-warning/[0.06] border border-[var(--color-warning)]/[0.25] rounded-[var(--radius)] px-3 py-1.5 font-mono">
       <div className="flex items-center gap-1.5">
         {/* Triangle alert icon */}
         <svg

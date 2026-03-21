@@ -110,7 +110,7 @@ export function NotificationCenter({
 
       {/* Slide-in panel */}
       <aside
-        className="fixed inset-y-0 right-0 z-50 flex flex-col animate-in slide-in-from-right duration-200 w-96 bg-athena-surface border-l border-athena-border font-mono"
+        className="fixed inset-y-0 right-0 z-50 flex flex-col animate-in slide-in-from-right duration-200 w-96 bg-athena-surface border-l border-[var(--color-border)] font-mono"
         role="dialog"
         aria-label={t("title")}
       >
@@ -180,7 +180,7 @@ export function NotificationCenter({
                   {constraintAlert.messages.map((msg, i) => (
                     <div
                       key={i}
-                      className="flex flex-col rounded-athena gap-1.5 px-3.5 py-3"
+                      className="flex flex-col rounded-[var(--radius)] gap-1.5 px-3.5 py-3"
                       style={{
                         backgroundColor: "color-mix(in srgb, var(--color-warning) 6%, transparent)",
                         border: "1px solid color-mix(in srgb, var(--color-warning) 30%, transparent)",
@@ -229,7 +229,7 @@ export function NotificationCenter({
 
               {/* ── Divider between sections ── */}
               {hasConstraint && hasOpsec && (
-                <div className="border-t border-athena-white-8 mx-4" />
+                <div className="border-t border-[var(--color-white-8)] mx-4" />
               )}
 
               {/* ── OPSEC Warnings section ── */}
@@ -249,7 +249,7 @@ export function NotificationCenter({
                     return (
                       <div
                         key={alert.id}
-                        className="flex flex-col rounded-athena gap-1.5 px-3 py-2.5"
+                        className="flex flex-col rounded-[var(--radius)] gap-1.5 px-3 py-2.5"
                         style={{
                           backgroundColor: colors.fill,
                           border: `1px solid ${colors.border}`,

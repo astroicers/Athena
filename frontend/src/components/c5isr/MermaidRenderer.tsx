@@ -68,7 +68,7 @@ export function MermaidRenderer({
   if (error) {
     return (
       <div
-        className={`rounded-athena border p-4 font-mono text-xs bg-athena-surface text-athena-error ${className}`}
+        className={`rounded-[var(--radius)] border p-4 font-mono text-xs bg-athena-surface text-athena-error ${className}`}
         style={{
           borderColor: "color-mix(in srgb, var(--color-error) 40%, transparent)",
         }}
@@ -83,7 +83,7 @@ export function MermaidRenderer({
       <style>{MERMAID_CSS_OVERRIDES}</style>
       <div
         ref={containerRef}
-        className={`mermaid-container rounded-athena border overflow-hidden bg-athena-surface border-athena-border p-3 ${className}`}
+        className={`mermaid-container rounded-[var(--radius)] border overflow-hidden bg-athena-surface border-[var(--color-border)] p-3 ${className}`}
         dangerouslySetInnerHTML={{ __html: svg }}
       />
     </>

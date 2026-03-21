@@ -33,7 +33,7 @@ export function RecommendCard({ recommendation }: RecommendCardProps) {
 
   if (!recommendation) {
     return (
-      <div className="bg-athena-surface border border-athena-border rounded-athena p-4">
+      <div className="bg-athena-surface border border-[var(--color-border)] rounded-[var(--radius)] p-4">
         <span className="text-xs font-mono text-athena-text-tertiary">
           {t("noRecommendation")}
         </span>
@@ -42,7 +42,7 @@ export function RecommendCard({ recommendation }: RecommendCardProps) {
   }
 
   return (
-    <div className="bg-athena-surface border border-athena-accent/30 rounded-athena p-4">
+    <div className="bg-athena-surface border border-[var(--color-accent)]/30 rounded-[var(--radius)] p-4">
       <div className="flex items-center justify-between mb-3">
         <span className="text-sm font-mono text-athena-accent uppercase tracking-wider">
           {t("title")}
@@ -58,9 +58,9 @@ export function RecommendCard({ recommendation }: RecommendCardProps) {
         {recommendation.options.map((opt, i) => (
           <div
             key={opt.techniqueId}
-            className={`flex items-center gap-2 p-2 rounded-athena text-xs font-mono ${
+            className={`flex items-center gap-2 p-2 rounded-[var(--radius)] text-xs font-mono ${
               opt.techniqueId === recommendation.recommendedTechniqueId
-                ? "bg-athena-accent/10 border border-athena-accent/30"
+                ? "bg-athena-accent/10 border border-[var(--color-accent)]/30"
                 : "bg-athena-elevated/50"
             }`}
           >

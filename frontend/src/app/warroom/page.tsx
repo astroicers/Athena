@@ -168,10 +168,10 @@ function WarRoomContent() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setAutoMode(!autoMode)}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-athena text-xs font-mono font-semibold transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-[var(--radius)] text-xs font-mono font-semibold transition-colors ${
                   autoMode
-                    ? "bg-athena-accent-bg text-athena-accent border border-athena-accent/25"
-                    : "bg-athena-surface text-athena-text-tertiary border border-athena-border"
+                    ? "bg-athena-accent-bg text-athena-accent border border-[var(--color-accent)]/25"
+                    : "bg-athena-surface text-athena-text-tertiary border border-[var(--color-border)]"
                 }`}
               >
                 <span className={`w-1.5 h-1.5 rounded-full ${autoMode ? "bg-athena-accent" : "bg-athena-text-tertiary"}`} />

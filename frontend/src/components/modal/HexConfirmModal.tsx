@@ -15,10 +15,10 @@ import { RiskLevel } from "@/types/enums";
 import { Button } from "@/components/atoms/Button";
 
 const RISK_STYLES: Record<string, { border: string; labelKey: "lowRisk" | "mediumRisk" | "highRisk" | "critical" }> = {
-  [RiskLevel.LOW]: { border: "border-athena-success", labelKey: "lowRisk" },
-  [RiskLevel.MEDIUM]: { border: "border-athena-warning", labelKey: "mediumRisk" },
-  [RiskLevel.HIGH]: { border: "border-athena-error", labelKey: "highRisk" },
-  [RiskLevel.CRITICAL]: { border: "border-athena-critical", labelKey: "critical" },
+  [RiskLevel.LOW]: { border: "border-[var(--color-success)]", labelKey: "lowRisk" },
+  [RiskLevel.MEDIUM]: { border: "border-[var(--color-warning)]", labelKey: "mediumRisk" },
+  [RiskLevel.HIGH]: { border: "border-[var(--color-error)]", labelKey: "highRisk" },
+  [RiskLevel.CRITICAL]: { border: "border-[var(--color-critical)]", labelKey: "critical" },
 };
 
 interface HexConfirmModalProps {
@@ -47,7 +47,7 @@ export function HexConfirmModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-athena-bg/80 backdrop-blur-sm">
       <div
-        className={`bg-athena-surface border-2 ${style.border} rounded-athena p-6 max-w-md w-full mx-4`}
+        className={`bg-athena-surface border-2 ${style.border} rounded-[var(--radius)] p-6 max-w-md w-full mx-4`}
       >
         <div className="text-center mb-4">
           <span className="text-xs font-mono text-athena-text-tertiary">

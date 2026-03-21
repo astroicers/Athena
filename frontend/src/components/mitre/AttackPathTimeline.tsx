@@ -63,17 +63,17 @@ function StatusDot({ status }: { status: TechniqueStatus }) {
 function pillBg(status: TechniqueStatus): string {
   switch (status) {
     case TechniqueStatus.SUCCESS:
-      return "bg-athena-success/10 border border-athena-success/40";
+      return "bg-athena-success/10 border border-[var(--color-success)]/40";
     case TechniqueStatus.FAILED:
-      return "bg-athena-error/10 border border-athena-error/40";
+      return "bg-athena-error/10 border border-[var(--color-error)]/40";
     case TechniqueStatus.RUNNING:
-      return "bg-athena-accent/10 border border-athena-accent/40 animate-pulse";
+      return "bg-athena-accent/10 border border-[var(--color-accent)]/40 animate-pulse";
     case TechniqueStatus.QUEUED:
-      return "bg-athena-accent/5 border border-athena-accent/20";
+      return "bg-athena-accent/5 border border-[var(--color-accent)]/20";
     case TechniqueStatus.PARTIAL:
-      return "bg-athena-warning-bg border border-athena-warning/40";
+      return "bg-athena-warning-bg border border-[var(--color-warning)]/40";
     default:
-      return "border border-athena-border/40";
+      return "border border-[var(--color-border)]/40";
   }
 }
 
@@ -94,7 +94,7 @@ function TechniquePill({ entry }: { entry: AttackPathEntry }) {
   return (
     <div className="relative group">
       <div
-        className={`flex items-center gap-1 px-1.5 py-0.5 rounded-athena text-sm font-mono cursor-default ${pillBg(entry.status)}`}
+        className={`flex items-center gap-1 px-1.5 py-0.5 rounded-[var(--radius)] text-sm font-mono cursor-default ${pillBg(entry.status)}`}
         title={tooltipLines}
       >
         <StatusDot status={entry.status} />
@@ -104,7 +104,7 @@ function TechniquePill({ entry }: { entry: AttackPathEntry }) {
       <div
         className={
           "absolute z-50 left-0 top-full mt-1 min-w-[180px] max-w-[240px] " +
-          "bg-athena-elevated border border-athena-border rounded-athena p-2 " +
+          "bg-athena-elevated border border-[var(--color-border)] rounded-[var(--radius)] p-2 " +
           "text-sm font-mono text-athena-text-light-primary shadow-lg " +
           "invisible opacity-0 group-hover:visible group-hover:opacity-100 " +
           "transition-opacity duration-150 pointer-events-none whitespace-pre-wrap"
@@ -122,12 +122,12 @@ function SkeletonColumn() {
   return (
     <div className="w-24 shrink-0 space-y-1">
       {/* header shimmer */}
-      <div className="h-3 bg-athena-elevated/40 rounded-athena animate-pulse mb-2" />
+      <div className="h-3 bg-athena-elevated/40 rounded-[var(--radius)] animate-pulse mb-2" />
       {/* pill shimmers */}
       {[1, 2].map((i) => (
         <div
           key={i}
-          className="h-5 bg-athena-elevated/30 rounded-athena animate-pulse"
+          className="h-5 bg-athena-elevated/30 rounded-[var(--radius)] animate-pulse"
           style={{ animationDelay: `${i * 80}ms` }}
         />
       ))}
@@ -156,7 +156,7 @@ function AttackGraphSummaryPanel({ graphData }: { graphData: AttackGraphResponse
   const coveragePct = Math.round(coverageScore * 100);
 
   return (
-    <div className="mb-3 p-2 bg-athena-elevated border border-athena-border rounded-athena">
+    <div className="mb-3 p-2 bg-athena-elevated border border-[var(--color-border)] rounded-[var(--radius)]">
       <div className="flex items-center gap-3 text-sm font-mono">
         {/* Coverage bar */}
         <div className="flex items-center gap-1.5 min-w-[120px]">
@@ -226,7 +226,7 @@ export function AttackPathTimeline({ data, loading, graphData }: AttackPathTimel
     : null;
 
   return (
-    <div className="bg-athena-surface border border-athena-border rounded-athena p-3">
+    <div className="bg-athena-surface border border-[var(--color-border)] rounded-[var(--radius)] p-3">
       {/* Section header */}
       <SectionHeader className="mb-3" title={tHints("attackPath")}>
         {tNav("attackPath")}
@@ -252,12 +252,12 @@ export function AttackPathTimeline({ data, loading, graphData }: AttackPathTimel
                   <div
                     key={tid}
                     className={[
-                      "w-24 shrink-0 rounded-athena p-1.5",
+                      "w-24 shrink-0 rounded-[var(--radius)] p-1.5",
                       isHighest
-                        ? "border-b-2 border-athena-accent bg-athena-accent/5"
+                        ? "border-b-2 border-[var(--color-accent)] bg-athena-accent/5"
                         : isEmpty
-                          ? "border border-dashed border-athena-border/30"
-                          : "border border-athena-border/20",
+                          ? "border border-dashed border-[var(--color-border)]/30"
+                          : "border border-[var(--color-border)]/20",
                     ].join(" ")}
                     style={
                       isHighest

@@ -33,7 +33,7 @@ export function C5ISRInlineSnapshot({
   constraints,
 }: C5ISRInlineSnapshotProps) {
   return (
-    <div className="bg-athena-bg rounded-athena p-2 mt-2 font-mono">
+    <div className="bg-athena-bg rounded-[var(--radius)] p-2 mt-2 font-mono">
       <div className="flex flex-col gap-1.5">
         {domains.map((d) => {
           const color = healthColor(d.healthPct);
@@ -79,14 +79,14 @@ export function C5ISRInlineSnapshot({
 
               {/* Hard limit tag */}
               {hardLimit && (
-                <span className="text-[10px] text-athena-error bg-athena-error/[0.08] border border-athena-error/[0.25] rounded-athena px-1.5 py-0.5 ml-12 w-fit">
+                <span className="text-[10px] text-athena-error bg-athena-error/[0.08] border border-[var(--color-error)]/[0.25] rounded-[var(--radius)] px-1.5 py-0.5 ml-12 w-fit">
                   {hardLimit.rule}
                 </span>
               )}
 
               {/* Warning tag */}
               {warning && !hardLimit && (
-                <span className="text-[10px] text-athena-warning bg-athena-warning/[0.08] border border-athena-warning/[0.25] rounded-athena px-1.5 py-0.5 ml-12 w-fit">
+                <span className="text-[10px] text-athena-warning bg-athena-warning/[0.08] border border-[var(--color-warning)]/[0.25] rounded-[var(--radius)] px-1.5 py-0.5 ml-12 w-fit">
                   {warning.message}
                 </span>
               )}

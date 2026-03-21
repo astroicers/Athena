@@ -327,7 +327,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Left Column: Confidence Breakdown */}
         <div
-          className="rounded-athena flex flex-col gap-5 bg-athena-surface border border-[#FFFFFF08] px-6 py-5"
+          className="rounded-[var(--radius)] flex flex-col gap-5 bg-athena-surface border border-[#FFFFFF08] px-6 py-5"
         >
           {/* Header */}
           <div className="flex flex-col gap-1">
@@ -383,7 +383,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
 
           {/* Recommended Action card */}
           <div
-            className="flex flex-col gap-2 mt-auto rounded-athena px-4 py-3 bg-athena-accent-bg border border-athena-accent/20"
+            className="flex flex-col gap-2 mt-auto rounded-[var(--radius)] px-4 py-3 bg-athena-accent-bg border border-[var(--color-accent)]/20"
           >
             <span
               className="font-mono uppercase tracking-widest text-athena-text-tertiary text-[10px]"
@@ -424,7 +424,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
 
         {/* Right Column: Noise x Risk Matrix */}
         <div
-          className="rounded-athena flex flex-col gap-5 bg-athena-surface border border-[#FFFFFF08] px-6 py-5"
+          className="rounded-[var(--radius)] flex flex-col gap-5 bg-athena-surface border border-[#FFFFFF08] px-6 py-5"
         >
           {/* Header */}
           <div className="flex flex-col gap-1">
@@ -497,7 +497,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
                       <div
                         key={colIdx}
                         className={`
-                          flex items-center justify-center rounded-athena py-3
+                          flex items-center justify-center rounded-[var(--radius)] py-3
                           ${actionBg(action)}
                           ${isCurrent ? "ring-2 ring-white/70 scale-105 shadow-lg z-10" : ""}
                           transition-all duration-300
@@ -530,7 +530,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
 
           {/* Current Position card */}
           <div
-            className="rounded-athena p-4 flex flex-col gap-2 mt-auto bg-black/20"
+            className="rounded-[var(--radius)] p-4 flex flex-col gap-2 mt-auto bg-black/20"
             style={{
               border: `1px solid ${actionBorderColor(curAction)}`,
             }}
@@ -591,7 +591,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
       {/* Recommendation History */}
       {history.length > 0 && (
         <div
-          className="rounded-athena flex flex-col gap-3 bg-athena-surface border border-[#FFFFFF08] px-6 py-5"
+          className="rounded-[var(--radius)] flex flex-col gap-3 bg-athena-surface border border-[#FFFFFF08] px-6 py-5"
         >
           <span
             className="font-mono uppercase tracking-widest text-athena-text-tertiary text-[10px]"
@@ -605,7 +605,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
               return (
                 <div
                   key={rec.id}
-                  className="flex items-center gap-3 px-3 py-2 rounded-athena hover:bg-athena-elevated transition-colors"
+                  className="flex items-center gap-3 px-3 py-2 rounded-[var(--radius)] hover:bg-athena-elevated transition-colors"
                 >
                   {/* Confidence dot */}
                   <span
@@ -640,7 +640,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
                   {/* Accepted badge */}
                   {rec.accepted === true && (
                     <span
-                      className="font-mono text-[10px] px-2 py-0.5 rounded-athena shrink-0 bg-athena-success-bg text-athena-success"
+                      className="font-mono text-[10px] px-2 py-0.5 rounded-[var(--radius)] shrink-0 bg-athena-success-bg text-athena-success"
                     >
                       ACCEPTED
                     </span>
@@ -655,7 +655,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
       {/* Empty history state */}
       {history.length === 0 && !loading && (
         <div
-          className="rounded-athena flex items-center justify-center bg-athena-surface border border-[#FFFFFF08] px-6 py-5"
+          className="rounded-[var(--radius)] flex items-center justify-center bg-athena-surface border border-[#FFFFFF08] px-6 py-5"
         >
           <span className="font-mono text-xs text-athena-text-tertiary">
             {tRec("noHistory")}

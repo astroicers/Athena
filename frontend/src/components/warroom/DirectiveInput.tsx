@@ -46,7 +46,7 @@ export function DirectiveInput({
   };
 
   return (
-    <div className="bg-athena-elevated border border-athena-border rounded-athena p-3 font-mono">
+    <div className="bg-athena-elevated border border-[var(--color-border)] rounded-[var(--radius)] p-3 font-mono">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <span className="text-[10px] text-athena-text-tertiary uppercase tracking-wider font-semibold">
@@ -98,7 +98,7 @@ export function DirectiveInput({
             onKeyDown={handleKeyDown}
             placeholder="Enter your directive..."
             rows={2}
-            className="bg-athena-bg border border-athena-border rounded-athena p-2 text-xs text-athena-text-light placeholder:text-athena-text-tertiary resize-none focus:outline-none focus:ring-1 focus:ring-athena-accent font-mono"
+            className="bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] p-2 text-xs text-athena-text-light placeholder:text-athena-text-tertiary resize-none focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] font-mono"
           />
 
           {/* Submit button */}
@@ -106,7 +106,7 @@ export function DirectiveInput({
             onClick={handleSubmit}
             disabled={!draft.trim()}
             type="button"
-            className="self-start bg-athena-surface border border-athena-border text-athena-text text-[10px] uppercase tracking-wider font-semibold px-3 py-1.5 rounded-athena hover:bg-athena-elevated transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="self-start bg-athena-surface border border-[var(--color-border)] text-athena-text text-[10px] uppercase tracking-wider font-semibold px-3 py-1.5 rounded-[var(--radius)] hover:bg-athena-elevated transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Submit Directive
           </button>
@@ -115,7 +115,7 @@ export function DirectiveInput({
 
       {/* Submitted directive */}
       {submittedDirective && (
-        <div className="border-l-[3px] border-athena-accent pl-3 py-1 mt-1">
+        <div className="border-l-[3px] border-[var(--color-accent)] pl-3 py-1 mt-1">
           <span className="text-xs text-athena-text-secondary">
             {submittedDirective}
           </span>

@@ -57,10 +57,10 @@ export function SlidePanel({ open, onClose, title, width = "md", children }: Sli
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`relative ${widthClass} h-full bg-athena-surface border-l border-athena-border flex flex-col`}
+        className={`relative ${widthClass} h-full bg-athena-surface border-l border-[var(--color-border)] flex flex-col`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-athena-border shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)] shrink-0">
           <h2 className="text-xs font-mono text-athena-text-tertiary uppercase tracking-wider font-bold">
             {title}
           </h2>

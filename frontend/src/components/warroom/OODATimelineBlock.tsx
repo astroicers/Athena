@@ -93,24 +93,24 @@ export function OODATimelineBlock({
 
   return (
     <div
-      className={`bg-athena-surface rounded-athena font-mono ${
+      className={`bg-athena-surface rounded-[var(--radius)] font-mono ${
         isCurrent
-          ? "border-2 border-athena-accent"
-          : "border border-athena-border"
+          ? "border-2 border-[var(--color-accent)]"
+          : "border border-[var(--color-border)]"
       }`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-athena-border">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--color-border)]">
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold text-athena-text-light">
             OODA #{iteration.iterationNumber}
           </span>
         </div>
         <span
-          className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-athena ${
+          className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-[var(--radius)] ${
             isCompleted
-              ? "bg-athena-success/[0.12] border border-athena-success/[0.25] text-athena-success"
-              : "bg-athena-accent/[0.12] border border-athena-accent/[0.25] text-athena-accent"
+              ? "bg-athena-success/[0.12] border border-[var(--color-success)]/[0.25] text-athena-success"
+              : "bg-athena-accent/[0.12] border border-[var(--color-accent)]/[0.25] text-athena-accent"
           }`}
         >
           {isCompleted ? "COMPLETED" : "IN PROGRESS"}
@@ -161,7 +161,7 @@ export function OODATimelineBlock({
                       {PHASE_LABELS[phase]}
                     </span>
                     {isActive && (
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-athena-accent bg-athena-accent/[0.12] border border-athena-accent/[0.25] px-1.5 py-0.5 rounded-athena">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-athena-accent bg-athena-accent/[0.12] border border-[var(--color-accent)]/[0.25] px-1.5 py-0.5 rounded-[var(--radius)]">
                         ACTIVE
                       </span>
                     )}

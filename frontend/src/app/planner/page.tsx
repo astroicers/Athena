@@ -20,7 +20,6 @@ import { useOODA } from "@/hooks/useOODA";
 import { useReconScan } from "@/hooks/useReconScan";
 import { useToast } from "@/contexts/ToastContext";
 import { PlannerPageSkeleton } from "@/components/ui/Skeleton";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { TabBar } from "@/components/nav/TabBar";
 import { MissionTab } from "@/components/planner/MissionTab";
 import { AttackTab } from "@/components/planner/AttackTab";
@@ -274,7 +273,6 @@ function PlannerContent() {
 
   return (
     <div className="flex flex-col h-full">
-      <PageHeader title={t("title")} operationCode={operation?.code} />
       <TabBar tabs={PLANNER_TABS} activeTab={activeTab} onChange={setActiveTab} />
 
       {activeTab === "mission" && (

@@ -91,7 +91,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
-      <div className="bg-athena-surface border-2 border-athena-border rounded-athena p-6 max-w-md w-full mx-4">
+      <div className="bg-athena-surface border-2 border-[var(--color-border)] rounded-[var(--radius)] p-6 max-w-md w-full mx-4">
         <div className="mb-4">
           <span className="text-xs font-mono text-athena-text-tertiary">
             {t("newTool")}
@@ -112,7 +112,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
               value={toolId}
               onChange={(e) => setToolId(e.target.value)}
               placeholder="my-custom-scanner"
-              className="w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-athena-accent"
+              className="w-full bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-2 text-sm font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-[var(--color-accent)]"
             />
           </div>
 
@@ -126,7 +126,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Custom Scanner"
-              className="w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-athena-accent"
+              className="w-full bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-2 text-sm font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-[var(--color-accent)]"
             />
           </div>
 
@@ -138,7 +138,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
             <select
               value={kind}
               onChange={(e) => setKind(e.target.value as "tool" | "engine")}
-              className="w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light focus:outline-none focus:border-athena-accent"
+              className="w-full bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-2 text-sm font-mono text-athena-text-light focus:outline-none focus:border-[var(--color-accent)]"
             >
               <option value="tool">{tKind("tool")}</option>
               <option value="engine">{tKind("engine")}</option>
@@ -153,7 +153,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light focus:outline-none focus:border-athena-accent"
+              className="w-full bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-2 text-sm font-mono text-athena-text-light focus:outline-none focus:border-[var(--color-accent)]"
             >
               {CATEGORY_OPTIONS.map((cat) => (
                 <option key={cat} value={cat}>
@@ -171,7 +171,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
             <select
               value={riskLevel}
               onChange={(e) => setRiskLevel(e.target.value)}
-              className="w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light focus:outline-none focus:border-athena-accent"
+              className="w-full bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-2 text-sm font-mono text-athena-text-light focus:outline-none focus:border-[var(--color-accent)]"
             >
               {RISK_OPTIONS.map((level) => (
                 <option key={level} value={level}>
@@ -191,7 +191,7 @@ export function AddToolModal({ isOpen, onSubmit, onCancel }: AddToolModalProps) 
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Brief description of the tool..."
               rows={3}
-              className="w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-athena-accent resize-none"
+              className="w-full bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-2 text-sm font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-[var(--color-accent)] resize-none"
             />
           </div>
 

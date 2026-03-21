@@ -20,10 +20,10 @@ export function ReconBlock({ entries }: ReconBlockProps) {
   const reconEntries = entries.filter((e) => e.iterationNumber === 0);
 
   return (
-    <div className="bg-athena-surface border border-athena-border rounded-athena p-3 font-mono">
+    <div className="bg-athena-surface border border-[var(--color-border)] rounded-[var(--radius)] p-3 font-mono">
       {/* Header */}
       <div className="flex items-center gap-2 mb-3">
-        <span className="bg-athena-accent/[0.12] border border-athena-accent/[0.25] text-athena-accent text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-athena">
+        <span className="bg-athena-accent/[0.12] border border-[var(--color-accent)]/[0.25] text-athena-accent text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-[var(--radius)]">
           RECON
         </span>
       </div>

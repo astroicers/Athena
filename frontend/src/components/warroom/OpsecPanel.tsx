@@ -114,7 +114,7 @@ function MetricCard({
 }) {
   return (
     <div
-      className="flex-1 min-w-0 rounded-athena p-4 flex flex-col gap-1 bg-athena-surface border border-athena-border h-[120px]"
+      className="flex-1 min-w-0 rounded-[var(--radius)] p-4 flex flex-col gap-1 bg-athena-surface border border-[var(--color-border)] h-[120px]"
     >
       <span
         className="font-mono text-2xl font-bold athena-tabular-nums leading-tight"
@@ -313,7 +313,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
 
       {/* Noise Trend Chart */}
       <div
-        className="rounded-athena p-4 flex flex-col gap-2 bg-athena-surface border border-athena-border h-[220px]"
+        className="rounded-[var(--radius)] p-4 flex flex-col gap-2 bg-athena-surface border border-[var(--color-border)] h-[220px]"
       >
         <div className="flex items-center justify-between">
           <span
@@ -339,7 +339,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
 
       {/* OPSEC Events */}
       <div
-        className="rounded-athena flex flex-col flex-1 min-h-[200px] bg-athena-surface border border-athena-border"
+        className="rounded-[var(--radius)] flex flex-col flex-1 min-h-[200px] bg-athena-surface border border-[var(--color-border)]"
       >
         {/* Header */}
         <div className="flex items-center gap-2 h-10 px-4">
@@ -349,7 +349,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
             OPSEC EVENTS
           </span>
           <span
-            className="font-mono text-[10px] rounded-athena px-2 py-0.5 text-athena-error bg-athena-error-bg"
+            className="font-mono text-[10px] rounded-[var(--radius)] px-2 py-0.5 text-athena-error bg-athena-error-bg"
           >
             {t("eventCount", { count: events.length })}
           </span>
@@ -365,7 +365,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
             events.map((event) => (
               <div
                 key={event.id}
-                className="flex items-center gap-3 px-4 h-9 border-b border-athena-border"
+                className="flex items-center gap-3 px-4 h-9 border-b border-[var(--color-border)]"
               >
                 {/* Severity dot */}
                 <span

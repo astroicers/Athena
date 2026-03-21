@@ -13,12 +13,12 @@
 import { TechniqueStatus } from "@/types/enums";
 
 const STATUS_COLORS: Record<string, string> = {
-  [TechniqueStatus.SUCCESS]: "bg-athena-success-bg text-athena-success border border-athena-success/50",
+  [TechniqueStatus.SUCCESS]: "bg-athena-success-bg text-athena-success border border-[var(--color-success)]/50",
   [TechniqueStatus.RUNNING]: "bg-athena-accent/60 text-white animate-pulse",
   [TechniqueStatus.FAILED]: "bg-athena-error-bg/80 text-white",
   [TechniqueStatus.QUEUED]: "bg-athena-text-tertiary/30 text-athena-text-tertiary",
   [TechniqueStatus.UNTESTED]: "bg-athena-elevated/40 text-athena-text-tertiary",
-  [TechniqueStatus.PARTIAL]: "bg-athena-warning-bg text-athena-warning border border-athena-warning/50",
+  [TechniqueStatus.PARTIAL]: "bg-athena-warning-bg text-athena-warning border border-[var(--color-warning)]/50",
 };
 
 interface MITRECellProps {
@@ -36,8 +36,8 @@ export function MITRECell({ mitreId, name, status, isSelected, onClick, compact 
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left p-1.5 rounded-athena text-sm font-mono transition-all ${colorClass} ${
-        isSelected ? "ring-1 ring-athena-accent" : ""
+      className={`w-full text-left p-1.5 rounded-[var(--radius)] text-sm font-mono transition-all ${colorClass} ${
+        isSelected ? "ring-1 ring-[var(--color-accent)]" : ""
       } hover:brightness-110 cursor-pointer`}
     >
       <div className="font-bold truncate">{mitreId}</div>

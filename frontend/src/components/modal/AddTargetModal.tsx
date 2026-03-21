@@ -170,14 +170,14 @@ export function AddTargetModal({
   }
 
   const inputStyles =
-    "w-full bg-athena-bg border border-athena-border rounded-athena px-3 py-2 text-sm font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-athena-accent";
+    "w-full bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-2 text-sm font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-[var(--color-accent)]";
 
   const labelStyles =
     "block text-sm font-mono text-athena-text-tertiary uppercase tracking-wider mb-1";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-athena-bg/80 backdrop-blur-sm">
-      <div className="bg-athena-surface border-2 border-athena-border rounded-athena p-6 max-w-md w-full mx-4">
+      <div className="bg-athena-surface border-2 border-[var(--color-border)] rounded-[var(--radius)] p-6 max-w-md w-full mx-4">
         <div className="mb-4">
           <span className="text-xs font-mono text-athena-text-tertiary">{t("newTarget")}</span>
           <h2 className="text-lg font-mono font-bold text-athena-text-light mt-1">{t("addTargetTitle")}</h2>
@@ -190,7 +190,7 @@ export function AddTargetModal({
             size="sm"
             type="button"
             onClick={() => setMode("single")}
-            className={mode === "single" ? "border-athena-accent text-white" : ""}
+            className={mode === "single" ? "border-[var(--color-accent)] text-white" : ""}
           >
             {t("single")}
           </Button>
@@ -198,7 +198,7 @@ export function AddTargetModal({
             variant="secondary"
             size="sm"
             type="button"
-            className={mode === "batch" ? "border-athena-accent text-white" : ""}
+            className={mode === "batch" ? "border-[var(--color-accent)] text-white" : ""}
             onClick={() => {
               setMode("batch");
               setBatchPreview(null);
@@ -375,7 +375,7 @@ export function AddTargetModal({
                 <p className="text-xs font-mono text-athena-text-light">
                   {t("previewTitle", { count: batchPreview.length })}
                 </p>
-                <div className="max-h-48 overflow-y-auto border border-athena-border rounded-athena bg-athena-bg p-2">
+                <div className="max-h-48 overflow-y-auto border border-[var(--color-border)] rounded-[var(--radius)] bg-athena-bg p-2">
                   {batchPreview.map((entry, idx) => (
                     <div
                       key={idx}

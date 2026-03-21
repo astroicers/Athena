@@ -30,7 +30,7 @@ export function OODAIndicator({ currentPhase }: OODAIndicatorProps) {
   const tHints = useTranslations("Hints");
 
   return (
-    <div className="bg-athena-surface border border-athena-border rounded-athena p-4">
+    <div className="bg-athena-surface border border-[var(--color-border)] rounded-[var(--radius)] p-4">
       <SectionHeader level="card" className="mb-1">
         {t("cycle")}
       </SectionHeader>
@@ -44,9 +44,9 @@ export function OODAIndicator({ currentPhase }: OODAIndicatorProps) {
           return (
             <div key={phase.key} className="flex items-center gap-1 flex-1">
               <div
-                className={`flex flex-col items-center justify-center w-full py-2 rounded-athena text-sm font-mono font-bold transition-all ${
+                className={`flex flex-col items-center justify-center w-full py-2 rounded-[var(--radius)] text-sm font-mono font-bold transition-all ${
                   isActive
-                    ? "bg-athena-accent-bg text-athena-accent border border-athena-accent"
+                    ? "bg-athena-accent-bg text-athena-accent border border-[var(--color-accent)]"
                     : isPast
                       ? "bg-athena-accent-bg text-athena-accent"
                       : "bg-athena-elevated/30 text-athena-text-tertiary"

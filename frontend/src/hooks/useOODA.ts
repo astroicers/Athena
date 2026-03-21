@@ -39,6 +39,10 @@ export function useOODA(ws: UseWebSocketReturn): UseOODAReturn {
           setPhase(payload.phase);
         }
       }),
+      ws.subscribe("ooda.completed", () => {
+        _cachedPhase = null;
+        setPhase(null);
+      }),
       ws.subscribe("ooda.failed", () => {
         _cachedPhase = null;
         setPhase(null);

@@ -134,8 +134,23 @@ className="border border-[var(--color-accent)]"
 
 ---
 
+## 相關決策
+
+### i18n 整合
+
+Deep Gemstone v3 設計系統的所有 UI 文字必須遵循 i18n 規範（詳見 ADR-043）：
+
+| 規則 | 說明 |
+|------|------|
+| **語言支援** | zh-TW（主要）+ en（備用） |
+| **語言切換** | LocaleSwitcher 位於全域 header（PageHeader trailing slot） |
+| **翻譯鍵** | War Room timeline 元件新增 27 個翻譯鍵 |
+| **強制規範** | 所有 UI 文字必須使用 `useTranslations()` — 禁止 hardcoded 文字 |
+
+---
+
 ## 關聯（Relations）
 
 - 取代：無（首次統一設計系統決策）
 - 被取代：無
-- 參考：ADR-009（Frontend Component Architecture）、SPEC-051（Design Token 與 pen 同步協議）
+- 參考：ADR-009（Frontend Component Architecture）、ADR-043（i18n Full Coverage with Locale Switcher）、SPEC-051（Design Token 與 pen 同步協議）

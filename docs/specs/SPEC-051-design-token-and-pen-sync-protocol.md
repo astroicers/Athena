@@ -313,6 +313,20 @@ make token-drift
 
 ---
 
+## i18n 要求
+
+所有使用 Design Token 的 UI 元件，其文字內容必須遵循 i18n 規範（詳見 ADR-043）。
+
+| 規則 | 說明 |
+|------|------|
+| 所有 UI 文字 | 必須使用 `useTranslations()` |
+| 新增元件 | 同步更新 zh-TW.json + en.json |
+| Key 命名 | 使用 namespace.keyName 格式 |
+| 驗證 | `make i18n-check` + `i18n-schema.test.ts` |
+| 語言切換 | LocaleSwitcher 在全域 header |
+
+---
+
 ## 禁止事項（Out of Scope）
 
 - 不在此 SPEC 範圍內重新定義 Tailwind theme 結構（保持 CSS variable 引用模式）

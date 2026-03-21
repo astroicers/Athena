@@ -18,6 +18,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { MockBanner } from "@/components/layout/MockBanner";
 import { ConstraintBanner } from "@/components/layout/ConstraintBanner";
 import { NotificationCenter } from "@/components/layout/NotificationCenter";
+import { LocaleSwitcher } from "@/components/layout/LocaleSwitcher";
 import { useGlobalAlerts } from "@/hooks/useGlobalAlerts";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { api } from "@/lib/api";
@@ -73,21 +74,24 @@ function ShellInner({ children }: { children: ReactNode }) {
           title={pageTitle}
           operationCode={opCodename ?? undefined}
           trailing={
-            <button
-              onClick={() => setNotifOpen(true)}
-              className="relative p-1.5 text-athena-text-tertiary hover:text-athena-accent transition-colors"
-              aria-label="Notifications"
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M8 1.5a4 4 0 0 1 4 4v2.5l1.5 2H2.5L4 8V5.5a4 4 0 0 1 4-4z" />
-                <path d="M6 12.5a2 2 0 0 0 4 0" />
-              </svg>
-              {alertCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-athena-error-bg rounded-full text-[8px] font-mono font-bold text-white flex items-center justify-center">
-                  {alertCount > 9 ? "9+" : alertCount}
-                </span>
-              )}
-            </button>
+            <div className="flex items-center gap-3">
+              <LocaleSwitcher />
+              <button
+                onClick={() => setNotifOpen(true)}
+                className="relative p-1.5 text-athena-text-tertiary hover:text-athena-accent transition-colors"
+                aria-label="Notifications"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M8 1.5a4 4 0 0 1 4 4v2.5l1.5 2H2.5L4 8V5.5a4 4 0 0 1 4-4z" />
+                  <path d="M6 12.5a2 2 0 0 0 4 0" />
+                </svg>
+                {alertCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-athena-error-bg rounded-full text-[8px] font-mono font-bold text-white flex items-center justify-center">
+                    {alertCount > 9 ? "9+" : alertCount}
+                  </span>
+                )}
+              </button>
+            </div>
           }
         />
         <main className="flex-1 overflow-auto p-0">{children}</main>

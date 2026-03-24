@@ -24,6 +24,7 @@
     "opsec": "OPSEC",
     "decisions": "AI 決策",
     "attackGraph": "攻擊圖",
+    "attackSurface": "ATT&CK 攻擊面",
     "tools": "工具庫"
   },
   "Operations": {
@@ -568,6 +569,8 @@
   },
   "WarRoom": {
     "title": "作戰室",
+    "timeline": "時間軸",
+    "mission": "任務",
     "kpiCollapse": "收合",
     "kpiExpand": "展開",
     "sidePanel": {
@@ -642,7 +645,43 @@
     "decisionResult": "決策結果",
     "confidenceBreakdown": "信心分數分解",
     "prerequisite": "先決條件",
-    "targets": "目標"
+    "targets": "目標",
+    "tabTimeline": "時間軸",
+    "tabTargets": "目標",
+    "tabMission": "任務",
+    "targetHosts": "目標主機",
+    "addTarget": "新增目標",
+    "osintDiscover": "OSINT",
+    "initialAccess": "初始入場",
+    "terminal": "終端機",
+    "aiSummary": "AI 摘要",
+    "reconComplete": "偵察完成 — 寫入 {factsWritten} 項事實",
+    "targetActivated": "已設定為活躍目標",
+    "targetDeactivated": "已停用目標",
+    "targetDeleted": "已刪除 {hostname}",
+    "deleteTarget": "刪除目標：{hostname}",
+    "osintStarted": "OSINT 探索已啟動",
+    "missionSteps": "任務步驟",
+    "noSteps": "尚未定義任務步驟",
+    "createStep": "建立步驟",
+    "stepNumber": "步驟編號",
+    "techniqueId": "技術 ID",
+    "techniqueName": "技術名稱",
+    "targetId": "目標",
+    "engine": "引擎",
+    "engineSsh": "SSH",
+    "enginePersistentSsh": "持久 SSH",
+    "engineC2": "C2",
+    "stepCreated": "任務步驟已建立",
+    "stepUpdated": "步驟狀態已更新",
+    "creating": "建立中...",
+    "failedCreateStep": "建立任務步驟失敗",
+    "failedUpdateStep": "更新步驟狀態失敗",
+    "colStep": "#",
+    "colTechnique": "技術",
+    "colTarget": "目標",
+    "colEngine": "引擎",
+    "colStatus": "狀態"
   },
   "Legend": {
     "title": "圖例",
@@ -867,9 +906,15 @@
     "failedUpdate": "更新目標失敗"
   },
   "AttackSurface": {
-    "title": "攻擊面",
+    "title": "ATT&CK 攻擊面",
+    "techniques": "技術矩陣",
+    "graph": "攻擊圖",
+    "loading": "載入攻擊面資料...",
+    "tabTechniques": "技術矩陣",
+    "tabGraph": "攻擊圖",
     "noData": "無攻擊面資料",
-    "total": "總計"
+    "total": "總計",
+    "errorLoad": "載入攻擊面資料失敗"
   },
   "Agents": {
     "sync": "同步",

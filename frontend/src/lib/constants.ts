@@ -10,16 +10,16 @@
 
 import {
   OperationsIcon,
-  PlannerIcon,
   MonitorIcon,
+  AttackGraphIcon,
   VulnsIcon,
   ToolsIcon,
 } from "@/components/atoms/NavIcons";
 
 export const NAV_ITEMS = [
   { href: "/operations", icon: OperationsIcon, labelKey: "operations" },
-  { href: "/planner", icon: PlannerIcon, labelKey: "planner" },
   { href: "/warroom", icon: MonitorIcon, labelKey: "warRoom" },
+  { href: "/attack-surface", icon: AttackGraphIcon, labelKey: "attackSurface" },
   { href: "/vulns", icon: VulnsIcon, labelKey: "vulns" },
   { href: "/tools", icon: ToolsIcon, labelKey: "tools" },
 ] as const;

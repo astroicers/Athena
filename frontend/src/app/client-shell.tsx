@@ -38,8 +38,8 @@ function ShellInner({ children }: { children: ReactNode }) {
   const tNav = useTranslations("Nav");
   const pageTitle = useMemo(() => {
     if (pathname.startsWith("/operations")) return tNav("operations");
-    if (pathname.startsWith("/planner")) return tNav("planner");
     if (pathname.startsWith("/warroom")) return tNav("warRoom");
+    if (pathname.startsWith("/attack-surface")) return tNav("attackSurface");
     if (pathname.startsWith("/vulns")) return tNav("vulns");
     if (pathname.startsWith("/tools")) return tNav("tools");
     return "Athena";

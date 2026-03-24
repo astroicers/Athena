@@ -16,7 +16,7 @@ import { useRouter } from "next/navigation";
 export default function AttackGraphRedirect() {
   const router = useRouter();
   useEffect(() => {
-    router.replace("/planner?tab=attack-graph");
+    router.replace("/attack-surface?tab=graph");
   }, [router]);
   return null;
 }

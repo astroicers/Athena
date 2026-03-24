@@ -629,7 +629,20 @@
     "inProgress": "進行中",
     "objective": "目標：{name}",
     "targetsProgress": "{current}/{total} 目標",
-    "active": "執行中"
+    "active": "執行中",
+    "viewRawData": "查看原始資料",
+    "collapseRawData": "收合原始資料",
+    "portScanResults": "Port 掃描結果",
+    "intelligenceFacts": "情報事實",
+    "attackPathAnalysis": "攻擊路徑分析",
+    "situationAssessment": "態勢評估",
+    "recommendedTechniques": "推薦技術",
+    "executionResult": "執行結果",
+    "factsCollected": "收集事實",
+    "decisionResult": "決策結果",
+    "confidenceBreakdown": "信心分數分解",
+    "prerequisite": "先決條件",
+    "targets": "目標"
   },
   "Legend": {
     "title": "圖例",

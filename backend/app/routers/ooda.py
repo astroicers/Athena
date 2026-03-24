@@ -206,15 +206,81 @@ async def get_ooda_timeline(
         ("act", "act_summary"),
     ]
     for row in rows:
+        # Resolve target info via technique_executions for this iteration
+        exec_target = await db.fetchrow(
+            "SELECT te.target_id, t.hostname, t.ip_address "
+            "FROM technique_executions te "
+            "JOIN targets t ON te.target_id = t.id "
+            "WHERE te.ooda_iteration_id = $1 LIMIT 1",
+            row["id"],
+        )
+        target_id = exec_target["target_id"] if exec_target else None
+        target_hostname = exec_target["hostname"] if exec_target else None
+        target_ip = exec_target["ip_address"] if exec_target else None
+
         for phase_name, summary_col in phase_map:
             summary = row[summary_col]
             if summary:
+                detail = None
+
+                if phase_name == "observe":
+                    facts = await db.fetch(
+                        "SELECT trait, value, category FROM facts "
+                        "WHERE operation_id = $1 ORDER BY collected_at DESC LIMIT 50",
+                        operation_id,
+                    )
+                    detail = {
+                        "facts_count": len(facts),
+                        "facts": [dict(f) for f in facts],
+                        "raw_summary": row["observe_summary"] or "",
+                    }
+
+                elif phase_name == "orient" and row["recommendation_id"]:
+                    rec = await db.fetchrow(
+                        "SELECT situation_assessment, recommended_technique_id, confidence, "
+                        "reasoning_text, options FROM recommendations WHERE id = $1",
+                        row["recommendation_id"],
+                    )
+                    if rec:
+                        detail = {
+                            "situation_assessment": rec["situation_assessment"],
+                            "recommended_technique_id": rec["recommended_technique_id"],
+                            "confidence": float(rec["confidence"]) if rec["confidence"] else 0,
+                            "reasoning_text": rec["reasoning_text"],
+                            "options": json.loads(rec["options"]) if rec["options"] else [],
+                        }
+
+                elif phase_name == "decide":
+                    detail = {
+                        "reason": row["decide_summary"] or "",
+                    }
+
+                elif phase_name == "act" and row["technique_execution_id"]:
+                    act_exec = await db.fetchrow(
+                        "SELECT technique_id, engine, status, result_summary, error_message, "
+                        "facts_collected_count FROM technique_executions WHERE id = $1",
+                        row["technique_execution_id"],
+                    )
+                    if act_exec:
+                        detail = {
+                            "technique_id": act_exec["technique_id"],
+                            "engine": act_exec["engine"],
+                            "status": act_exec["status"],
+                            "result_summary": act_exec["result_summary"],
+                            "error_message": act_exec["error_message"],
+                            "facts_collected_count": act_exec["facts_collected_count"] or 0,
+                        }
+
                 entries.append(
                     OODATimelineEntry(
                         iteration_number=row["iteration_number"],
                         phase=phase_name,
                         summary=summary,
                         timestamp=str(row["started_at"] or ""),
+                        target_id=target_id,
+                        target_hostname=target_hostname,
+                        target_ip=target_ip,
+                        detail=detail,
                     )
                 )
     # -- Also include completed recon scans as timeline entries --

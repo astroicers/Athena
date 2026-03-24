@@ -629,7 +629,20 @@
     "inProgress": "In Progress",
     "objective": "Objective: {name}",
     "targetsProgress": "{current}/{total} targets",
-    "active": "Active"
+    "active": "Active",
+    "viewRawData": "View Raw Data",
+    "collapseRawData": "Collapse Raw Data",
+    "portScanResults": "Port Scan Results",
+    "intelligenceFacts": "Intelligence Facts",
+    "attackPathAnalysis": "Attack Path Analysis",
+    "situationAssessment": "Situation Assessment",
+    "recommendedTechniques": "Recommended Techniques",
+    "executionResult": "Execution Result",
+    "factsCollected": "Facts Collected",
+    "decisionResult": "Decision Result",
+    "confidenceBreakdown": "Confidence Breakdown",
+    "prerequisite": "Prerequisites",
+    "targets": "Targets"
   },
   "Legend": {
     "title": "LEGEND",

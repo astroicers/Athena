@@ -23,6 +23,7 @@ import { DirectiveInput } from "@/components/warroom/DirectiveInput";
 import { MissionObjective } from "@/components/warroom/MissionObjective";
 import { StatusPanel } from "@/components/warroom/StatusPanel";
 import type { OODATimelineEntry } from "@/types/ooda";
+import type { Target } from "@/types/target";
 
 /* ── Constants ── */
 
@@ -57,6 +58,7 @@ function WarRoomContent() {
 
   const [dashboard, setDashboard] = useState<OodaDashboard | null>(null);
   const [timeline, setTimeline] = useState<OODATimelineEntry[]>([]);
+  const [targets, setTargets] = useState<Target[]>([]);
   const [autoMode, setAutoMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -68,12 +70,15 @@ function WarRoomContent() {
   const fetchData = useCallback(async () => {
     if (!operationId) return;
     try {
-      const [dashData, timelineData] = await Promise.allSettled([
+      const [dashData, timelineData, targetData] = await Promise.allSettled([
         api.get<OodaDashboard>(
           `/operations/${operationId}/ooda/dashboard`,
         ),
         api.get<OODATimelineEntry[]>(
           `/operations/${operationId}/ooda/timeline`,
+        ),
+        api.get<Target[]>(
+          `/operations/${operationId}/targets`,
         ),
       ]);
 
@@ -83,6 +88,11 @@ function WarRoomContent() {
       if (timelineData.status === "fulfilled" && timelineData.value) {
         setTimeline(
           Array.isArray(timelineData.value) ? timelineData.value : [],
+        );
+      }
+      if (targetData.status === "fulfilled" && targetData.value) {
+        setTargets(
+          Array.isArray(targetData.value) ? targetData.value : [],
         );
       }
     } catch {
@@ -100,9 +110,35 @@ function WarRoomContent() {
     };
   }, [fetchData]);
 
-  // Build iteration list from dashboard
-  const iterations = dashboard?.recentIterations ?? (dashboard?.latestIteration ? [dashboard.latestIteration] : []);
+  // Build iteration list from dashboard, enriched with target info
+  const rawIterations = dashboard?.recentIterations ?? (dashboard?.latestIteration ? [dashboard.latestIteration] : []);
+  const iterations = rawIterations.map((iter) => {
+    // Find any timeline entry for this iteration to extract target info
+    const entry = timeline.find(
+      (e) => e.iterationNumber === iter.iterationNumber && e.targetHostname,
+    );
+    return {
+      ...iter,
+      targetHostname: entry?.targetHostname,
+      targetIp: entry?.targetIp,
+    };
+  });
   const reconEntries = timeline.filter((e) => e.iterationNumber === 0);
+
+  // Compute iteration count per target for StatusPanel
+  const targetStats = targets.map((tgt) => ({
+    id: tgt.id,
+    hostname: tgt.hostname,
+    ipAddress: tgt.ipAddress,
+    isCompromised: tgt.isCompromised,
+    privilegeLevel: tgt.privilegeLevel ?? "none",
+    iterationCount: iterations.filter((iter) => {
+      const entry = timeline.find(
+        (e) => e.iterationNumber === iter.iterationNumber && e.phase === "act",
+      );
+      return entry?.targetId === tgt.id;
+    }).length,
+  }));
 
   // Constraint banner data
   const bannerData = {
@@ -203,6 +239,7 @@ function WarRoomContent() {
                   c5isrDomains={domains}
                   constraints={constraints ?? undefined}
                   isCurrent={isCurrent}
+                  timelineEntries={timeline}
                 />
 
                 {/* Directive Input (after completed iterations) */}
@@ -242,6 +279,7 @@ function WarRoomContent() {
           riskLevel={riskLevel}
           matrixAction={matrixAction}
           confidence={confidence}
+          targets={targetStats}
         />
       </div>
     </div>

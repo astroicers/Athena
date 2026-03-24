@@ -25,9 +25,43 @@ export interface OODAIteration {
   completedAt: string | null;
 }
 
+export interface PhaseDetail {
+  factsCount?: number;
+  facts?: Array<{ trait: string; value: string; category: string }>;
+  rawSummary?: string;
+  situationAssessment?: string;
+  recommendedTechniqueId?: string;
+  confidence?: number;
+  reasoningText?: string;
+  options?: Array<{
+    techniqueId: string;
+    techniqueName: string;
+    reasoning: string;
+    riskLevel: string;
+    recommendedEngine: string;
+    confidence: number;
+    prerequisites: string[];
+  }>;
+  reason?: string;
+  confidenceBreakdown?: Record<string, number>;
+  noiseLevel?: string;
+  riskLevel?: string;
+  matrixAction?: string;
+  techniqueId?: string;
+  engine?: string;
+  status?: string;
+  resultSummary?: string;
+  errorMessage?: string;
+  factsCollectedCount?: number;
+}
+
 export interface OODATimelineEntry {
   iterationNumber: number;
   phase: string;
   summary: string;
   timestamp: string;
+  targetId?: string;
+  targetHostname?: string;
+  targetIp?: string;
+  detail?: PhaseDetail;
 }

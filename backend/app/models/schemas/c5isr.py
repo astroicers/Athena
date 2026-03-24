@@ -28,3 +28,7 @@ class OODATimelineEntry(BaseModel):
     phase: str
     summary: str
     timestamp: str
+    target_id: str | None = None
+    target_hostname: str | None = None
+    target_ip: str | None = None
+    detail: dict | None = None

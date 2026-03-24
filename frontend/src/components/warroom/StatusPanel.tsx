@@ -13,12 +13,22 @@
 import { useTranslations } from "next-intl";
 import type { C5ISRStatus } from "@/types/c5isr";
 
+interface TargetStat {
+  id: string;
+  hostname: string;
+  ipAddress: string;
+  isCompromised: boolean;
+  privilegeLevel: string;
+  iterationCount: number;
+}
+
 interface StatusPanelProps {
   c5isrDomains: C5ISRStatus[];
   noiseLevel: number;
   riskLevel: string;
   matrixAction: string;
   confidence: number;
+  targets?: TargetStat[];
 }
 
 function healthColor(pct: number): string {
@@ -87,12 +97,45 @@ export function StatusPanel({
   riskLevel,
   matrixAction,
   confidence,
+  targets,
 }: StatusPanelProps) {
   const t = useTranslations("WarRoom");
   const action = actionStyle(matrixAction);
 
   return (
     <div className="w-[260px] bg-athena-surface border-l border-[var(--color-border)] p-3 flex flex-col gap-0 font-mono h-full overflow-y-auto">
+      {/* Section 0: TARGETS */}
+      {targets && targets.length > 0 && (
+        <>
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] font-bold tracking-[2px] text-[var(--color-text-secondary)]">
+              {t("targets")} ({targets.length})
+            </span>
+            {targets.map((tgt) => (
+              <div key={tgt.id} className="flex items-center gap-2">
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    tgt.isCompromised
+                      ? "bg-[var(--color-success)]"
+                      : "bg-[var(--color-text-tertiary)]"
+                  }`}
+                />
+                <span className="text-[10px] font-mono text-[var(--color-text-primary)] flex-1 truncate">
+                  {tgt.ipAddress}
+                </span>
+                <span className="text-[9px] font-mono text-[var(--color-text-tertiary)]">
+                  {tgt.privilegeLevel}
+                </span>
+                <span className="text-[9px] font-mono text-[var(--color-text-tertiary)]">
+                  {tgt.iterationCount}x
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="h-px bg-[var(--color-border)] my-3" />
+        </>
+      )}
+
       {/* Section 1: C5ISR HEALTH */}
       <div className="flex flex-col gap-2">
         <span className="text-[10px] text-athena-text-tertiary uppercase tracking-wider font-semibold">

@@ -14,7 +14,9 @@ import { useTranslations } from "next-intl";
 import { OODAPhase } from "@/types/enums";
 import type { C5ISRStatus } from "@/types/c5isr";
 import type { OperationalConstraints } from "@/types/constraint";
+import type { OODATimelineEntry } from "@/types/ooda";
 import { C5ISRInlineSnapshot } from "./C5ISRInlineSnapshot";
+import { PhaseExpandable } from "./PhaseExpandable";
 
 interface IterationLike {
   id: string;
@@ -25,6 +27,8 @@ interface IterationLike {
   decideSummary?: string | null;
   actSummary?: string | null;
   completedAt?: string | null;
+  targetHostname?: string;
+  targetIp?: string;
 }
 
 interface OODATimelineBlockProps {
@@ -32,6 +36,7 @@ interface OODATimelineBlockProps {
   c5isrDomains?: C5ISRStatus[];
   constraints?: OperationalConstraints;
   isCurrent?: boolean;
+  timelineEntries?: OODATimelineEntry[];
 }
 
 const PHASE_ORDER: OODAPhase[] = [
@@ -89,9 +94,9 @@ export function OODATimelineBlock({
   c5isrDomains,
   constraints,
   isCurrent = false,
+  timelineEntries,
 }: OODATimelineBlockProps) {
   const t = useTranslations("WarRoom");
-  const tOoda = useTranslations("OODA");
   const isCompleted = iteration.completedAt !== null;
 
   return (
@@ -108,6 +113,11 @@ export function OODATimelineBlock({
           <span className="text-sm font-bold text-athena-text-light">
             {t("oodaIteration", { num: iteration.iterationNumber })}
           </span>
+          {iteration.targetHostname && (
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-[var(--radius)] bg-[var(--color-accent)]/[0.12] border border-[var(--color-accent)]/[0.25] text-[var(--color-accent)]">
+              [{iteration.targetIp}] {iteration.targetHostname}
+            </span>
+          )}
         </div>
         <span
           className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-[var(--radius)] ${
@@ -125,72 +135,38 @@ export function OODATimelineBlock({
         {PHASE_ORDER.map((phase) => {
           const status = getPhaseStatus(iteration, phase);
           const summary = getSummary(iteration, phase);
-          const color = PHASE_COLORS[phase];
           const isActive = status === "active";
           const isPending = status === "pending";
-          const dotSize = isActive ? 8 : 6;
+
+          // Find the detail for this phase from timeline entries
+          const entry = timelineEntries?.find(
+            (e) =>
+              e.iterationNumber === iteration.iterationNumber &&
+              e.phase === PHASE_KEYS[phase],
+          );
 
           return (
-            <div key={phase} className="px-3 py-2">
-              <div className="flex items-start gap-2">
-                {/* Phase dot */}
-                <span className="mt-1 shrink-0">
-                  <svg
-                    width={dotSize}
-                    height={dotSize}
-                    viewBox={`0 0 ${dotSize} ${dotSize}`}
-                  >
-                    <circle
-                      cx={dotSize / 2}
-                      cy={dotSize / 2}
-                      r={dotSize / 2}
-                      fill={isPending ? "var(--color-text-tertiary)" : color}
-                      opacity={isPending ? 0.4 : 1}
-                    />
-                  </svg>
-                </span>
-
-                {/* Phase content */}
-                <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="text-xs font-bold uppercase tracking-wider"
-                      style={{
-                        color: isPending
-                          ? "var(--color-text-tertiary)"
-                          : color,
-                      }}
-                    >
-                      {tOoda(PHASE_KEYS[phase])}
-                    </span>
-                    {isActive && (
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-athena-accent bg-athena-accent/[0.12] border border-[var(--color-accent)]/[0.25] px-1.5 py-0.5 rounded-[var(--radius)]">
-                        {t("active")}
-                      </span>
-                    )}
-                  </div>
-
-                  {isPending ? (
-                    <span className="text-xs text-athena-text-tertiary italic">
-                      (pending)
-                    </span>
-                  ) : summary ? (
-                    <span className="text-xs text-athena-text-secondary">
-                      {summary}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
+            <div key={phase}>
+              <PhaseExpandable
+                phase={PHASE_KEYS[phase]}
+                summary={summary}
+                detail={entry?.detail}
+                isActive={isActive}
+                isPending={isPending}
+                phaseColor={PHASE_COLORS[phase]}
+              />
 
               {/* C5ISR inline snapshot in ORIENT phase */}
               {phase === OODAPhase.ORIENT &&
                 c5isrDomains &&
                 c5isrDomains.length > 0 &&
                 status !== "pending" && (
-                  <C5ISRInlineSnapshot
-                    domains={c5isrDomains}
-                    constraints={constraints}
-                  />
+                  <div className="px-3 pb-2">
+                    <C5ISRInlineSnapshot
+                      domains={c5isrDomains}
+                      constraints={constraints}
+                    />
+                  </div>
                 )}
             </div>
           );

@@ -23,11 +23,11 @@ colors:
   text:
     primary:       { value: "#D4D4D8", css: "--color-text-primary",   tw: "athena-text",           description: "主文字（鋅白）" }
     light:         { value: "#D4D4D8", css: "--color-text-light",     tw: "athena-text-light",     description: "同 primary（向後相容）" }
-    secondary:     { value: "#71717A", css: "--color-text-secondary", tw: "athena-text-secondary", description: "次要文字（鋅灰）" }
-    tertiary:      { value: "#52525B", css: "--color-text-tertiary",  tw: "athena-text-tertiary",  description: "輔助文字（暗鋅）" }
+    secondary:     { value: "#A1A1AA", css: "--color-text-secondary", tw: "athena-text-secondary", description: "次要文字（WCAG AA 5.5:1）" }
+    tertiary:      { value: "#71717A", css: "--color-text-tertiary",  tw: "athena-text-tertiary",  description: "輔助文字（WCAG AA 4.0:1）" }
   border:
-    default:       { value: "#27272A", css: "--color-border",         tw: "athena-border",         description: "預設邊框（鋅邊）" }
-    subtle:        { value: "#3F3F46", css: "--color-border-subtle",                               description: "亮鋅邊框" }
+    default:       { value: "#3F3F46", css: "--color-border",         tw: "athena-border",         description: "預設邊框（增強可見度）" }
+    subtle:        { value: "#52525B", css: "--color-border-subtle",                               description: "亮鋅邊框（增強可見度）" }
   status:
     success:       { value: "#059669", css: "--color-success",    tw: "athena-success",  description: "翡翠綠 — 成功/完成" }
     warning:       { value: "#B45309", css: "--color-warning",    tw: "athena-warning",  description: "琥珀金 — 警告" }

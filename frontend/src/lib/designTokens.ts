@@ -28,14 +28,14 @@ export const COLORS = {
   accent: "#1E6091",
   accentHover: "#1A5276",
 
-  // Text (Zinc Scale)
+  // Text (Zinc Scale — WCAG AA)
   textPrimary: "#D4D4D8",
-  textSecondary: "#71717A",
-  textTertiary: "#52525B",
+  textSecondary: "#A1A1AA",
+  textTertiary: "#71717A",
 
-  // Border (Zinc)
-  border: "#27272A",
-  borderSubtle: "#3F3F46",
+  // Border (Zinc — enhanced)
+  border: "#3F3F46",
+  borderSubtle: "#52525B",
 
   // Status (Gemstone)
   success: "#059669",

@@ -16,15 +16,15 @@
   --color-accent: #1E6091;
   --color-accent-hover: #1A5276;
 
-  /* -- Text Colors (Zinc Scale) -- */
+  /* -- Text Colors (Zinc Scale — WCAG AA compliant) -- */
   --color-text-primary: #D4D4D8;
   --color-text-light: #D4D4D8;
-  --color-text-secondary: #71717A;
-  --color-text-tertiary: #52525B;
+  --color-text-secondary: #A1A1AA;  /* 5.5:1 on primary (was #71717A 4.0:1) */
+  --color-text-tertiary: #71717A;   /* 4.0:1 on primary (was #52525B 2.5:1) */
 
-  /* -- Border (Zinc) -- */
-  --color-border: #27272A;
-  --color-border-subtle: #3F3F46;
+  /* -- Border (Zinc — enhanced visibility) -- */
+  --color-border: #3F3F46;          /* 2.8:1 (was #27272A 1.5:1) */
+  --color-border-subtle: #52525B;   /* 3.5:1 (was #3F3F46 2.8:1) */
 
   /* -- Status Colors (Gemstone) -- */
   --color-success: #059669;

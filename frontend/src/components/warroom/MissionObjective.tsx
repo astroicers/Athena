@@ -102,10 +102,10 @@ export function MissionObjective({
         </div>
 
         <div className="flex items-center justify-between">
-          <span className="text-[10px] text-athena-text-tertiary athena-tabular-nums">
+          <span className="text-xs text-athena-text-tertiary athena-tabular-nums">
             {t("targetsProgress", { current: targetsCompromised, total: targetsTotal })}
           </span>
-          <span className="text-[10px] text-athena-accent font-bold athena-tabular-nums">
+          <span className="text-xs text-athena-accent font-bold athena-tabular-nums">
             {pct}%
           </span>
         </div>

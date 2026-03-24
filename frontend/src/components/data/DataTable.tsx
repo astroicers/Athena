@@ -78,7 +78,7 @@ export function DataTable<T extends Record<string, unknown>>({
             {columns.map((col) => (
               <th
                 key={col.key}
-                className={`h-9 px-4 text-left text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-secondary)] ${
+                className={`h-9 px-4 text-left text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)] ${
                   col.sortable ? "cursor-pointer hover:text-[var(--color-accent)] select-none" : ""
                 }`}
                 style={col.width ? { width: col.width } : undefined}

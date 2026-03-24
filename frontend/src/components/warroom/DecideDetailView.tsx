@@ -39,7 +39,7 @@ function ConfidenceBar({
     "\u2588".repeat(filledBlocks) + "\u2591".repeat(emptyBlocks);
 
   return (
-    <div className="flex items-center gap-2 text-[10px] font-mono">
+    <div className="flex items-center gap-2 text-xs font-mono">
       <span className="text-[var(--color-text-secondary)] min-w-[140px] text-right">
         {label}
       </span>
@@ -69,11 +69,11 @@ export function DecideDetailView({ detail }: DecideDetailViewProps) {
     <div className="font-mono space-y-3">
       {/* Decision result header */}
       <div className="flex items-center gap-2">
-        <h4 className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-primary)]">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-primary)]">
           {t("decisionResult")}:
         </h4>
         <span
-          className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-[var(--radius)] border"
+          className="text-xs font-bold uppercase tracking-wider px-2 py-1 rounded-[var(--radius)] border"
           style={{
             color: actionColor,
             borderColor: `${actionColor}40`,
@@ -87,7 +87,7 @@ export function DecideDetailView({ detail }: DecideDetailViewProps) {
       {/* Confidence breakdown */}
       {breakdownEntries.length > 0 && (
         <div>
-          <h5 className="text-[9px] font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2">
+          <h5 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2">
             {t("confidenceBreakdown")}
           </h5>
           <div className="space-y-1">
@@ -99,7 +99,7 @@ export function DecideDetailView({ detail }: DecideDetailViewProps) {
       )}
 
       {/* Noise x Risk matrix summary */}
-      <div className="text-[10px] text-[var(--color-text-secondary)]">
+      <div className="text-xs text-[var(--color-text-secondary)]">
         <span className="text-[var(--color-text-tertiary)]">Matrix: </span>
         <span className="text-[var(--color-text-primary)]">
           NOISE={noiseLevel}
@@ -116,7 +116,7 @@ export function DecideDetailView({ detail }: DecideDetailViewProps) {
 
       {/* Reason */}
       {detail.reason && (
-        <p className="text-[10px] text-[var(--color-text-secondary)] leading-relaxed">
+        <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
           {detail.reason}
         </p>
       )}

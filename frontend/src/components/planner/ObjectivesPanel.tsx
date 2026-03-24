@@ -129,7 +129,7 @@ export function ObjectivesPanel({ operationId }: { operationId: string }) {
     "w-full bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-[var(--radius)] px-2.5 py-1.5 text-xs font-mono text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]";
 
   const labelStyles =
-    "block text-[10px] font-mono text-[var(--color-text-secondary)] uppercase tracking-wider mb-0.5";
+    "block text-xs font-mono text-[var(--color-text-secondary)] uppercase tracking-wider mb-0.5";
 
   if (loading) {
     return (
@@ -216,7 +216,7 @@ export function ObjectivesPanel({ operationId }: { operationId: string }) {
       {/* Objectives List */}
       {objectives.length === 0 ? (
         <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-[var(--radius)] p-4 text-center mt-2">
-          <span className="text-[10px] font-mono text-[var(--color-text-tertiary)]">
+          <span className="text-xs font-mono text-[var(--color-text-tertiary)]">
             {t("noObjectives")}
           </span>
         </div>

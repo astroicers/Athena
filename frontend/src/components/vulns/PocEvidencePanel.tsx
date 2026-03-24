@@ -57,7 +57,7 @@ function SummaryCard({
 }) {
   return (
     <div className="flex-1 min-w-0 rounded-[var(--radius)] flex flex-col gap-1 bg-[var(--color-bg-surface)] border border-[var(--color-border)] px-3 py-2.5">
-      <span className="font-mono text-[8px] font-bold uppercase tracking-wider text-[var(--color-text-tertiary)]">
+      <span className="font-mono text-xs font-bold uppercase tracking-wider text-[var(--color-text-tertiary)]">
         {label}
       </span>
       <span
@@ -81,13 +81,13 @@ function PocCard({ record, index }: { record: PocRecord; index: number }) {
             POC-{String(index + 1).padStart(3, "0")}
           </span>
           <span
-            className={`font-mono text-[9px] font-bold rounded-[var(--radius)] px-2 py-0.5 ${reproducibleClasses(record.reproducible)}`}
+            className={`font-mono text-xs font-bold rounded-[var(--radius)] px-2 py-1 ${reproducibleClasses(record.reproducible)}`}
           >
             {reproducibleLabel(record.reproducible)}
           </span>
         </div>
         {record.techniqueId && (
-          <span className="font-mono text-[9px] text-[var(--color-text-tertiary)]">
+          <span className="font-mono text-xs text-[var(--color-text-tertiary)]">
             {record.techniqueId}
           </span>
         )}
@@ -101,26 +101,26 @@ function PocCard({ record, index }: { record: PocRecord; index: number }) {
       {/* Metadata row */}
       <div className="flex items-center gap-4 w-full">
         <div className="flex items-center gap-1.5">
-          <span className="font-mono text-[9px] text-[var(--color-text-tertiary)]">
+          <span className="font-mono text-xs text-[var(--color-text-tertiary)]">
             Target:
           </span>
-          <span className="font-mono text-[9px] text-[var(--color-text-secondary)]">
+          <span className="font-mono text-xs text-[var(--color-text-secondary)]">
             {record.targetIp}
           </span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="font-mono text-[9px] text-[var(--color-text-tertiary)]">
+          <span className="font-mono text-xs text-[var(--color-text-tertiary)]">
             Technique:
           </span>
-          <span className="font-mono text-[9px] text-[var(--color-text-secondary)]">
+          <span className="font-mono text-xs text-[var(--color-text-secondary)]">
             {record.techniqueId} - {record.techniqueName}
           </span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="font-mono text-[9px] text-[var(--color-text-tertiary)]">
+          <span className="font-mono text-xs text-[var(--color-text-tertiary)]">
             Time:
           </span>
-          <span className="font-mono text-[9px] text-[var(--color-text-secondary)]">
+          <span className="font-mono text-xs text-[var(--color-text-secondary)]">
             {new Date(record.timestamp).toLocaleTimeString("en-US", {
               hour: "2-digit",
               minute: "2-digit",
@@ -135,7 +135,7 @@ function PocCard({ record, index }: { record: PocRecord; index: number }) {
       {/* Description / output snippet */}
       {record.outputSnippet && (
         <p
-          className="font-mono text-[9px] leading-relaxed text-[var(--color-text-secondary)]"
+          className="font-mono text-xs leading-relaxed text-[var(--color-text-secondary)]"
         >
           {record.outputSnippet}
         </p>
@@ -202,7 +202,7 @@ function ExportDropdown({
         variant="secondary"
         size="sm"
         onClick={() => setOpen(!open)}
-        className="text-[10px] font-bold"
+        className="text-xs font-bold"
       >
         EXPORT .MD
       </Button>
@@ -214,7 +214,7 @@ function ExportDropdown({
             <button
               key={opt.path}
               onClick={() => handleExport(opt.path)}
-              className="block w-full text-left font-mono text-[10px] px-3 py-2 hover:bg-[var(--color-bg-surface-hover)] transition-colors text-[var(--color-text-primary)]"
+              className="block w-full text-left font-mono text-xs px-3 py-2 hover:bg-[var(--color-bg-surface-hover)] transition-colors text-[var(--color-text-primary)]"
             >
               {opt.label}
             </button>
@@ -297,7 +297,7 @@ export default function PocEvidencePanel({ operationId }: PocEvidencePanelProps)
         className="rounded-[var(--radius)] flex flex-col items-center justify-center gap-3 py-12 bg-[var(--color-bg-surface)] border border-[var(--color-error-bg)]"
       >
         <span
-          className="font-mono text-[8px] font-bold rounded-[var(--radius)] px-3 py-1 bg-[var(--color-error-bg)] text-[var(--color-error)]"
+          className="font-mono text-xs font-bold rounded-[var(--radius)] px-3 py-1 bg-[var(--color-error-bg)] text-[var(--color-error)]"
         >
           ERROR STATE
         </span>
@@ -307,7 +307,7 @@ export default function PocEvidencePanel({ operationId }: PocEvidencePanelProps)
           {t("errorTitle")}
         </span>
         <span
-          className="font-mono text-[10px] text-center leading-relaxed max-w-xs text-[var(--color-text-tertiary)]"
+          className="font-mono text-xs text-center leading-relaxed max-w-xs text-[var(--color-text-tertiary)]"
         >
           {error || t("errorSubtitle")}
         </span>
@@ -315,7 +315,7 @@ export default function PocEvidencePanel({ operationId }: PocEvidencePanelProps)
           variant="danger"
           size="sm"
           onClick={fetchRecords}
-          className="text-[10px] font-bold"
+          className="text-xs font-bold"
         >
           {t("retry")}
         </Button>
@@ -330,7 +330,7 @@ export default function PocEvidencePanel({ operationId }: PocEvidencePanelProps)
         className="rounded-[var(--radius)] flex flex-col items-center justify-center gap-3 py-12 bg-[var(--color-bg-surface)] border border-[var(--color-border)]"
       >
         <span
-          className="font-mono text-[8px] font-bold rounded-[var(--radius)] px-3 py-1 bg-[var(--color-accent-bg)] text-[var(--color-accent)]"
+          className="font-mono text-xs font-bold rounded-[var(--radius)] px-3 py-1 bg-[var(--color-accent-bg)] text-[var(--color-accent)]"
         >
           EMPTY STATE
         </span>
@@ -345,7 +345,7 @@ export default function PocEvidencePanel({ operationId }: PocEvidencePanelProps)
           {t("emptyTitle")}
         </span>
         <span
-          className="font-mono text-[10px] text-center leading-relaxed max-w-xs text-[var(--color-text-tertiary)]"
+          className="font-mono text-xs text-center leading-relaxed max-w-xs text-[var(--color-text-tertiary)]"
         >
           {t("emptySubtitle")}
         </span>
@@ -363,7 +363,7 @@ export default function PocEvidencePanel({ operationId }: PocEvidencePanelProps)
             PoC RECORDS
           </span>
           <span
-            className="font-mono text-[10px] font-semibold rounded-[var(--radius)] px-2.5 py-1 bg-[var(--color-accent-bg)] text-[var(--color-accent)]"
+            className="font-mono text-xs font-semibold rounded-[var(--radius)] px-2.5 py-1 bg-[var(--color-accent-bg)] text-[var(--color-accent)]"
           >
             {operationId?.slice(0, 12).toUpperCase()}
           </span>

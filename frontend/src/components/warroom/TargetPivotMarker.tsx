@@ -56,7 +56,7 @@ export function TargetPivotMarker({
       </div>
 
       {reason && (
-        <p className="text-[10px] text-athena-text-tertiary mt-1 ml-[18px]">
+        <p className="text-xs text-athena-text-tertiary mt-1 ml-[18px]">
           {reason}
         </p>
       )}

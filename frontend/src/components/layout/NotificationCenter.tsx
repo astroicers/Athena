@@ -126,7 +126,7 @@ export function NotificationCenter({
             </h2>
             {totalCount > 0 && (
               <span
-                className="inline-flex items-center justify-center font-mono font-bold text-white leading-none rounded-[10px] min-w-5 h-5 px-2 py-0.5 bg-athena-error text-[9px]"
+                className="inline-flex items-center justify-center font-mono font-bold text-white leading-none rounded-[10px] min-w-5 h-5 px-2 py-0.5 bg-athena-error text-xs"
               >
                 {totalCount > 99 ? "99+" : totalCount}
               </span>
@@ -137,7 +137,7 @@ export function NotificationCenter({
               variant="secondary"
               size="sm"
               onClick={handleClearAll}
-              className="text-[10px] text-athena-accent bg-transparent border-transparent hover:bg-transparent"
+              className="text-xs text-athena-accent bg-transparent border-transparent hover:bg-transparent"
             >
               {t("clearAll")}
             </Button>
@@ -172,7 +172,7 @@ export function NotificationCenter({
               {hasConstraint && (
                 <section className="flex flex-col gap-2 px-4 py-3">
                   <p
-                    className="font-mono font-bold uppercase text-[8px] text-athena-text-dim tracking-[1.5px]"
+                    className="font-mono font-bold uppercase text-xs text-athena-text-dim tracking-[1.5px]"
                   >
                     {t("pinnedConstraints")}
                   </p>
@@ -193,13 +193,13 @@ export function NotificationCenter({
                             className="w-2 h-2 rounded-full shrink-0 bg-athena-warning"
                           />
                           <span
-                            className="font-mono font-bold uppercase tracking-wider text-[10px] text-athena-warning"
+                            className="font-mono font-bold uppercase tracking-wider text-xs text-athena-warning"
                           >
                             {t("constraintActive")}
                           </span>
                         </div>
                         <span
-                          className="font-mono text-[8px] text-athena-text-faint"
+                          className="font-mono text-xs text-athena-text-faint"
                         >
                           {new Date().toLocaleTimeString(undefined, {
                             hour: "2-digit",
@@ -210,14 +210,14 @@ export function NotificationCenter({
                       </div>
                       {/* Message */}
                       <p
-                        className="font-mono leading-relaxed text-[10px] text-athena-text-subtle"
+                        className="font-mono leading-relaxed text-xs text-athena-text-subtle"
                       >
                         {msg}
                       </p>
                       {/* Source */}
                       {constraintAlert.domains.length > 0 && (
                         <span
-                          className="font-mono text-[8px] text-athena-text-faint"
+                          className="font-mono text-xs text-athena-text-faint"
                         >
                           {t("source")}: constraint_engine / {constraintAlert.domains[i] ?? constraintAlert.domains[0]}
                         </span>
@@ -238,7 +238,7 @@ export function NotificationCenter({
                   className="flex flex-col gap-2 flex-1 overflow-y-auto px-4 py-3"
                 >
                   <p
-                    className="font-mono font-bold uppercase text-[8px] text-athena-text-dim tracking-[1.5px]"
+                    className="font-mono font-bold uppercase text-xs text-athena-text-dim tracking-[1.5px]"
                   >
                     {t("opsecWarnings")}
                   </p>
@@ -263,27 +263,27 @@ export function NotificationCenter({
                               style={{ backgroundColor: colors.text }}
                             />
                             <span
-                              className="font-mono font-bold uppercase tracking-wider text-[10px]"
+                              className="font-mono font-bold uppercase tracking-wider text-xs"
                               style={{ color: colors.text }}
                             >
                               {sevStyle.badgeText}
                             </span>
                           </div>
                           <span
-                            className="font-mono text-[8px] text-athena-text-faint"
+                            className="font-mono text-xs text-athena-text-faint"
                           >
                             {formatTimestamp(alert.timestamp)}
                           </span>
                         </div>
                         {/* Message */}
                         <p
-                          className="font-mono leading-relaxed break-words text-[9px] text-athena-text-subtle"
+                          className="font-mono leading-relaxed break-words text-xs text-athena-text-subtle"
                         >
                           {alert.message}
                         </p>
                         {/* Source */}
                         <span
-                          className="font-mono text-[8px] text-athena-text-ghost"
+                          className="font-mono text-xs text-athena-text-ghost"
                         >
                           {t("source")}: {t("sourceOpsec")}
                         </span>

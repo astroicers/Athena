@@ -126,7 +126,7 @@ function MetricCard({
         {label}
       </span>
       {subLabel && (
-        <span className="font-mono text-[10px] text-athena-text-tertiary">
+        <span className="font-mono text-xs text-athena-text-tertiary">
           {subLabel}
         </span>
       )}
@@ -268,7 +268,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
     <section className="flex flex-col gap-4">
       {/* Section label */}
       <h2
-        className="font-mono uppercase text-athena-text-secondary text-[10px] font-semibold tracking-widest"
+        className="font-mono uppercase text-athena-text-secondary text-xs font-semibold tracking-widest"
       >
         OPERATIONAL SECURITY STATUS
       </h2>
@@ -317,12 +317,12 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
       >
         <div className="flex items-center justify-between">
           <span
-            className="font-mono uppercase font-semibold text-athena-text-light text-[11px] tracking-wider"
+            className="font-mono uppercase font-semibold text-athena-text-light text-xs tracking-wider"
           >
             NOISE SCORE TREND
           </span>
           <span
-            className="font-mono text-athena-text-secondary text-[10px]"
+            className="font-mono text-athena-text-secondary text-xs"
           >
             Last 6 hours
           </span>
@@ -344,12 +344,12 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
         {/* Header */}
         <div className="flex items-center gap-2 h-10 px-4">
           <span
-            className="font-mono uppercase font-semibold text-athena-text-light text-[11px] tracking-wider"
+            className="font-mono uppercase font-semibold text-athena-text-light text-xs tracking-wider"
           >
             OPSEC EVENTS
           </span>
           <span
-            className="font-mono text-[10px] rounded-[var(--radius)] px-2 py-0.5 text-athena-error bg-athena-error-bg"
+            className="font-mono text-xs rounded-[var(--radius)] px-2 py-1 text-athena-error bg-athena-error-bg"
           >
             {t("eventCount", { count: events.length })}
           </span>
@@ -376,7 +376,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
                 />
                 {/* Timestamp */}
                 <span
-                  className="font-mono text-[11px] shrink-0 athena-tabular-nums text-athena-text-tertiary"
+                  className="font-mono text-xs shrink-0 athena-tabular-nums text-athena-text-tertiary"
                 >
                   {new Date(event.timestamp).toLocaleTimeString("en-US", {
                     hour: "2-digit",
@@ -395,7 +395,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="text-[10px] px-2 py-0.5 shrink-0 text-athena-warning"
+                  className="text-xs px-2 py-0.5 shrink-0 text-athena-warning"
                 >
                   {t("view")}
                 </Button>

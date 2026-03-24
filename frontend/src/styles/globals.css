@@ -42,13 +42,13 @@
 
   /* -- Font Size Scale -- */
   --fs-floor: 12px;
-  --fs-caption: 10px;
+  --fs-caption: 12px;
   --fs-body: 14px;
-  --fs-heading-card: 13px;
+  --fs-heading-card: 14px;
   --fs-heading-section: 18px;
   --fs-heading-page: 28px;
   --fs-metric: 32px;
-  --fs-metric-label: 11px;
+  --fs-metric-label: 12px;
 
   /* -- Spacing Scale -- */
   --sp-badge-x: 12px;

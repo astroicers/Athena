@@ -28,7 +28,7 @@ export function PageHeader({
           {title}
         </h2>
         {operationCode && (
-          <span className="font-mono text-[10px] font-semibold rounded-[var(--radius)] text-[var(--color-accent)] bg-[var(--color-accent)]/[0.12] border border-[var(--color-accent)]/[0.25] px-2 py-0.5">
+          <span className="font-mono text-xs font-semibold rounded-[var(--radius)] text-[var(--color-accent)] bg-[var(--color-accent)]/[0.12] border border-[var(--color-accent)]/[0.25] px-2 py-1">
             {operationCode}
           </span>
         )}

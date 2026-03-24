@@ -40,7 +40,7 @@ export function C5ISRHealthGrid({
   return (
     <div>
       <span
-        className="font-mono text-[10px] font-bold uppercase tracking-wider mb-2 block text-[#ffffff20]"
+        className="font-mono text-xs font-bold uppercase tracking-wider mb-2 block text-[#ffffff20]"
       >
         C5ISR DOMAIN HEALTH
       </span>

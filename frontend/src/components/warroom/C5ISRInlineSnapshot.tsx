@@ -48,7 +48,7 @@ export function C5ISRInlineSnapshot({
             <div key={d.id} className="flex flex-col gap-0.5">
               <div className="flex items-center gap-2">
                 {/* Domain label */}
-                <span className="text-[10px] text-athena-text-tertiary w-10 shrink-0 uppercase tracking-wider">
+                <span className="text-xs text-athena-text-tertiary w-10 shrink-0 uppercase tracking-wider">
                   {domainLabel(d.domain)}
                 </span>
 
@@ -65,28 +65,28 @@ export function C5ISRInlineSnapshot({
 
                 {/* Health % */}
                 <span
-                  className="text-[10px] athena-tabular-nums w-8 text-right shrink-0"
+                  className="text-xs athena-tabular-nums w-8 text-right shrink-0"
                   style={{ color }}
                 >
                   {Math.round(d.healthPct)}%
                 </span>
 
                 {/* Status text */}
-                <span className="text-[10px] text-athena-text-tertiary w-16 shrink-0 truncate">
+                <span className="text-xs text-athena-text-tertiary w-16 shrink-0 truncate">
                   {d.status}
                 </span>
               </div>
 
               {/* Hard limit tag */}
               {hardLimit && (
-                <span className="text-[10px] text-athena-error bg-athena-error/[0.08] border border-[var(--color-error)]/[0.25] rounded-[var(--radius)] px-1.5 py-0.5 ml-12 w-fit">
+                <span className="text-xs text-athena-error bg-athena-error/[0.08] border border-[var(--color-error)]/[0.25] rounded-[var(--radius)] px-2 py-1 ml-12 w-fit">
                   {hardLimit.rule}
                 </span>
               )}
 
               {/* Warning tag */}
               {warning && !hardLimit && (
-                <span className="text-[10px] text-athena-warning bg-athena-warning/[0.08] border border-[var(--color-warning)]/[0.25] rounded-[var(--radius)] px-1.5 py-0.5 ml-12 w-fit">
+                <span className="text-xs text-athena-warning bg-athena-warning/[0.08] border border-[var(--color-warning)]/[0.25] rounded-[var(--radius)] px-2 py-1 ml-12 w-fit">
                   {warning.message}
                 </span>
               )}

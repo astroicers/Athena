@@ -186,7 +186,7 @@ export function MissionTab({
     "w-full bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-[var(--radius)] px-2.5 py-1.5 text-xs font-mono text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]";
 
   const labelStyles =
-    "block text-[10px] font-mono text-[var(--color-text-secondary)] uppercase tracking-wider mb-0.5";
+    "block text-xs font-mono text-[var(--color-text-secondary)] uppercase tracking-wider mb-0.5";
 
   const STEP_COLUMNS: Column<StepRow>[] = [
     { key: "stepNumber", header: t("colStep"), sortable: true, width: 60 },
@@ -299,7 +299,7 @@ export function MissionTab({
           </Tooltip>
         </div>
       </div>
-      <p className="text-[10px] font-mono text-[var(--color-text-tertiary)] -mt-3 ml-0.5">{tHints("missionSteps")}</p>
+      <p className="text-xs font-mono text-[var(--color-text-tertiary)] -mt-3 ml-0.5">{tHints("missionSteps")}</p>
       <DataTable columns={STEP_COLUMNS} data={steps as StepRow[]} keyField="id" emptyMessage={t("noSteps")} />
 
       {/* Objectives */}
@@ -309,7 +309,7 @@ export function MissionTab({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2">
           <OODATimeline entries={timeline} />
-          <p className="text-[10px] font-mono text-[var(--color-text-tertiary)] mt-1 ml-0.5">{tHints("oodaTimeline")}</p>
+          <p className="text-xs font-mono text-[var(--color-text-tertiary)] mt-1 ml-0.5">{tHints("oodaTimeline")}</p>
         </div>
         <div className="space-y-2 w-full lg:w-[360px]">
           <SectionHeader
@@ -333,10 +333,10 @@ export function MissionTab({
           >
             {t("targetHosts")}
           </SectionHeader>
-          <p className="text-[10px] font-mono text-[var(--color-text-tertiary)] -mt-0.5 ml-0.5">{tHints("targetHosts")}</p>
+          <p className="text-xs font-mono text-[var(--color-text-tertiary)] -mt-0.5 ml-0.5">{tHints("targetHosts")}</p>
           {targets.length === 0 ? (
             <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-[var(--radius)] p-4 text-center">
-              <span className="text-[10px] font-mono text-[var(--color-text-tertiary)] whitespace-pre-line">{tEmpty("plannerGuide")}</span>
+              <span className="text-xs font-mono text-[var(--color-text-tertiary)] whitespace-pre-line">{tEmpty("plannerGuide")}</span>
             </div>
           ) : (
             targets.map((tgt) => (
@@ -368,7 +368,7 @@ export function MissionTab({
                       variant="secondary"
                       size="sm"
                       onClick={() => onOsintDiscover(tgt.id)}
-                      className="flex-1 text-[10px] text-[var(--color-accent)] border-[var(--color-accent)]/[0.25] bg-transparent hover:bg-[var(--color-accent)]/10 uppercase tracking-wider"
+                      className="flex-1 text-xs text-[var(--color-accent)] border-[var(--color-accent)]/[0.25] bg-transparent hover:bg-[var(--color-accent)]/10 uppercase tracking-wider"
                     >
                       {t("osintDiscover")}
                     </Button>
@@ -379,7 +379,7 @@ export function MissionTab({
                       size="sm"
                       onClick={() => onInitialAccess(tgt.id)}
                       disabled={scanState?.targetId === tgt.id}
-                      className="flex-1 text-[10px] text-[var(--color-warning)] border-[var(--color-warning)]/[0.25] bg-transparent hover:bg-[var(--color-warning)]/[0.12] uppercase tracking-wider"
+                      className="flex-1 text-xs text-[var(--color-warning)] border-[var(--color-warning)]/[0.25] bg-transparent hover:bg-[var(--color-warning)]/[0.12] uppercase tracking-wider"
                     >
                       {t("initialAccess")}
                     </Button>
@@ -392,7 +392,7 @@ export function MissionTab({
                         prev === tgt.id ? null : tgt.id,
                       )
                     }
-                    className="flex-1 text-[10px] bg-[var(--color-accent)]/[0.12] border-[var(--color-accent)]/[0.40] text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20 uppercase tracking-wider"
+                    className="flex-1 text-xs bg-[var(--color-accent)]/[0.12] border-[var(--color-accent)]/[0.40] text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20 uppercase tracking-wider"
                   >
                     {t("aiSummary")}
                   </Button>
@@ -401,7 +401,7 @@ export function MissionTab({
                       variant="secondary"
                       size="sm"
                       onClick={() => onSetTerminalTarget(tgt)}
-                      className="flex-1 text-[10px] text-[var(--color-success)] border-[var(--color-success)]/[0.25] bg-transparent hover:bg-[var(--color-success)]/10 uppercase tracking-wider"
+                      className="flex-1 text-xs text-[var(--color-success)] border-[var(--color-success)]/[0.25] bg-transparent hover:bg-[var(--color-success)]/10 uppercase tracking-wider"
                     >
                       {t("terminal")}
                     </Button>
@@ -479,7 +479,7 @@ export function MissionTab({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-[var(--radius)] p-4 max-w-md w-full mx-4">
             <div className="mb-3">
-              <span className="text-[10px] font-mono text-[var(--color-text-tertiary)] uppercase tracking-wider">{t("missionSteps")}</span>
+              <span className="text-xs font-mono text-[var(--color-text-tertiary)] uppercase tracking-wider">{t("missionSteps")}</span>
               <h2 className="text-sm font-mono font-bold text-[var(--color-text-primary)] mt-0.5">{t("createStep")}</h2>
             </div>
             <form onSubmit={handleCreateStep} className="space-y-3">

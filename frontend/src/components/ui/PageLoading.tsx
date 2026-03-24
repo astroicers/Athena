@@ -29,7 +29,7 @@ export function PageLoading() {
           {[0, 1, 2, 3].map((i) => (
             <div
               key={i}
-              className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)]"
+              className="w-2.5 h-2.5 rounded-full bg-[var(--color-accent)]"
               style={{
                 animation: "pulse 1s ease-in-out infinite",
                 animationDelay: `${i * 0.15}s`,

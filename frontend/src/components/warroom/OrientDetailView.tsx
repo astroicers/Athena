@@ -32,17 +32,17 @@ export function OrientDetailView({ detail }: OrientDetailViewProps) {
   return (
     <div className="font-mono space-y-3">
       {/* Header */}
-      <h4 className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-primary)]">
+      <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-primary)]">
         {t("attackPathAnalysis")}
       </h4>
 
       {/* Situation assessment */}
       {detail.situationAssessment && (
         <div>
-          <h5 className="text-[9px] font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1">
+          <h5 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1">
             {t("situationAssessment")}
           </h5>
-          <p className="text-[10px] text-[var(--color-text-secondary)] leading-relaxed">
+          <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
             {detail.situationAssessment}
           </p>
         </div>
@@ -51,7 +51,7 @@ export function OrientDetailView({ detail }: OrientDetailViewProps) {
       {/* Recommended techniques */}
       {options.length > 0 && (
         <div>
-          <h5 className="text-[9px] font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2">
+          <h5 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2">
             {t("recommendedTechniques")} ({options.length})
           </h5>
           <div className="space-y-2">
@@ -74,20 +74,20 @@ export function OrientDetailView({ detail }: OrientDetailViewProps) {
                 >
                   {/* Option header */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[10px] text-[var(--color-text-tertiary)]">
+                    <span className="text-xs text-[var(--color-text-tertiary)]">
                       #{idx + 1}
                     </span>
-                    <span className="text-[10px] font-bold text-[var(--color-text-primary)]">
+                    <span className="text-xs font-bold text-[var(--color-text-primary)]">
                       {option.techniqueId}
                     </span>
-                    <span className="text-[10px] text-[var(--color-text-secondary)]">
+                    <span className="text-xs text-[var(--color-text-secondary)]">
                       {option.techniqueName}
                     </span>
-                    <span className="text-[9px] text-[var(--color-accent)] bg-[var(--color-accent)]/[0.12] px-1 py-0.5 rounded-[var(--radius)]">
+                    <span className="text-xs text-[var(--color-accent)] bg-[var(--color-accent)]/[0.12] px-2 py-1 rounded-[var(--radius)]">
                       {confidencePct}%
                     </span>
                     {isRecommended && (
-                      <span className="text-[9px] font-bold text-[var(--color-success)] bg-[var(--color-success)]/[0.12] border border-[var(--color-success)]/[0.25] px-1 py-0.5 rounded-[var(--radius)] uppercase tracking-wider">
+                      <span className="text-xs font-bold text-[var(--color-success)] bg-[var(--color-success)]/[0.12] border border-[var(--color-success)]/[0.25] px-2 py-1 rounded-[var(--radius)] uppercase tracking-wider">
                         REC
                       </span>
                     )}
@@ -96,7 +96,7 @@ export function OrientDetailView({ detail }: OrientDetailViewProps) {
                   {/* Risk + Engine badges */}
                   <div className="flex items-center gap-2 mt-1">
                     <span
-                      className="text-[9px] font-bold uppercase tracking-wider px-1 py-0.5 rounded-[var(--radius)] border"
+                      className="text-xs font-bold uppercase tracking-wider px-2 py-1 rounded-[var(--radius)] border"
                       style={{
                         color: riskColor,
                         borderColor: `${riskColor}40`,
@@ -105,14 +105,14 @@ export function OrientDetailView({ detail }: OrientDetailViewProps) {
                     >
                       {option.riskLevel.toUpperCase()}
                     </span>
-                    <span className="text-[9px] text-[var(--color-text-tertiary)] bg-[var(--color-bg-secondary)] px-1 py-0.5 rounded-[var(--radius)] border border-[var(--color-border-subtle)] uppercase">
+                    <span className="text-xs text-[var(--color-text-tertiary)] bg-[var(--color-bg-secondary)] px-2 py-1 rounded-[var(--radius)] border border-[var(--color-border-subtle)] uppercase">
                       {option.recommendedEngine}
                     </span>
                   </div>
 
                   {/* Reasoning */}
                   {option.reasoning && (
-                    <p className="text-[9px] text-[var(--color-text-secondary)] mt-1.5 leading-relaxed">
+                    <p className="text-xs text-[var(--color-text-secondary)] mt-1.5 leading-relaxed">
                       {option.reasoning}
                     </p>
                   )}
@@ -120,13 +120,13 @@ export function OrientDetailView({ detail }: OrientDetailViewProps) {
                   {/* Prerequisites */}
                   {option.prerequisites.length > 0 && (
                     <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                      <span className="text-[9px] text-[var(--color-text-tertiary)] font-bold uppercase tracking-wider">
+                      <span className="text-xs text-[var(--color-text-tertiary)] font-bold uppercase tracking-wider">
                         {t("prerequisite")}:
                       </span>
                       {option.prerequisites.map((prereq, pidx) => (
                         <span
                           key={pidx}
-                          className="text-[9px] text-[var(--color-success)] flex items-center gap-0.5"
+                          className="text-xs text-[var(--color-success)] flex items-center gap-0.5"
                         >
                           <span>+</span>
                           <span>{prereq}</span>

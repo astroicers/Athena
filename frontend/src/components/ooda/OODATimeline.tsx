@@ -207,7 +207,7 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
                     return (
                       <div key={i} className="flex items-start gap-3">
                         <div className="flex flex-col items-center shrink-0">
-                          <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] mt-1.5" />
+                          <div className="w-2.5 h-2.5 rounded-full bg-[var(--color-accent)] mt-1.5" />
                           {i < filtered.length - 1 && (
                             <div className="w-px flex-1 bg-[var(--color-border)]/50 mt-1 min-h-[12px]" />
                           )}
@@ -255,7 +255,7 @@ export function OODATimeline({ entries, defaultExpandLatest = 1 }: OODATimelineP
               return (
                 <div key={`recon-${i}`} className="flex items-start gap-3">
                   <div className="flex flex-col items-center shrink-0">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] mt-1.5" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-[var(--color-accent)] mt-1.5" />
                     {i < reconEntries.length - 1 && (
                       <div className="w-px flex-1 bg-[var(--color-border)]/50 mt-1 min-h-[12px]" />
                     )}

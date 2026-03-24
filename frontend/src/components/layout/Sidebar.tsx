@@ -31,7 +31,7 @@ export function Sidebar() {
       <div className="mx-3 border-b border-[var(--color-border)]" />
 
       {/* Navigation */}
-      <nav className="flex-1 pt-2 px-3 flex flex-col gap-0.5">
+      <nav className="flex-1 pt-2 px-3 flex flex-col gap-1">
         {NAV_ITEMS.map((item) => (
           <NavItem
             key={item.href}

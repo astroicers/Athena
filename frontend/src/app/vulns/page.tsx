@@ -94,7 +94,7 @@ function SeverityHeatStrip({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="font-mono text-[11px] font-bold uppercase tracking-[2px] text-[var(--color-text-secondary)]">
+      <span className="font-mono text-xs font-bold uppercase tracking-[2px] text-[var(--color-text-secondary)]">
         {t("severityDistribution")}
       </span>
       <div className="flex gap-0.5 h-6 rounded-[var(--radius)]">
@@ -109,7 +109,7 @@ function SeverityHeatStrip({
               style={{ width: `${widthPct}%`, minWidth: count > 0 ? 24 : 0 }}
             >
               {widthPct > 6 && (
-                <span className="font-mono text-[8px] font-bold athena-tabular-nums text-white">
+                <span className="font-mono text-xs font-bold athena-tabular-nums text-white">
                   {sev.toUpperCase().slice(0, 4)} {count}
                 </span>
               )}
@@ -135,7 +135,7 @@ function StatusPipeline({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="font-mono text-[11px] font-bold uppercase tracking-[2px] text-[var(--color-text-secondary)]">
+      <span className="font-mono text-xs font-bold uppercase tracking-[2px] text-[var(--color-text-secondary)]">
         STATUS PIPELINE
       </span>
       <div className="flex items-center justify-around">
@@ -147,7 +147,7 @@ function StatusPipeline({
               >
                 {byStatus[status] ?? 0}
               </span>
-              <span className="font-mono text-[8px] font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">
+              <span className="font-mono text-xs font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">
                 {t(`status.${status}`)}
               </span>
               <div
@@ -172,7 +172,7 @@ function StatusPipeline({
 function SeverityBadge({ severity }: { severity: VulnSeverity }) {
   return (
     <span
-      className={`font-mono text-[10px] font-bold uppercase rounded-[var(--radius)] px-2 py-0.5 w-[70px] text-center border ${SEVERITY_BADGE_CLASSES[severity]}`}
+      className={`font-mono text-xs font-bold uppercase rounded-[var(--radius)] px-2 py-1 w-[70px] text-center border ${SEVERITY_BADGE_CLASSES[severity]}`}
     >
       {severity}
     </span>
@@ -207,16 +207,16 @@ function VulnTable({
       {/* Table header */}
       <div className="flex items-center gap-3 px-4 h-9 shrink-0 bg-[var(--color-bg-surface)] border-b border-[var(--color-border)]">
         <span className="w-1 shrink-0" />
-        <span className="font-mono text-[10px] font-bold uppercase tracking-[1px] w-[120px] shrink-0 text-[var(--color-text-secondary)]">
+        <span className="font-mono text-xs font-bold uppercase tracking-[1px] w-[120px] shrink-0 text-[var(--color-text-secondary)]">
           {t("columns.cveId")}
         </span>
-        <span className="font-mono text-[10px] font-bold uppercase tracking-[1px] flex-1 min-w-0 text-[var(--color-text-secondary)]">
+        <span className="font-mono text-xs font-bold uppercase tracking-[1px] flex-1 min-w-0 text-[var(--color-text-secondary)]">
           Title
         </span>
-        <span className="font-mono text-[10px] font-bold uppercase tracking-[1px] w-[80px] shrink-0 text-center text-[var(--color-text-secondary)]">
+        <span className="font-mono text-xs font-bold uppercase tracking-[1px] w-[80px] shrink-0 text-center text-[var(--color-text-secondary)]">
           {t("columns.severity")}
         </span>
-        <span className="font-mono text-[10px] font-bold uppercase tracking-[1px] w-[90px] shrink-0 text-center text-[var(--color-text-secondary)]">
+        <span className="font-mono text-xs font-bold uppercase tracking-[1px] w-[90px] shrink-0 text-center text-[var(--color-text-secondary)]">
           {t("columns.status")}
         </span>
       </div>
@@ -252,13 +252,13 @@ function VulnTable({
 
                 {/* CVE ID */}
                 <span
-                  className={`font-mono text-[9px] w-[120px] shrink-0 truncate text-[var(--color-text-primary)] ${isSelected ? "font-bold" : "font-normal"}`}
+                  className={`font-mono text-xs w-[120px] shrink-0 truncate text-[var(--color-text-primary)] ${isSelected ? "font-bold" : "font-normal"}`}
                 >
                   {vuln.cveId ?? "N/A"}
                 </span>
 
                 {/* Title */}
-                <span className="font-mono text-[9px] flex-1 min-w-0 truncate text-[var(--color-text-primary)]">
+                <span className="font-mono text-xs flex-1 min-w-0 truncate text-[var(--color-text-primary)]">
                   {vuln.title}
                 </span>
 
@@ -268,7 +268,7 @@ function VulnTable({
                 </span>
 
                 {/* Status */}
-                <span className="font-mono text-[9px] uppercase w-[90px] shrink-0 text-center text-[var(--color-text-secondary)]">
+                <span className="font-mono text-xs uppercase w-[90px] shrink-0 text-center text-[var(--color-text-secondary)]">
                   {t(`status.${vuln.status}`)}
                 </span>
               </button>
@@ -350,12 +350,12 @@ function DetailPanel({
       {vuln.description && (
         <div className="flex flex-col gap-1">
           <span
-            className="font-mono text-[11px] font-bold uppercase tracking-[2px] text-[var(--color-text-secondary)]"
+            className="font-mono text-xs font-bold uppercase tracking-[2px] text-[var(--color-text-secondary)]"
           >
             {t("detail.description")}
           </span>
           <p
-            className="font-mono text-[9px] leading-relaxed text-[var(--color-text-primary)]"
+            className="font-mono text-xs leading-relaxed text-[var(--color-text-primary)]"
           >
             {vuln.description}
           </p>
@@ -365,7 +365,7 @@ function DetailPanel({
       {/* Status */}
       <div className="flex flex-col gap-1">
         <span
-          className="font-mono text-[11px] font-bold uppercase tracking-[2px] text-[var(--color-text-secondary)]"
+          className="font-mono text-xs font-bold uppercase tracking-[2px] text-[var(--color-text-secondary)]"
         >
           {t("columns.status")}
         </span>
@@ -380,7 +380,7 @@ function DetailPanel({
       {vuln.service && (
         <div className="flex flex-col gap-1">
           <span
-            className="font-mono text-[11px] font-bold uppercase tracking-[2px] text-[var(--color-text-secondary)]"
+            className="font-mono text-xs font-bold uppercase tracking-[2px] text-[var(--color-text-secondary)]"
           >
             {t("detail.service")}
           </span>
@@ -395,7 +395,7 @@ function DetailPanel({
       {/* Target */}
       <div className="flex flex-col gap-1">
         <span
-          className="font-mono text-[11px] font-bold uppercase tracking-[2px] text-[var(--color-text-secondary)]"
+          className="font-mono text-xs font-bold uppercase tracking-[2px] text-[var(--color-text-secondary)]"
         >
           {t("columns.target")}
         </span>
@@ -410,7 +410,7 @@ function DetailPanel({
       {vuln.cvssScore !== null && vuln.cvssScore !== undefined && (
         <div className="flex flex-col gap-1">
           <span
-            className="font-mono text-[11px] font-bold uppercase tracking-[2px] text-[var(--color-text-secondary)]"
+            className="font-mono text-xs font-bold uppercase tracking-[2px] text-[var(--color-text-secondary)]"
           >
             {t("columns.cvss")}
           </span>
@@ -425,7 +425,7 @@ function DetailPanel({
       {/* Timeline */}
       <div className="flex flex-col gap-1">
         <span
-          className="font-mono text-[11px] font-bold uppercase tracking-[2px] text-[var(--color-text-secondary)]"
+          className="font-mono text-xs font-bold uppercase tracking-[2px] text-[var(--color-text-secondary)]"
         >
           {t("detail.timeline")}
         </span>
@@ -458,7 +458,7 @@ function DetailPanel({
       {/* Status actions */}
       <div className="flex flex-col gap-2 mt-auto">
         <span
-          className="font-mono text-[11px] font-bold uppercase tracking-[2px] text-[var(--color-text-secondary)]"
+          className="font-mono text-xs font-bold uppercase tracking-[2px] text-[var(--color-text-secondary)]"
         >
           STATUS TRANSITIONS
         </span>
@@ -469,7 +469,7 @@ function DetailPanel({
               type="button"
               disabled={changingStatus}
               onClick={() => handleStatusChange(action.status)}
-              className="font-mono text-[10px] uppercase px-2.5 py-1 rounded-[var(--radius)] transition-colors disabled:opacity-50 text-[var(--color-text-primary)] border border-[var(--color-border-subtle)] bg-[var(--color-bg-surface)] hover:bg-[var(--color-bg-elevated)]"
+              className="font-mono text-xs uppercase px-2.5 py-1 rounded-[var(--radius)] transition-colors disabled:opacity-50 text-[var(--color-text-primary)] border border-[var(--color-border-subtle)] bg-[var(--color-bg-surface)] hover:bg-[var(--color-bg-elevated)]"
             >
               {action.label}
             </button>
@@ -493,12 +493,12 @@ function TimelineEntry({ label, date }: { label: string; date: string }) {
   return (
     <div className="flex items-center gap-2">
       <span
-        className="font-mono text-[10px] text-[var(--color-text-tertiary)]"
+        className="font-mono text-xs text-[var(--color-text-tertiary)]"
       >
         {label}:
       </span>
       <span
-        className="font-mono text-[10px] athena-tabular-nums text-[var(--color-text-secondary)]"
+        className="font-mono text-xs athena-tabular-nums text-[var(--color-text-secondary)]"
       >
         {formatted}
       </span>
@@ -662,7 +662,7 @@ function VulnsContent() {
         {/* PoC Evidence Section */}
         <div className="flex flex-col gap-2 shrink-0 px-6">
           <div className="flex items-center gap-2 border-t border-[var(--color-border)] pt-3">
-            <span className="font-mono text-[8px] font-bold uppercase tracking-[1.5px] text-[var(--color-text-tertiary)]">
+            <span className="font-mono text-xs font-bold uppercase tracking-[1.5px] text-[var(--color-text-tertiary)]">
               POC EVIDENCE
             </span>
           </div>

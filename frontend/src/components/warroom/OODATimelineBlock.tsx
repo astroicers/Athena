@@ -114,13 +114,13 @@ export function OODATimelineBlock({
             {t("oodaIteration", { num: iteration.iterationNumber })}
           </span>
           {iteration.targetHostname && (
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-[var(--radius)] bg-[var(--color-accent)]/[0.12] border border-[var(--color-accent)]/[0.25] text-[var(--color-accent)]">
+            <span className="text-xs font-mono px-2 py-1 rounded-[var(--radius)] bg-[var(--color-accent)]/[0.12] border border-[var(--color-accent)]/[0.25] text-[var(--color-accent)]">
               [{iteration.targetIp}] {iteration.targetHostname}
             </span>
           )}
         </div>
         <span
-          className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-[var(--radius)] ${
+          className={`text-xs font-bold uppercase tracking-wider px-2 py-1 rounded-[var(--radius)] ${
             isCompleted
               ? "bg-athena-success/[0.12] border border-[var(--color-success)]/[0.25] text-athena-success"
               : "bg-athena-accent/[0.12] border border-[var(--color-accent)]/[0.25] text-athena-accent"

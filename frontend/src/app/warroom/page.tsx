@@ -210,7 +210,7 @@ function WarRoomContent() {
                     : "bg-athena-surface text-athena-text-tertiary border border-[var(--color-border)]"
                 }`}
               >
-                <span className={`w-1.5 h-1.5 rounded-full ${autoMode ? "bg-athena-accent" : "bg-athena-text-tertiary"}`} />
+                <span className={`w-2.5 h-2.5 rounded-full ${autoMode ? "bg-athena-accent" : "bg-athena-text-tertiary"}`} />
                 {autoMode ? t("autoMode") : t("manualMode")}
               </button>
             </div>

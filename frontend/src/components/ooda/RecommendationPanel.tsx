@@ -46,7 +46,7 @@ function OptionCard({ option, index }: { option: TacticalOption; index: number }
             {option.techniqueId}
           </span>
           {index === 0 && (
-            <span className="text-sm font-mono text-athena-accent bg-athena-accent/10 px-1.5 py-0.5 rounded-[var(--radius)]">
+            <span className="text-sm font-mono text-athena-accent bg-athena-accent/10 px-2 py-1 rounded-[var(--radius)]">
               {t("recommended")}
             </span>
           )}

@@ -36,11 +36,11 @@ export function ActDetailView({ detail }: ActDetailViewProps) {
     <div className="font-mono space-y-3">
       {/* Execution result header */}
       <div className="flex items-center gap-2">
-        <h4 className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-primary)]">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-primary)]">
           {t("executionResult")}:
         </h4>
         <span
-          className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-[var(--radius)] border"
+          className="text-xs font-bold uppercase tracking-wider px-2 py-1 rounded-[var(--radius)] border"
           style={{
             color: statusColor,
             borderColor: `${statusColor}40`,
@@ -53,7 +53,7 @@ export function ActDetailView({ detail }: ActDetailViewProps) {
 
       {/* Technique + Engine info */}
       {(detail.techniqueId || detail.engine) && (
-        <div className="text-[10px] text-[var(--color-text-secondary)]">
+        <div className="text-xs text-[var(--color-text-secondary)]">
           {detail.techniqueId && (
             <span>
               <span className="text-[var(--color-text-tertiary)]">
@@ -81,7 +81,7 @@ export function ActDetailView({ detail }: ActDetailViewProps) {
       {/* Facts collected */}
       {detail.factsCollectedCount !== undefined &&
         detail.factsCollectedCount > 0 && (
-          <div className="text-[10px] text-[var(--color-text-secondary)]">
+          <div className="text-xs text-[var(--color-text-secondary)]">
             <span className="text-[var(--color-text-tertiary)]">
               {t("factsCollected")}:{" "}
             </span>
@@ -94,7 +94,7 @@ export function ActDetailView({ detail }: ActDetailViewProps) {
       {/* Result summary (success case) */}
       {!isFailed && detail.resultSummary && (
         <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border-subtle)] rounded-[var(--radius)] p-2">
-          <p className="text-[10px] text-[var(--color-text-secondary)] leading-relaxed">
+          <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
             {detail.resultSummary}
           </p>
         </div>
@@ -103,7 +103,7 @@ export function ActDetailView({ detail }: ActDetailViewProps) {
       {/* Error message (failure case) */}
       {isFailed && detail.errorMessage && (
         <div className="bg-[#EF4444]/[0.08] border border-[#EF4444]/[0.25] rounded-[var(--radius)] p-2">
-          <p className="text-[10px] text-[#EF4444] leading-relaxed">
+          <p className="text-xs text-[#EF4444] leading-relaxed">
             {detail.errorMessage}
           </p>
         </div>

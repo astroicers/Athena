@@ -154,13 +154,13 @@ export function HostNodeCard({
                   {services.slice(0, 3).map((svc) => (
                     <span
                       key={svc.port}
-                      className="text-[9px] font-mono bg-[var(--color-border-subtle)] rounded-[var(--radius)] px-1.5 py-px text-[var(--color-text-secondary)]"
+                      className="text-xs font-mono bg-[var(--color-border-subtle)] rounded-[var(--radius)] px-1.5 py-px text-[var(--color-text-secondary)]"
                     >
                       {svc.port}/{svc.service}
                     </span>
                   ))}
                   {services.length > 3 && (
-                    <span className="text-[9px] font-mono text-[var(--color-text-secondary)]">
+                    <span className="text-xs font-mono text-[var(--color-text-secondary)]">
                       +{services.length - 3}
                     </span>
                   )}

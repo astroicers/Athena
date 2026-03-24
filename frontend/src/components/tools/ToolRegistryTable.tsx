@@ -85,25 +85,25 @@ export function ToolRegistryTable({
     <div>
       {/* Table Header — 36px, fill #18181B */}
       <div className="flex items-center h-9 px-3 bg-[var(--color-bg-surface)]">
-        <div className="w-[260px] shrink-0 font-mono text-[10px] font-bold uppercase tracking-[1px] text-[var(--color-text-secondary)]">
+        <div className="w-[260px] shrink-0 font-mono text-xs font-bold uppercase tracking-[1px] text-[var(--color-text-secondary)]">
           {t("colName")}
         </div>
-        <div className="w-[120px] shrink-0 font-mono text-[10px] font-bold uppercase tracking-[1px] text-[var(--color-text-secondary)]">
+        <div className="w-[120px] shrink-0 font-mono text-xs font-bold uppercase tracking-[1px] text-[var(--color-text-secondary)]">
           {t("colCategory")}
         </div>
-        <div className="w-[70px] shrink-0 font-mono text-[10px] font-bold uppercase tracking-[1px] text-[var(--color-text-secondary)]">
+        <div className="w-[70px] shrink-0 font-mono text-xs font-bold uppercase tracking-[1px] text-[var(--color-text-secondary)]">
           {t("colStatus")}
         </div>
-        <div className="w-[80px] shrink-0 font-mono text-[10px] font-bold uppercase tracking-[1px] text-[var(--color-text-secondary)]">
+        <div className="w-[80px] shrink-0 font-mono text-xs font-bold uppercase tracking-[1px] text-[var(--color-text-secondary)]">
           {t("colRisk")}
         </div>
-        <div className="w-[180px] shrink-0 font-mono text-[10px] font-bold uppercase tracking-[1px] text-[var(--color-text-secondary)]">
+        <div className="w-[180px] shrink-0 font-mono text-xs font-bold uppercase tracking-[1px] text-[var(--color-text-secondary)]">
           {t("colMitre")}
         </div>
-        <div className="w-[100px] shrink-0 font-mono text-[10px] font-bold uppercase tracking-[1px] text-[var(--color-text-secondary)]">
+        <div className="w-[100px] shrink-0 font-mono text-xs font-bold uppercase tracking-[1px] text-[var(--color-text-secondary)]">
           {t("colContainer")}
         </div>
-        <div className="w-[80px] shrink-0 font-mono text-[10px] font-bold uppercase tracking-[1px] text-[var(--color-text-secondary)] text-center">
+        <div className="w-[80px] shrink-0 font-mono text-xs font-bold uppercase tracking-[1px] text-[var(--color-text-secondary)] text-center">
           {t("colActions")}
         </div>
       </div>
@@ -129,14 +129,14 @@ export function ToolRegistryTable({
                   <button
                     onClick={() => handleDelete(tool.toolId)}
                     disabled={deletingId === tool.toolId}
-                    className="font-mono text-[10px] font-semibold text-[var(--color-error)] bg-[#B91C1C14] border border-[#B91C1C40] rounded-[var(--radius)] px-1.5 py-0.5 shrink-0 cursor-pointer hover:bg-[#B91C1C20] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="font-mono text-xs font-semibold text-[var(--color-error)] bg-[#B91C1C14] border border-[#B91C1C40] rounded-[var(--radius)] px-1.5 py-0.5 shrink-0 cursor-pointer hover:bg-[#B91C1C20] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {deletingId === tool.toolId ? "..." : t("del")}
                   </button>
                 )}
               </div>
               {tool.description && (
-                <span className="font-mono text-[9px] font-normal text-[var(--color-text-secondary)] truncate max-w-[240px]">
+                <span className="font-mono text-xs font-normal text-[var(--color-text-secondary)] truncate max-w-[240px]">
                   {tool.description}
                 </span>
               )}
@@ -145,7 +145,7 @@ export function ToolRegistryTable({
             {/* CATEGORY — badge with color coding */}
             <div className="w-[120px] shrink-0">
               <span
-                className="font-mono text-[10px] inline-block rounded-[var(--radius)] px-1.5 py-0.5"
+                className="font-mono text-xs inline-block rounded-[var(--radius)] px-1.5 py-0.5"
                 style={{
                   backgroundColor: catColor.bg,
                   borderWidth: "1px",
@@ -171,7 +171,7 @@ export function ToolRegistryTable({
                 }`}
               />
               <span
-                className={`font-mono text-[10px] font-semibold ${
+                className={`font-mono text-xs font-semibold ${
                   tool.enabled ? "text-[var(--color-success)]" : "text-[var(--color-text-secondary)]"
                 }`}
               >
@@ -182,7 +182,7 @@ export function ToolRegistryTable({
             {/* RISK — badge with color coding */}
             <div className="w-[80px] shrink-0">
               <span
-                className="font-mono text-[10px] inline-block rounded-[var(--radius)] px-1.5 py-0.5"
+                className="font-mono text-xs inline-block rounded-[var(--radius)] px-1.5 py-0.5"
                 style={{
                   backgroundColor: riskColor.bg,
                   borderWidth: "1px",
@@ -200,7 +200,7 @@ export function ToolRegistryTable({
               {tool.mitreTechniques.map((tid) => (
                 <span
                   key={tid}
-                  className="font-mono text-[10px] inline-block rounded-[var(--radius)] bg-[var(--color-bg-elevated)] text-[var(--color-text-tertiary)] px-1.5 py-0.5"
+                  className="font-mono text-xs inline-block rounded-[var(--radius)] bg-[var(--color-bg-elevated)] text-[var(--color-text-tertiary)] px-1.5 py-0.5"
                 >
                   {tid}
                 </span>
@@ -211,22 +211,22 @@ export function ToolRegistryTable({
             <div className="flex items-center w-[100px] shrink-0 gap-1.5">
               {status === "online" && (
                 <>
-                  <span className="inline-block rounded-full w-1.5 h-1.5 shrink-0 bg-[var(--color-success)]" />
-                  <span className="font-mono text-[10px] text-[var(--color-success)]">
+                  <span className="inline-block rounded-full w-2.5 h-2.5 shrink-0 bg-[var(--color-success)]" />
+                  <span className="font-mono text-xs text-[var(--color-success)]">
                     {t("containerOnline")}
                   </span>
                 </>
               )}
               {status === "offline" && (
                 <>
-                  <span className="inline-block rounded-full w-1.5 h-1.5 shrink-0 bg-[var(--color-error)]" />
-                  <span className="font-mono text-[10px] text-[var(--color-error)]">
+                  <span className="inline-block rounded-full w-2.5 h-2.5 shrink-0 bg-[var(--color-error)]" />
+                  <span className="font-mono text-xs text-[var(--color-error)]">
                     {t("containerOffline")}
                   </span>
                 </>
               )}
               {status === "none" && (
-                <span className="font-mono text-[10px] text-[var(--color-text-secondary)]">
+                <span className="font-mono text-xs text-[var(--color-text-secondary)]">
                   --
                 </span>
               )}
@@ -237,12 +237,12 @@ export function ToolRegistryTable({
               {tool.enabled ? (
                 <button
                   onClick={() => setSelectedTool(tool)}
-                  className="font-mono text-[10px] font-semibold text-[var(--color-text-primary)] bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] rounded-[var(--radius)] px-3 py-1 cursor-pointer hover:bg-[var(--color-bg-elevated)] transition-colors"
+                  className="font-mono text-xs font-semibold text-[var(--color-text-primary)] bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] rounded-[var(--radius)] px-3 py-1 cursor-pointer hover:bg-[var(--color-bg-elevated)] transition-colors"
                 >
                   {t("execute")}
                 </button>
               ) : (
-                <span className="font-mono text-[10px] text-[var(--color-text-secondary)]">
+                <span className="font-mono text-xs text-[var(--color-text-secondary)]">
                   --
                 </span>
               )}

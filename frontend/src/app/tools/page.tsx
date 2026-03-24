@@ -85,7 +85,7 @@ function ToolsContent() {
         </div>
         <button
           onClick={() => setShowGuide(true)}
-          className="font-mono text-[11px] font-semibold text-[var(--color-text-primary)] bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] rounded-[var(--radius)] px-3 py-1 cursor-pointer hover:bg-[var(--color-bg-elevated)] transition-colors"
+          className="font-mono text-xs font-semibold text-[var(--color-text-primary)] bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] rounded-[var(--radius)] px-3 py-1 cursor-pointer hover:bg-[var(--color-bg-elevated)] transition-colors"
         >
           {t("howToAdd")}
         </button>

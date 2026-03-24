@@ -22,7 +22,7 @@ const VARIANT_STYLES = {
 } as const;
 
 const SIZE_STYLES = {
-  sm: "px-3 py-1 text-[11px]",
+  sm: "px-3 py-1 text-xs",
   md: "px-4 py-2 text-sm",
   lg: "px-6 py-3 text-base",
 } as const;

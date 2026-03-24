@@ -51,14 +51,14 @@ export function DirectiveInput({
     <div className="bg-athena-elevated border border-[var(--color-border)] rounded-[var(--radius)] p-3 font-mono">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[10px] text-athena-text-tertiary uppercase tracking-wider font-semibold">
+        <span className="text-xs text-athena-text-tertiary uppercase tracking-wider font-semibold">
           {t("nextDirective")}
         </span>
 
         {/* Auto Mode toggle */}
         <button
           onClick={onToggleAutoMode}
-          className="flex items-center gap-2 text-[10px] uppercase tracking-wider"
+          className="flex items-center gap-2 text-xs uppercase tracking-wider"
           type="button"
         >
           <span className="text-athena-text-tertiary">{t("autoMode")}</span>
@@ -88,7 +88,7 @@ export function DirectiveInput({
         <div className="flex flex-col gap-2">
           {/* AI suggestion */}
           {aiSuggestion && (
-            <p className="text-[11px] text-athena-text-tertiary">
+            <p className="text-xs text-athena-text-tertiary">
               AI suggests: {aiSuggestion}
             </p>
           )}
@@ -108,7 +108,7 @@ export function DirectiveInput({
             onClick={handleSubmit}
             disabled={!draft.trim()}
             type="button"
-            className="self-start bg-athena-surface border border-[var(--color-border)] text-athena-text text-[10px] uppercase tracking-wider font-semibold px-3 py-1.5 rounded-[var(--radius)] hover:bg-athena-elevated transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="self-start bg-athena-surface border border-[var(--color-border)] text-athena-text text-xs uppercase tracking-wider font-semibold px-3 py-1.5 rounded-[var(--radius)] hover:bg-athena-elevated transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {t("submitDirective")}
           </button>

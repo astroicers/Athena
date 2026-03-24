@@ -66,23 +66,23 @@ export function ObserveDetailView({ detail }: ObserveDetailViewProps) {
       {/* Port scan results table */}
       {portFacts.length > 0 && (
         <div>
-          <h4 className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-primary)] mb-2">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-primary)] mb-2">
             {t("portScanResults")}
           </h4>
           <div className="overflow-x-auto">
-            <table className="w-full text-[10px] border-collapse">
+            <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="border-b border-[var(--color-border)]">
-                  <th className="text-left px-2 py-1 text-[var(--color-text-tertiary)] font-bold uppercase tracking-wider">
+                  <th className="text-left px-2 py-1.5 text-[var(--color-text-tertiary)] font-bold uppercase tracking-wider">
                     Port
                   </th>
-                  <th className="text-left px-2 py-1 text-[var(--color-text-tertiary)] font-bold uppercase tracking-wider">
+                  <th className="text-left px-2 py-1.5 text-[var(--color-text-tertiary)] font-bold uppercase tracking-wider">
                     Service
                   </th>
-                  <th className="text-left px-2 py-1 text-[var(--color-text-tertiary)] font-bold uppercase tracking-wider">
+                  <th className="text-left px-2 py-1.5 text-[var(--color-text-tertiary)] font-bold uppercase tracking-wider">
                     Version
                   </th>
-                  <th className="text-left px-2 py-1 text-[var(--color-text-tertiary)] font-bold uppercase tracking-wider">
+                  <th className="text-left px-2 py-1.5 text-[var(--color-text-tertiary)] font-bold uppercase tracking-wider">
                     Protocol
                   </th>
                 </tr>
@@ -93,16 +93,16 @@ export function ObserveDetailView({ detail }: ObserveDetailViewProps) {
                     key={idx}
                     className="border-b border-[var(--color-border-subtle)]"
                   >
-                    <td className="px-2 py-1 text-[var(--color-accent)] font-bold">
+                    <td className="px-2 py-1.5 text-[var(--color-accent)] font-bold">
                       {port.port}
                     </td>
-                    <td className="px-2 py-1 text-[var(--color-text-primary)]">
+                    <td className="px-2 py-1.5 text-[var(--color-text-primary)]">
                       {port.service}
                     </td>
-                    <td className="px-2 py-1 text-[var(--color-text-secondary)]">
+                    <td className="px-2 py-1.5 text-[var(--color-text-secondary)]">
                       {port.version || "-"}
                     </td>
-                    <td className="px-2 py-1 text-[var(--color-text-tertiary)]">
+                    <td className="px-2 py-1.5 text-[var(--color-text-tertiary)]">
                       {port.protocol}
                     </td>
                   </tr>
@@ -116,9 +116,9 @@ export function ObserveDetailView({ detail }: ObserveDetailViewProps) {
       {/* Other intelligence facts */}
       {otherFacts.length > 0 && (
         <div>
-          <h4 className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-primary)] mb-2 flex items-center gap-2">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-primary)] mb-2 flex items-center gap-2">
             <span>{t("intelligenceFacts")}</span>
-            <span className="text-[9px] bg-[var(--color-accent)]/[0.12] border border-[var(--color-accent)]/[0.25] text-[var(--color-accent)] px-1.5 py-0.5 rounded-[var(--radius)]">
+            <span className="text-xs bg-[var(--color-accent)]/[0.12] border border-[var(--color-accent)]/[0.25] text-[var(--color-accent)] px-2 py-1 rounded-[var(--radius)]">
               {totalCount}
             </span>
           </h4>
@@ -126,7 +126,7 @@ export function ObserveDetailView({ detail }: ObserveDetailViewProps) {
             {otherFacts.map((fact, idx) => (
               <li
                 key={idx}
-                className="text-[10px] text-[var(--color-text-secondary)] flex items-start gap-1"
+                className="text-xs text-[var(--color-text-secondary)] flex items-start gap-1"
               >
                 <span className="text-[var(--color-text-tertiary)] shrink-0">
                   *
@@ -145,7 +145,7 @@ export function ObserveDetailView({ detail }: ObserveDetailViewProps) {
 
       {/* Fallback when no parsed facts but count exists */}
       {facts.length === 0 && totalCount > 0 && (
-        <div className="text-[10px] text-[var(--color-text-secondary)]">
+        <div className="text-xs text-[var(--color-text-secondary)]">
           {t("intelligenceFacts")}: {totalCount}
         </div>
       )}

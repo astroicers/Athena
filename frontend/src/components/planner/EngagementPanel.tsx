@@ -94,7 +94,7 @@ export function EngagementPanel({ operationId }: { operationId: string }) {
       <div>
         <SectionHeader level="card">{t("title")}</SectionHeader>
         <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-[var(--radius)] p-4 text-center mt-2">
-          <span className="text-[10px] font-mono text-[var(--color-text-tertiary)]">
+          <span className="text-xs font-mono text-[var(--color-text-tertiary)]">
             {t("noEngagement")}
           </span>
         </div>
@@ -139,7 +139,7 @@ export function EngagementPanel({ operationId }: { operationId: string }) {
 
       <div className="mt-2 border border-[var(--color-border)] rounded-[var(--radius)] bg-[var(--color-bg-surface)] px-3 py-2.5 space-y-2">
         {/* Client info */}
-        <div className="flex gap-3 text-[11px] font-mono">
+        <div className="flex gap-3 text-xs font-mono">
           <div>
             <span className="text-[var(--color-text-tertiary)]">{t("client")}: </span>
             <span className="text-[var(--color-text-primary)]">{engagement.clientName}</span>
@@ -153,11 +153,11 @@ export function EngagementPanel({ operationId }: { operationId: string }) {
         {/* Scope */}
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <p className="text-[10px] font-mono font-bold text-[var(--color-success)] uppercase tracking-wider mb-1">
+            <p className="text-xs font-mono font-bold text-[var(--color-success)] uppercase tracking-wider mb-1">
               {t("inScope")}
             </p>
             {engagement.inScope.length > 0 ? (
-              <ul className="text-[11px] font-mono text-[var(--color-text-primary)] space-y-0.5">
+              <ul className="text-xs font-mono text-[var(--color-text-primary)] space-y-0.5">
                 {engagement.inScope.map((s, i) => (
                   <li key={i} className="flex items-center gap-1">
                     <span className="text-[var(--color-success)]">+</span> {s}
@@ -169,11 +169,11 @@ export function EngagementPanel({ operationId }: { operationId: string }) {
             )}
           </div>
           <div>
-            <p className="text-[10px] font-mono font-bold text-[var(--color-error)] uppercase tracking-wider mb-1">
+            <p className="text-xs font-mono font-bold text-[var(--color-error)] uppercase tracking-wider mb-1">
               {t("outOfScope")}
             </p>
             {engagement.outOfScope.length > 0 ? (
-              <ul className="text-[11px] font-mono text-[var(--color-text-primary)] space-y-0.5">
+              <ul className="text-xs font-mono text-[var(--color-text-primary)] space-y-0.5">
                 {engagement.outOfScope.map((s, i) => (
                   <li key={i} className="flex items-center gap-1">
                     <span className="text-[var(--color-error)]">-</span> {s}
@@ -188,7 +188,7 @@ export function EngagementPanel({ operationId }: { operationId: string }) {
 
         {/* Emergency contact */}
         {engagement.emergencyContact && (
-          <div className="text-[11px] font-mono">
+          <div className="text-xs font-mono">
             <span className="text-[var(--color-text-tertiary)]">{t("emergency")}: </span>
             <span className="text-[var(--color-text-primary)]">{engagement.emergencyContact}</span>
           </div>

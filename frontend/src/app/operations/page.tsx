@@ -119,7 +119,7 @@ function OperationsContent() {
         <div className="flex items-center justify-end mb-4">
           <button
             onClick={() => setShowCreate(true)}
-            className="font-mono text-[11px] font-semibold text-[var(--color-text-primary)] bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] rounded-[var(--radius)] px-3 py-1 hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer"
+            className="font-mono text-xs font-semibold text-[var(--color-text-primary)] bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] rounded-[var(--radius)] px-3 py-1 hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer"
           >
             + {t("createOp")}
           </button>
@@ -133,7 +133,7 @@ function OperationsContent() {
               </div>
               <button
                 onClick={() => setShowCreate(true)}
-                className="font-mono text-[11px] font-semibold text-[var(--color-text-primary)] bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] rounded-[var(--radius)] px-3 py-1 hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer"
+                className="font-mono text-xs font-semibold text-[var(--color-text-primary)] bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] rounded-[var(--radius)] px-3 py-1 hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer"
               >
                 + {t("createOp")}
               </button>
@@ -154,14 +154,14 @@ function OperationsContent() {
                     {op.codename}
                   </span>
                   <span
-                    className={`text-[10px] font-mono font-semibold uppercase border rounded-[var(--radius)] shrink-0 px-2.5 py-1 ${STATUS_BADGE_CLASSES[op.status] ?? ""}`}
+                    className={`text-xs font-mono font-semibold uppercase border rounded-[var(--radius)] shrink-0 px-2.5 py-1 ${STATUS_BADGE_CLASSES[op.status] ?? ""}`}
                   >
                     {op.status}
                   </span>
                 </div>
 
                 {/* Description */}
-                <div className="font-mono text-[11px] text-[var(--color-text-secondary)] truncate">
+                <div className="font-mono text-xs text-[var(--color-text-secondary)] truncate">
                   {op.name}
                 </div>
 
@@ -169,18 +169,18 @@ function OperationsContent() {
                 <div className="flex items-center gap-3 mt-auto">
                   {/* Mission profile badge */}
                   <span
-                    className={`text-[10px] font-mono font-semibold border rounded-[var(--radius)] px-2.5 py-1 ${PROFILE_BADGE_CLASSES[op.missionProfile] ?? ""}`}
+                    className={`text-xs font-mono font-semibold border rounded-[var(--radius)] px-2.5 py-1 ${PROFILE_BADGE_CLASSES[op.missionProfile] ?? ""}`}
                   >
                     {op.missionProfile}
                   </span>
 
                   {/* OODA phase */}
-                  <span className="text-[10px] font-mono text-[var(--color-text-secondary)]">
+                  <span className="text-xs font-mono text-[var(--color-text-secondary)]">
                     OODA: {op.currentOodaPhase}
                   </span>
 
                   {/* Created date */}
-                  <span className="text-[10px] font-mono text-[var(--color-text-tertiary)] ml-auto">
+                  <span className="text-xs font-mono text-[var(--color-text-tertiary)] ml-auto">
                     {new Date(op.createdAt).toLocaleDateString()}
                   </span>
                 </div>

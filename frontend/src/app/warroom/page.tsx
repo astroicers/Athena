@@ -706,6 +706,7 @@ function WarRoomContent() {
                 onScan={() => handleReconScan(selectedTarget.id)}
                 onDeactivate={() => handleSetActive(selectedTarget.id, false)}
                 onDelete={() => handleDeleteRequest(selectedTarget.id)}
+                onOpenTerminal={selectedTarget?.isCompromised ? () => setTerminalTarget(selectedTarget) : undefined}
               />
             ) : (
               <div className="flex items-center justify-center h-full">

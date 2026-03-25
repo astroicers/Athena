@@ -62,7 +62,9 @@
     "riskLow": "低",
     "riskMedium": "中",
     "riskHigh": "高",
-    "riskCritical": "嚴重"
+    "riskCritical": "嚴重",
+    "deleteOperation": "刪除行動",
+    "confirmDeleteOp": "確認刪除此行動？所有資料將永久消失。"
   },
   "PageHeader": {},
   "C5ISR": {

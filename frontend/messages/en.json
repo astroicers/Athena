@@ -62,7 +62,9 @@
     "riskLow": "Low",
     "riskMedium": "Medium",
     "riskHigh": "High",
-    "riskCritical": "Critical"
+    "riskCritical": "Critical",
+    "deleteOperation": "Delete Operation",
+    "confirmDeleteOp": "Confirm delete this operation? All data will be permanently lost."
   },
   "PageHeader": {},
   "C5ISR": {

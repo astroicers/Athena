@@ -33,6 +33,7 @@ interface TargetDetailPanelProps {
   onScan: () => void;
   onDeactivate: () => void;
   onDelete: () => void;
+  onOpenTerminal?: () => void;
 }
 
 /* ── Markdown component overrides ── */
@@ -80,6 +81,7 @@ export function TargetDetailPanel({
   onScan,
   onDeactivate,
   onDelete,
+  onOpenTerminal,
 }: TargetDetailPanelProps) {
   const t = useTranslations("WarRoom");
   const tHostCard = useTranslations("HostCard");
@@ -193,6 +195,14 @@ export function TargetDetailPanel({
         >
           {tHostCard("delete")}
         </Button>
+        {target.isCompromised && onOpenTerminal && (
+          <button
+            onClick={onOpenTerminal}
+            className="px-3 py-1 rounded-[var(--radius)] border border-[var(--color-accent)]/[0.25] bg-[var(--color-accent)]/[0.12] text-[var(--color-accent)] text-xs font-mono font-semibold hover:bg-[var(--color-accent)]/20 transition-colors"
+          >
+            {t("terminal")}
+          </button>
+        )}
       </div>
     </div>
   );

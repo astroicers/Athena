@@ -18,6 +18,8 @@ import { useToast } from "@/contexts/ToastContext";
 import { useOperationContext } from "@/contexts/OperationContext";
 import { Button } from "@/components/atoms/Button";
 import { PageLoading } from "@/components/ui/PageLoading";
+import { HexConfirmModal } from "@/components/modal/HexConfirmModal";
+import { RiskLevel } from "@/types/enums";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -85,6 +87,7 @@ function OperationsContent() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [editingOp, setEditingOp] = useState<Operation | null>(null);
+  const [deletingOpId, setDeletingOpId] = useState<string | null>(null);
 
   /* -- Fetch operations -------------------------------------------- */
   const fetchOperations = useCallback(async () => {
@@ -107,6 +110,18 @@ function OperationsContent() {
     setOperationId(op.id);
     router.push("/warroom");
   }
+
+  /* -- Delete operation --------------------------------------------- */
+  const handleDeleteOperation = async () => {
+    if (!deletingOpId) return;
+    try {
+      await api.delete(`/operations/${deletingOpId}`);
+      setDeletingOpId(null);
+      fetchOperations();
+    } catch {
+      // handle error
+    }
+  };
 
   /* -- Loading state ------------------------------------------------ */
   if (loading) return <PageLoading />;
@@ -146,10 +161,22 @@ function OperationsContent() {
               <button
                 key={op.id}
                 onClick={() => handleSelect(op)}
-                className="group text-left bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-[var(--radius)] hover:bg-[var(--color-bg-elevated)] hover:border-[var(--color-border-subtle)] transition-colors cursor-pointer flex flex-col gap-2 p-4 h-[140px]"
+                className="group relative text-left bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-[var(--radius)] hover:bg-[var(--color-bg-elevated)] hover:border-[var(--color-border-subtle)] transition-colors cursor-pointer flex flex-col gap-2 p-4 h-[140px]"
               >
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => { e.stopPropagation(); setDeletingOpId(op.id); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setDeletingOpId(op.id); } }}
+                  className="absolute top-3 right-3 p-1 text-[var(--color-text-tertiary)] hover:text-[var(--color-error)] transition-colors z-10"
+                  title={t("deleteOperation")}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 6h18M8 6V4h8v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" />
+                  </svg>
+                </span>
                 {/* Top row: codename + status badge */}
-                <div className="flex items-center justify-between w-full">
+                <div className="flex items-center justify-between w-full pr-5">
                   <span className="font-mono text-sm font-bold text-[var(--color-text-primary)] truncate">
                     {op.codename}
                   </span>
@@ -226,6 +253,15 @@ function OperationsContent() {
           onCancel={() => setEditingOp(null)}
         />
       )}
+
+      {/* -- Delete operation confirm modal ---------------------------- */}
+      <HexConfirmModal
+        isOpen={deletingOpId !== null}
+        title={t("confirmDeleteOp")}
+        riskLevel={RiskLevel.CRITICAL}
+        onConfirm={handleDeleteOperation}
+        onCancel={() => setDeletingOpId(null)}
+      />
     </div>
   );
 }

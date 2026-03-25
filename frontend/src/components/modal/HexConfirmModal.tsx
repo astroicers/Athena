@@ -12,13 +12,12 @@
 
 import { useTranslations } from "next-intl";
 import { RiskLevel } from "@/types/enums";
-import { Button } from "@/components/atoms/Button";
 
-const RISK_STYLES: Record<string, { border: string; labelKey: "lowRisk" | "mediumRisk" | "highRisk" | "critical" }> = {
-  [RiskLevel.LOW]: { border: "border-[var(--color-success)]", labelKey: "lowRisk" },
-  [RiskLevel.MEDIUM]: { border: "border-[var(--color-warning)]", labelKey: "mediumRisk" },
-  [RiskLevel.HIGH]: { border: "border-[var(--color-error)]", labelKey: "highRisk" },
-  [RiskLevel.CRITICAL]: { border: "border-[var(--color-critical)]", labelKey: "critical" },
+const RISK_STYLES: Record<string, { labelKey: "lowRisk" | "mediumRisk" | "highRisk" | "critical" }> = {
+  [RiskLevel.LOW]: { labelKey: "lowRisk" },
+  [RiskLevel.MEDIUM]: { labelKey: "mediumRisk" },
+  [RiskLevel.HIGH]: { labelKey: "highRisk" },
+  [RiskLevel.CRITICAL]: { labelKey: "critical" },
 };
 
 interface HexConfirmModalProps {
@@ -45,35 +44,44 @@ export function HexConfirmModal({
   const isCritical = riskLevel === RiskLevel.CRITICAL;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-athena-bg/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center">
       <div
-        className={`bg-athena-surface border-2 ${style.border} rounded-[var(--radius)] p-6 max-w-md w-full mx-4`}
+        className="w-[420px] bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-[var(--radius)] overflow-hidden"
       >
-        <div className="text-center mb-4">
-          <span className="text-xs font-mono text-athena-text-tertiary">
+        {/* Warning bar */}
+        <div className="bg-[var(--color-error)]/[0.12] px-4 py-3 flex justify-center">
+          <span className="text-xs font-mono font-bold text-[var(--color-error)] uppercase">
             {t(style.labelKey)}
           </span>
-          <h2 className="text-lg font-mono font-bold text-athena-text-light mt-1">
-            {title}
-          </h2>
         </div>
 
-        {isCritical && (
-          <p className="text-xs text-athena-critical text-center mb-4 font-mono">
-            {t("criticalWarning")}
-          </p>
-        )}
+        {/* Body */}
+        <div className="px-6 py-5 text-center">
+          <h2 className="text-base font-mono font-bold text-[var(--color-text-primary)]">
+            {title}
+          </h2>
 
-        <div className="flex gap-3 justify-center mt-6">
-          <Button variant="secondary" onClick={onCancel}>
+          {isCritical && (
+            <p className="text-xs font-mono text-[var(--color-text-secondary)] mt-2 leading-relaxed">
+              {t("criticalWarning")}
+            </p>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-center gap-4 px-6 py-4 border-t border-[var(--color-border)]">
+          <button
+            onClick={onCancel}
+            className="px-6 py-2 text-xs font-mono font-semibold bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] rounded-[var(--radius)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-elevated)] transition-colors"
+          >
             {tCommon("abort")}
-          </Button>
-          <Button
-            variant={isCritical ? "danger" : "secondary"}
+          </button>
+          <button
             onClick={onConfirm}
+            className="px-6 py-2 text-xs font-mono font-semibold bg-[var(--color-error)]/[0.12] border border-[var(--color-error)]/[0.25] rounded-[var(--radius)] text-[var(--color-error)] hover:bg-[var(--color-error)]/20 transition-colors"
           >
             {isCritical ? t("confirmExecute") : tCommon("execute")}
-          </Button>
+          </button>
         </div>
       </div>
     </div>

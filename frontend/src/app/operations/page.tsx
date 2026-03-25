@@ -168,10 +168,10 @@ function OperationsContent() {
                   tabIndex={0}
                   onClick={(e) => { e.stopPropagation(); setDeletingOpId(op.id); }}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setDeletingOpId(op.id); } }}
-                  className="absolute top-3 right-3 p-1 text-[var(--color-text-tertiary)] hover:text-[var(--color-error)] transition-colors z-10"
+                  className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-[var(--color-error)]/20 hover:bg-[var(--color-error)]/30 transition-colors z-10"
                   title={t("deleteOperation")}
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[var(--color-error)]">
                     <path d="M3 6h18M8 6V4h8v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" />
                   </svg>
                 </span>

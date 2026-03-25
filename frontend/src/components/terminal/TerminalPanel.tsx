@@ -78,90 +78,87 @@ export function TerminalPanel({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-athena-bg/80 backdrop-blur-sm">
-      <div
-        className="bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] shadow-2xl flex flex-col"
-        style={{ width: "720px", height: "480px" }}
-        onClick={() => inputRef.current?.focus()}
-      >
-        {/* Title bar */}
-        <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--color-border)] bg-athena-surface rounded-t-lg shrink-0">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-mono text-athena-success">●</span>
-            <span className="text-xs font-mono text-athena-text-light">
-              {t("title")} {targetName} ({targetIp})
-            </span>
-            {!isConnected && (
-              <span className="text-sm font-mono text-athena-error">{tCommon("disconnected")}</span>
+    <div
+      className="fixed bottom-0 left-[200px] right-0 z-40 h-[300px] bg-[var(--color-bg-primary)] border-t border-[var(--color-border)] flex flex-col"
+      onClick={() => inputRef.current?.focus()}
+    >
+      {/* Header bar */}
+      <div className="h-9 bg-[var(--color-bg-surface)] border-b border-[var(--color-border)] flex items-center justify-between px-3 shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="w-2.5 h-2.5 bg-[var(--color-success)] rounded-full shrink-0" />
+          <span className="text-xs font-mono text-[var(--color-text-primary)]">
+            {t("title")} {targetName} ({targetIp})
+          </span>
+          {!isConnected && (
+            <span className="text-xs font-mono text-[var(--color-error)]">{tCommon("disconnected")}</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={clear}
+            className="text-xs font-mono text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] px-1"
+          >
+            {tCommon("clear")}
+          </button>
+          <button
+            onClick={onClose}
+            className="text-xs font-mono text-[var(--color-text-tertiary)] hover:text-[var(--color-error)] px-1"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+
+      {/* Terminal output */}
+      <div className="flex-1 overflow-y-auto p-3 font-mono text-xs text-[var(--color-success)] bg-[var(--color-bg-primary)]">
+        {entries.map((entry, i) => (
+          <div key={i}>
+            {entry.type === "input" ? (
+              <div className="text-[var(--color-accent)]">
+                <span className="text-[var(--color-text-tertiary)]">{prompt}</span>
+                {entry.text}
+              </div>
+            ) : entry.type === "error" ? (
+              <div className="text-[var(--color-error)]">{entry.text}</div>
+            ) : entry.type === "system" ? (
+              <div className="text-[var(--color-text-tertiary)] italic">{entry.text}</div>
+            ) : (
+              <pre className="text-[var(--color-success)] whitespace-pre-wrap break-all">{entry.text}</pre>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={clear}
-              className="text-sm font-mono text-athena-text-tertiary hover:text-athena-accent px-1"
-            >
-              {tCommon("clear")}
-            </button>
-            <button
-              onClick={onClose}
-              className="text-sm font-mono text-athena-text-tertiary hover:text-athena-error px-1"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-
-        {/* Terminal output */}
-        <div className="relative flex-1 overflow-y-auto p-3 font-mono text-xs leading-relaxed athena-scanline">
-          {entries.map((entry, i) => (
-            <div key={i}>
-              {entry.type === "input" ? (
-                <div className="text-athena-accent">
-                  <span className="text-athena-text-tertiary">{prompt}</span>
-                  {entry.text}
-                </div>
-              ) : entry.type === "error" ? (
-                <div className="text-athena-error">{entry.text}</div>
-              ) : entry.type === "system" ? (
-                <div className="text-athena-text-tertiary italic">{entry.text}</div>
-              ) : (
-                <pre className="text-athena-text-light whitespace-pre-wrap break-all">{entry.text}</pre>
-              )}
-            </div>
-          ))}
-          <div ref={bottomRef} />
-        </div>
-
-        {/* Input bar */}
-        <form
-          onSubmit={handleSubmit}
-          className="flex items-center gap-2 px-3 py-2 border-t border-[var(--color-border)] shrink-0"
-        >
-          <span className="text-athena-text-tertiary font-mono text-xs shrink-0">
-            {prompt}
-          </span>
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={!isConnected}
-            placeholder={isConnected ? "" : t("connecting")}
-            className="flex-1 bg-transparent font-mono text-xs text-athena-accent outline-none placeholder-athena-text-secondary/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-            autoComplete="off"
-            autoCorrect="off"
-            spellCheck={false}
-          />
-          <button
-            type="submit"
-            disabled={!isConnected || !input.trim()}
-            className="text-sm font-mono text-athena-text-tertiary hover:text-athena-accent disabled:opacity-30 px-1"
-          >
-            {tCommon("send")}
-          </button>
-        </form>
+        ))}
+        <div ref={bottomRef} />
       </div>
+
+      {/* Input bar */}
+      <form
+        onSubmit={handleSubmit}
+        className="flex items-center gap-2 px-3 py-2 border-t border-[var(--color-border)] bg-[var(--color-bg-surface)] shrink-0"
+      >
+        <span className="text-[var(--color-text-tertiary)] font-mono text-xs shrink-0">
+          {prompt}
+        </span>
+        <input
+          ref={inputRef}
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={!isConnected}
+          placeholder={isConnected ? "" : t("connecting")}
+          className="flex-1 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-1.5 text-xs font-mono text-[var(--color-success)] outline-none placeholder:text-[var(--color-text-secondary)]/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+        />
+        <button
+          type="submit"
+          disabled={!isConnected || !input.trim()}
+          className="px-3 py-1.5 text-xs font-mono font-semibold bg-[var(--color-accent)]/[0.12] border border-[var(--color-accent)]/[0.25] text-[var(--color-accent)] rounded-[var(--radius)] hover:bg-[var(--color-accent)]/[0.2] disabled:opacity-30"
+        >
+          {tCommon("send")}
+        </button>
+      </form>
     </div>
   );
 }

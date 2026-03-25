@@ -12,8 +12,6 @@
 
 import { useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { Button } from "@/components/atoms/Button";
-import { COLORS } from "@/lib/designTokens";
 import type { OpsecAlert } from "@/hooks/useGlobalAlerts";
 import type { ConstraintAlert } from "@/hooks/useGlobalAlerts";
 
@@ -30,34 +28,26 @@ const MAX_DISPLAY = 50;
 type OpsecSeverity = OpsecAlert["severity"];
 
 interface SeverityStyle {
-  bg: string;
-  border: string;
-  dot: string;
-  badge: string;
+  borderClass: string;
+  textClass: string;
+  dotClass: string;
   badgeText: string;
 }
 
 const SEVERITY_STYLES: Record<OpsecSeverity, SeverityStyle> = {
   error: {
-    bg: "",
-    border: "",
-    dot: "",
-    badge: "",
+    borderClass: "border-l-[var(--color-error)]",
+    textClass: "text-[var(--color-error)]",
+    dotClass: "bg-[var(--color-error)]",
     badgeText: "CRITICAL",
   },
   warning: {
-    bg: "",
-    border: "",
-    dot: "",
-    badge: "",
+    borderClass: "border-l-[var(--color-warning)]",
+    textClass: "text-[var(--color-warning)]",
+    dotClass: "bg-[var(--color-warning)]",
     badgeText: "HIGH",
   },
 };
-
-function severityColors(sev: OpsecSeverity) {
-  if (sev === "error") return { fill: "color-mix(in srgb, var(--color-error) 6%, transparent)", border: "color-mix(in srgb, var(--color-error) 15%, transparent)", text: `var(--color-error)` };
-  return { fill: `${COLORS.warning}10`, border: `${COLORS.warning}25`, text: COLORS.warning };
-}
 
 export function NotificationCenter({
   isOpen,
@@ -103,76 +93,69 @@ export function NotificationCenter({
     <>
       {/* Backdrop overlay */}
       <div
-        className="fixed inset-0 z-40 bg-athena-overlay"
+        className="fixed inset-0 z-50 bg-black/50"
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* Slide-in panel */}
       <aside
-        className="fixed inset-y-0 right-0 z-50 flex flex-col animate-in slide-in-from-right duration-200 w-96 bg-athena-surface border-l border-[var(--color-border)] font-mono"
+        className="fixed right-0 top-0 h-full w-[380px] bg-[var(--color-bg-surface)] border-l border-[var(--color-border)] z-50 flex flex-col"
         role="dialog"
         aria-label={t("title")}
       >
-        {/* ── Header ── */}
+        {/* -- Header -- */}
         <div
-          className="flex items-center justify-between shrink-0 h-14 bg-athena-elevated px-5"
+          className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)]"
         >
           <div className="flex items-center gap-2">
             <h2
-              className="font-mono font-bold uppercase text-athena-heading-card text-white"
+              className="text-sm font-mono font-bold text-[var(--color-text-primary)]"
             >
               {t("title")}
             </h2>
             {totalCount > 0 && (
               <span
-                className="inline-flex items-center justify-center font-mono font-bold text-white leading-none rounded-[10px] min-w-5 h-5 px-2 py-0.5 bg-athena-error text-xs"
+                className="bg-[var(--color-error)] text-white text-xs font-bold px-2 py-1 rounded-full min-w-[20px] text-center"
               >
                 {totalCount > 99 ? "99+" : totalCount}
               </span>
             )}
           </div>
           <div className="flex items-center gap-3">
-            <Button
-              variant="secondary"
-              size="sm"
+            <button
               onClick={handleClearAll}
-              className="text-xs text-athena-accent bg-transparent border-transparent hover:bg-transparent"
+              className="text-xs font-mono text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] transition-colors"
             >
               {t("clearAll")}
-            </Button>
+            </button>
             <button
               onClick={onClose}
-              className="transition-colors p-1 text-athena-text-soft text-sm font-bold"
+              className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] transition-colors"
               aria-label="Close"
             >
-              X
+              ✕
             </button>
           </div>
         </div>
 
-        {/* ── Scrollable content ── */}
-        <div className="flex-1 overflow-y-auto">
+        {/* -- Scrollable content -- */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-2">
           {isEmpty ? (
-            <div className="flex flex-col items-center justify-center h-64 gap-3">
+            <div className="flex flex-col items-center justify-center h-64">
               <span
-                className="font-mono font-bold text-[40px] text-athena-text-ghost"
-              >
-                {"[ ]"}
-              </span>
-              <span
-                className="font-mono text-[13px] font-semibold text-athena-text-faint"
+                className="text-xs font-mono text-[var(--color-text-tertiary)]"
               >
                 {t("empty")}
               </span>
             </div>
           ) : (
             <>
-              {/* ── Pinned Constraints section ── */}
+              {/* -- Pinned Constraints section -- */}
               {hasConstraint && (
-                <section className="flex flex-col gap-2 px-4 py-3">
+                <>
                   <p
-                    className="font-mono font-bold uppercase text-xs text-athena-text-dim tracking-[1.5px]"
+                    className="text-xs font-mono font-bold uppercase text-[var(--color-text-tertiary)] tracking-wider px-1"
                   >
                     {t("pinnedConstraints")}
                   </p>
@@ -180,26 +163,17 @@ export function NotificationCenter({
                   {constraintAlert.messages.map((msg, i) => (
                     <div
                       key={i}
-                      className="flex flex-col rounded-[var(--radius)] gap-1.5 px-3.5 py-3"
-                      style={{
-                        backgroundColor: "color-mix(in srgb, var(--color-warning) 6%, transparent)",
-                        border: "1px solid color-mix(in srgb, var(--color-warning) 30%, transparent)",
-                      }}
+                      className="bg-[var(--color-bg-primary)] rounded-[var(--radius)] p-3 border-l-[3px] border-l-[var(--color-warning)]"
                     >
                       {/* Card header row */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="w-2 h-2 rounded-full shrink-0 bg-athena-warning"
-                          />
-                          <span
-                            className="font-mono font-bold uppercase tracking-wider text-xs text-athena-warning"
-                          >
-                            {t("constraintActive")}
-                          </span>
-                        </div>
+                      <div className="flex items-center justify-between mb-1.5">
                         <span
-                          className="font-mono text-xs text-athena-text-faint"
+                          className="text-xs font-mono font-bold uppercase text-[var(--color-warning)]"
+                        >
+                          {t("constraintActive")}
+                        </span>
+                        <span
+                          className="text-xs font-mono text-[var(--color-text-tertiary)]"
                         >
                           {new Date().toLocaleTimeString(undefined, {
                             hour: "2-digit",
@@ -210,87 +184,73 @@ export function NotificationCenter({
                       </div>
                       {/* Message */}
                       <p
-                        className="font-mono leading-relaxed text-xs text-athena-text-subtle"
+                        className="text-xs font-mono text-[var(--color-text-secondary)] leading-relaxed"
                       >
                         {msg}
                       </p>
                       {/* Source */}
                       {constraintAlert.domains.length > 0 && (
                         <span
-                          className="font-mono text-xs text-athena-text-faint"
+                          className="text-xs font-mono text-[var(--color-text-tertiary)] mt-1.5 block"
                         >
                           {t("source")}: constraint_engine / {constraintAlert.domains[i] ?? constraintAlert.domains[0]}
                         </span>
                       )}
                     </div>
                   ))}
-                </section>
+                </>
               )}
 
-              {/* ── Divider between sections ── */}
+              {/* -- Divider between sections -- */}
               {hasConstraint && hasOpsec && (
-                <div className="border-t border-[var(--color-white-8)] mx-4" />
+                <div className="border-t border-[var(--color-border-subtle)] mx-1" />
               )}
 
-              {/* ── OPSEC Warnings section ── */}
+              {/* -- OPSEC Warnings section -- */}
               {hasOpsec && (
-                <section
-                  className="flex flex-col gap-2 flex-1 overflow-y-auto px-4 py-3"
-                >
+                <>
                   <p
-                    className="font-mono font-bold uppercase text-xs text-athena-text-dim tracking-[1.5px]"
+                    className="text-xs font-mono font-bold uppercase text-[var(--color-text-tertiary)] tracking-wider px-1"
                   >
                     {t("opsecWarnings")}
                   </p>
 
                   {displayAlerts.map((alert) => {
-                    const colors = severityColors(alert.severity);
                     const sevStyle = SEVERITY_STYLES[alert.severity];
                     return (
                       <div
                         key={alert.id}
-                        className="flex flex-col rounded-[var(--radius)] gap-1.5 px-3 py-2.5"
-                        style={{
-                          backgroundColor: colors.fill,
-                          border: `1px solid ${colors.border}`,
-                        }}
+                        className={`bg-[var(--color-bg-primary)] rounded-[var(--radius)] p-3 border-l-[3px] ${sevStyle.borderClass}`}
                       >
                         {/* Card header row */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className="w-2 h-2 rounded-full shrink-0"
-                              style={{ backgroundColor: colors.text }}
-                            />
-                            <span
-                              className="font-mono font-bold uppercase tracking-wider text-xs"
-                              style={{ color: colors.text }}
-                            >
-                              {sevStyle.badgeText}
-                            </span>
-                          </div>
+                        <div className="flex items-center justify-between mb-1.5">
                           <span
-                            className="font-mono text-xs text-athena-text-faint"
+                            className={`text-xs font-mono font-bold uppercase ${sevStyle.textClass}`}
+                          >
+                            {sevStyle.badgeText}
+                          </span>
+                          <span
+                            className="text-xs font-mono text-[var(--color-text-tertiary)]"
                           >
                             {formatTimestamp(alert.timestamp)}
                           </span>
                         </div>
                         {/* Message */}
                         <p
-                          className="font-mono leading-relaxed break-words text-xs text-athena-text-subtle"
+                          className="text-xs font-mono text-[var(--color-text-secondary)] leading-relaxed"
                         >
                           {alert.message}
                         </p>
                         {/* Source */}
                         <span
-                          className="font-mono text-xs text-athena-text-ghost"
+                          className="text-xs font-mono text-[var(--color-text-tertiary)] mt-1.5 block"
                         >
                           {t("source")}: {t("sourceOpsec")}
                         </span>
                       </div>
                     );
                   })}
-                </section>
+                </>
               )}
             </>
           )}

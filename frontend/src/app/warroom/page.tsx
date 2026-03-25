@@ -38,6 +38,7 @@ import { DataTable, Column } from "@/components/data/DataTable";
 import { ObjectivesPanel } from "@/components/planner/ObjectivesPanel";
 import { EngagementPanel } from "@/components/planner/EngagementPanel";
 import { TargetSummaryPanel } from "@/components/planner/TargetSummaryPanel";
+import { TargetDetailPanel } from "@/components/warroom/TargetDetailPanel";
 import { ExecutionEngine, MissionStepStatus, RiskLevel } from "@/types/enums";
 import type { OODATimelineEntry } from "@/types/ooda";
 import type { Target } from "@/types/target";
@@ -118,6 +119,8 @@ function WarRoomContent() {
   const [terminalTarget, setTerminalTarget] = useState<Target | null>(null);
   const [deletingTarget, setDeletingTarget] = useState<Target | null>(null);
   const [summaryTargetId, setSummaryTargetId] = useState<string | null>(null);
+  const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
+  const [targetFacts, setTargetFacts] = useState<Array<{ trait: string; value: string; category: string }>>([]);
 
   /* ── Mission tab state ── */
   const [steps, setSteps] = useState<MissionStep[]>([]);
@@ -238,6 +241,23 @@ function WarRoomContent() {
     return () => unsubs.forEach((fn) => fn());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ws.subscribe]);
+
+  /* ── Selected target + facts fetch ── */
+
+  const selectedTarget = targets.find((tg) => tg.id === selectedTargetId) ?? null;
+
+  useEffect(() => {
+    if (selectedTargetId && operationId) {
+      api
+        .get<Array<{ trait: string; value: string; category: string }>>(
+          `/operations/${operationId}/facts?target_id=${selectedTargetId}`,
+        )
+        .then((data) => setTargetFacts(Array.isArray(data) ? data : []))
+        .catch(() => setTargetFacts([]));
+    } else {
+      setTargetFacts([]);
+    }
+  }, [selectedTargetId, operationId]);
 
   /* ── Derived data (Timeline tab) ── */
 
@@ -569,7 +589,6 @@ function WarRoomContent() {
                       <DirectiveInput
                         iterationId={iter.id}
                         autoMode={autoMode}
-                        onToggleAutoMode={() => setAutoMode(!autoMode)}
                         onSubmit={handleDirective}
                       />
                     </div>
@@ -607,118 +626,89 @@ function WarRoomContent() {
 
       {/* ═══════════ TARGETS TAB ═══════════ */}
       {activeTab === "targets" && (
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-          {/* Header + Add Target */}
-          <SectionHeader
-            level="card"
-            trailing={
-              <Tooltip text={tTips("addTarget")}>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setShowAddTarget(true)}
-                  icon={
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                  }
-                >
-                  {t("addTarget")}
-                </Button>
-              </Tooltip>
-            }
-          >
-            {t("targetHosts")}
-          </SectionHeader>
-          <p className="text-xs font-mono text-[var(--color-text-tertiary)] -mt-2 ml-0.5">{tHints("targetHosts")}</p>
+        <div className="flex flex-1 min-h-0">
+          {/* Left: Target List (300px) */}
+          <div className="w-[300px] shrink-0 border-r border-[var(--color-border)] overflow-y-auto p-3 space-y-2">
+            {/* Add Target button */}
+            <button
+              onClick={() => setShowAddTarget(true)}
+              className="w-full rounded-[var(--radius)] border border-dashed border-[var(--color-border)] px-3 py-2 text-xs font-mono text-[var(--color-text-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors"
+            >
+              + {t("addTarget")}
+            </button>
 
-          {/* Target cards grid */}
-          {targets.length === 0 ? (
-            <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-[var(--radius)] p-4 text-center">
-              <span className="text-xs font-mono text-[var(--color-text-tertiary)] whitespace-pre-line">{tEmpty("plannerGuide")}</span>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {targets.map((tgt) => (
-                <div key={tgt.id}>
-                  <HostNodeCard
-                    id={tgt.id}
-                    hostname={tgt.hostname}
-                    ipAddress={tgt.ipAddress}
-                    role={tgt.role}
-                    isCompromised={tgt.isCompromised}
-                    isActive={tgt.isActive}
-                    privilegeLevel={tgt.privilegeLevel}
-                    isScanning={scanState?.targetId === tgt.id}
-                    scanPhase={scanState?.targetId === tgt.id ? scanState.phase : null}
-                    scanStep={scanState?.targetId === tgt.id ? scanState.step : 0}
-                    scanTotalSteps={scanState?.targetId === tgt.id ? scanState.totalSteps : 0}
-                    os={targetScans[tgt.id]?.osGuess ?? null}
-                    openPorts={targetScans[tgt.id]?.servicesFound}
-                    services={targetScans[tgt.id]?.services?.map((s) => ({ port: s.port, service: s.service }))}
-                    credentialFound={targetScans[tgt.id]?.initialAccess?.credential ?? null}
-                    onScan={handleReconScan}
-                    onSetActive={handleSetActive}
-                    onDelete={handleDeleteRequest}
-                    onViewScanResult={targetScans[tgt.id] ? () => setReconResult(targetScans[tgt.id]) : undefined}
-                  />
-                  {/* Per-target action buttons */}
-                  <div className="flex gap-1.5 mt-1.5">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handleOsintDiscover(tgt.id)}
-                      className="flex-1 text-xs text-[var(--color-accent)] border-[var(--color-accent)]/[0.25] bg-transparent hover:bg-[var(--color-accent)]/10 uppercase tracking-wider"
-                    >
-                      {t("osintDiscover")}
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handleInitialAccess(tgt.id)}
-                      disabled={scanState?.targetId === tgt.id}
-                      className="flex-1 text-xs text-[var(--color-warning)] border-[var(--color-warning)]/[0.25] bg-transparent hover:bg-[var(--color-warning)]/[0.12] uppercase tracking-wider"
-                    >
-                      {t("initialAccess")}
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() =>
-                        setSummaryTargetId((prev) =>
-                          prev === tgt.id ? null : tgt.id,
-                        )
-                      }
-                      className="flex-1 text-xs bg-[var(--color-accent)]/[0.12] border-[var(--color-accent)]/[0.40] text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20 uppercase tracking-wider"
-                    >
-                      {t("aiSummary")}
-                    </Button>
-                    {tgt.isCompromised && (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setTerminalTarget(tgt)}
-                        className="flex-1 text-xs text-[var(--color-success)] border-[var(--color-success)]/[0.25] bg-transparent hover:bg-[var(--color-success)]/10 uppercase tracking-wider"
-                      >
-                        {t("terminal")}
-                      </Button>
-                    )}
-                  </div>
-                  {/* AI Summary Panel */}
-                  {summaryTargetId === tgt.id && (
-                    <div className="mt-2.5">
-                      <TargetSummaryPanel
-                        operationId={operationId}
-                        targetId={tgt.id}
-                        hostname={tgt.hostname}
-                        onClose={() => setSummaryTargetId(null)}
+            {/* Target cards */}
+            {targets.length === 0 ? (
+              <div className="text-center py-6">
+                <span className="text-xs font-mono text-[var(--color-text-tertiary)] whitespace-pre-line">{tEmpty("plannerGuide")}</span>
+              </div>
+            ) : (
+              targets.map((tgt) => {
+                const openPortCount = targetScans[tgt.id]?.servicesFound ?? 0;
+                return (
+                  <div
+                    key={tgt.id}
+                    onClick={() => setSelectedTargetId(tgt.id)}
+                    className={`cursor-pointer rounded-[var(--radius)] p-3 border transition-colors ${
+                      selectedTargetId === tgt.id
+                        ? "border-l-[3px] border-l-[var(--color-accent)] border-[var(--color-border)] bg-[var(--color-bg-elevated)]"
+                        : "border-[var(--color-border)] hover:bg-[var(--color-bg-surface)]"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                          tgt.isCompromised
+                            ? "bg-[var(--color-error)]"
+                            : tgt.isActive
+                              ? "bg-[var(--color-success)]"
+                              : "bg-[var(--color-text-tertiary)]"
+                        }`}
                       />
+                      <span className="text-xs font-mono font-bold text-[var(--color-text-primary)] truncate">
+                        {tgt.ipAddress}
+                      </span>
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+                    {tgt.hostname && (
+                      <span className="block text-xs font-mono text-[var(--color-text-secondary)] mt-0.5 ml-[18px] truncate">
+                        {tgt.hostname}
+                      </span>
+                    )}
+                    <div className="flex items-center gap-3 mt-1 ml-[18px]">
+                      <span className="text-xs font-mono text-[var(--color-text-tertiary)]">
+                        {tgt.privilegeLevel ?? "N/A"}
+                      </span>
+                      {openPortCount > 0 && (
+                        <span className="text-xs font-mono text-[var(--color-text-tertiary)]">
+                          {openPortCount} ports
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Right: Target Detail */}
+          <div className="flex-1 overflow-y-auto">
+            {selectedTarget ? (
+              <TargetDetailPanel
+                target={selectedTarget}
+                facts={targetFacts}
+                timelineEntries={timeline}
+                onScan={() => handleReconScan(selectedTarget.id)}
+                onDeactivate={() => handleSetActive(selectedTarget.id, false)}
+                onDelete={() => handleDeleteRequest(selectedTarget.id)}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <span className="text-xs font-mono text-[var(--color-text-tertiary)]">
+                  {t("selectTarget")}
+                </span>
+              </div>
+            )}
+          </div>
 
           {/* Modals for Targets */}
           <HexConfirmModal

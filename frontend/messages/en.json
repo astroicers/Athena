@@ -681,7 +681,13 @@
     "colTechnique": "Technique",
     "colTarget": "Target",
     "colEngine": "Engine",
-    "colStatus": "Status"
+    "colStatus": "Status",
+    "selectTarget": "Select a target to view details",
+    "scanResults": "Scan Results",
+    "credentials": "Credentials",
+    "oodaHistory": "OODA History",
+    "targetInfo": "Target Info",
+    "deactivateTarget": "Deactivate Target"
   },
   "Legend": {
     "title": "LEGEND",

@@ -681,7 +681,13 @@
     "colTechnique": "技術",
     "colTarget": "目標",
     "colEngine": "引擎",
-    "colStatus": "狀態"
+    "colStatus": "狀態",
+    "selectTarget": "選擇目標查看詳情",
+    "scanResults": "掃描結果",
+    "credentials": "Credentials",
+    "oodaHistory": "OODA 歷史",
+    "targetInfo": "目標資訊",
+    "deactivateTarget": "取消目標"
   },
   "Legend": {
     "title": "圖例",

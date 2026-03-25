@@ -1,0 +1,199 @@
+// Copyright 2026 Athena Contributors
+//
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file.
+//
+// Change Date: Four years from release date of each version
+// Change License: Apache License, Version 2.0
+//
+// For commercial licensing, contact: azz093093.830330@gmail.com
+
+"use client";
+
+import { useMemo } from "react";
+import { useTranslations } from "next-intl";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { Button } from "@/components/atoms/Button";
+import type { Target } from "@/types/target";
+import type { OODATimelineEntry } from "@/types/ooda";
+
+/* ── Types ── */
+
+interface Fact {
+  trait: string;
+  value: string;
+  category: string;
+}
+
+interface TargetDetailPanelProps {
+  target: Target;
+  facts: Fact[];
+  timelineEntries: OODATimelineEntry[];
+  onScan: () => void;
+  onDeactivate: () => void;
+  onDelete: () => void;
+}
+
+/* ── Markdown component overrides ── */
+
+const MD_COMPONENTS = {
+  h2: ({ children }: { children?: React.ReactNode }) => (
+    <h2 className="text-sm font-bold text-[var(--color-text-primary)] mt-5 mb-2 font-mono uppercase tracking-wider">
+      {children}
+    </h2>
+  ),
+  table: ({ children }: { children?: React.ReactNode }) => (
+    <table className="w-full text-xs font-mono border-collapse">{children}</table>
+  ),
+  th: ({ children }: { children?: React.ReactNode }) => (
+    <th className="text-left py-1.5 px-2 text-[var(--color-text-secondary)] border-b border-[var(--color-border)] font-semibold">
+      {children}
+    </th>
+  ),
+  td: ({ children }: { children?: React.ReactNode }) => (
+    <td className="py-1.5 px-2 text-[var(--color-text-primary)] border-b border-[var(--color-border)]">
+      {children}
+    </td>
+  ),
+  li: ({ children }: { children?: React.ReactNode }) => (
+    <li className="text-xs font-mono text-[var(--color-text-secondary)] ml-4 list-disc">
+      {children}
+    </li>
+  ),
+  p: ({ children }: { children?: React.ReactNode }) => (
+    <p className="text-xs font-mono text-[var(--color-text-secondary)] leading-relaxed">
+      {children}
+    </p>
+  ),
+  strong: ({ children }: { children?: React.ReactNode }) => (
+    <strong className="text-[var(--color-text-primary)]">{children}</strong>
+  ),
+};
+
+/* ── Component ── */
+
+export function TargetDetailPanel({
+  target,
+  facts,
+  timelineEntries,
+  onScan,
+  onDeactivate,
+  onDelete,
+}: TargetDetailPanelProps) {
+  const t = useTranslations("WarRoom");
+  const tHostCard = useTranslations("HostCard");
+
+  const markdown = useMemo(() => {
+    const sections: string[] = [];
+
+    /* ── Section 1: Target Info ── */
+    const displayName = [target.ipAddress, target.hostname].filter(Boolean).join(" -- ");
+    const statusLabel = target.isCompromised ? "Compromised ✓" : "Secure";
+    sections.push(
+      `## ${displayName}\n\n` +
+        `**IP:** ${target.ipAddress}\n` +
+        `**${tHostCard("role")}:** ${target.role}\n` +
+        `**${tHostCard("privilege")}:** ${target.privilegeLevel ?? "N/A"}\n` +
+        `**Status:** ${statusLabel}\n` +
+        `**OS:** ${target.os ?? "Unknown"}\n`,
+    );
+
+    /* ── Section 2: Scan Results ── */
+    const portFacts = facts.filter((f) => f.trait === "service.open_port");
+    if (portFacts.length > 0) {
+      const header = `## ${t("scanResults")}\n\n| Port | Protocol | Service | Version |\n|------|----------|---------|---------|`;
+      const rows = portFacts
+        .map((f) => {
+          const parts = f.value.split("/");
+          const port = parts[0] ?? "";
+          const proto = parts[1] ?? "";
+          const svc = parts[2] ?? "";
+          const ver = (parts[3] ?? "").replace(/_/g, " ");
+          return `\n| ${port} | ${proto} | ${svc} | ${ver} |`;
+        })
+        .join("");
+      sections.push(header + rows + "\n");
+    }
+
+    /* ── Section 3: Credentials ── */
+    const credFacts = facts.filter((f) => f.category === "credential");
+    if (credFacts.length > 0) {
+      const credLines = credFacts.map((f) => `- ${f.value}`).join("\n");
+      sections.push(`## ${t("credentials")}\n\n${credLines}\n`);
+    }
+
+    /* ── Section 4: OODA History ── */
+    const targetEntries = timelineEntries.filter(
+      (e) => e.targetId === target.id || e.targetIp === target.ipAddress,
+    );
+    // Group by iteration number
+    const iterMap = new Map<
+      number,
+      { observe: string; orient: string; decide: string; act: string; phase: string }
+    >();
+    for (const entry of targetEntries) {
+      if (entry.iterationNumber === 0) continue; // skip recon entries
+      if (!iterMap.has(entry.iterationNumber)) {
+        iterMap.set(entry.iterationNumber, { observe: "", orient: "", decide: "", act: "", phase: "" });
+      }
+      const rec = iterMap.get(entry.iterationNumber)!;
+      rec.phase = entry.phase;
+      if (entry.phase === "observe") rec.observe = entry.summary || "";
+      if (entry.phase === "orient") rec.orient = entry.summary || "";
+      if (entry.phase === "decide") rec.decide = entry.summary || "";
+      if (entry.phase === "act") rec.act = entry.summary || "";
+    }
+
+    if (iterMap.size > 0) {
+      const header = `## ${t("oodaHistory")}\n\n| # | Observe | Orient | Decide | Act |\n|---|---------|--------|--------|-----|`;
+      const rows = Array.from(iterMap.entries())
+        .sort(([a], [b]) => a - b)
+        .map(
+          ([num, rec]) =>
+            `\n| ${num} | ${rec.observe || "-"} | ${rec.orient || "-"} | ${rec.decide || "-"} | ${rec.act || "-"} |`,
+        )
+        .join("");
+      sections.push(header + rows + "\n");
+    }
+
+    return sections.join("\n");
+  }, [target, facts, timelineEntries, t, tHostCard]);
+
+  return (
+    <div className="h-full overflow-y-auto bg-[var(--color-bg-primary)] p-5">
+      {/* Markdown content */}
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={MD_COMPONENTS}>
+        {markdown}
+      </ReactMarkdown>
+
+      {/* Action buttons */}
+      <div className="flex items-center gap-2 mt-6 pt-4 border-t border-[var(--color-border)]">
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onScan}
+          className="text-xs text-[var(--color-accent)] border-[var(--color-accent)]/[0.25] bg-transparent hover:bg-[var(--color-accent)]/10 uppercase tracking-wider"
+        >
+          {tHostCard("reconScan")}
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onDeactivate}
+          className="text-xs text-[var(--color-warning)] border-[var(--color-warning)]/[0.25] bg-transparent hover:bg-[var(--color-warning)]/[0.12] uppercase tracking-wider"
+        >
+          {t("deactivateTarget")}
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onDelete}
+          className="text-xs text-[var(--color-error)] border-[var(--color-error)]/[0.25] bg-transparent hover:bg-[var(--color-error)]/10 uppercase tracking-wider"
+        >
+          {tHostCard("delete")}
+        </Button>
+      </div>
+    </div>
+  );
+}

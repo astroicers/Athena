@@ -16,7 +16,6 @@ import { useTranslations } from "next-intl";
 interface DirectiveInputProps {
   iterationId: string;
   autoMode: boolean;
-  onToggleAutoMode: () => void;
   onSubmit: (directive: string) => void;
   submittedDirective?: string;
   aiSuggestion?: string;
@@ -25,7 +24,6 @@ interface DirectiveInputProps {
 export function DirectiveInput({
   iterationId,
   autoMode,
-  onToggleAutoMode,
   onSubmit,
   submittedDirective,
   aiSuggestion,
@@ -50,30 +48,10 @@ export function DirectiveInput({
   return (
     <div className="bg-athena-elevated border border-[var(--color-border)] rounded-[var(--radius)] p-3 font-mono">
       {/* Header */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center mb-3">
         <span className="text-xs text-athena-text-tertiary uppercase tracking-wider font-semibold">
           {t("nextDirective")}
         </span>
-
-        {/* Auto Mode toggle */}
-        <button
-          onClick={onToggleAutoMode}
-          className="flex items-center gap-2 text-xs uppercase tracking-wider"
-          type="button"
-        >
-          <span className="text-athena-text-tertiary">{t("autoMode")}</span>
-          <span
-            className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
-              autoMode ? "bg-athena-accent" : "bg-athena-border"
-            }`}
-          >
-            <span
-              className={`inline-block h-3 w-3 rounded-full bg-white transition-transform ${
-                autoMode ? "translate-x-3.5" : "translate-x-0.5"
-              }`}
-            />
-          </span>
-        </button>
       </div>
 
       {/* Auto mode ON */}

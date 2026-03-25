@@ -542,17 +542,23 @@ function WarRoomContent() {
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-mono text-[var(--color-text-secondary)]">
+                  {autoMode ? t("autoMode") : t("manualMode")}
+                </span>
                 <button
+                  role="switch"
+                  aria-checked={autoMode}
                   onClick={() => setAutoMode(!autoMode)}
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-[var(--radius)] text-xs font-mono font-semibold transition-colors ${
-                    autoMode
-                      ? "bg-athena-accent-bg text-athena-accent border border-[var(--color-accent)]/25"
-                      : "bg-athena-surface text-athena-text-tertiary border border-[var(--color-border)]"
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] ${
+                    autoMode ? "bg-[var(--color-accent)]" : "bg-[var(--color-border)]"
                   }`}
                 >
-                  <span className={`w-2.5 h-2.5 rounded-full ${autoMode ? "bg-athena-accent" : "bg-athena-text-tertiary"}`} />
-                  {autoMode ? t("autoMode") : t("manualMode")}
+                  <span
+                    className={`inline-block h-5 w-5 rounded-full bg-white transition-transform ${
+                      autoMode ? "translate-x-5" : "translate-x-0.5"
+                    }`}
+                  />
                 </button>
               </div>
             </div>

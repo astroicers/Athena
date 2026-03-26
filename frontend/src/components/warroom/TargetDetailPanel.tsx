@@ -32,6 +32,7 @@ interface TargetDetailPanelProps {
   timelineEntries: OODATimelineEntry[];
   onScan: () => void;
   onDeactivate: () => void;
+  onActivate: () => void;
   onDelete: () => void;
   onOpenTerminal?: () => void;
 }
@@ -40,12 +41,12 @@ interface TargetDetailPanelProps {
 
 const MD_COMPONENTS = {
   h2: ({ children }: { children?: React.ReactNode }) => (
-    <h2 className="text-sm font-bold text-[var(--color-text-primary)] mt-5 mb-2 font-mono uppercase tracking-wider">
+    <h2 className="text-athena-body font-bold text-[var(--color-text-primary)] mt-5 mb-2 font-mono uppercase tracking-wider">
       {children}
     </h2>
   ),
   table: ({ children }: { children?: React.ReactNode }) => (
-    <table className="w-full text-xs font-mono border-collapse">{children}</table>
+    <table className="w-full text-athena-floor font-mono border-collapse">{children}</table>
   ),
   th: ({ children }: { children?: React.ReactNode }) => (
     <th className="text-left py-1.5 px-2 text-[var(--color-text-secondary)] border-b border-[var(--color-border)] font-semibold">
@@ -58,12 +59,12 @@ const MD_COMPONENTS = {
     </td>
   ),
   li: ({ children }: { children?: React.ReactNode }) => (
-    <li className="text-xs font-mono text-[var(--color-text-secondary)] ml-4 list-disc">
+    <li className="text-athena-floor font-mono text-[var(--color-text-secondary)] ml-4 list-disc">
       {children}
     </li>
   ),
   p: ({ children }: { children?: React.ReactNode }) => (
-    <p className="text-xs font-mono text-[var(--color-text-secondary)] leading-relaxed">
+    <p className="text-athena-floor font-mono text-[var(--color-text-secondary)] leading-relaxed">
       {children}
     </p>
   ),
@@ -80,6 +81,7 @@ export function TargetDetailPanel({
   timelineEntries,
   onScan,
   onDeactivate,
+  onActivate,
   onDelete,
   onOpenTerminal,
 }: TargetDetailPanelProps) {
@@ -175,30 +177,34 @@ export function TargetDetailPanel({
           variant="secondary"
           size="sm"
           onClick={onScan}
-          className="text-xs text-[var(--color-accent)] border-[var(--color-accent)]/[0.25] bg-transparent hover:bg-[var(--color-accent)]/10 uppercase tracking-wider"
+          className="text-athena-floor text-[var(--color-accent)] border-[var(--color-accent)]/[0.25] bg-transparent hover:bg-[var(--color-accent)]/10 uppercase tracking-wider"
         >
           {tHostCard("reconScan")}
         </Button>
         <Button
           variant="secondary"
           size="sm"
-          onClick={onDeactivate}
-          className="text-xs text-[var(--color-warning)] border-[var(--color-warning)]/[0.25] bg-transparent hover:bg-[var(--color-warning)]/[0.12] uppercase tracking-wider"
+          onClick={target.isActive ? onDeactivate : onActivate}
+          className={`text-athena-floor uppercase tracking-wider bg-transparent ${
+            target.isActive
+              ? "text-[var(--color-warning)] border-[var(--color-warning)]/[0.25] hover:bg-[var(--color-warning)]/[0.12]"
+              : "text-[var(--color-success)] border-[var(--color-success)]/[0.25] hover:bg-[var(--color-success)]/[0.12]"
+          }`}
         >
-          {t("deactivateTarget")}
+          {target.isActive ? t("deactivateTarget") : t("activateTarget")}
         </Button>
         <Button
           variant="secondary"
           size="sm"
           onClick={onDelete}
-          className="text-xs text-[var(--color-error)] border-[var(--color-error)]/[0.25] bg-transparent hover:bg-[var(--color-error)]/10 uppercase tracking-wider"
+          className="text-athena-floor text-[var(--color-error)] border-[var(--color-error)]/[0.25] bg-transparent hover:bg-[var(--color-error)]/10 uppercase tracking-wider"
         >
           {tHostCard("delete")}
         </Button>
         {target.isCompromised && onOpenTerminal && (
           <button
             onClick={onOpenTerminal}
-            className="px-3 py-1 rounded-[var(--radius)] border border-[var(--color-accent)]/[0.25] bg-[var(--color-accent)]/[0.12] text-[var(--color-accent)] text-xs font-mono font-semibold hover:bg-[var(--color-accent)]/20 transition-colors"
+            className="px-3 py-1 rounded-[var(--radius)] border border-[var(--color-accent)]/[0.25] bg-[var(--color-accent)]/[0.12] text-[var(--color-accent)] text-athena-floor font-mono font-semibold hover:bg-[var(--color-accent)]/20 transition-colors"
           >
             {t("terminal")}
           </button>

@@ -64,7 +64,12 @@
     "riskHigh": "高",
     "riskCritical": "嚴重",
     "deleteOperation": "刪除行動",
-    "confirmDeleteOp": "確認刪除此行動？所有資料將永久消失。"
+    "confirmDeleteOp": "確認刪除此行動？所有資料將永久消失。",
+    "legendPlanning": "設定目標、交戰規則與任務配置，尚未啟動",
+    "legendActive": "OODA 迴圈執行中 — 掃描、分析、攻擊進行中",
+    "legendPaused": "暫時中止 — 等待授權窗口或藍隊冷卻期",
+    "legendCompleted": "任務完成 — 報告已產出",
+    "legendFailed": "異常終止 — 目標不可達、違反交戰規則或系統錯誤"
   },
   "PageHeader": {},
   "C5ISR": {
@@ -689,7 +694,8 @@
     "credentials": "Credentials",
     "oodaHistory": "OODA 歷史",
     "targetInfo": "目標資訊",
-    "deactivateTarget": "取消目標"
+    "deactivateTarget": "取消目標",
+    "activateTarget": "設定目標"
   },
   "Legend": {
     "title": "圖例",

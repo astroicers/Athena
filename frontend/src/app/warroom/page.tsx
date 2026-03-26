@@ -479,7 +479,7 @@ function WarRoomContent() {
             onChange={(e) => handleStepStatusChange(r.id, e.target.value)}
             onBlur={() => setTimeout(() => setEditingStepId(null), 150)}
             autoFocus
-            className="bg-[var(--color-bg-primary)] border border-[var(--color-accent)] rounded-[var(--radius)] px-2 py-1 text-xs font-mono text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            className="bg-[var(--color-bg-primary)] border border-[var(--color-accent)] rounded-[var(--radius)] px-2 py-1 text-athena-floor font-mono text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
           >
             {Object.values(MissionStepStatus).map((s) => (
               <option key={s} value={s}>{tStatus(s as Parameters<typeof tStatus>[0])}</option>
@@ -498,17 +498,17 @@ function WarRoomContent() {
   /* ── Shared styles ── */
 
   const inputStyles =
-    "w-full bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-[var(--radius)] px-2.5 py-1.5 text-xs font-mono text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]";
+    "w-full bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-[var(--radius)] px-2.5 py-1.5 text-athena-floor font-mono text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]";
 
   const labelStyles =
-    "block text-xs font-mono text-[var(--color-text-secondary)] uppercase tracking-wider mb-0.5";
+    "block text-athena-floor font-mono text-[var(--color-text-secondary)] uppercase tracking-wider mb-0.5";
 
   /* ── Loading state ── */
 
   if (loading && !dashboard) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-sm font-mono text-athena-text-tertiary">
+        <p className="text-athena-body font-mono text-athena-text-tertiary">
           {t("title")}...
         </p>
       </div>
@@ -533,17 +533,17 @@ function WarRoomContent() {
             {/* Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <h2 className="font-mono text-xs font-bold text-athena-text-tertiary uppercase tracking-widest">
+                <h2 className="font-mono text-athena-floor font-bold text-athena-text-tertiary uppercase tracking-widest">
                   {t("campaignTimeline")}
                 </h2>
                 {dashboard && (
-                  <span className="font-mono text-xs text-athena-accent font-bold">
+                  <span className="font-mono text-athena-floor text-athena-accent font-bold">
                     {t("oodaIteration", { num: dashboard.iterationCount })}
                   </span>
                 )}
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-xs font-mono text-[var(--color-text-secondary)]">
+                <span className="text-athena-floor font-mono text-[var(--color-text-secondary)]">
                   {autoMode ? t("autoMode") : t("manualMode")}
                 </span>
                 <button
@@ -638,7 +638,7 @@ function WarRoomContent() {
             {/* Add Target button */}
             <button
               onClick={() => setShowAddTarget(true)}
-              className="w-full rounded-[var(--radius)] border border-dashed border-[var(--color-border)] px-3 py-2 text-xs font-mono text-[var(--color-text-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors"
+              className="w-full rounded-[var(--radius)] border border-dashed border-[var(--color-border)] px-3 py-2 text-athena-floor font-mono text-[var(--color-text-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors"
             >
               + {t("addTarget")}
             </button>
@@ -646,7 +646,7 @@ function WarRoomContent() {
             {/* Target cards */}
             {targets.length === 0 ? (
               <div className="text-center py-6">
-                <span className="text-xs font-mono text-[var(--color-text-tertiary)] whitespace-pre-line">{tEmpty("plannerGuide")}</span>
+                <span className="text-athena-floor font-mono text-[var(--color-text-tertiary)] whitespace-pre-line">{tEmpty("plannerGuide")}</span>
               </div>
             ) : (
               targets.map((tgt) => {
@@ -671,21 +671,21 @@ function WarRoomContent() {
                               : "bg-[var(--color-text-tertiary)]"
                         }`}
                       />
-                      <span className="text-xs font-mono font-bold text-[var(--color-text-primary)] truncate">
+                      <span className="text-athena-floor font-mono font-bold text-[var(--color-text-primary)] truncate">
                         {tgt.ipAddress}
                       </span>
                     </div>
                     {tgt.hostname && (
-                      <span className="block text-xs font-mono text-[var(--color-text-secondary)] mt-0.5 ml-[18px] truncate">
+                      <span className="block text-athena-floor font-mono text-[var(--color-text-secondary)] mt-0.5 ml-[18px] truncate">
                         {tgt.hostname}
                       </span>
                     )}
                     <div className="flex items-center gap-3 mt-1 ml-[18px]">
-                      <span className="text-xs font-mono text-[var(--color-text-tertiary)]">
+                      <span className="text-athena-floor font-mono text-[var(--color-text-tertiary)]">
                         {tgt.privilegeLevel ?? "N/A"}
                       </span>
                       {openPortCount > 0 && (
-                        <span className="text-xs font-mono text-[var(--color-text-tertiary)]">
+                        <span className="text-athena-floor font-mono text-[var(--color-text-tertiary)]">
                           {openPortCount} ports
                         </span>
                       )}
@@ -705,12 +705,13 @@ function WarRoomContent() {
                 timelineEntries={timeline}
                 onScan={() => handleReconScan(selectedTarget.id)}
                 onDeactivate={() => handleSetActive(selectedTarget.id, false)}
+                onActivate={() => handleSetActive(selectedTarget.id, true)}
                 onDelete={() => handleDeleteRequest(selectedTarget.id)}
                 onOpenTerminal={selectedTarget?.isCompromised ? () => setTerminalTarget(selectedTarget) : undefined}
               />
             ) : (
               <div className="flex items-center justify-center h-full">
-                <span className="text-xs font-mono text-[var(--color-text-tertiary)]">
+                <span className="text-athena-floor font-mono text-[var(--color-text-tertiary)]">
                   {t("selectTarget")}
                 </span>
               </div>
@@ -760,7 +761,7 @@ function WarRoomContent() {
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
           {/* Mission Steps Header */}
           <div className="flex items-center justify-between">
-            <h2 className="font-mono text-[13px] font-bold text-[var(--color-text-primary)] tracking-wide uppercase">
+            <h2 className="font-mono text-athena-heading-card font-bold text-[var(--color-text-primary)] tracking-wide uppercase">
               {t("missionSteps")}
             </h2>
             <Button
@@ -776,7 +777,7 @@ function WarRoomContent() {
               {t("createStep")}
             </Button>
           </div>
-          <p className="text-xs font-mono text-[var(--color-text-tertiary)] -mt-3 ml-0.5">{tHints("missionSteps")}</p>
+          <p className="text-athena-floor font-mono text-[var(--color-text-tertiary)] -mt-3 ml-0.5">{tHints("missionSteps")}</p>
           <DataTable columns={STEP_COLUMNS} data={steps as StepRow[]} keyField="id" emptyMessage={t("noSteps")} />
 
           {/* Objectives */}
@@ -790,8 +791,8 @@ function WarRoomContent() {
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
               <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-[var(--radius)] p-4 max-w-md w-full mx-4">
                 <div className="mb-3">
-                  <span className="text-xs font-mono text-[var(--color-text-tertiary)] uppercase tracking-wider">{t("missionSteps")}</span>
-                  <h2 className="text-sm font-mono font-bold text-[var(--color-text-primary)] mt-0.5">{t("createStep")}</h2>
+                  <span className="text-athena-floor font-mono text-[var(--color-text-tertiary)] uppercase tracking-wider">{t("missionSteps")}</span>
+                  <h2 className="text-athena-body font-mono font-bold text-[var(--color-text-primary)] mt-0.5">{t("createStep")}</h2>
                 </div>
                 <form onSubmit={handleCreateStep} className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
@@ -888,7 +889,7 @@ export default function WarRoomPage() {
     <Suspense
       fallback={
         <div className="flex items-center justify-center h-full">
-          <p className="text-sm font-mono text-athena-text-tertiary">
+          <p className="text-athena-body font-mono text-athena-text-tertiary">
             Loading War Room...
           </p>
         </div>

@@ -124,6 +124,12 @@ async def ssh_terminal(
                 conn = await asyncssh.connect(
                     host, port=port, username=user, password=password,
                     known_hosts=None, connect_timeout=15,
+                    server_host_key_algs=["ssh-rsa", "ssh-dss", "ecdsa-sha2-nistp256",
+                                          "rsa-sha2-256", "rsa-sha2-512"],
+                    kex_algs=["diffie-hellman-group14-sha1",
+                              "diffie-hellman-group-exchange-sha256",
+                              "diffie-hellman-group14-sha256",
+                              "ecdh-sha2-nistp256"],
                 )
                 break
             except Exception as exc:  # noqa: BLE001

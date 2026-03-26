@@ -64,7 +64,12 @@
     "riskHigh": "High",
     "riskCritical": "Critical",
     "deleteOperation": "Delete Operation",
-    "confirmDeleteOp": "Confirm delete this operation? All data will be permanently lost."
+    "confirmDeleteOp": "Confirm delete this operation? All data will be permanently lost.",
+    "legendPlanning": "Setting up targets, RoE, and mission profile before launch",
+    "legendActive": "OODA loop running — scanning, analyzing, executing",
+    "legendPaused": "Temporarily halted — awaiting authorization or blue team cooldown",
+    "legendCompleted": "Mission finished — report generated",
+    "legendFailed": "Abnormally terminated — target unreachable, RoE violation, or system error"
   },
   "PageHeader": {},
   "C5ISR": {
@@ -689,7 +694,8 @@
     "credentials": "Credentials",
     "oodaHistory": "OODA History",
     "targetInfo": "Target Info",
-    "deactivateTarget": "Deactivate Target"
+    "deactivateTarget": "Deactivate Target",
+    "activateTarget": "Set Active"
   },
   "Legend": {
     "title": "LEGEND",

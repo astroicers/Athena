@@ -58,6 +58,9 @@ typography:
     heading-card:    { value: "13px", css: "--fs-heading-card",    description: "卡片標題" }
     body:            { value: "14px", css: "--fs-body",            description: "內文" }
     heading-section: { value: "18px", css: "--fs-heading-section", description: "區塊標題" }
+    heading-panel:   { value: "16px", css: "--fs-heading-panel",   description: "面板標題/按鈕大字" }
+    metric-display:  { value: "20px", css: "--fs-metric-display",  description: "指標數字（中）" }
+    metric-hero:     { value: "24px", css: "--fs-metric-hero",     description: "指標數字（大）" }
     heading-page:    { value: "28px", css: "--fs-heading-page",    description: "頁面標題" }
 
 spacing:

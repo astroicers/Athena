@@ -94,7 +94,7 @@ function TechniquePill({ entry }: { entry: AttackPathEntry }) {
   return (
     <div className="relative group">
       <div
-        className={`flex items-center gap-1 px-1.5 py-0.5 rounded-[var(--radius)] text-sm font-mono cursor-default ${pillBg(entry.status)}`}
+        className={`flex items-center gap-1 px-1.5 py-0.5 rounded-[var(--radius)] text-athena-body font-mono cursor-default ${pillBg(entry.status)}`}
         title={tooltipLines}
       >
         <StatusDot status={entry.status} />
@@ -105,7 +105,7 @@ function TechniquePill({ entry }: { entry: AttackPathEntry }) {
         className={
           "absolute z-50 left-0 top-full mt-1 min-w-[180px] max-w-[240px] " +
           "bg-athena-elevated border border-[var(--color-border)] rounded-[var(--radius)] p-2 " +
-          "text-sm font-mono text-athena-text-light-primary shadow-lg " +
+          "text-athena-body font-mono text-athena-text-light-primary shadow-lg " +
           "invisible opacity-0 group-hover:visible group-hover:opacity-100 " +
           "transition-opacity duration-150 pointer-events-none whitespace-pre-wrap"
         }
@@ -157,7 +157,7 @@ function AttackGraphSummaryPanel({ graphData }: { graphData: AttackGraphResponse
 
   return (
     <div className="mb-3 p-2 bg-athena-elevated border border-[var(--color-border)] rounded-[var(--radius)]">
-      <div className="flex items-center gap-3 text-sm font-mono">
+      <div className="flex items-center gap-3 text-athena-body font-mono">
         {/* Coverage bar */}
         <div className="flex items-center gap-1.5 min-w-[120px]">
           <span className="text-athena-text-tertiary">Coverage</span>
@@ -198,7 +198,7 @@ function AttackGraphSummaryPanel({ graphData }: { graphData: AttackGraphResponse
 
       {/* Recommended path */}
       {pathTechniques && (
-        <div className="mt-1.5 text-sm font-mono text-athena-text-tertiary">
+        <div className="mt-1.5 text-athena-body font-mono text-athena-text-tertiary">
           <span className="text-athena-accent">Recommended:</span>{" "}
           <span className="text-athena-text-light-primary">{pathTechniques}</span>
         </div>
@@ -268,12 +268,12 @@ export function AttackPathTimeline({ data, loading, graphData }: AttackPathTimel
                     {/* Tactic header */}
                     <div className="mb-1.5">
                       <div
-                        className="text-sm font-mono font-bold uppercase truncate"
+                        className="text-athena-body font-mono font-bold uppercase truncate"
                         style={{ color: accentColor }}
                       >
                         {tTactic(tid as any)}
                       </div>
-                      <div className="text-sm font-mono text-athena-text-tertiary opacity-60">
+                      <div className="text-athena-body font-mono text-athena-text-tertiary opacity-60">
                         {tid}
                       </div>
                     </div>
@@ -281,7 +281,7 @@ export function AttackPathTimeline({ data, loading, graphData }: AttackPathTimel
                     {/* Technique pills */}
                     <div className="space-y-1">
                       {isEmpty ? (
-                        <div className="text-sm font-mono text-athena-text-tertiary italic">
+                        <div className="text-athena-body font-mono text-athena-text-tertiary italic">
                           —
                         </div>
                       ) : (
@@ -293,7 +293,7 @@ export function AttackPathTimeline({ data, loading, graphData }: AttackPathTimel
 
                     {/* Coverage badge */}
                     {data && data.tacticCoverage[tid] !== undefined && data.tacticCoverage[tid] > 0 && (
-                      <div className="mt-1 text-sm font-mono text-athena-text-tertiary opacity-60 text-right">
+                      <div className="mt-1 text-athena-body font-mono text-athena-text-tertiary opacity-60 text-right">
                         {data.tacticCoverage[tid]}%
                       </div>
                     )}

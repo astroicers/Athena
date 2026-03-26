@@ -126,3 +126,6 @@
 | 日期 | 變更 |
 |------|------|
 | 2026-03-04 | 建立 SPEC（追溯記錄，Phase 1-5 已實作完成） |
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

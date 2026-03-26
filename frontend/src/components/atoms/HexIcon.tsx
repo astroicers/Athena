@@ -19,9 +19,9 @@ const VARIANT_COLORS = {
 } as const;
 
 const SIZE_MAP = {
-  sm: "w-6 h-6 text-xs",
-  md: "w-8 h-8 text-sm",
-  lg: "w-10 h-10 text-base",
+  sm: "w-6 h-6 text-athena-floor",
+  md: "w-8 h-8 text-athena-body",
+  lg: "w-10 h-10 text-athena-heading-panel",
 } as const;
 
 interface HexIconProps {

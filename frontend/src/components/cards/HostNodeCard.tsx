@@ -106,7 +106,7 @@ export function HostNodeCard({
         <ShieldIcon isCompromised={isCompromised} isScanning={isScanning} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-mono font-bold text-[var(--color-text-primary)]">
+            <span className="text-athena-body font-mono font-bold text-[var(--color-text-primary)]">
               {hostname}
             </span>
             <div className="flex items-center gap-1">
@@ -120,7 +120,7 @@ export function HostNodeCard({
               </Badge>
             </div>
           </div>
-          <div className="space-y-1 text-xs font-mono text-[var(--color-text-tertiary)]">
+          <div className="space-y-1 text-athena-floor font-mono text-[var(--color-text-tertiary)]">
             <div className="flex justify-between">
               <span>{t("ip")}</span>
               <span className="text-[var(--color-text-primary)]">{ipAddress}</span>
@@ -140,12 +140,12 @@ export function HostNodeCard({
           {openPorts != null && openPorts > 0 && !isScanning && (
             <div className="mt-2 pt-2 border-t border-[var(--color-border)]/30 space-y-1">
               {os && (
-                <div className="flex justify-between text-xs font-mono">
+                <div className="flex justify-between text-athena-floor font-mono">
                   <span className="text-[var(--color-text-tertiary)]">{t("os")}</span>
                   <span className="text-[var(--color-text-primary)]">{os}</span>
                 </div>
               )}
-              <div className="flex justify-between text-xs font-mono">
+              <div className="flex justify-between text-athena-floor font-mono">
                 <span className="text-[var(--color-text-tertiary)]">{t("ports")}</span>
                 <span className="text-[var(--color-accent)]">{openPorts} open</span>
               </div>
@@ -154,33 +154,33 @@ export function HostNodeCard({
                   {services.slice(0, 3).map((svc) => (
                     <span
                       key={svc.port}
-                      className="text-xs font-mono bg-[var(--color-border-subtle)] rounded-[var(--radius)] px-1.5 py-px text-[var(--color-text-secondary)]"
+                      className="text-athena-floor font-mono bg-[var(--color-border-subtle)] rounded-[var(--radius)] px-1.5 py-px text-[var(--color-text-secondary)]"
                     >
                       {svc.port}/{svc.service}
                     </span>
                   ))}
                   {services.length > 3 && (
-                    <span className="text-xs font-mono text-[var(--color-text-secondary)]">
+                    <span className="text-athena-floor font-mono text-[var(--color-text-secondary)]">
                       +{services.length - 3}
                     </span>
                   )}
                 </div>
               )}
               {credentialFound && (
-                <div className="flex justify-between text-xs font-mono">
+                <div className="flex justify-between text-athena-floor font-mono">
                   <span className="text-[var(--color-text-tertiary)]">{t("credential")}</span>
                   <span className="text-[var(--color-warning)]">{credentialFound}</span>
                 </div>
               )}
               {lastScanAt && (
-                <div className="text-sm font-mono text-[var(--color-text-tertiary)] text-right">
+                <div className="text-athena-body font-mono text-[var(--color-text-tertiary)] text-right">
                   {lastScanAt.split("T")[1]?.slice(0, 8)}
                 </div>
               )}
               {onViewScanResult && (
                 <button
                   onClick={onViewScanResult}
-                  className="text-sm font-mono text-[var(--color-accent)] hover:underline"
+                  className="text-athena-body font-mono text-[var(--color-accent)] hover:underline"
                 >
                   {t("viewDetails")}
                 </button>
@@ -189,7 +189,7 @@ export function HostNodeCard({
           )}
           {isScanning && (
             <div className="mt-2 space-y-1">
-              <div className="flex items-center justify-between text-sm font-mono">
+              <div className="flex items-center justify-between text-athena-body font-mono">
                 <span className="text-[var(--color-accent)] animate-pulse">
                   {scanPhase
                     ? t(`phase_${scanPhase}` as Parameters<typeof t>[0])

@@ -49,14 +49,14 @@ export function DirectiveInput({
     <div className="bg-athena-elevated border border-[var(--color-border)] rounded-[var(--radius)] p-3 font-mono">
       {/* Header */}
       <div className="flex items-center mb-3">
-        <span className="text-xs text-athena-text-tertiary uppercase tracking-wider font-semibold">
+        <span className="text-athena-floor text-athena-text-tertiary uppercase tracking-wider font-semibold">
           {t("nextDirective")}
         </span>
       </div>
 
       {/* Auto mode ON */}
       {autoMode && (
-        <p className="text-xs text-athena-accent">
+        <p className="text-athena-floor text-athena-accent">
           {t("autoModeOn")}
         </p>
       )}
@@ -66,7 +66,7 @@ export function DirectiveInput({
         <div className="flex flex-col gap-2">
           {/* AI suggestion */}
           {aiSuggestion && (
-            <p className="text-xs text-athena-text-tertiary">
+            <p className="text-athena-floor text-athena-text-tertiary">
               AI suggests: {aiSuggestion}
             </p>
           )}
@@ -78,7 +78,7 @@ export function DirectiveInput({
             onKeyDown={handleKeyDown}
             placeholder="Enter your directive..."
             rows={2}
-            className="bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] p-2 text-xs text-athena-text-light placeholder:text-athena-text-tertiary resize-none focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] font-mono"
+            className="bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] p-2 text-athena-floor text-athena-text-light placeholder:text-athena-text-tertiary resize-none focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] font-mono"
           />
 
           {/* Submit button */}
@@ -86,7 +86,7 @@ export function DirectiveInput({
             onClick={handleSubmit}
             disabled={!draft.trim()}
             type="button"
-            className="self-start bg-athena-surface border border-[var(--color-border)] text-athena-text text-xs uppercase tracking-wider font-semibold px-3 py-1.5 rounded-[var(--radius)] hover:bg-athena-elevated transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="self-start bg-athena-surface border border-[var(--color-border)] text-athena-text text-athena-floor uppercase tracking-wider font-semibold px-3 py-1.5 rounded-[var(--radius)] hover:bg-athena-elevated transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {t("submitDirective")}
           </button>
@@ -96,7 +96,7 @@ export function DirectiveInput({
       {/* Submitted directive */}
       {submittedDirective && (
         <div className="border-l-[3px] border-[var(--color-accent)] pl-3 py-1 mt-1">
-          <span className="text-xs text-athena-text-secondary">
+          <span className="text-athena-floor text-athena-text-secondary">
             {submittedDirective}
           </span>
         </div>

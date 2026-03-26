@@ -749,3 +749,6 @@ class TestOODAControllerSwarmIntegration:
   - `backend/app/config.py` — Settings class
   - `backend/app/models/api_schemas.py` — API schema 定義
   - `backend/app/database.py` — CREATE TABLE statements
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

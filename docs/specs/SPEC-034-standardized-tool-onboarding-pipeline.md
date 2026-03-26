@@ -563,3 +563,6 @@ docker:
 - 現有類似實作：[SPEC-016](SPEC-016-tool-container-io-standard.md)（Container I/O Standard）、[SPEC-025](SPEC-025-tool-registry-management.md)（Tool Registry Management）
 - 現有 template：`tools/_template/`
 - Production 參考：`tools/nmap-scanner/server.py`（含 argparse + TransportSecuritySettings 的完整範例）
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

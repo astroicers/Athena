@@ -491,3 +491,6 @@ const EDGE_ENTRIES = [
   - `frontend/src/app/warroom/page.tsx`（`graph.updated` 訂閱、`recommendedPath` state）
   - `frontend/messages/en.json`（`Legend.attackPath` 翻譯）
   - `frontend/messages/zh-TW.json`（`Legend.attackPath` 翻譯）
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

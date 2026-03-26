@@ -751,3 +751,5 @@ def parse_openapi_spec(spec_data: dict) -> dict:
     """Extract endpoint count, version, title from OpenAPI spec."""
     ...
 ```
+
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

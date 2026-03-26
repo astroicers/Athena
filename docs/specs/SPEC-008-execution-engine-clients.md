@@ -214,3 +214,6 @@ class MockCalderaClient(BaseEngineClient):
 - ADR-010：[Docker Compose 部署拓樸](../adr/ADR-010-docker-compose-deployment.md)（外部引擎配置）
 - Caldera API 文件：https://caldera.readthedocs.io/en/latest/Server-Configuration.html
 - SPEC-007：OODA Loop Engine（被依賴——engine_router 呼叫 client）
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

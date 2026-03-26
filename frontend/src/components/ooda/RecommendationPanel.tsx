@@ -42,11 +42,11 @@ function OptionCard({ option, index }: { option: TacticalOption; index: number }
     >
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
-          <span className="text-athena-accent text-xs font-mono font-bold">
+          <span className="text-athena-accent text-athena-floor font-mono font-bold">
             {option.techniqueId}
           </span>
           {index === 0 && (
-            <span className="text-sm font-mono text-athena-accent bg-athena-accent/10 px-2 py-1 rounded-[var(--radius)]">
+            <span className="text-athena-body font-mono text-athena-accent bg-athena-accent/10 px-2 py-1 rounded-[var(--radius)]">
               {t("recommended")}
             </span>
           )}
@@ -55,29 +55,29 @@ function OptionCard({ option, index }: { option: TacticalOption; index: number }
           <Badge variant={RISK_VARIANT[option.riskLevel] || "info"}>
             {tRisk(option.riskLevel as any)}
           </Badge>
-          <span className="text-sm font-mono text-athena-text-tertiary">
+          <span className="text-athena-body font-mono text-athena-text-tertiary">
             {(option.confidence * 100).toFixed(0)}%
           </span>
         </div>
       </div>
-      <p className="text-xs font-mono text-athena-text-tertiary">{option.techniqueName}</p>
-      <p className="text-sm font-mono text-athena-text-tertiary mt-1">
+      <p className="text-athena-floor font-mono text-athena-text-tertiary">{option.techniqueName}</p>
+      <p className="text-athena-body font-mono text-athena-text-tertiary mt-1">
         {t("engine", { name: option.recommendedEngine.toUpperCase() })}
       </p>
 
       {expanded && (
         <div className="mt-2 pt-2 border-t border-[var(--color-border)]/50 space-y-2">
-          <p className="text-xs font-mono text-athena-text-tertiary leading-relaxed">
+          <p className="text-athena-floor font-mono text-athena-text-tertiary leading-relaxed">
             {option.reasoning}
           </p>
           {option.prerequisites.length > 0 && (
             <div>
-              <span className="text-sm font-mono text-athena-text-tertiary uppercase">
+              <span className="text-athena-body font-mono text-athena-text-tertiary uppercase">
                 {t("prerequisites")}
               </span>
               <ul className="mt-1 space-y-0.5">
                 {option.prerequisites.map((p, i) => (
-                  <li key={i} className="text-sm font-mono text-athena-text-tertiary">
+                  <li key={i} className="text-athena-body font-mono text-athena-text-tertiary">
                     &bull; {p}
                   </li>
                 ))}
@@ -103,7 +103,7 @@ export function RecommendationPanel({
           {t("title")}
         </SectionHeader>
         <div className="text-center py-4">
-          <span className="text-xs font-mono text-athena-text-tertiary">
+          <span className="text-athena-floor font-mono text-athena-text-tertiary">
             {t("noRecommendation")}
           </span>
         </div>
@@ -121,7 +121,7 @@ export function RecommendationPanel({
         title={tHints("recommendation")}
         trailing={
           <div className="flex items-center gap-2">
-            <span className="text-sm font-mono text-athena-text-tertiary">
+            <span className="text-athena-body font-mono text-athena-text-tertiary">
               {t("confidence", { value: (recommendation.confidence * 100).toFixed(0) })}
             </span>
             {isDecided && (
@@ -137,17 +137,17 @@ export function RecommendationPanel({
 
       {/* Situation Assessment */}
       <div className="bg-athena-bg border border-[var(--color-border)]/50 rounded-[var(--radius)] p-3 mb-3">
-        <span className="text-sm font-mono text-athena-text-tertiary uppercase tracking-wider">
+        <span className="text-athena-body font-mono text-athena-text-tertiary uppercase tracking-wider">
           {t("situationAssessment")}
         </span>
-        <p className="text-xs font-mono text-athena-text-light leading-relaxed mt-1">
+        <p className="text-athena-floor font-mono text-athena-text-light leading-relaxed mt-1">
           {recommendation.situationAssessment}
         </p>
       </div>
 
       {/* Tactical Options */}
       <div className="space-y-2 mb-3">
-        <span className="text-sm font-mono text-athena-text-tertiary uppercase tracking-wider">
+        <span className="text-athena-body font-mono text-athena-text-tertiary uppercase tracking-wider">
           {t("tacticalOptions", { count: recommendation.options.length })}
         </span>
         {recommendation.options.map((opt, i) => (

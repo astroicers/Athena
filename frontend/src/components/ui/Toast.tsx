@@ -42,7 +42,7 @@ export function ToastContainer() {
           className={`
             bg-[var(--color-bg-elevated)] border border-[var(--color-border)]
             border-l-4 ${SEVERITY_STYLES[toast.severity]}
-            px-3 py-2 rounded-[var(--radius)] font-mono text-xs
+            px-3 py-2 rounded-[var(--radius)] font-mono text-athena-floor
             animate-[slideIn_0.2s_ease-out]
             cursor-pointer hover:opacity-80 transition-opacity
           `}

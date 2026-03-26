@@ -69,15 +69,15 @@ flowchart LR
 
   COMMS -->|"health 35%"| HL0
   HL0 -->|"constrains"| ACT
-  COMMS -->|"health 35%"| HL1
-  HL1 -->|"constrains"| ACT
+  COMMS -.->|"health 35%"| HL1
+  HL1 -.->|"advisory"| ACT
 
   ACT ==>|"results update\nhealth"| C5ISR
 
-  classDef active stroke:#3b82f6,stroke-width:2px,fill:#111827
-  classDef healthy stroke:#22C55E,fill:#111827
-  classDef degraded stroke:#FBBF24,fill:#111827
-  classDef critical stroke:#EF4444,fill:#111827
+  classDef active stroke:#1E6091,stroke-width:2px,fill:#18181B
+  classDef healthy stroke:#059669,fill:#18181B
+  classDef degraded stroke:#B45309,fill:#18181B
+  classDef critical stroke:#B91C1C,fill:#18181B
 
   class OBS active
   class CMD,CTRL,COMP,ISR healthy
@@ -89,8 +89,18 @@ flowchart LR
 - OODA node labels 動態反映 constraint 影響（reduced options、min confidence、forced mode）
 - C5ISR node labels 動態反映即時 health% 和分類符號
 - Constraint subgraph 只在 `warnings.length > 0 || hardLimits.length > 0` 時出現
-- 每個 constraint 產生 edge：`{domain} -->|"{healthPct}"| {constraintNode} -->|"constrains"| {oodaPhase}`
+- **Hard limits** 使用實線 edge：`{domain} -->|"health {pct}%"| {constraintNode} -->|"constrains"| {oodaPhase}`
+- **Warnings** 使用虛線 edge：`{domain} -.->|"health {pct}%"| {constraintNode} -.->|"advisory"| {oodaPhase}`
+- Feedback edge（ACT → C5ISR）使用 `.feedback-edge` CSS class（綠色 stroke）
 - 健康分類：≥80 = healthy(green)、50-79 = degraded(yellow)、<50 = critical(red)
+
+**主題與樣式**：
+- 色票使用 Deep Gemstone v3 palette（`#1E6091` active、`#059669` healthy、`#B45309` degraded、`#B91C1C` critical）
+- Node 背景 fill：`#18181B`（zinc-900）
+- 字型：`JetBrains Mono, monospace`（12px）
+- CSS overrides 由 `MERMAID_CSS_OVERRIDES` 常數定義（`.node.active`、`.node.healthy`、`.edgePath.constraint-edge` 等）
+- Constraint edges 使用 dashed stroke style（`.edgePath.constraint-edge`）
+- 完整 theme 設定見 `frontend/src/lib/mermaidTheme.ts` 中的 `ATHENA_MERMAID_CONFIG`
 
 **失敗情境**：
 
@@ -135,7 +145,7 @@ flowchart LR
 ## ✅ 驗收標準（Done When）
 
 - [x] `buildOODAC5ISRFlow()` pure function 通過 12 項單元測試
-- [x] MermaidRenderer 使用 v2 theme（`#0a0e17` bg、`#111827` nodes、`#3b82f6` accent）
+- [x] MermaidRenderer 使用 Deep Gemstone v3 theme（`#0a0e17` bg、`#18181B` nodes、`#1E6091` accent）
 - [x] War Room 從 2-column 改為 3-column layout（OODA Panel / Center / Action Log）
 - [x] `useC5ISRData` hook 結合 API polling（15s）+ WebSocket 即時更新
 - [x] ConstraintBanner 在 `hardLimits.length > 0` 時顯示於頂部
@@ -153,19 +163,19 @@ flowchart LR
 
 | 實作檔案 | 測試檔案 | 最後驗證日期 |
 |----------|----------|-------------|
-| `frontend/src/lib/buildFlowDefinition.ts` | `frontend/src/components/c5isr/__tests__/buildFlowDefinition.test.ts` | 2026-03-13 |
-| `frontend/src/lib/mermaidTheme.ts` | — | 2026-03-13 |
-| `frontend/src/components/c5isr/MermaidRenderer.tsx` | — | 2026-03-13 |
-| `frontend/src/components/c5isr/OODAFlowDiagram.tsx` | — | 2026-03-13 |
-| `frontend/src/components/c5isr/C5ISRDomainCard.tsx` | — | 2026-03-13 |
-| `frontend/src/components/c5isr/C5ISRHealthGrid.tsx` | — | 2026-03-13 |
-| `frontend/src/components/c5isr/ConstraintStatusPanel.tsx` | — | 2026-03-13 |
-| `frontend/src/components/c5isr/C5ISRDomainDetail.tsx` | — | 2026-03-13 |
-| `frontend/src/hooks/useC5ISRData.ts` | — | 2026-03-13 |
-| `frontend/src/types/constraint.ts` | — | 2026-03-13 |
-| `frontend/src/app/warroom/page.tsx` | — | 2026-03-13 |
-| `frontend/messages/en.json` | `frontend/src/test/i18n-schema.test.ts` | 2026-03-13 |
-| `frontend/messages/zh-TW.json` | `frontend/src/test/i18n-schema.test.ts` | 2026-03-13 |
+| `frontend/src/lib/buildFlowDefinition.ts` | `frontend/src/components/c5isr/__tests__/buildFlowDefinition.test.ts` | 2026-03-25 |
+| `frontend/src/lib/mermaidTheme.ts` | — | 2026-03-25 |
+| `frontend/src/components/c5isr/MermaidRenderer.tsx` | — | 2026-03-25 |
+| `frontend/src/components/c5isr/OODAFlowDiagram.tsx` | — | 2026-03-25 |
+| `frontend/src/components/c5isr/C5ISRDomainCard.tsx` | — | 2026-03-25 |
+| `frontend/src/components/c5isr/C5ISRHealthGrid.tsx` | — | 2026-03-25 |
+| `frontend/src/components/c5isr/ConstraintStatusPanel.tsx` | — | 2026-03-25 |
+| `frontend/src/components/c5isr/C5ISRDomainDetail.tsx` | — | 2026-03-25 |
+| `frontend/src/hooks/useC5ISRData.ts` | — | 2026-03-25 |
+| `frontend/src/types/constraint.ts` | — | 2026-03-25 |
+| `frontend/src/app/warroom/page.tsx` | — | 2026-03-25 |
+| `frontend/messages/en.json` | `frontend/src/test/i18n-schema.test.ts` | 2026-03-25 |
+| `frontend/messages/zh-TW.json` | `frontend/src/test/i18n-schema.test.ts` | 2026-03-25 |
 
 ---
 
@@ -185,3 +195,6 @@ flowchart LR
 - **SPEC-007**：OODA Loop Engine（後端 OODA 實作）
 - **SPEC-026**：Attack Situation Diagram（記錄 Mermaid vs SVG 架構選擇）
 - **Design mockup**：`design/pencil-new-v2.pen` → "War Room" frame（3-column + Mermaid flow）
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

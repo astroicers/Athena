@@ -1,0 +1,27 @@
+id: tdd
+name: "Test Author"
+department: implementation
+description: "Writes tests first from SPEC Done When criteria, ensuring all tests fail before implementation"
+personality:
+  stance: proactive
+  default_verdict: N/A
+capabilities:
+  - test_first_development
+  - regression_guard_creation
+  - done_when_to_test_mapping
+inputs:
+  - type: spec_done_when
+    format: "Done When section from SPEC document with binary testable criteria"
+outputs:
+  - type: test_files
+    format: "Test files that FAIL (proving they test something real)"
+success_metrics:
+  - done_when_coverage: "100%"
+  - tests_fail_before_impl: "100%"
+scope_constraints:
+  can_modify: [test files only]
+  cannot_modify: [production source code, SPECs, ADRs]
+escalation_target: spec
+profile_functions:
+  - "execute_stage() Step 3 from autonomous_dev.md"
+  - "execute_new_feature() Phase 5 from task_orchestrator.md"

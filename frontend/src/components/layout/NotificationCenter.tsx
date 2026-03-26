@@ -110,13 +110,13 @@ export function NotificationCenter({
         >
           <div className="flex items-center gap-2">
             <h2
-              className="text-sm font-mono font-bold text-[var(--color-text-primary)]"
+              className="text-athena-body font-mono font-bold text-[var(--color-text-primary)]"
             >
               {t("title")}
             </h2>
             {totalCount > 0 && (
               <span
-                className="bg-[var(--color-error)] text-white text-xs font-bold px-2 py-1 rounded-full min-w-[20px] text-center"
+                className="bg-[var(--color-error)] text-white text-athena-floor font-bold px-2 py-1 rounded-full min-w-[20px] text-center"
               >
                 {totalCount > 99 ? "99+" : totalCount}
               </span>
@@ -125,7 +125,7 @@ export function NotificationCenter({
           <div className="flex items-center gap-3">
             <button
               onClick={handleClearAll}
-              className="text-xs font-mono text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] transition-colors"
+              className="text-athena-floor font-mono text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] transition-colors"
             >
               {t("clearAll")}
             </button>
@@ -144,7 +144,7 @@ export function NotificationCenter({
           {isEmpty ? (
             <div className="flex flex-col items-center justify-center h-64">
               <span
-                className="text-xs font-mono text-[var(--color-text-tertiary)]"
+                className="text-athena-floor font-mono text-[var(--color-text-tertiary)]"
               >
                 {t("empty")}
               </span>
@@ -155,7 +155,7 @@ export function NotificationCenter({
               {hasConstraint && (
                 <>
                   <p
-                    className="text-xs font-mono font-bold uppercase text-[var(--color-text-tertiary)] tracking-wider px-1"
+                    className="text-athena-floor font-mono font-bold uppercase text-[var(--color-text-tertiary)] tracking-wider px-1"
                   >
                     {t("pinnedConstraints")}
                   </p>
@@ -168,12 +168,12 @@ export function NotificationCenter({
                       {/* Card header row */}
                       <div className="flex items-center justify-between mb-1.5">
                         <span
-                          className="text-xs font-mono font-bold uppercase text-[var(--color-warning)]"
+                          className="text-athena-caption font-mono font-bold uppercase text-[var(--color-warning)]"
                         >
                           {t("constraintActive")}
                         </span>
                         <span
-                          className="text-xs font-mono text-[var(--color-text-tertiary)]"
+                          className="text-athena-floor font-mono text-[var(--color-text-tertiary)]"
                         >
                           {new Date().toLocaleTimeString(undefined, {
                             hour: "2-digit",
@@ -184,14 +184,14 @@ export function NotificationCenter({
                       </div>
                       {/* Message */}
                       <p
-                        className="text-xs font-mono text-[var(--color-text-secondary)] leading-relaxed"
+                        className="text-athena-floor font-mono text-[var(--color-text-secondary)] leading-relaxed"
                       >
                         {msg}
                       </p>
                       {/* Source */}
                       {constraintAlert.domains.length > 0 && (
                         <span
-                          className="text-xs font-mono text-[var(--color-text-tertiary)] mt-1.5 block"
+                          className="text-athena-floor font-mono text-[var(--color-text-tertiary)] mt-1.5 block"
                         >
                           {t("source")}: constraint_engine / {constraintAlert.domains[i] ?? constraintAlert.domains[0]}
                         </span>
@@ -210,7 +210,7 @@ export function NotificationCenter({
               {hasOpsec && (
                 <>
                   <p
-                    className="text-xs font-mono font-bold uppercase text-[var(--color-text-tertiary)] tracking-wider px-1"
+                    className="text-athena-floor font-mono font-bold uppercase text-[var(--color-text-tertiary)] tracking-wider px-1"
                   >
                     {t("opsecWarnings")}
                   </p>
@@ -225,25 +225,25 @@ export function NotificationCenter({
                         {/* Card header row */}
                         <div className="flex items-center justify-between mb-1.5">
                           <span
-                            className={`text-xs font-mono font-bold uppercase ${sevStyle.textClass}`}
+                            className={`text-athena-caption font-mono font-bold uppercase ${sevStyle.textClass}`}
                           >
                             {sevStyle.badgeText}
                           </span>
                           <span
-                            className="text-xs font-mono text-[var(--color-text-tertiary)]"
+                            className="text-athena-floor font-mono text-[var(--color-text-tertiary)]"
                           >
                             {formatTimestamp(alert.timestamp)}
                           </span>
                         </div>
                         {/* Message */}
                         <p
-                          className="text-xs font-mono text-[var(--color-text-secondary)] leading-relaxed"
+                          className="text-athena-floor font-mono text-[var(--color-text-secondary)] leading-relaxed"
                         >
                           {alert.message}
                         </p>
                         {/* Source */}
                         <span
-                          className="text-xs font-mono text-[var(--color-text-tertiary)] mt-1.5 block"
+                          className="text-athena-floor font-mono text-[var(--color-text-tertiary)] mt-1.5 block"
                         >
                           {t("source")}: {t("sourceOpsec")}
                         </span>

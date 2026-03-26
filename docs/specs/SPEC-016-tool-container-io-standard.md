@@ -955,3 +955,6 @@ docker run --rm \
 | 12 | `manifest.json` 中的 `size_bytes` 與實際檔案大小一致 | 整合測試 |
 | 13 | 不產出 artifact 的工具可正常運行（無 `/output/manifest.json`） | 整合測試 |
 | 14 | 前步工具的 `/output/` 產物可掛載為後步工具的 `/input/previous/` | 整合測試 |
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

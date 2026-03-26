@@ -66,7 +66,7 @@ export function TargetSummaryPanel({
   }, [operationId, targetId]);
 
   return (
-    <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-[var(--radius)] p-4 font-mono text-xs space-y-3">
+    <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-[var(--radius)] p-4 font-mono text-athena-floor space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
         <span className="text-[var(--color-accent)] uppercase tracking-wider font-bold">

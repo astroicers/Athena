@@ -66,11 +66,11 @@ export function ObserveDetailView({ detail }: ObserveDetailViewProps) {
       {/* Port scan results table */}
       {portFacts.length > 0 && (
         <div>
-          <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-primary)] mb-2">
+          <h4 className="text-athena-floor font-bold uppercase tracking-wider text-[var(--color-text-primary)] mb-2">
             {t("portScanResults")}
           </h4>
           <div className="overflow-x-auto">
-            <table className="w-full text-xs border-collapse">
+            <table className="w-full text-athena-floor border-collapse">
               <thead>
                 <tr className="border-b border-[var(--color-border)]">
                   <th className="text-left px-2 py-1.5 text-[var(--color-text-tertiary)] font-bold uppercase tracking-wider">
@@ -116,9 +116,9 @@ export function ObserveDetailView({ detail }: ObserveDetailViewProps) {
       {/* Other intelligence facts */}
       {otherFacts.length > 0 && (
         <div>
-          <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-primary)] mb-2 flex items-center gap-2">
+          <h4 className="text-athena-floor font-bold uppercase tracking-wider text-[var(--color-text-primary)] mb-2 flex items-center gap-2">
             <span>{t("intelligenceFacts")}</span>
-            <span className="text-xs bg-[var(--color-accent)]/[0.12] border border-[var(--color-accent)]/[0.25] text-[var(--color-accent)] px-2 py-1 rounded-[var(--radius)]">
+            <span className="text-athena-floor bg-[var(--color-accent)]/[0.12] border border-[var(--color-accent)]/[0.25] text-[var(--color-accent)] px-2 py-1 rounded-[var(--radius)]">
               {totalCount}
             </span>
           </h4>
@@ -126,7 +126,7 @@ export function ObserveDetailView({ detail }: ObserveDetailViewProps) {
             {otherFacts.map((fact, idx) => (
               <li
                 key={idx}
-                className="text-xs text-[var(--color-text-secondary)] flex items-start gap-1"
+                className="text-athena-floor text-[var(--color-text-secondary)] flex items-start gap-1"
               >
                 <span className="text-[var(--color-text-tertiary)] shrink-0">
                   *
@@ -145,7 +145,7 @@ export function ObserveDetailView({ detail }: ObserveDetailViewProps) {
 
       {/* Fallback when no parsed facts but count exists */}
       {facts.length === 0 && totalCount > 0 && (
-        <div className="text-xs text-[var(--color-text-secondary)]">
+        <div className="text-athena-floor text-[var(--color-text-secondary)]">
           {t("intelligenceFacts")}: {totalCount}
         </div>
       )}

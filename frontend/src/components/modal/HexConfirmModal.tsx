@@ -50,19 +50,19 @@ export function HexConfirmModal({
       >
         {/* Warning bar */}
         <div className="bg-[var(--color-error)]/[0.12] px-4 py-3 flex justify-center">
-          <span className="text-xs font-mono font-bold text-[var(--color-error)] uppercase">
+          <span className="text-athena-floor font-mono font-bold text-[var(--color-error)] uppercase">
             {t(style.labelKey)}
           </span>
         </div>
 
         {/* Body */}
         <div className="px-6 py-5 text-center">
-          <h2 className="text-base font-mono font-bold text-[var(--color-text-primary)]">
+          <h2 className="text-athena-heading-panel font-mono font-bold text-[var(--color-text-primary)]">
             {title}
           </h2>
 
           {isCritical && (
-            <p className="text-xs font-mono text-[var(--color-text-secondary)] mt-2 leading-relaxed">
+            <p className="text-athena-floor font-mono text-[var(--color-text-secondary)] mt-2 leading-relaxed">
               {t("criticalWarning")}
             </p>
           )}
@@ -72,13 +72,13 @@ export function HexConfirmModal({
         <div className="flex justify-center gap-4 px-6 py-4 border-t border-[var(--color-border)]">
           <button
             onClick={onCancel}
-            className="px-6 py-2 text-xs font-mono font-semibold bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] rounded-[var(--radius)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-elevated)] transition-colors"
+            className="px-6 py-2 text-athena-floor font-mono font-semibold bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] rounded-[var(--radius)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-elevated)] transition-colors"
           >
             {tCommon("abort")}
           </button>
           <button
             onClick={onConfirm}
-            className="px-6 py-2 text-xs font-mono font-semibold bg-[var(--color-error)]/[0.12] border border-[var(--color-error)]/[0.25] rounded-[var(--radius)] text-[var(--color-error)] hover:bg-[var(--color-error)]/20 transition-colors"
+            className="px-6 py-2 text-athena-floor font-mono font-semibold bg-[var(--color-error)]/[0.12] border border-[var(--color-error)]/[0.25] rounded-[var(--radius)] text-[var(--color-error)] hover:bg-[var(--color-error)]/20 transition-colors"
           >
             {isCritical ? t("confirmExecute") : tCommon("execute")}
           </button>

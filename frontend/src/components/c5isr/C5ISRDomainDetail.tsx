@@ -39,13 +39,13 @@ export function C5ISRDomainDetail({ domain, report, onClose }: C5ISRDomainDetail
       {/* Header */}
       <div className="flex items-center justify-between">
         <span
-          className="font-mono text-xs font-bold uppercase text-athena-text-light"
+          className="font-mono text-athena-floor font-bold uppercase text-athena-text-light"
         >
           {domain.domain} REPORT
         </span>
         <button
           onClick={onClose}
-          className="font-mono text-xs transition-colors text-[#ffffff30]"
+          className="font-mono text-athena-floor transition-colors text-[#ffffff30]"
           aria-label="Close detail"
         >
           x
@@ -55,7 +55,7 @@ export function C5ISRDomainDetail({ domain, report, onClose }: C5ISRDomainDetail
       {/* Executive Summary */}
       {report?.executiveSummary && (
         <p
-          className="font-mono text-xs leading-relaxed text-[#ffffff50]"
+          className="font-mono text-athena-floor leading-relaxed text-[#ffffff50]"
         >
           {report.executiveSummary}
         </p>
@@ -65,7 +65,7 @@ export function C5ISRDomainDetail({ domain, report, onClose }: C5ISRDomainDetail
       {report?.metrics && report.metrics.length > 0 && (
         <div>
           <span
-            className="font-mono text-xs font-bold uppercase tracking-wider block mb-1 text-[#ffffff30]"
+            className="font-mono text-athena-floor font-bold uppercase tracking-wider block mb-1 text-[#ffffff30]"
           >
             METRICS
           </span>
@@ -73,7 +73,7 @@ export function C5ISRDomainDetail({ domain, report, onClose }: C5ISRDomainDetail
             {report.metrics.map((m) => (
               <div key={m.name} className="flex items-center gap-2">
                 <span
-                  className="font-mono text-xs w-32 shrink-0 text-[#ffffff60]"
+                  className="font-mono text-athena-floor w-32 shrink-0 text-[#ffffff60]"
                 >
                   {m.name}
                 </span>
@@ -90,7 +90,7 @@ export function C5ISRDomainDetail({ domain, report, onClose }: C5ISRDomainDetail
                   />
                 </div>
                 <span
-                  className="font-mono text-xs athena-tabular-nums w-16 text-right text-[#ffffff50]"
+                  className="font-mono text-athena-floor athena-tabular-nums w-16 text-right text-[#ffffff50]"
                 >
                   {m.numerator != null && m.denominator != null
                     ? `${m.numerator}/${m.denominator}`
@@ -106,7 +106,7 @@ export function C5ISRDomainDetail({ domain, report, onClose }: C5ISRDomainDetail
       {report?.riskVectors && report.riskVectors.length > 0 && (
         <div>
           <span
-            className="font-mono text-xs font-bold uppercase tracking-wider block mb-1 text-[#ffffff30]"
+            className="font-mono text-athena-floor font-bold uppercase tracking-wider block mb-1 text-[#ffffff30]"
           >
             RISK VECTORS
           </span>
@@ -114,7 +114,7 @@ export function C5ISRDomainDetail({ domain, report, onClose }: C5ISRDomainDetail
             {report.riskVectors.map((rv, i) => (
               <div key={i} className="flex items-center gap-2">
                 <span
-                  className="font-mono text-xs font-bold px-2 py-1 rounded-[var(--radius)]"
+                  className="font-mono text-athena-floor font-bold px-2 py-1 rounded-[var(--radius)]"
                   style={{
                     backgroundColor: `color-mix(in srgb, ${severityColor(rv.severity)} 20%, transparent)`,
                     color: severityColor(rv.severity),
@@ -123,7 +123,7 @@ export function C5ISRDomainDetail({ domain, report, onClose }: C5ISRDomainDetail
                   {rv.severity}
                 </span>
                 <span
-                  className="font-mono text-xs text-[#ffffff60]"
+                  className="font-mono text-athena-floor text-[#ffffff60]"
                 >
                   {rv.message}
                 </span>
@@ -137,7 +137,7 @@ export function C5ISRDomainDetail({ domain, report, onClose }: C5ISRDomainDetail
       {report?.recommendedActions && report.recommendedActions.length > 0 && (
         <div>
           <span
-            className="font-mono text-xs font-bold uppercase tracking-wider block mb-1 text-[#ffffff30]"
+            className="font-mono text-athena-floor font-bold uppercase tracking-wider block mb-1 text-[#ffffff30]"
           >
             RECOMMENDED ACTIONS
           </span>
@@ -145,7 +145,7 @@ export function C5ISRDomainDetail({ domain, report, onClose }: C5ISRDomainDetail
             {report.recommendedActions.map((action, i) => (
               <p
                 key={i}
-                className="font-mono text-xs text-[#ffffff60]"
+                className="font-mono text-athena-floor text-[#ffffff60]"
               >
                 - {action}
               </p>
@@ -159,7 +159,7 @@ export function C5ISRDomainDetail({ domain, report, onClose }: C5ISRDomainDetail
         report.crossDomainImpacts.length > 0 && (
           <div>
             <span
-              className="font-mono text-xs font-bold uppercase tracking-wider block mb-1 text-[#ffffff30]"
+              className="font-mono text-athena-floor font-bold uppercase tracking-wider block mb-1 text-[#ffffff30]"
             >
               CROSS-DOMAIN IMPACTS
             </span>
@@ -167,7 +167,7 @@ export function C5ISRDomainDetail({ domain, report, onClose }: C5ISRDomainDetail
               {report.crossDomainImpacts.map((impact, i) => (
                 <p
                   key={i}
-                  className="font-mono text-xs text-athena-accent"
+                  className="font-mono text-athena-floor text-athena-accent"
                 >
                   {impact}
                 </p>

@@ -128,3 +128,6 @@ backend/alembic/
 
 - ADR-038: PostgreSQL Migration and Alembic Schema Management
 - Plan: `/home/ubuntu/.claude/plans/logical-munching-finch.md` Phase 0
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

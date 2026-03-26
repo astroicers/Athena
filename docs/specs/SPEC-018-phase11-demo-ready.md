@@ -98,3 +98,6 @@
 - `frontend/src/app/monitor/page.tsx`
 - `frontend/src/components/layout/client-shell.tsx`
 - `frontend/src/lib/api.ts`
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

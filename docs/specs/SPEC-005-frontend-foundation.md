@@ -237,3 +237,6 @@ export const RISK_COLORS = { low: "green", medium: "yellow", high: "orange", cri
 - 資料架構：[data-architecture.md](../architecture/data-architecture.md) Section 2（Enums）+ Section 4（Models）
 - 設計稿：`athena-shell.pen`、`athena-design-system.pen`
 - SPEC-004：REST API Routes（依賴——API 端點定義）
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

@@ -113,3 +113,6 @@
 - ADR-003：OODA 引擎架構（服務分層設計）
 - ADR-004：半自動化模式（風險閾值規則）
 - Makefile：`test-backend`、`test-filter`、`coverage` targets
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

@@ -62,12 +62,12 @@ export function ReconResultModal({
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)] shrink-0">
           <div>
-            <span className="text-xs font-mono text-[var(--color-text-tertiary)]">{t("scanComplete")}</span>
-            <h2 className="text-sm font-mono font-bold text-[var(--color-text-primary)]">{t("title")}</h2>
+            <span className="text-athena-floor font-mono text-[var(--color-text-tertiary)]">{t("scanComplete")}</span>
+            <h2 className="text-athena-body font-mono font-bold text-[var(--color-text-primary)]">{t("title")}</h2>
           </div>
           <button
             onClick={onClose}
-            className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] text-sm font-mono px-1"
+            className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] text-athena-body font-mono px-1"
           >
             ✕
           </button>
@@ -76,7 +76,7 @@ export function ReconResultModal({
         {/* Content (scrollable) */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 font-mono">
           {/* Summary */}
-          <div className="space-y-1 text-xs">
+          <div className="space-y-1 text-athena-floor">
             <div className="flex justify-between">
               <span className="text-[var(--color-text-tertiary)]">{t("ip")}</span>
               <span className="text-[var(--color-text-primary)]">{result.ipAddress}</span>
@@ -102,12 +102,12 @@ export function ReconResultModal({
           {/* Open Ports */}
           {result.services && result.services.length > 0 && (
             <div className="border-t border-[var(--color-border)] pt-3">
-              <p className="text-sm font-bold text-[var(--color-text-primary)] mb-2">
+              <p className="text-athena-body font-bold text-[var(--color-text-primary)] mb-2">
                 {t("openPorts")}
               </p>
               <div className="border border-[var(--color-border)] rounded-[var(--radius)] overflow-hidden">
                 {/* Table header */}
-                <div className="flex text-xs bg-[var(--color-bg-surface)] border-b border-[var(--color-border)] px-2 py-1">
+                <div className="flex text-athena-floor bg-[var(--color-bg-surface)] border-b border-[var(--color-border)] px-2 py-1">
                   <span className="w-20 text-[var(--color-text-tertiary)]">Port</span>
                   <span className="w-24 text-[var(--color-text-tertiary)]">Service</span>
                   <span className="flex-1 text-[var(--color-text-tertiary)]">Version</span>
@@ -117,7 +117,7 @@ export function ReconResultModal({
                   {result.services.map((svc) => (
                     <div
                       key={`${svc.port}-${svc.protocol}`}
-                      className="flex text-xs px-2 py-1 border-b border-[var(--color-border)] last:border-b-0"
+                      className="flex text-athena-floor px-2 py-1 border-b border-[var(--color-border)] last:border-b-0"
                     >
                       <span className="w-20 text-[var(--color-accent)]">{svc.port}/{svc.protocol}</span>
                       <span className="w-24 text-[var(--color-text-primary)]">{svc.service}</span>
@@ -131,10 +131,10 @@ export function ReconResultModal({
 
           {/* Initial Access */}
           <div className="border-t border-[var(--color-border)] pt-3">
-            <p className="text-sm font-bold text-[var(--color-text-primary)] mb-2">
+            <p className="text-athena-body font-bold text-[var(--color-text-primary)] mb-2">
               {t("initialAccess")}
             </p>
-            <div className="space-y-1 text-xs">
+            <div className="space-y-1 text-athena-floor">
               <div className="flex justify-between">
                 <span className="text-[var(--color-text-tertiary)]">{t("status")}</span>
                 <span className={ia.success ? "text-[var(--color-success)]" : "text-[var(--color-error)]"}>

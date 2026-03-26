@@ -543,3 +543,6 @@ async def _recovery_phase3_pivot(
   - `backend/app/clients/metasploit_client.py` — 現有 `_run_exploit()` 含 `sleep(2)` magic number（line 107, 135）
   - `backend/app/services/engine_router.py` — 現有 `_handle_access_lost()`（line 517-562）
   - `backend/tests/test_access_recovery.py` — 既有 26 個 access recovery 測試
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

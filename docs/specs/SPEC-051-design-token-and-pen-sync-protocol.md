@@ -9,6 +9,7 @@
 | **估算複雜度** | 中 |
 | **建議模型** | Sonnet |
 | **HITL 等級** | standard |
+| **狀態** | ⚠️ 部分廢棄 — `make token-validate` / `make token-drift` 已在 ASP v3.3 中移除（Design Token 信任鏈從 design_dev.md 移除） |
 
 ---
 
@@ -345,3 +346,6 @@ make token-drift
 - `frontend/src/styles/globals.css`：CSS 變數定義
 - `frontend/tailwind.config.ts`：Tailwind 擴展配置
 - `frontend/src/lib/designTokens.ts`：JS token 常數
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

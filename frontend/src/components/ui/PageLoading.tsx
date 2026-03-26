@@ -22,7 +22,7 @@ export function PageLoading() {
         style={{ animation: "scanLine 2s linear infinite" }}
       />
       <div className="text-center space-y-3">
-        <div className="text-xs font-mono text-[var(--color-accent)] tracking-[0.3em] animate-pulse">
+        <div className="text-athena-floor font-mono text-[var(--color-accent)] tracking-[0.3em] animate-pulse">
           {t("initializing")}
         </div>
         <div className="flex gap-1 justify-center">

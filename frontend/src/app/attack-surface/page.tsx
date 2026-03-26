@@ -132,7 +132,7 @@ function AttackSurfaceContent() {
       <div className="flex flex-col h-full">
         <TabBar tabs={TABS} activeTab={activeTab} onChange={setActiveTab} />
         <div className="flex-1 flex items-center justify-center">
-          <span className="font-mono text-xs text-[var(--color-error)]">{error}</span>
+          <span className="font-mono text-athena-floor text-[var(--color-error)]">{error}</span>
         </div>
       </div>
     );

@@ -138,6 +138,43 @@ FUNCTION auto_fix_loop(test_command, max_retries=3):
   RETURN FAILURE
 ```
 
+### 升級協議整合（v3.0）
+
+> auto_fix_loop 的三道防護觸發後，不再直接 PAUSE_AND_REPORT，而是走升級協議（如果 escalation.md 已載入）。
+
+```
+FUNCTION auto_fix_loop_v3(test_command, max_retries=3):
+  // ... 原有邏輯不變 ...
+  // 差異在於 PAUSE_AND_REPORT 的替代：
+
+  // 偷渡偵測觸發：
+  IF smuggling_detected AND escalation_loaded:
+    escalate(severity="P1", reason="smuggling_detected", context={changed_tests, test_command})
+    RETURN NEEDS_REVIEW
+  // fallback: PAUSE_AND_REPORT(reason="smuggling_detected")
+
+  // 振盪偵測觸發：
+  IF oscillation_detected AND escalation_loaded:
+    escalate(severity="P2", reason="oscillation_detected", context={current_failures, attempted_fixes})
+    RETURN FAILURE
+  // fallback: PAUSE_AND_REPORT(reason="oscillation_detected")
+
+  // 級聯偵測觸發：
+  IF cascade_detected AND escalation_loaded:
+    REVERT_LAST_FIX()
+    escalate(severity="P2", reason="cascade_detected", context={before: previous_failures, after: current_failures})
+    RETURN FAILURE
+  // fallback: REVERT + PAUSE_AND_REPORT(reason="cascade_detected")
+
+  // 重試耗盡：
+  IF max_retries_exceeded AND escalation_loaded:
+    escalate(severity="P2", reason="max_retries_exceeded", context={current_failures, attempted_fixes: previous_fix_descriptions})
+    RETURN FAILURE
+  // fallback: PAUSE_AND_REPORT(reason="max_retries_exceeded")
+```
+
+> **向後相容**：如果 escalation.md 未載入（`mode: single` 或 `mode: auto` 未觸發 multi-agent 時），維持原有 PAUSE_AND_REPORT 行為。
+
 > **三道防護摘要**：
 > | 防護 | 偵測條件 | 動作 |
 > |------|----------|------|
@@ -223,6 +260,11 @@ Worker 繼承 autonomous 的「自主決策邊界」，但 scope 限縮為 Task 
 | auto_fix_loop（含三道防護） | 需要修改 scope 外的檔案 |
 | 命名決策、pattern 選擇 | 需要新增外部依賴 |
 | scope 內文件更新 | 偵測到振盪/級聯/偷渡 |
+
+### Dev↔QA 迴路整合（v3.0）
+
+> Worker 層搭配 `dev_qa_loop.md` 時，impl agent 不再等所有模組完成才觸發 agent-done，
+> 而是逐模組實作 + QA 驗證。詳見 `dev_qa_loop.md`。
 
 ### 升級的 auto_fix_loop
 

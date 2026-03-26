@@ -97,3 +97,6 @@ extra_hosts:
 - ADR-024（MCP Architecture and Tool Server Integration）
 - SPEC-019（Recon & Initial Access Kill Chain）
 - SPEC-023（Async Scan OODA）
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

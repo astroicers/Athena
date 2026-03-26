@@ -247,3 +247,6 @@ OpenAI — system message 前置：
 | [AttackGen](https://github.com/mrwadams/attackgen) | GPL-3.0 | Pattern 4: MITRE 接地（研究參考） |
 | [Threats2MITRE](https://github.com/LiuYuancheng/Threats_2_MITRE_AI_Mapper) | MIT | Pattern 4: Kill Chain 映射 |
 | [PentAGI](https://github.com/vxcontrol/pentagi) | MIT | Pattern 5: 三層記憶 |
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

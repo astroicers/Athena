@@ -47,7 +47,7 @@ export function MockBanner() {
     .map(([k]) => k.toUpperCase());
 
   return (
-    <div className="bg-amber-500/90 text-black text-xs font-mono px-4 py-1.5 text-center flex items-center justify-center gap-2">
+    <div className="bg-amber-500/90 text-black text-athena-floor font-mono px-4 py-1.5 text-center flex items-center justify-center gap-2">
       <span className="font-bold">MOCK MODE</span>
       <span>|</span>
       <span>

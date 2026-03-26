@@ -296,7 +296,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
   if (loading && !recommendation && !dashboard) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-sm font-mono text-athena-text-tertiary">
+        <p className="text-athena-body font-mono text-athena-text-tertiary">
           {t("title")}...
         </p>
       </div>
@@ -307,7 +307,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
   if (error && !recommendation && !dashboard) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-sm font-mono text-athena-error">
+        <p className="text-athena-body font-mono text-athena-error">
           {t("errorLoading")}
         </p>
       </div>
@@ -318,7 +318,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
     <section className="flex flex-col gap-4">
       {/* Section label */}
       <h2
-        className="font-mono uppercase text-athena-text-secondary text-xs font-semibold tracking-widest"
+        className="font-mono uppercase text-athena-text-secondary text-athena-floor font-semibold tracking-widest"
       >
         AI DECISION ENGINE
       </h2>
@@ -332,12 +332,12 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
           {/* Header */}
           <div className="flex flex-col gap-1">
             <span
-              className="font-mono uppercase tracking-widest text-athena-text-tertiary text-xs"
+              className="font-mono uppercase tracking-widest text-athena-text-tertiary text-athena-floor"
             >
               {t("confidenceBreakdown")}
             </span>
             <span
-              className="font-mono text-athena-text-tertiary text-xs"
+              className="font-mono text-athena-text-tertiary text-athena-floor"
             >
               {t("confidenceSubtitle")}
             </span>
@@ -352,7 +352,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
               {confidence.toFixed(2)}
             </span>
             <span
-              className="font-mono text-xs uppercase tracking-wider"
+              className="font-mono text-athena-floor uppercase tracking-wider"
               style={{ color: confColor }}
             >
               {confLabel}
@@ -365,12 +365,12 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
               <div key={bar.label} className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
                   <span
-                    className="font-mono uppercase tracking-widest text-athena-text-tertiary text-xs"
+                    className="font-mono uppercase tracking-widest text-athena-text-tertiary text-athena-floor"
                   >
                     {bar.label}
                   </span>
                   <span
-                    className="font-mono text-xs athena-tabular-nums"
+                    className="font-mono text-athena-floor athena-tabular-nums"
                     style={{ color: bar.color }}
                   >
                     {bar.value.toFixed(2)}
@@ -386,14 +386,14 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
             className="flex flex-col gap-2 mt-auto rounded-[var(--radius)] px-4 py-3 bg-athena-accent-bg border border-[var(--color-accent)]/20"
           >
             <span
-              className="font-mono uppercase tracking-widest text-athena-text-tertiary text-xs"
+              className="font-mono uppercase tracking-widest text-athena-text-tertiary text-athena-floor"
             >
               {t("recommendedAction")}
             </span>
-            <span className="font-mono text-sm font-semibold text-athena-text-light">
+            <span className="font-mono text-athena-body font-semibold text-athena-text-light">
               {recTechnique?.techniqueName ?? t("noTechnique")}
             </span>
-            <span className="font-mono text-xs text-athena-text-secondary">
+            <span className="font-mono text-athena-floor text-athena-text-secondary">
               {recTechnique?.reasoning ??
                 recommendation?.situationAssessment ??
                 t("noAssessment")}
@@ -429,12 +429,12 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
           {/* Header */}
           <div className="flex flex-col gap-1">
             <span
-              className="font-mono uppercase tracking-widest text-athena-text-tertiary text-xs"
+              className="font-mono uppercase tracking-widest text-athena-text-tertiary text-athena-floor"
             >
               {t("noiseRiskMatrix")}
             </span>
             <span
-              className="font-mono text-athena-text-tertiary text-xs"
+              className="font-mono text-athena-text-tertiary text-athena-floor"
             >
               {t("matrixSubtitle")}
             </span>
@@ -445,7 +445,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
             {/* Y-axis label */}
             <div className="flex flex-col items-center justify-center mr-1">
               <span
-                className="font-mono uppercase tracking-widest text-athena-text-tertiary text-xs"
+                className="font-mono uppercase tracking-widest text-athena-text-tertiary text-athena-floor"
                 style={{
                   writingMode: "vertical-lr",
                   transform: "rotate(180deg)",
@@ -465,7 +465,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
                     className="flex items-center justify-center"
                   >
                     <span
-                      className="font-mono uppercase tracking-wider text-athena-text-tertiary text-xs"
+                      className="font-mono uppercase tracking-wider text-athena-text-tertiary text-athena-floor"
                     >
                       {col}
                     </span>
@@ -482,7 +482,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
                   {/* Row label */}
                   <div className="flex items-center justify-center">
                     <span
-                      className="font-mono uppercase tracking-wider text-athena-text-tertiary text-xs"
+                      className="font-mono uppercase tracking-wider text-athena-text-tertiary text-athena-floor"
                     >
                       {rowLabel}
                     </span>
@@ -504,7 +504,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
                         `}
                       >
                         <span
-                          className="font-mono text-xs font-bold uppercase"
+                          className="font-mono text-athena-floor font-bold uppercase"
                           style={{
                             color: actionTextColor(action),
                           }}
@@ -520,7 +520,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
               {/* X-axis label */}
               <div className="flex justify-center mt-1">
                 <span
-                  className="font-mono uppercase tracking-widest text-athena-text-tertiary text-xs"
+                  className="font-mono uppercase tracking-widest text-athena-text-tertiary text-athena-floor"
                 >
                   {t("riskAxisLabel")}
                 </span>
@@ -536,46 +536,46 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
             }}
           >
             <span
-              className="font-mono uppercase tracking-widest text-athena-text-tertiary text-xs"
+              className="font-mono uppercase tracking-widest text-athena-text-tertiary text-athena-floor"
             >
               {t("currentPosition")}
             </span>
             <div className="flex gap-4">
               <div className="flex flex-col gap-0.5">
                 <span
-                  className="font-mono uppercase tracking-wider text-athena-text-tertiary text-xs"
+                  className="font-mono uppercase tracking-wider text-athena-text-tertiary text-athena-floor"
                 >
                   {t("noiseLabel")}
                 </span>
-                <span className="font-mono text-sm athena-tabular-nums text-athena-text-light">
+                <span className="font-mono text-athena-body athena-tabular-nums text-athena-text-light">
                   {noisePct.toFixed(0)}%
                 </span>
               </div>
               <div className="flex flex-col gap-0.5">
                 <span
-                  className="font-mono uppercase tracking-wider text-athena-text-tertiary text-xs"
+                  className="font-mono uppercase tracking-wider text-athena-text-tertiary text-athena-floor"
                 >
                   {t("riskLabel")}
                 </span>
-                <span className="font-mono text-sm athena-tabular-nums text-athena-text-light">
+                <span className="font-mono text-athena-body athena-tabular-nums text-athena-text-light">
                   {riskPct.toFixed(0)}%
                 </span>
               </div>
               <div className="flex flex-col gap-0.5">
                 <span
-                  className="font-mono uppercase tracking-wider text-athena-text-tertiary text-xs"
+                  className="font-mono uppercase tracking-wider text-athena-text-tertiary text-athena-floor"
                 >
                   {t("actionLabel")}
                 </span>
                 <span
-                  className="font-mono text-sm font-bold"
+                  className="font-mono text-athena-body font-bold"
                   style={{ color: actionTextColor(curAction) }}
                 >
                   {curAction}
                 </span>
               </div>
             </div>
-            <span className="font-mono text-xs text-athena-text-secondary">
+            <span className="font-mono text-athena-floor text-athena-text-secondary">
               {curAction === "GO"
                 ? "Safe to proceed with current technique."
                 : curAction === "CAUTION"
@@ -594,7 +594,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
           className="rounded-[var(--radius)] flex flex-col gap-3 bg-athena-surface border border-[#FFFFFF08] px-6 py-5"
         >
           <span
-            className="font-mono uppercase tracking-widest text-athena-text-tertiary text-xs"
+            className="font-mono uppercase tracking-widest text-athena-text-tertiary text-athena-floor"
           >
             {tRec("history")}
           </span>
@@ -614,7 +614,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
                   />
                   {/* Timestamp */}
                   <span
-                    className="font-mono text-xs shrink-0 athena-tabular-nums text-athena-text-tertiary"
+                    className="font-mono text-athena-floor shrink-0 athena-tabular-nums text-athena-text-tertiary"
                   >
                     {new Date(rec.createdAt).toLocaleTimeString("en-US", {
                       hour: "2-digit",
@@ -625,14 +625,14 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
                   </span>
                   {/* Technique */}
                   <span
-                    className="font-mono text-xs truncate flex-1 text-athena-text-secondary"
+                    className="font-mono text-athena-floor truncate flex-1 text-athena-text-secondary"
                   >
                     {topOption?.techniqueName ??
                       rec.recommendedTechniqueId}
                   </span>
                   {/* Confidence */}
                   <span
-                    className="font-mono text-xs shrink-0 athena-tabular-nums"
+                    className="font-mono text-athena-floor shrink-0 athena-tabular-nums"
                     style={{ color: cColor }}
                   >
                     {rec.confidence.toFixed(2)}
@@ -640,7 +640,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
                   {/* Accepted badge */}
                   {rec.accepted === true && (
                     <span
-                      className="font-mono text-xs px-2 py-1 rounded-[var(--radius)] shrink-0 bg-athena-success-bg text-athena-success"
+                      className="font-mono text-athena-floor px-2 py-1 rounded-[var(--radius)] shrink-0 bg-athena-success-bg text-athena-success"
                     >
                       ACCEPTED
                     </span>
@@ -657,7 +657,7 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
         <div
           className="rounded-[var(--radius)] flex items-center justify-center bg-athena-surface border border-[#FFFFFF08] px-6 py-5"
         >
-          <span className="font-mono text-xs text-athena-text-tertiary">
+          <span className="font-mono text-athena-floor text-athena-text-tertiary">
             {tRec("noHistory")}
           </span>
         </div>

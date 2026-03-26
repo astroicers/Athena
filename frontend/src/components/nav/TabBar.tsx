@@ -28,7 +28,7 @@ export function TabBar({ tabs, activeTab, onChange }: TabBarProps) {
         <button
           key={tab.id}
           onClick={() => onChange(tab.id)}
-          className={`relative h-full px-4 text-xs font-mono transition-colors flex items-center
+          className={`relative h-full px-4 text-athena-floor font-mono transition-colors flex items-center
             ${
               activeTab === tab.id
                 ? "text-[var(--color-accent)] font-semibold"

@@ -97,3 +97,6 @@ Returns `agent_paw: str` — the paw of the best-fit alive agent on the target, 
 - 相關 ADR：ADR-021 (Agent Capability Matching for C2 Execution)
 - 現有類似實作：`backend/app/services/orient_engine.py` — `_execute_caldera()` method (current `LIMIT 1` pattern to be replaced)
 - 外部文件：Caldera agent paw API docs
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

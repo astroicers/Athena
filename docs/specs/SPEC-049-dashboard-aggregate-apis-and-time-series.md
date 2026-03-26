@@ -100,3 +100,6 @@
 - 相關 ADR：
 - 現有類似實作：
 - 外部文件：
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

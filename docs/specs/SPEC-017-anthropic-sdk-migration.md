@@ -134,3 +134,6 @@
 - Anthropic Python SDK：https://github.com/anthropics/anthropic-sdk-python
 - SDK 認證文件：支援 `api_key`（X-Api-Key header）+ `auth_token`（Authorization: Bearer header）
 - 實施計畫：`/home/ubuntu/.claude/plans/compressed-squishing-sunset.md`
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

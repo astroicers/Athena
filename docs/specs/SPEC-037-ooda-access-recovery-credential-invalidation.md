@@ -164,3 +164,6 @@ _AUTH_FAILURE_KEYWORDS = [
   - `backend/app/database.py` — DB migration
   - `docker-compose.yml` — msfrpcd flag 修正
   - `backend/tests/test_access_recovery.py` — 26 個測試
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

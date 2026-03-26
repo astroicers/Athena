@@ -35,10 +35,10 @@ export function OnboardingGuide({ isOpen, onClose }: OnboardingGuideProps) {
       <div className="bg-athena-surface border-2 border-[var(--color-border)] rounded-[var(--radius)] p-6 max-w-lg w-full mx-4">
         {/* Header */}
         <div className="mb-4">
-          <span className="text-xs font-mono text-athena-text-tertiary uppercase tracking-wider">
+          <span className="text-athena-floor font-mono text-athena-text-tertiary uppercase tracking-wider">
             {t("guideTitle")}
           </span>
-          <h2 className="text-lg font-mono font-bold text-athena-text-light mt-1">
+          <h2 className="text-athena-heading-section font-mono font-bold text-athena-text-light mt-1">
             {t("guideSubtitle")}
           </h2>
         </div>
@@ -48,17 +48,17 @@ export function OnboardingGuide({ isOpen, onClose }: OnboardingGuideProps) {
           {STEPS.map((step, i) => (
             <div key={step.titleKey}>
               <div className="flex items-center gap-2 mb-1.5">
-                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-athena-accent text-athena-bg text-sm font-bold">
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-athena-accent text-athena-bg text-athena-body font-bold">
                   {i + 1}
                 </span>
-                <span className="text-sm font-mono text-athena-text-tertiary uppercase tracking-wider font-medium">
+                <span className="text-athena-body font-mono text-athena-text-tertiary uppercase tracking-wider font-medium">
                   {t(step.titleKey)}
                 </span>
               </div>
-              <pre className="bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-2 text-sm text-athena-accent font-mono select-all whitespace-pre-wrap">
+              <pre className="bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-2 text-athena-body text-athena-accent font-mono select-all whitespace-pre-wrap">
                 {t(step.cmdKey)}
               </pre>
-              <p className="text-xs font-mono text-athena-text-tertiary mt-1">
+              <p className="text-athena-floor font-mono text-athena-text-tertiary mt-1">
                 {t(step.descKey)}
               </p>
             </div>

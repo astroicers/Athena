@@ -11,7 +11,7 @@
 "use client";
 
 interface SectionHeaderProps extends React.HTMLAttributes<HTMLElement> {
-  /** "page" = text-xs (12px), "card" = text-xs (12px) */
+  /** "page" = text-athena-floor (12px), "card" = text-athena-floor (12px) */
   level?: "page" | "card";
   /** The header text content */
   children: React.ReactNode;
@@ -35,7 +35,7 @@ export function SectionHeader({
     return (
       <div className={`flex items-center justify-between ${className}`}>
         <Tag
-          className={`text-[13px] font-mono font-bold ${colorClass} uppercase tracking-wider`}
+          className={`text-athena-heading-card font-mono font-bold ${colorClass} uppercase tracking-wider`}
           {...rest}
         >
           {children}
@@ -47,7 +47,7 @@ export function SectionHeader({
 
   return (
     <Tag
-      className={`text-[13px] font-mono font-bold ${colorClass} uppercase tracking-wider ${className}`}
+      className={`text-athena-heading-card font-mono font-bold ${colorClass} uppercase tracking-wider ${className}`}
       {...rest}
     >
       {children}

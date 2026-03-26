@@ -1,6 +1,6 @@
 # AI-SOP-Protocol — ASP Targets (included by project Makefile)
 # 勿直接編輯此檔案，升級 ASP 時會自動覆蓋
-# ASP_MAKEFILE_VERSION=2.5.0
+# ASP_MAKEFILE_VERSION=3.3.0
 
 # --- 條件載入：讀取 .ai_profile 的 type 欄位 ---
 # content 類型專案隱藏 Docker/Test/Lint/Deploy targets
@@ -19,7 +19,8 @@ ASP_TYPE := $(shell grep '^type:' .ai_profile 2>/dev/null | awk '{print $$2}')
         guardrail-log guardrail-reset \
         audit-health audit-quick doc-audit tech-debt-list \
         task-start task-status task-report \
-        profile-validate
+        profile-validate \
+        agent-memory-init agent-session-init audit-baseline-init
 
 #---------------------------------------------------------------------------
 # Help
@@ -40,6 +41,8 @@ endif
 	@echo "📄 Spec:        spec-new TITLE=... | spec-list"
 	@echo "🔥 Postmortem:  postmortem-new TITLE=... | postmortem-list"
 	@echo "🤖 Agent:       agent-done TASK=... STATUS=... | agent-status | agent-reset | agent-unlock FILE=... | agent-lock-gc"
+	@echo "🤖 Agent v3:    agent-handoff-list | agent-tracks | agent-escalation-log | agent-memory-show | agent-team-recommend TYPE=..."
+	@echo "🤖 Agent Init:  agent-memory-init | agent-session-init | audit-baseline-init"
 	@echo "💾 Session:     session-checkpoint NEXT=... | session-log"
 	@echo "🧠 RAG:         rag-index | rag-search Q=... | rag-stats | rag-rebuild"
 	@echo "🛡  Guardrail:   guardrail-log | guardrail-reset"
@@ -240,13 +243,16 @@ postmortem-list:
 # Multi-Agent
 #---------------------------------------------------------------------------
 
-agent-done:
-	@if [ -z "$(TASK)" ] || [ -z "$(STATUS)" ]; then \
-		echo "使用方式：make agent-done TASK=TASK-001 STATUS=success"; exit 1; fi
-	@mkdir -p .agent-events
-	@echo "{\"task\":\"$(TASK)\",\"status\":\"$(STATUS)\",\"ts\":\"$$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"reason\":\"$(REASON)\"}" \
-		>> .agent-events/completed.jsonl
-	@echo "✅ Hook fired: $(TASK) → $(STATUS)"
+agent-done: ## Worker 完成回報 (TASK=xxx STATUS=success|failed [REASON=...])
+	@if [ -z "$(TASK)" ] || [ -z "$(STATUS)" ]; then echo "用法: make agent-done TASK=TASK-001 STATUS=success [REASON=...]"; exit 1; fi
+	@mkdir -p .agent-events .agent-events/handoffs
+	@TS=$$(date -u +%Y-%m-%dT%H:%M:%SZ); \
+	SEQ=$$(date +%Y%m%d-%H%M%S); \
+	echo "{\"task\":\"$(TASK)\",\"status\":\"$(STATUS)\",\"ts\":\"$$TS\",\"reason\":\"$(REASON)\"}" >> .agent-events/completed.jsonl; \
+	HID="HANDOFF-$$SEQ"; \
+	printf "handoff_type: TASK_COMPLETE\ntask_id: \"%s\"\ntimestamp: \"%s\"\nstatus: \"%s\"\nreason: \"%s\"\n" "$(TASK)" "$$TS" "$(STATUS)" "$(REASON)" > ".agent-events/handoffs/$$HID.yaml"; \
+	echo "{\"id\":\"$$HID\",\"type\":\"TASK_COMPLETE\",\"task\":\"$(TASK)\",\"status\":\"$(STATUS)\",\"ts\":\"$$TS\"}" >> .agent-events/handoffs/index.jsonl; \
+	echo "✅ $(TASK) $(STATUS) — $$HID"
 
 agent-status:
 	@echo "=== Agent 事件紀錄 ==="; \
@@ -277,6 +283,133 @@ agent-locks:
 	@if [ -f .agent-lock.yaml ]; then \
 		echo "🔒 文件鎖定清單："; cat .agent-lock.yaml; \
 	else echo "  (無文件鎖定)"; fi
+
+# ─── Agent Handoff（v3.0）───────────────────────────────────────────
+.PHONY: agent-handoff-list agent-handoff-view agent-tracks agent-track-status agent-escalation-log agent-memory-show agent-memory-prune agent-team-recommend
+
+agent-handoff-list: ## 列出所有交接單
+	@echo "═══ Agent Handoffs ═══"
+	@if [ -f .agent-events/handoffs/index.jsonl ]; then \
+		cat .agent-events/handoffs/index.jsonl | tail -20; \
+	else \
+		echo "  (無交接單)"; \
+	fi
+
+agent-handoff-view: ## 檢視交接單 (ID=HANDOFF-xxx)
+	@if [ -z "$(ID)" ]; then echo "用法: make agent-handoff-view ID=HANDOFF-xxx"; exit 1; fi
+	@if [ -f ".agent-events/handoffs/$(ID).yaml" ]; then \
+		cat ".agent-events/handoffs/$(ID).yaml"; \
+	else \
+		echo "交接單不存在: $(ID)"; exit 1; \
+	fi
+
+agent-tracks: ## 顯示當前並行軌道狀態
+	@echo "═══ Parallel Tracks ═══"
+	@if [ -f .asp-agent-session.json ]; then \
+		python3 -c "import json; d=json.load(open('.asp-agent-session.json')); \
+		[print(f\"  Track {t['id']}: {t['status']} (task: {t['task']}, agent: {t['agent']})\") for t in d.get('active_tracks',[])]" 2>/dev/null \
+		|| echo "  (無法讀取 session 狀態)"; \
+	else \
+		echo "  (無活躍 session)"; \
+	fi
+
+agent-track-status: ## 特定軌道詳情 (TRACK=A)
+	@if [ -z "$(TRACK)" ]; then echo "用法: make agent-track-status TRACK=A"; exit 1; fi
+	@if [ -f .asp-agent-session.json ]; then \
+		python3 -c "import json; d=json.load(open('.asp-agent-session.json')); \
+		tracks=[t for t in d.get('active_tracks',[]) if t['id']=='$(TRACK)']; \
+		print(json.dumps(tracks[0],indent=2,ensure_ascii=False)) if tracks else print('Track $(TRACK) 不存在')" 2>/dev/null; \
+	else \
+		echo "  (無活躍 session)"; \
+	fi
+
+agent-escalation-log: ## 顯示升級歷史
+	@echo "═══ Escalation Log ═══"
+	@find .agent-events/handoffs/ -name "*.yaml" -exec grep -l "handoff_type: ESCALATION" {} \; 2>/dev/null \
+		| while read f; do \
+			echo "---"; \
+			grep -E "^(severity|task_id|reason|timestamp):" "$$f"; \
+		done || echo "  (無升級記錄)"
+
+agent-memory-show: ## 顯示 Agent 學習記憶
+	@echo "═══ Agent Memory ═══"
+	@if [ -f .asp-agent-memory.yaml ]; then \
+		cat .asp-agent-memory.yaml; \
+	else \
+		echo "  (無記憶——首次執行)"; \
+	fi
+
+agent-memory-prune: ## 修剪過期記憶 (AGE=90 天)
+	@echo "修剪超過 $(or $(AGE),90) 天的記憶..."
+	@if [ -f .asp-agent-memory.yaml ]; then \
+		python3 -c " \
+import sys, yaml, datetime; \
+age = int(sys.argv[1]); \
+d = yaml.safe_load(open('.asp-agent-memory.yaml')) or {}; \
+now = datetime.datetime.now(); \
+cutoff = now - datetime.timedelta(days=age); \
+for key in ['fix_strategies', 'common_failures']: \
+    if key in d: \
+        before = len(d[key]); \
+        d[key] = [x for x in d[key] if datetime.datetime.fromisoformat(x.get('last_used', x.get('last_occurrence', now.isoformat()))[:10]) >= cutoff]; \
+        print(f'  {key}: {before} → {len(d[key])}'); \
+yaml.dump(d, open('.asp-agent-memory.yaml', 'w'), allow_unicode=True)" "$(or $(AGE),90)" 2>/dev/null \
+		|| echo "  (修剪失敗——需要 PyYAML)"; \
+	else \
+		echo "  (無記憶可修剪)"; \
+	fi
+
+agent-team-recommend: ## 推薦團隊組成 (TYPE=NEW_FEATURE COMPLEXITY=simple|complex)
+	@if [ -z "$(TYPE)" ]; then echo "用法: make agent-team-recommend TYPE=NEW_FEATURE COMPLEXITY=simple"; exit 1; fi
+	@SCENARIO="$(TYPE)_$(COMPLEXITY)"; \
+	if [ -f .asp/agents/team_compositions.yaml ]; then \
+		echo "═══ Team Recommendation: $$SCENARIO ═══"; \
+		python3 -c " \
+import yaml; \
+d = yaml.safe_load(open('.asp/agents/team_compositions.yaml')); \
+s = d.get('scenarios',{}).get('$$SCENARIO'); \
+if s: \
+    print(f\"  場景: $$SCENARIO\"); \
+    print(f\"  說明: {s.get('description','')}\"); \
+    print(f\"  角色: {', '.join(s.get('agents',[]))}\"); \
+    print(f\"  管線: {', '.join(s.get('pipeline_phases',[]))}\"); \
+    print(f\"  並行: {'是' if s.get('parallel') else '否'}\"); \
+else: \
+    print(f'場景 $$SCENARIO 不存在。可用場景:'); \
+    [print(f'  - {k}') for k in d.get('scenarios',{}).keys()]" 2>/dev/null \
+		|| echo "  (需要 PyYAML)"; \
+	else \
+		echo "  (team_compositions.yaml 不存在)"; \
+	fi
+
+# ─── Agent Init（v3.3）───────────────────────────────────────────
+agent-memory-init: ## 初始化 Agent Memory
+	@if [ -f .asp-agent-memory.yaml ]; then \
+		echo "⚠️ .asp-agent-memory.yaml 已存在，跳過"; \
+	else \
+		printf "version: 1\nfix_strategies: []\ncommon_failures: []\nteam_effectiveness: []\n" > .asp-agent-memory.yaml; \
+		echo "✅ .asp-agent-memory.yaml 已建立"; \
+		grep -q "asp-agent-memory.yaml" .gitignore 2>/dev/null || echo ".asp-agent-memory.yaml" >> .gitignore; \
+	fi
+
+agent-session-init: ## 初始化 Agent Session
+	@printf '{"session_id":"session-%s","started_at":"%s","team_composition":{},"active_tracks":[],"pending_handoffs":[],"current_pipeline_phase":null,"last_gate_passed":null,"escalations":[]}\n' "$$(date +%Y%m%d-%H%M%S)" "$$(date -u +%Y-%m-%dT%H:%M:%SZ)" | python3 -m json.tool > .asp-agent-session.json 2>/dev/null || echo '{}' > .asp-agent-session.json
+	@echo "✅ .asp-agent-session.json 已建立"
+	@grep -q "asp-agent-session.json" .gitignore 2>/dev/null || echo ".asp-agent-session.json" >> .gitignore
+
+audit-baseline-init: ## 初始化審計基線
+	@echo "🏥 建立審計基線..."
+	@SRC=$$(find . -name "*.go" -o -name "*.ts" -o -name "*.py" -o -name "*.java" -o -name "*.js" 2>/dev/null | grep -v node_modules | grep -v .git | grep -v vendor | grep -v '_test\.' | grep -v '.test\.' | grep -v '.spec\.' | grep -v 'test_' | wc -l | tr -d ' '); \
+	TST=$$(find . \( -name "*_test.*" -o -name "*.test.*" -o -name "*.spec.*" -o -name "test_*" \) 2>/dev/null | grep -v node_modules | grep -v .git | wc -l | tr -d ' '); \
+	SPC=$$(ls docs/specs/SPEC-*.md 2>/dev/null | wc -l | tr -d ' '); \
+	ADR=$$(ls docs/adr/ADR-*.md 2>/dev/null | wc -l | tr -d ' '); \
+	TD=$$(grep -rn "TODO[^(]\|FIXME" --include="*.go" --include="*.ts" --include="*.py" --include="*.java" --include="*.js" . 2>/dev/null | grep -v node_modules | grep -v .git | wc -l | tr -d ' '); \
+	if [ $$SRC -gt 0 ]; then R=$$(echo "scale=2; $$TST / $$SRC" | bc 2>/dev/null || echo "0"); else R="0"; fi; \
+	printf '{"last_audit":"%s","test_coverage_ratio":%s,"spec_count":%s,"adr_count":%s,"blockers":0,"warnings":0,"info":0,"lint_warning_count":0,"todo_fixme_count":%s,"side_effects_unverified":0,"rollback_untested_count":0}\n' \
+		"$$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$$R" "$$SPC" "$$ADR" "$$TD" | python3 -m json.tool > .asp-audit-baseline.json 2>/dev/null; \
+	echo "✅ .asp-audit-baseline.json 已建立"; \
+	cat .asp-audit-baseline.json
+	@grep -q "asp-audit-baseline.json" .gitignore 2>/dev/null || echo ".asp-audit-baseline.json" >> .gitignore
 
 #---------------------------------------------------------------------------
 # Session 管理
@@ -363,6 +496,30 @@ audit-health:
 			echo "  ✅ OK"; \
 		fi; \
 	else echo "  ⚪ 無 source files"; fi; \
+	echo ""; \
+	\
+	echo "── 1c. E2E 測試（全端專案）──"; \
+	HAS_FE=0; HAS_BE=0; \
+	[ -d "frontend" ] && HAS_FE=1; \
+	([ -d "backend" ] || [ -d "api" ] || [ -d "server" ]) && HAS_BE=1; \
+	if [ $$HAS_FE -eq 1 ] && [ $$HAS_BE -eq 1 ]; then \
+		if [ ! -f "playwright.config.ts" ] && [ ! -f "playwright.config.js" ] && [ ! -f "frontend/playwright.config.ts" ] && [ ! -f "frontend/playwright.config.js" ]; then \
+			echo "  🔴 BLOCKER: 全端專案缺少 Playwright 設定"; \
+			BLOCKERS=$$((BLOCKERS + 1)); \
+		else \
+			E2E_DIR=""; \
+			for d in e2e tests/e2e frontend/e2e; do [ -d "$$d" ] && E2E_DIR="$$d" && break; done; \
+			if [ -z "$$E2E_DIR" ]; then \
+				echo "  🔴 BLOCKER: 全端專案缺少 E2E 測試目錄"; \
+				BLOCKERS=$$((BLOCKERS + 1)); \
+			else \
+				E2E_N=$$(find "$$E2E_DIR" \( -name "*.spec.ts" -o -name "*.e2e.ts" -o -name "*.test.ts" \) 2>/dev/null | wc -l | tr -d ' '); \
+				if [ $$E2E_N -eq 0 ]; then echo "  🔴 BLOCKER: E2E 目錄存在但無測試"; BLOCKERS=$$((BLOCKERS + 1)); \
+				elif [ $$E2E_N -lt 3 ]; then echo "  🟡 WARNING: E2E 僅 $$E2E_N 個（建議 ≥ 3）"; WARNINGS=$$((WARNINGS + 1)); \
+				else echo "  ✅ E2E 測試 $$E2E_N 個"; fi; \
+			fi; \
+		fi; \
+	else echo "  ⚪ 非全端專案，跳過"; fi; \
 	echo ""; \
 	\
 	echo "── 2. SPEC 覆蓋 ──"; \
@@ -466,12 +623,51 @@ audit-health:
 	fi; \
 	echo ""; \
 	\
+	echo "── 8. 測試品質（v3.3）──"; \
+	EMPTY_TESTS=0; \
+	for ext in go ts js py java; do \
+		for tf in $$(find . \( -name "*_test.$$ext" -o -name "*.test.$$ext" -o -name "*.spec.$$ext" \) ! -path '*/node_modules/*' ! -path '*/.git/*' 2>/dev/null); do \
+			case $$ext in \
+				go) A=$$(grep -c "assert\|require\.\|t\.Error\|t\.Fatal" "$$tf" 2>/dev/null || echo 0);; \
+				py) A=$$(grep -c "assert\|assertEqual\|assertTrue" "$$tf" 2>/dev/null || echo 0);; \
+				ts|js) A=$$(grep -c "expect(\|assert\." "$$tf" 2>/dev/null || echo 0);; \
+				java) A=$$(grep -c "assert\|assertEquals" "$$tf" 2>/dev/null || echo 0);; \
+				*) A=1;; \
+			esac; \
+			if [ "$$A" = "0" ]; then \
+				echo "  🟡 WARNING: $$tf 沒有 assertion（空測試）"; \
+				WARNINGS=$$((WARNINGS + 1)); EMPTY_TESTS=$$((EMPTY_TESTS + 1)); \
+			fi; \
+		done; \
+	done; \
+	if [ $$EMPTY_TESTS -eq 0 ]; then echo "  ✅ 無空測試"; fi; \
+	echo ""; \
+	\
+	echo "── 9. SPEC 場景覆蓋（v3.2）──"; \
+	NO_MATRIX=0; \
+	for spec in docs/specs/SPEC-*.md; do \
+		[ -f "$$spec" ] || continue; \
+		HM=$$(grep -c "測試矩陣\|Test Matrix" "$$spec" 2>/dev/null || echo 0); \
+		if [ "$$HM" = "0" ]; then \
+			echo "  🟡 WARNING: $$(basename $$spec) 缺少測試矩陣"; \
+			WARNINGS=$$((WARNINGS + 1)); NO_MATRIX=$$((NO_MATRIX + 1)); \
+		fi; \
+	done; \
+	if [ $$NO_MATRIX -eq 0 ] && [ $$SPEC_COUNT -gt 0 ]; then echo "  ✅ 所有 SPEC 有測試矩陣"; \
+	elif [ $$SPEC_COUNT -eq 0 ]; then echo "  ⚪ 無 SPEC"; fi; \
+	echo ""; \
+	\
 	echo "=================================" ; \
 	echo "🏥 審計摘要：🔴 $$BLOCKERS blocker | 🟡 $$WARNINGS warning | 🟢 $$INFOS info"; \
 	if [ $$BLOCKERS -gt 0 ]; then \
 		echo "⚠️  有 blocker 需先修復才能開始主任務"; \
 	fi; \
 	echo ""
+	@echo "📊 更新審計基線..."
+	@printf '{"last_audit":"%s","test_coverage_ratio":%s,"spec_count":%s,"adr_count":%s,"blockers":%s,"warnings":%s,"info":%s,"lint_warning_count":0,"todo_fixme_count":%s,"side_effects_unverified":0,"rollback_untested_count":0}\n' \
+		"$$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$${RATIO:-0}" "$${SPEC_COUNT:-0}" "$${ADR_COUNT:-0}" "$${BLOCKERS:-0}" "$${WARNINGS:-0}" "$${INFOS:-0}" "$${TODO_NO_OWNER:-0}" > .asp-audit-baseline.json 2>/dev/null
+	@grep -q "asp-audit-baseline.json" .gitignore 2>/dev/null || echo ".asp-audit-baseline.json" >> .gitignore
+	@echo "  ✅ .asp-audit-baseline.json 已更新"
 
 audit-quick:
 	@echo "🏥 快速審計（僅 blocker）..."
@@ -531,6 +727,10 @@ tech-debt-list:
 	@echo "── DEPRECATED ──"
 	@grep -rn "DEPRECATED\|@deprecated" --include="*.go" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --include="*.py" --include="*.java" . 2>/dev/null | grep -v node_modules | grep -v .git || echo "  (none)"
 	@echo ""
+	@echo "── scenario-pending ──"
+	@grep -rn "scenario-pending" . --include="*.md" 2>/dev/null | grep -v node_modules | grep -v .git | grep -v .asp/profiles || echo "  (無)"
+	@echo "── test-pending ──"
+	@grep -rn "test-pending" . --include="*.md" 2>/dev/null | grep -v node_modules | grep -v .git | grep -v .asp/profiles || echo "  (無)"
 
 #---------------------------------------------------------------------------
 # 任務協調

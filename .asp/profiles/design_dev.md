@@ -405,21 +405,6 @@ FUNCTION edit_pen_design(pen_file, changes):
 
 > Accessibility 自動化驗證 pseudocode 見 `frontend_quality.md`「Accessibility 自動化驗證」。
 
-## Design Token 信任鏈
-
-修改色票時必須依序更新，不可跳步：
-
-```
-pen → tokens.yaml → globals.css → tailwind.config → code
-```
-
-| 規則 | 說明 |
-|------|------|
-| **唯一定義來源** | 色值只在 `design/pencil-new-v2.pen` 和 `design-system/tokens.yaml` 定義 |
-| **禁止獨立定義** | 禁止在 SPEC、DESIGN_MAP、MASTER.md 中直接寫入 hex 色值 |
-| **驗證** | 修改色票後執行 `make token-validate` 確認一致性 |
-| **漂移掃描** | 定期執行 `make token-drift` 掃描 hardcoded hex |
-
 ---
 
 ## 與現有 ASP 流程的整合

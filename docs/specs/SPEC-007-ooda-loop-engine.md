@@ -284,3 +284,6 @@ class C5ISRMapper:
 - SPEC-003：Database 層（依賴）
 - SPEC-004：API 路由（依賴——`/ooda/trigger`）
 - SPEC-008：執行引擎客戶端（依賴——CalderaClient/ShannonClient）
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

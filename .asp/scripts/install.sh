@@ -82,7 +82,7 @@ DEFAULT_NAME="$(basename "$(pwd)")"
 
 # 預設開發風格
 apply_preset() {
-    MODE=single  # 預設 mode，preset 4 會覆蓋
+    MODE=auto  # 預設 mode，preset 4 會覆蓋
     case "$1" in
         1) # 標準模式
             ENABLE_RAG=n; ENABLE_GUARDRAIL=n; HITL_LEVEL=standard
@@ -215,6 +215,12 @@ if git ls-remote "$PROTOCOL_REPO" &>/dev/null 2>&1; then
         chmod +x .asp/hooks/*.sh 2>/dev/null || true
     fi
 
+    # v3.0: Agent 角色定義
+    if [ -d "$PROTOCOL_DIR/.asp/agents" ]; then
+        cp -r "$PROTOCOL_DIR/.asp/agents" ./.asp/agents
+        echo "  ✅ .asp/agents/ (角色定義 + 團隊組成)"
+    fi
+
     # 複製版本檔案
     if [ -f "$PROTOCOL_DIR/.asp/VERSION" ]; then
         cp "$PROTOCOL_DIR/.asp/VERSION" ./.asp/VERSION
@@ -300,7 +306,7 @@ AUTOPILOT_VAL="disabled"
 [ "${ENABLE_AUTOPILOT,,}" = "y" ] && AUTOPILOT_VAL="enabled"
 
 NEW_PROFILE="type: ${PROJECT_TYPE}
-mode: ${MODE:-single}
+mode: ${MODE:-auto}
 workflow: ${WORKFLOW:-standard}
 rag: ${RAG_VAL}
 guardrail: ${GUARDRAIL_VAL}

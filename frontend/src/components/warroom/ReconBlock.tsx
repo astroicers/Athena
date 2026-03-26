@@ -25,14 +25,14 @@ export function ReconBlock({ entries }: ReconBlockProps) {
     <div className="bg-athena-surface border border-[var(--color-border)] rounded-[var(--radius)] p-3 font-mono">
       {/* Header */}
       <div className="flex items-center gap-2 mb-3">
-        <span className="bg-athena-accent/[0.12] border border-[var(--color-accent)]/[0.25] text-athena-accent text-xs font-bold uppercase tracking-wider px-2 py-1 rounded-[var(--radius)]">
+        <span className="bg-athena-accent/[0.12] border border-[var(--color-accent)]/[0.25] text-athena-accent text-athena-floor font-bold uppercase tracking-wider px-2 py-1 rounded-[var(--radius)]">
           {t("recon")}
         </span>
       </div>
 
       {/* Entries */}
       {reconEntries.length === 0 ? (
-        <p className="text-xs text-athena-text-tertiary">
+        <p className="text-athena-floor text-athena-text-tertiary">
           {t("noReconData")}
         </p>
       ) : (
@@ -53,7 +53,7 @@ export function ReconBlock({ entries }: ReconBlockProps) {
 
               {/* Content */}
               <div className="flex flex-col gap-0.5 min-w-0">
-                <span className="text-xs text-athena-text-tertiary athena-tabular-nums">
+                <span className="text-athena-floor text-athena-text-tertiary athena-tabular-nums">
                   {new Date(entry.timestamp).toLocaleTimeString("en-US", {
                     hour: "2-digit",
                     minute: "2-digit",
@@ -61,7 +61,7 @@ export function ReconBlock({ entries }: ReconBlockProps) {
                     hour12: false,
                   })}
                 </span>
-                <span className="text-xs text-athena-text-secondary">
+                <span className="text-athena-floor text-athena-text-secondary">
                   {entry.summary}
                 </span>
               </div>

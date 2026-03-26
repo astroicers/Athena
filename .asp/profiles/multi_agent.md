@@ -13,12 +13,27 @@
 
 ---
 
-## Token 成本意識
+## v3.0 角色制與協作協議
 
-Multi-agent 模式的 token 消耗約為單 agent 的 **15 倍**。分拆前先確認：
+> **v3.0 升級**：通用 Worker 升級為 10 個專精角色（4 部門）。
+> 角色定義見 `.asp/agents/*.yaml`，團隊組成見 `.asp/agents/team_compositions.yaml`。
+>
+> **Context 全量傳遞**：agent 間交接使用結構化交接單（`.asp/templates/handoff/`），
+> 不摘要、不壓縮，確保新 agent 取得完整上下文。
 
-- sub-agent 存在的核心理由是 **context 隔離**，不是角色擬人化——如果單一 agent 的 context 能裝下，就不要拆
-- **電話遊戲問題**：Orchestrator 轉述 Worker 回應時會失真。Worker 完成後應直接輸出結構化結果（Done Checklist），Orchestrator 原樣轉交人類，不重新改寫
+### 角色分派
+
+Orchestrator 根據 `team_compositions.yaml` 選擇角色，取代通用 Worker-a/Worker-b：
+
+```
+FUNCTION assign_roles(task_type, complexity):
+  scenario = match_scenario(task_type, complexity)  // from team_compositions.yaml
+  team = scenario.agents
+  FOR role IN team:
+    role_def = LOAD(".asp/agents/{role}.yaml")
+    VALIDATE role_def.scope_constraints
+  RETURN team
+```
 
 ---
 
@@ -48,6 +63,9 @@ output:
   - src/store/feature_x.go
   - tests/store/feature_x_test.go
 done_when: "make test-filter FILTER=feature_x 全數通過"
+    agent_role: impl          # NEW: role from .asp/agents/
+    track: A                  # NEW: parallel track identifier
+    level: 0                  # NEW: topological level (0=independent)
 ```
 
 ---
@@ -64,6 +82,9 @@ locked_files:
     task: TASK-001
     since: 2025-01-15T10:00:00Z
     expires: 2025-01-15T12:00:00Z   # 超時自動解鎖
+    track: A              # NEW: 軌道標識
+    level: 0              # NEW: 拓撲層級
+    lock_type: exclusive  # NEW: exclusive | shared-read
 ```
 
 ```bash
@@ -143,6 +164,126 @@ FUNCTION on_worker_done(event, lock_registry):
 
 ---
 
+## 交接協議（v3.0）
+
+> **取代** `completed.jsonl` 的 3 欄位格式。Worker 完成後產生結構化交接單。
+
+Worker 完成任務後，除了 `make agent-done`（向後相容），還必須產生交接單：
+
+```
+FUNCTION on_task_complete(worker, task, result):
+  // 1. 向後相容：寫入 completed.jsonl
+  EXECUTE("make agent-done TASK={task.id} STATUS={result.status}")
+
+  // 2. v3.0：產生結構化交接單
+  handoff = create_handoff(TASK_COMPLETE,
+    task_id = task.id,
+    from_agent = { role: worker.role, task_manifest: task.manifest },
+    status = result.status,  // success | failed | needs_review
+    artifacts = {
+      files_modified: result.files_modified,
+      diff_summary: result.diff,
+      test_output: result.test_output,
+      test_checksums: result.test_checksums
+    },
+    failure_context = result.failure_context,  // if failed
+    success_context = result.success_context   // if success
+  )
+
+  SAVE(".agent-events/handoffs/HANDOFF-{timestamp}-{seq}.yaml", handoff)
+```
+
+Orchestrator 驗證流程升級：
+
+```
+FUNCTION on_worker_done_v3(handoff):
+  // 讀取結構化交接單（而非 completed.jsonl）
+  task = handoff.task_id
+  scope = task.manifest.scope
+
+  // 獨立驗證（不變）
+  test_result = EXECUTE("make test-filter FILTER={scope.filter}")
+
+  IF test_result.passed:
+    // 產生 PHASE_GATE 交接單（如果在管線中）
+    IF pipeline_active:
+      gate_result = evaluate_gate(current_gate, artifacts, gate_agents)
+      // ... pipeline.md 的門檻邏輯
+    lock_registry.unlock(task.locked_files)
+  ELSE:
+    // 走升級協議（取代硬編碼的 escalate_to_human）
+    IF escalation_loaded:
+      IF task.retry_count < MAX_RETRIES(2):
+        // 產生 REASSIGNMENT 交接單（含 memory hint）
+        memory_hint = get_memory_hint(task, handoff.failure_context)
+        reassignment = create_handoff(REASSIGNMENT,
+          previous_diagnosis = handoff.failure_context,
+          orchestrator_hint = memory_hint.strategy,
+          memory_ref = memory_hint)
+        reassign(task, reassignment)
+      ELSE:
+        escalate(severity="P1", reason="Worker auto_fix + Orchestrator 重派皆耗盡", task_id=task.id, context={task, failures: handoff.failure_context})
+    ELSE:
+      // fallback: 原有行為
+      escalate_to_human(task, details=test_result.failures)
+```
+
+---
+
+## 並行軌道（v3.0）
+
+> **升級** 扁平鎖定為多軌並行。
+
+```
+FUNCTION plan_parallel_execution(sub_tasks):
+  graph = build_dependency_graph(sub_tasks)
+  levels = topological_levels(graph)
+
+  execution_plan = []
+  FOR level_num, tasks IN levels:
+    track_group = {
+      level: level_num,
+      tracks: [],
+      marker: "[P]" if LEN(tasks) > 1 else "[S]"
+    }
+    FOR task IN tasks:
+      track = {
+        task: task,
+        assigned_role: select_role(task),
+        locked_files: task.scope.allow,
+        track_id: NEXT_TRACK_ID()
+      }
+      track_group.tracks.append(track)
+    execution_plan.append(track_group)
+
+  // 鎖衝突偵測
+  FOR group IN execution_plan:
+    all_locks = flatten(t.locked_files FOR t IN group.tracks)
+    IF has_duplicates(all_locks):
+      // 解法 1：移到下一層
+      // 解法 2：指派 integ agent
+      resolve_lock_conflicts(group)
+
+  RETURN execution_plan
+
+
+FUNCTION converge_tracks(completed_tracks, integ_agent):
+  handoffs = [track.final_handoff FOR track IN completed_tracks]
+  conflicts = integ_agent.detect_conflicts(handoffs)
+  IF conflicts:
+    FOR conflict IN conflicts:
+      IF conflict.resolvable:
+        integ_agent.resolve(conflict)
+      ELSE:
+        escalate(severity="P1", reason="並行軌道不可解衝突", context={conflict})
+  // 整合測試
+  result = EXECUTE("make test")
+  IF result.failed:
+    dev_qa_loop(integration_task, integ_agent, qa_agent)
+```
+
+---
+
 ## MCP 安全邊界
 
 Worker Agent 可自行執行：
@@ -180,6 +321,27 @@ Worker 遇到問題 → 直接上報 Orchestrator。
 
 Worker 遇到測試失敗 → 先 auto_fix_loop（最多 3 次） → 仍失敗才上報 Orchestrator。
 Orchestrator 驗證通過 → 可自動合併到工作分支（git push 到主分支仍需人類確認）。
+
+### 升級協議整合（v3.0）
+
+Worker 的 auto_fix_loop 失敗不再直接 `PAUSE_AND_REPORT`，而是走升級協議：
+
+```
+FUNCTION on_worker_auto_fix_exhausted_v3(worker, task, failures):
+  IF escalation_loaded:
+    IF orchestrator.retry_count(task) < MAX_RETRIES(2):
+      // 查詢 project memory
+      memory_hint = get_memory_hint(task, failures)
+      reassignment = create_handoff(REASSIGNMENT,
+        previous_diagnosis = failures,
+        memory_ref = memory_hint)
+      orchestrator.reassign(task, reassignment)
+    ELSE:
+      escalate(severity="P1", reason="Worker auto_fix + Orchestrator 重派皆耗盡", task_id=task.id, context={task, failures})
+  ELSE:
+    // fallback: 原有行為
+    PAUSE_AND_REPORT_TO_HUMAN(reason="Worker auto_fix + Orchestrator 重派皆耗盡")
+```
 
 ---
 

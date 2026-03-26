@@ -346,3 +346,6 @@ model_name = TASK_MODEL_MAP.get("node_summary", settings.CLAUDE_MODEL)
 | `test_none_task_type_falls_back_to_default` | `task_type=None` | `effective_model == settings.CLAUDE_MODEL` |
 | `test_explicit_model_overrides_task_type` | `model="X", task_type="orient_analysis"` | `effective_model == "X"` |
 | `test_task_model_map_uses_settings_values` | 驗證 `TASK_MODEL_MAP` 引用 `settings.*` | 環境變數覆蓋生效 |
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

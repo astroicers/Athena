@@ -644,3 +644,6 @@ if trait.startswith("poc."):
   - `backend/app/routers/operations.py` — 新增 PoC API endpoint
   - `backend/app/services/orient_engine.py` — 修改：注入 skill section + 排除 poc facts
   - `backend/app/services/engine_router.py` — 修改：`_finalize_execution` + `_execute_metasploit` 新增 PoC 記錄
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

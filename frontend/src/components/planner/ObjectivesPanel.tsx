@@ -126,10 +126,10 @@ export function ObjectivesPanel({ operationId }: { operationId: string }) {
   }
 
   const inputStyles =
-    "w-full bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-[var(--radius)] px-2.5 py-1.5 text-xs font-mono text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]";
+    "w-full bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-[var(--radius)] px-2.5 py-1.5 text-athena-floor font-mono text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]";
 
   const labelStyles =
-    "block text-xs font-mono text-[var(--color-text-secondary)] uppercase tracking-wider mb-0.5";
+    "block text-athena-floor font-mono text-[var(--color-text-secondary)] uppercase tracking-wider mb-0.5";
 
   if (loading) {
     return (
@@ -216,7 +216,7 @@ export function ObjectivesPanel({ operationId }: { operationId: string }) {
       {/* Objectives List */}
       {objectives.length === 0 ? (
         <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-[var(--radius)] p-4 text-center mt-2">
-          <span className="text-xs font-mono text-[var(--color-text-tertiary)]">
+          <span className="text-athena-floor font-mono text-[var(--color-text-tertiary)]">
             {t("noObjectives")}
           </span>
         </div>
@@ -228,14 +228,14 @@ export function ObjectivesPanel({ operationId }: { operationId: string }) {
               className="border border-[var(--color-border)] rounded-[var(--radius)] bg-[var(--color-bg-surface)] px-3 py-2 flex items-center gap-2"
             >
               <div className="flex-1 min-w-0">
-                <p className={`text-xs font-mono ${obj.status === "achieved" ? "text-[var(--color-text-tertiary)] line-through" : "text-[var(--color-text-primary)]"}`}>
+                <p className={`text-athena-floor font-mono ${obj.status === "achieved" ? "text-[var(--color-text-tertiary)] line-through" : "text-[var(--color-text-primary)]"}`}>
                   {obj.objective}
                 </p>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant={CATEGORY_VARIANT[obj.category] ?? "info"}>
                     {t(obj.category as "tactical" | "strategic" | "compliance")}
                   </Badge>
-                  <span className="text-xs font-mono text-[var(--color-text-tertiary)]">
+                  <span className="text-athena-floor font-mono text-[var(--color-text-tertiary)]">
                     P{obj.priority}
                   </span>
                 </div>

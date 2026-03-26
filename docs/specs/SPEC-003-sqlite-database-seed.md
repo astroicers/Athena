@@ -167,3 +167,6 @@ settings = Settings()
 - 資料架構：[data-architecture.md](../architecture/data-architecture.md) Section 5（Schema）+ Section 8（Seed Data）
 - ADR-011：[POC 不實作身份驗證](../adr/ADR-011-no-auth-for-poc.md)（User stub）
 - SPEC-002：Pydantic Models + Enums（依賴——Model 結構定義）
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

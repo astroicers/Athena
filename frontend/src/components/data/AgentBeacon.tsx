@@ -38,10 +38,10 @@ export function AgentBeacon({ paw, status, privilege, platform, lastBeacon }: Ag
       <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${style.dot}`} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className={`text-xs font-mono font-bold ${style.text}`}>{paw}</span>
-          <span className="text-sm font-mono text-athena-text-tertiary">{tStatus(status as any)}</span>
+          <span className={`text-athena-floor font-mono font-bold ${style.text}`}>{paw}</span>
+          <span className="text-athena-body font-mono text-athena-text-tertiary">{tStatus(status as any)}</span>
         </div>
-        <div className="flex items-center gap-3 text-sm font-mono text-athena-text-tertiary">
+        <div className="flex items-center gap-3 text-athena-body font-mono text-athena-text-tertiary">
           <span>{platform}</span>
           <span>{privilege}</span>
           <span>{beaconTime}</span>

@@ -613,3 +613,6 @@ export interface C5ISRStatus {
   - `frontend/src/components/c5isr/C5ISRFloatingPanel.tsx` — 浮動面板（不修改）
   - `frontend/src/components/c5isr/__tests__/DomainCard.test.tsx` — 現有測試（需擴充）
   - `frontend/messages/en.json` / `frontend/messages/zh-TW.json` — i18n 鍵值新增
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

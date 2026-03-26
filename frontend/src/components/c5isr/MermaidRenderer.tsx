@@ -68,7 +68,7 @@ export function MermaidRenderer({
   if (error) {
     return (
       <div
-        className={`rounded-[var(--radius)] border p-4 font-mono text-xs bg-athena-surface text-athena-error ${className}`}
+        className={`rounded-[var(--radius)] border p-4 font-mono text-athena-floor bg-athena-surface text-athena-error ${className}`}
         style={{
           borderColor: "color-mix(in srgb, var(--color-error) 40%, transparent)",
         }}

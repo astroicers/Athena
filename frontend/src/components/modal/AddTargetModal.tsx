@@ -170,17 +170,17 @@ export function AddTargetModal({
   }
 
   const inputStyles =
-    "w-full bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-2 text-sm font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-[var(--color-accent)]";
+    "w-full bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-2 text-athena-body font-mono text-athena-text-light placeholder-athena-text-secondary focus:outline-none focus:border-[var(--color-accent)]";
 
   const labelStyles =
-    "block text-sm font-mono text-athena-text-tertiary uppercase tracking-wider mb-1";
+    "block text-athena-body font-mono text-athena-text-tertiary uppercase tracking-wider mb-1";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-athena-bg/80 backdrop-blur-sm">
       <div className="bg-athena-surface border-2 border-[var(--color-border)] rounded-[var(--radius)] p-6 max-w-md w-full mx-4">
         <div className="mb-4">
-          <span className="text-xs font-mono text-athena-text-tertiary">{t("newTarget")}</span>
-          <h2 className="text-lg font-mono font-bold text-athena-text-light mt-1">{t("addTargetTitle")}</h2>
+          <span className="text-athena-floor font-mono text-athena-text-tertiary">{t("newTarget")}</span>
+          <h2 className="text-athena-heading-section font-mono font-bold text-athena-text-light mt-1">{t("addTargetTitle")}</h2>
         </div>
 
         {/* Tab buttons */}
@@ -268,7 +268,7 @@ export function AddTargetModal({
             </div>
 
             {error && (
-              <p className="text-xs font-mono text-athena-error">{error}</p>
+              <p className="text-athena-floor font-mono text-athena-error">{error}</p>
             )}
 
             <div className="flex gap-3 justify-end pt-2">
@@ -286,7 +286,7 @@ export function AddTargetModal({
         {mode === "batch" && (
           <div className="space-y-3">
             {batchResult && (
-              <p className="text-xs font-mono text-athena-success">{batchResult}</p>
+              <p className="text-athena-floor font-mono text-athena-success">{batchResult}</p>
             )}
 
             {/* Stage: input */}
@@ -303,7 +303,7 @@ export function AddTargetModal({
                     placeholder={t("batchPlaceholder")}
                     className={inputStyles + " resize-none"}
                   />
-                  <p className="text-sm font-mono text-athena-text-tertiary mt-1">
+                  <p className="text-athena-body font-mono text-athena-text-tertiary mt-1">
                     {t("batchHelp")}
                   </p>
                 </div>
@@ -350,7 +350,7 @@ export function AddTargetModal({
                 </div>
 
                 {error && (
-                  <p className="text-xs font-mono text-athena-error">{error}</p>
+                  <p className="text-athena-floor font-mono text-athena-error">{error}</p>
                 )}
 
                 <div className="flex gap-3 justify-end pt-2">
@@ -372,14 +372,14 @@ export function AddTargetModal({
             {/* Stage: preview */}
             {batchStage === "preview" && batchPreview && (
               <>
-                <p className="text-xs font-mono text-athena-text-light">
+                <p className="text-athena-floor font-mono text-athena-text-light">
                   {t("previewTitle", { count: batchPreview.length })}
                 </p>
                 <div className="max-h-48 overflow-y-auto border border-[var(--color-border)] rounded-[var(--radius)] bg-athena-bg p-2">
                   {batchPreview.map((entry, idx) => (
                     <div
                       key={idx}
-                      className="text-xs font-mono text-athena-text-tertiary py-0.5"
+                      className="text-athena-floor font-mono text-athena-text-tertiary py-0.5"
                     >
                       {entry.ipAddress}
                       {entry.hostname !== entry.ipAddress && (
@@ -392,7 +392,7 @@ export function AddTargetModal({
                 </div>
 
                 {error && (
-                  <p className="text-xs font-mono text-athena-error">{error}</p>
+                  <p className="text-athena-floor font-mono text-athena-error">{error}</p>
                 )}
 
                 <div className="flex gap-3 justify-end pt-2">
@@ -420,7 +420,7 @@ export function AddTargetModal({
             {/* Stage: importing */}
             {batchStage === "importing" && (
               <div className="flex items-center justify-center py-8">
-                <p className="text-sm font-mono text-athena-text-tertiary">
+                <p className="text-athena-body font-mono text-athena-text-tertiary">
                   {t("importing")}
                 </p>
               </div>

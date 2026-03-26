@@ -33,7 +33,7 @@ export function NavItem({ href, icon: Icon, label, isActive }: NavItemProps) {
         }`}
     >
       <Icon />
-      <span className="text-xs font-mono truncate">{label}</span>
+      <span className="text-athena-floor font-mono truncate">{label}</span>
     </Link>
   );
 }

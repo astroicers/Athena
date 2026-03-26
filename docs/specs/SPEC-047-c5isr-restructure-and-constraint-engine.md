@@ -25,3 +25,6 @@
 - [ ] c5isr_status_history 有時間序列記錄
 - [ ] OODA controller 在循環開始前呼叫 constraint_engine
 - [ ] `make test` 通過，無回歸
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

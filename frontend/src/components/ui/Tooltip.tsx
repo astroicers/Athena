@@ -21,7 +21,7 @@ export function Tooltip({ text, children }: TooltipProps) {
   return (
     <span className="relative group inline-block">
       {children}
-      <span className="pointer-events-none absolute bottom-full left-0 mb-1.5 px-2 py-1 text-sm font-mono text-[var(--color-text-primary)] bg-[var(--color-bg-elevated)] border border-[var(--color-border)] rounded-[var(--radius)] max-w-[320px] break-all whitespace-normal hidden group-hover:block z-50">
+      <span className="pointer-events-none absolute bottom-full left-0 mb-1.5 px-2 py-1 text-athena-body font-mono text-[var(--color-text-primary)] bg-[var(--color-bg-elevated)] border border-[var(--color-border)] rounded-[var(--radius)] max-w-[320px] break-all whitespace-normal hidden group-hover:block z-50">
         {text}
       </span>
     </span>

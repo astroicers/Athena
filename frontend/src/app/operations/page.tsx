@@ -59,6 +59,22 @@ const STATUS_BADGE_CLASSES: Record<string, string> = {
   failed:    "bg-[#B91C1C20] border-[#B91C1C40] text-[var(--color-error)]",
 };
 
+const STATUS_DOT_CLASSES: Record<string, string> = {
+  planning:  "bg-[#1E6091]",
+  active:    "bg-[#059669]",
+  paused:    "bg-[#B45309]",
+  completed: "bg-[#71717A]",
+  failed:    "bg-[#B91C1C]",
+};
+
+const STATUS_BORDER_CLASSES: Record<string, string> = {
+  planning:  "border-[#1E609140]",
+  active:    "border-[#05966940]",
+  paused:    "border-[#B4530940]",
+  completed: "border-[#71717A40]",
+  failed:    "border-[#B91C1C40]",
+};
+
 const PROFILE_BADGE_CLASSES: Record<string, string> = {
   SR: "bg-[#1E609120] border-[#1E609140] text-[var(--color-accent)]",
   CO: "bg-[#7C3AED20] border-[#7C3AED40] text-[var(--color-phase-orient)]",
@@ -134,7 +150,7 @@ function OperationsContent() {
         <div className="flex items-center justify-end mb-4">
           <button
             onClick={() => setShowCreate(true)}
-            className="font-mono text-xs font-semibold text-[var(--color-text-primary)] bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] rounded-[var(--radius)] px-3 py-1 hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer"
+            className="font-mono text-athena-floor font-semibold text-[var(--color-text-primary)] bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] rounded-[var(--radius)] px-3 py-1 hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer"
           >
             + {t("createOp")}
           </button>
@@ -143,12 +159,12 @@ function OperationsContent() {
           /* -- Empty state ------------------------------------------ */
           <div className="flex items-center justify-center h-full">
             <div className="text-center space-y-4">
-              <div className="text-sm font-mono text-[var(--color-text-tertiary)]">
+              <div className="text-athena-body font-mono text-[var(--color-text-tertiary)]">
                 {t("noOperations")}
               </div>
               <button
                 onClick={() => setShowCreate(true)}
-                className="font-mono text-xs font-semibold text-[var(--color-text-primary)] bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] rounded-[var(--radius)] px-3 py-1 hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer"
+                className="font-mono text-athena-floor font-semibold text-[var(--color-text-primary)] bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] rounded-[var(--radius)] px-3 py-1 hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer"
               >
                 + {t("createOp")}
               </button>
@@ -161,34 +177,34 @@ function OperationsContent() {
               <button
                 key={op.id}
                 onClick={() => handleSelect(op)}
-                className="group relative text-left bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-[var(--radius)] hover:bg-[var(--color-bg-elevated)] hover:border-[var(--color-border-subtle)] transition-colors cursor-pointer flex flex-col gap-2 p-4 h-[140px]"
+                className={`group text-left bg-[var(--color-bg-surface)] border rounded-[var(--radius)] hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer flex flex-col gap-2 p-4 h-[130px] ${STATUS_BORDER_CLASSES[op.status] ?? "border-[var(--color-border)]"}`}
               >
-                <span
-                  role="button"
-                  tabIndex={0}
-                  onClick={(e) => { e.stopPropagation(); setDeletingOpId(op.id); }}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setDeletingOpId(op.id); } }}
-                  className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-[var(--color-error)]/20 hover:bg-[var(--color-error)]/30 transition-colors z-10"
-                  title={t("deleteOperation")}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[var(--color-error)]">
-                    <path d="M3 6h18M8 6V4h8v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" />
-                  </svg>
-                </span>
-                {/* Top row: codename + status badge */}
-                <div className="flex items-center justify-between w-full pr-5">
-                  <span className="font-mono text-sm font-bold text-[var(--color-text-primary)] truncate">
+                {/* Top row: codename + status badge + delete */}
+                <div className="flex items-center gap-2 w-full">
+                  <span className="font-mono text-athena-heading-card font-bold text-[var(--color-text-primary)] truncate">
                     {op.codename}
                   </span>
                   <span
-                    className={`text-xs font-mono font-semibold uppercase border rounded-[var(--radius)] shrink-0 px-2.5 py-1 ${STATUS_BADGE_CLASSES[op.status] ?? ""}`}
+                    className={`text-athena-caption font-mono font-semibold uppercase border rounded-[var(--radius)] shrink-0 px-[var(--sp-badge-x)] py-[var(--sp-badge-y)] ml-auto ${STATUS_BADGE_CLASSES[op.status] ?? ""}`}
                   >
                     {op.status}
+                  </span>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => { e.stopPropagation(); setDeletingOpId(op.id); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setDeletingOpId(op.id); } }}
+                    className="w-5 h-5 flex items-center justify-center shrink-0 text-[var(--color-text-tertiary)] hover:text-[var(--color-error)] transition-colors"
+                    title={t("deleteOperation")}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M18 6L6 18M6 6l12 12" />
+                    </svg>
                   </span>
                 </div>
 
                 {/* Description */}
-                <div className="font-mono text-xs text-[var(--color-text-secondary)] truncate">
+                <div className="font-mono text-athena-floor text-[var(--color-text-secondary)] truncate">
                   {op.name}
                 </div>
 
@@ -196,19 +212,19 @@ function OperationsContent() {
                 <div className="flex items-center gap-3 mt-auto">
                   {/* Mission profile badge */}
                   <span
-                    className={`text-xs font-mono font-semibold border rounded-[var(--radius)] px-2.5 py-1 ${PROFILE_BADGE_CLASSES[op.missionProfile] ?? ""}`}
+                    className={`text-athena-caption font-mono font-semibold border rounded-[var(--radius)] px-[var(--sp-badge-x)] py-[var(--sp-badge-y)] ${PROFILE_BADGE_CLASSES[op.missionProfile] ?? ""}`}
                   >
                     {op.missionProfile}
                   </span>
 
                   {/* OODA phase */}
-                  <span className="text-xs font-mono text-[var(--color-text-secondary)]">
+                  <span className="text-athena-floor font-mono text-[var(--color-text-secondary)]">
                     OODA: {op.currentOodaPhase}
                   </span>
 
                   {/* Created date */}
-                  <span className="text-xs font-mono text-[var(--color-text-tertiary)] ml-auto">
-                    {new Date(op.createdAt).toLocaleDateString()}
+                  <span className="text-athena-floor font-mono text-[var(--color-text-tertiary)] ml-auto">
+                    {op.createdAt.slice(0, 10)}
                   </span>
                 </div>
               </button>
@@ -217,14 +233,29 @@ function OperationsContent() {
             {/* Empty card placeholder -- "+ New Operation" */}
             <button
               onClick={() => setShowCreate(true)}
-              className="flex items-center justify-center border border-[var(--color-border)] rounded-[var(--radius)] hover:border-[var(--color-border-subtle)] transition-colors cursor-pointer h-[140px]"
+              className="flex items-center justify-center border border-[var(--color-border)] rounded-[var(--radius)] hover:border-[var(--color-border-subtle)] transition-colors cursor-pointer h-[130px]"
             >
-              <span className="font-mono text-xs text-[var(--color-text-tertiary)]">
-                +
+              <span className="font-mono text-athena-floor text-[var(--color-text-tertiary)]">
+                + New Operation
               </span>
             </button>
           </div>
         )}
+
+        {/* -- Status Legend ------------------------------------------ */}
+        <div className="flex items-center gap-6 mt-auto pt-4">
+          {(["planning", "active", "paused", "completed", "failed"] as const).map((s) => (
+            <div key={s} className="flex items-center gap-1.5">
+              <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT_CLASSES[s]}`} />
+              <span className="font-mono text-athena-caption font-semibold uppercase text-[var(--color-text-secondary)]">
+                {s}
+              </span>
+              <span className="font-mono text-athena-caption text-[var(--color-text-tertiary)]">
+                {t(`legend${s.charAt(0).toUpperCase() + s.slice(1)}`)}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* -- Create operation modal ---------------------------------- */}
@@ -313,18 +344,18 @@ function CreateOperationModal({ onCreated, onCancel }: CreateModalProps) {
   }
 
   const inputClass =
-    "w-full bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-2 text-sm font-mono text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-accent)]";
+    "w-full bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-2 text-athena-body font-mono text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-accent)]";
   const labelClass =
-    "block text-xs font-mono text-[var(--color-text-secondary)] uppercase tracking-wider mb-1";
+    "block text-athena-floor font-mono text-[var(--color-text-secondary)] uppercase tracking-wider mb-1";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-bg-overlay)]">
       <div className="bg-[var(--color-bg-surface)] border-2 border-[var(--color-border)] rounded-[var(--radius)] p-6 max-w-md w-full mx-4">
         <div className="mb-4">
-          <h2 className="text-lg font-mono font-bold text-[var(--color-text-primary)]">
+          <h2 className="text-athena-heading-section font-mono font-bold text-[var(--color-text-primary)]">
             {t("createOp")}
           </h2>
-          <p className="text-xs font-mono text-[var(--color-text-tertiary)] mt-1">
+          <p className="text-athena-floor font-mono text-[var(--color-text-tertiary)] mt-1">
             {t("subtitle")}
           </p>
         </div>
@@ -399,7 +430,7 @@ function CreateOperationModal({ onCreated, onCancel }: CreateModalProps) {
           </div>
 
           {error && (
-            <p className="text-xs font-mono text-[var(--color-error)]">{error}</p>
+            <p className="text-athena-floor font-mono text-[var(--color-error)]">{error}</p>
           )}
 
           <div className="flex gap-3 justify-end pt-2">
@@ -463,18 +494,18 @@ function EditOperationModal({ operation, onSaved, onCancel }: EditModalProps) {
   }
 
   const inputClass =
-    "w-full bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-2 text-sm font-mono text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-accent)]";
+    "w-full bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-2 text-athena-body font-mono text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-accent)]";
   const labelClass =
-    "block text-xs font-mono text-[var(--color-text-secondary)] uppercase tracking-wider mb-1";
+    "block text-athena-floor font-mono text-[var(--color-text-secondary)] uppercase tracking-wider mb-1";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-bg-overlay)]">
       <div className="bg-[var(--color-bg-surface)] border-2 border-[var(--color-border)] rounded-[var(--radius)] p-6 max-w-md w-full mx-4">
         <div className="mb-4">
-          <h2 className="text-lg font-mono font-bold text-[var(--color-text-primary)]">
+          <h2 className="text-athena-heading-section font-mono font-bold text-[var(--color-text-primary)]">
             {t("editOp")}
           </h2>
-          <p className="text-xs font-mono text-[var(--color-text-tertiary)] mt-1">
+          <p className="text-athena-floor font-mono text-[var(--color-text-tertiary)] mt-1">
             {operation.codename}
           </p>
         </div>
@@ -540,7 +571,7 @@ function EditOperationModal({ operation, onSaved, onCancel }: EditModalProps) {
           </div>
 
           {error && (
-            <p className="text-xs font-mono text-[var(--color-error)]">{error}</p>
+            <p className="text-athena-floor font-mono text-[var(--color-error)]">{error}</p>
           )}
 
           <div className="flex gap-3 justify-end pt-2">

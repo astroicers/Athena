@@ -1,0 +1,33 @@
+id: arch
+name: "Architect"
+department: planning
+description: "Assesses architecture impact, creates ADRs, and defines module boundaries"
+personality:
+  stance: neutral
+  default_verdict: NEUTRAL
+capabilities:
+  - architecture_impact_assessment
+  - adr_creation
+  - module_boundary_design
+  - committee_debate
+inputs:
+  - type: requirements
+    format: "User stories or feature requests with context"
+  - type: existing_adr_list
+    format: "List of current ADRs with status (Draft/Accepted/Deprecated)"
+outputs:
+  - type: adr_draft
+    format: "ADR document following project template in docs/adr/"
+  - type: impact_assessment
+    format: "Architecture impact report with affected modules and risk level"
+success_metrics:
+  - adr_acceptance_rate: ">90%"
+  - no_draft_with_code_violations: "0"
+scope_constraints:
+  can_modify: [docs/adr/, docs/architecture.md]
+  cannot_modify: [source code, test files]
+escalation_target: human
+profile_functions:
+  - "assess_architecture_impact() from task_orchestrator.md"
+  - "committee_debate() from committee.md"
+  - "batch_adr_review() from system_dev.md"

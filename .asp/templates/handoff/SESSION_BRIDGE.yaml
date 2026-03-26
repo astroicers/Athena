@@ -1,0 +1,35 @@
+# Handoff Template: SESSION_BRIDGE
+# When: Cross-session handoff, extends .asp-autopilot-state.json with agent state
+# Replaces: .asp-autopilot-state.json alone → + agent coordination state
+
+handoff_type: SESSION_BRIDGE
+timestamp: "YYYY-MM-DDTHH:MM:SSZ"
+session_id: ""
+next_session_hint: ""
+
+# === Autopilot state reference ===
+autopilot_state_file: ".asp-autopilot-state.json"
+
+# === Agent coordination state ===
+agent_state:
+  active_tracks: []             # Currently running parallel tracks
+  pending_handoffs: []          # Handoffs not yet processed
+  team_composition:
+    scenario: ""                # e.g., NEW_FEATURE_complex
+    agents: []                  # Active agent roles
+
+# === Work summary ===
+completed_work:
+  phases_done: []               # Pipeline phases completed
+  last_gate_passed: ""          # e.g., G3
+  files_modified: []
+
+pending_work:
+  current_phase: ""
+  current_gate: ""
+  blocked_tasks: []
+  next_action: ""
+
+# === Context budget ===
+context_usage_percent: 0
+exit_reason: ""                 # context_budget | human_intervention | all_done

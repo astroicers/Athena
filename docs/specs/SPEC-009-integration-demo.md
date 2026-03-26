@@ -208,3 +208,6 @@ GET /api/health
 - SPEC-006：4 畫面（依賴）
 - SPEC-007：OODA 引擎（依賴）
 - SPEC-008：執行引擎客戶端（依賴）
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

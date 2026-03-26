@@ -87,3 +87,6 @@ MITRE ATT&CK 的 Reconnaissance → Resource Development → Initial Access → 
 - ✅ `npx tsc --noEmit` — 0 TypeScript errors
 - ✅ 14 欄正確對應 TACTIC_ORDER_IDS（TA0043→TA0040）
 - ✅ WebSocket `execution.update` 觸發即時刷新
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

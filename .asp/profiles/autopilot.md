@@ -192,6 +192,18 @@ FUNCTION autopilot_main():
       blocked: []
     }
 
+  // ═══ Phase 0.5: Load Agent Memory（v3.0）═══
+  IF exists(".asp-agent-memory.yaml"):
+    agent_memory = LOAD(".asp-agent-memory.yaml")
+    LOG("📚 Agent memory 已載入（{LEN(agent_memory.fix_strategies)} 個修復策略，{LEN(agent_memory.common_failures)} 個常見失敗模式）")
+  ELSE:
+    agent_memory = { version: 1, fix_strategies: [], team_effectiveness: [], common_failures: [] }
+    LOG("📚 Agent memory 為空（首次執行）")
+
+  IF exists(".asp-agent-session.json"):
+    agent_session = LOAD(".asp-agent-session.json")
+    LOG("📋 上次 session agent 狀態已載入（團隊：{agent_session.team_composition.scenario}）")
+
   // ═══ Phase 1: Load ROADMAP & Auto-Configure ═══
   roadmap = PARSE("ROADMAP.yaml")
 

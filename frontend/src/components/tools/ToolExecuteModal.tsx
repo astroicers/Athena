@@ -85,18 +85,18 @@ export function ToolExecuteModal({ tool, onClose }: ToolExecuteModalProps) {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)]">
           <div>
-            <h2 className="text-sm font-mono font-bold text-athena-accent">
+            <h2 className="text-athena-body font-mono font-bold text-athena-accent">
               {tool.name}
             </h2>
             {mcpServer && (
-              <p className="text-xs font-mono text-athena-text-tertiary mt-0.5">
+              <p className="text-athena-floor font-mono text-athena-text-tertiary mt-0.5">
                 MCP: {mcpServer}
               </p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="text-athena-text-tertiary hover:text-athena-text-light text-lg leading-none px-1"
+            className="text-athena-text-tertiary hover:text-athena-text-light text-athena-heading-section leading-none px-1"
           >
             x
           </button>
@@ -106,11 +106,11 @@ export function ToolExecuteModal({ tool, onClose }: ToolExecuteModalProps) {
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {/* Arguments input */}
           <div>
-            <label className="block text-xs font-mono font-medium text-athena-text-tertiary mb-1">
+            <label className="block text-athena-floor font-mono font-medium text-athena-text-tertiary mb-1">
               {t("arguments")}
             </label>
             <textarea
-              className="w-full h-32 bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] p-3 font-mono text-xs text-athena-text-light resize-y focus:outline-none focus:border-[var(--color-accent)]"
+              className="w-full h-32 bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] p-3 font-mono text-athena-floor text-athena-text-light resize-y focus:outline-none focus:border-[var(--color-accent)]"
               value={argsText}
               onChange={(e) => setArgsText(e.target.value)}
               spellCheck={false}
@@ -135,14 +135,14 @@ export function ToolExecuteModal({ tool, onClose }: ToolExecuteModalProps) {
           {/* Error display */}
           {error && (
             <div className="bg-athena-bg border border-red-500/30 rounded-[var(--radius)] p-3">
-              <p className="font-mono text-xs text-red-400">{error}</p>
+              <p className="font-mono text-athena-floor text-red-400">{error}</p>
             </div>
           )}
 
           {/* Result display */}
           {result && (
             <div className="bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] p-3 max-h-80 overflow-y-auto">
-              <pre className="font-mono text-xs text-athena-success whitespace-pre-wrap break-words">
+              <pre className="font-mono text-athena-floor text-athena-success whitespace-pre-wrap break-words">
                 {result}
               </pre>
             </div>

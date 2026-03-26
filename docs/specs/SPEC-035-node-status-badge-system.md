@@ -154,3 +154,6 @@ Legend 區段：
 | 10 | Arc bars | 完全移除，節點周圍乾淨 |
 | 11 | `make build` | 編譯通過 |
 | 12 | `pytest` | 後端測試通過 |
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

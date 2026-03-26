@@ -137,3 +137,6 @@ Mock 模式：
 - 整合計畫：`/home/ubuntu/.claude/plans/cosmic-wibbling-walrus.md`
 - Caldera API 文件：https://caldera.readthedocs.io/
 - PentestGPT 論文：USENIX Security 2024
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

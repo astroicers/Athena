@@ -102,3 +102,6 @@ CLAUDE.md.pre-upgrade
 *.zip
 .asp-autopilot-state.json
 Makefile.pre-asp-upgrade
+.asp-audit-baseline.json
+.asp-agent-memory.yaml
+.asp-agent-session.json

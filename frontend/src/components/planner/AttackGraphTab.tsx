@@ -510,7 +510,7 @@ function GraphStatsPanel({
 }) {
   return (
     <div className="bg-athena-surface border border-[var(--color-border)] rounded-[var(--radius)] px-3.5 py-3 min-w-[160px]">
-      <div className="font-mono text-xs uppercase tracking-wider mb-2.5" style={{ color: TEXT_MUTED }}>
+      <div className="font-mono text-athena-floor uppercase tracking-wider mb-2.5" style={{ color: TEXT_MUTED }}>
         {t("statsTitle")}
       </div>
       <div className="flex flex-col gap-2">
@@ -552,10 +552,10 @@ function StatRow({
 }) {
   return (
     <div className="flex justify-between items-center gap-3">
-      <span className="font-mono text-xs" style={{ color: TEXT_MUTED }}>
+      <span className="font-mono text-athena-floor" style={{ color: TEXT_MUTED }}>
         {label}
       </span>
-      <span className="font-mono text-xs font-semibold" style={{ color }}>
+      <span className="font-mono text-athena-floor font-semibold" style={{ color }}>
         {value}
       </span>
     </div>
@@ -573,7 +573,7 @@ function LegendPanel({
 }) {
   return (
     <div className="bg-athena-surface border border-[var(--color-border)] rounded-[var(--radius)] px-3.5 py-3 min-w-[160px]">
-      <div className="font-mono text-xs uppercase tracking-wider mb-2.5" style={{ color: TEXT_MUTED }}>
+      <div className="font-mono text-athena-floor uppercase tracking-wider mb-2.5" style={{ color: TEXT_MUTED }}>
         {title}
       </div>
       <div className="flex flex-col gap-1.5">
@@ -586,7 +586,7 @@ function LegendPanel({
               className="w-2 h-2 rounded-full shrink-0"
               style={{ background: item.color }}
             />
-            <span className="font-mono text-xs text-athena-text-secondary">
+            <span className="font-mono text-athena-floor text-athena-text-secondary">
               {item.label}
             </span>
           </div>
@@ -616,7 +616,7 @@ function CredStatsPanel({
 
   return (
     <div className="bg-athena-surface border border-[var(--color-border)] rounded-[var(--radius)] px-3.5 py-3 min-w-[160px]">
-      <div className="font-mono text-xs uppercase tracking-wider mb-2.5" style={{ color: TEXT_MUTED }}>
+      <div className="font-mono text-athena-floor uppercase tracking-wider mb-2.5" style={{ color: TEXT_MUTED }}>
         {t("statsTitle")}
       </div>
       <div className="flex flex-col gap-2">
@@ -650,7 +650,7 @@ function SubTabButton({
   return (
     <button
       onClick={onClick}
-      className={`font-mono text-xs uppercase tracking-wider bg-transparent border-none border-b-2 px-1 cursor-pointer transition-colors duration-150 ${active ? "text-athena-accent border-b-[var(--color-accent)]" : "text-athena-text-tertiary border-b-transparent"}`}
+      className={`font-mono text-athena-floor uppercase tracking-wider bg-transparent border-none border-b-2 px-1 cursor-pointer transition-colors duration-150 ${active ? "text-athena-accent border-b-[var(--color-accent)]" : "text-athena-text-tertiary border-b-transparent"}`}
     >
       {label}
     </button>
@@ -702,7 +702,7 @@ export function AttackGraphTab() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full bg-athena-bg">
-        <span className="font-mono text-xs text-athena-text-tertiary">
+        <span className="font-mono text-athena-floor text-athena-text-tertiary">
           Loading...
         </span>
       </div>
@@ -712,7 +712,7 @@ export function AttackGraphTab() {
   if (error) {
     return (
       <div className="flex items-center justify-center h-full bg-athena-bg">
-        <span className="font-mono text-xs text-athena-error">
+        <span className="font-mono text-athena-floor text-athena-error">
           {error}
         </span>
       </div>
@@ -744,7 +744,7 @@ export function AttackGraphTab() {
               <AttackGraphCanvas nodes={graph.nodes} edges={graph.edges} />
             ) : (
               <div className="flex items-center justify-center h-full bg-athena-bg">
-                <span className="font-mono text-xs text-athena-text-tertiary">
+                <span className="font-mono text-athena-floor text-athena-text-tertiary">
                   {t("noData")}
                 </span>
               </div>
@@ -757,14 +757,14 @@ export function AttackGraphTab() {
                 size="sm"
                 onClick={handleRebuild}
                 disabled={rebuilding}
-                className="text-xs uppercase tracking-wider text-athena-accent bg-transparent border-[color-mix(in_srgb,var(--color-accent)_31%,transparent)]"
+                className="text-athena-floor uppercase tracking-wider text-athena-accent bg-transparent border-[color-mix(in_srgb,var(--color-accent)_31%,transparent)]"
               >
                 {rebuilding ? t("rebuilding") : t("rebuild")}
               </Button>
               <Button
                 variant="secondary"
                 size="sm"
-                className="text-xs uppercase tracking-wider text-athena-accent bg-transparent border-[color-mix(in_srgb,var(--color-accent)_31%,transparent)]"
+                className="text-athena-floor uppercase tracking-wider text-athena-accent bg-transparent border-[color-mix(in_srgb,var(--color-accent)_31%,transparent)]"
               >
                 DEPTH SCAN
               </Button>
@@ -795,7 +795,7 @@ export function AttackGraphTab() {
               />
             ) : (
               <div className="flex items-center justify-center h-full bg-athena-bg">
-                <span className="font-mono text-xs text-athena-text-tertiary">
+                <span className="font-mono text-athena-floor text-athena-text-tertiary">
                   {t("noCredentials")}
                 </span>
               </div>

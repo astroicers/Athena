@@ -1,0 +1,31 @@
+# Handoff Template: REASSIGNMENT
+# When: Orchestrator → new Worker, with full context from previous Worker
+# Replaces: reassign(task, context=failures) string → structured context
+
+handoff_type: REASSIGNMENT
+task_id: "TASK-{NNN}"
+reassignment_count: 0          # Orchestrator retry count (max 2)
+timestamp: "YYYY-MM-DDTHH:MM:SSZ"
+from_agent:
+  role: "{previous_agent_role}"
+  previous_handoff: "HANDOFF-{NNN}"  # Reference to TASK_COMPLETE
+to_agent:
+  role: "{new_agent_role}"     # Can be different role if needed
+
+# === Previous Worker's full diagnosis (NO summarization) ===
+previous_diagnosis:
+  attempted_fixes: []           # Copied from previous TASK_COMPLETE
+  guard_triggered: null         # oscillation | cascade | smuggling | null
+  test_output: |
+    # Full test output from previous Worker
+  files_changed: []             # What previous Worker modified
+
+# === Orchestrator guidance ===
+orchestrator_hint: |
+  # Orchestrator's analysis of why previous Worker failed
+  # and suggested alternative approach
+
+# === Agent memory reference ===
+memory_ref:
+  similar_patterns: []          # From .asp-agent-memory.yaml fix_strategies
+  suggested_strategy: ""

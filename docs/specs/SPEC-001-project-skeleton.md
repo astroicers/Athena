@@ -226,3 +226,6 @@ dev = [
 - ADR-010：[Docker Compose 部署拓樸](../adr/ADR-010-docker-compose-deployment.md)
 - ADR-011：[POC 不實作身份驗證](../adr/ADR-011-no-auth-for-poc.md)（127.0.0.1 綁定）
 - 專案結構：[project-structure.md](../architecture/project-structure.md)
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

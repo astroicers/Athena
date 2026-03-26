@@ -29,7 +29,7 @@ export function LocaleSwitcher() {
     <button
       onClick={handleSwitch}
       disabled={isPending}
-      className="text-xs font-mono text-athena-text-tertiary hover:text-athena-accent transition-colors disabled:opacity-50"
+      className="text-athena-floor font-mono text-athena-text-tertiary hover:text-athena-accent transition-colors disabled:opacity-50"
     >
       {isPending ? "..." : currentLocale === "en" ? "中文" : "EN"}
     </button>

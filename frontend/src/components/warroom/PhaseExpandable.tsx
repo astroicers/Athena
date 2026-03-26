@@ -103,7 +103,7 @@ export function PhaseExpandable({
       >
         {/* Expand arrow */}
         {canExpand && (
-          <span className="text-xs text-[var(--color-text-tertiary)] shrink-0 w-3">
+          <span className="text-athena-floor text-[var(--color-text-tertiary)] shrink-0 w-3">
             {expanded ? "\u25BE" : "\u25B8"}
           </span>
         )}
@@ -137,7 +137,7 @@ export function PhaseExpandable({
 
         {/* Phase label */}
         <span
-          className="text-xs font-bold uppercase tracking-wider shrink-0"
+          className="text-athena-floor font-bold uppercase tracking-wider shrink-0"
           style={{
             color: isPending ? "var(--color-text-tertiary)" : phaseColor,
           }}
@@ -147,7 +147,7 @@ export function PhaseExpandable({
 
         {/* Summary text */}
         {!expanded && (
-          <span className="text-xs text-[var(--color-text-secondary)] truncate min-w-0">
+          <span className="text-athena-floor text-[var(--color-text-secondary)] truncate min-w-0">
             {isPending ? "(pending)" : truncatedSummary}
           </span>
         )}
@@ -167,7 +167,7 @@ export function PhaseExpandable({
             <div className="mt-3">
               <button
                 type="button"
-                className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors flex items-center gap-1 font-mono"
+                className="text-athena-floor text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors flex items-center gap-1 font-mono"
                 onClick={(e) => {
                   e.stopPropagation();
                   setRawExpanded((prev) => !prev);
@@ -182,7 +182,7 @@ export function PhaseExpandable({
               </button>
 
               {rawExpanded && (
-                <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-subtle)] rounded-[var(--radius)] p-3 font-mono text-xs text-[var(--color-text-tertiary)] whitespace-pre-wrap max-h-[400px] overflow-y-auto mt-2">
+                <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-subtle)] rounded-[var(--radius)] p-3 font-mono text-athena-floor text-[var(--color-text-tertiary)] whitespace-pre-wrap max-h-[400px] overflow-y-auto mt-2">
                   {detail.rawSummary}
                 </div>
               )}

@@ -606,3 +606,6 @@ if http_services and settings.MCP_ENABLED:
 ```
 
 新增 helper method `_write_web_facts()` 遵循與 `_write_facts()` 相同的 pattern — parse MCP JSON response、寫入 facts 表、broadcast WebSocket event。
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

@@ -186,3 +186,6 @@ CREATE TABLE IF NOT EXISTS recon_scans (
 - 依賴 ADR：ADR-003（OODA 循環）、ADR-006（執行引擎抽象層）、ADR-008（SQLite Schema）
 - 評估文件：`docs/analysis/recon-pocket-integration-assessment.md`
 - 現有類似實作：`backend/app/services/caldera_client.py`（ExecutionEngineClient 範例）
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

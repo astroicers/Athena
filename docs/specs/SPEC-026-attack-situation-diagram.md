@@ -191,3 +191,6 @@ Monitor 頁面新增：
 ---
 
 _SPEC 由 Claude Opus 4.6 於 2026-03-04 補建，對應 Attack Situation Diagram 實作。_
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

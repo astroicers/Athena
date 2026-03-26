@@ -997,3 +997,6 @@ export interface AttackGraphResponse {
   - Escape.tech MetaGraph — bipartite directed graph + reinforcement learning（權重公式啟發來源）
   - XBOW Attack Path Discovery — deep multi-step attack chain exploration
   - MITRE ATT&CK Enterprise Matrix v15 — technique prerequisites 和 tactic 順序
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

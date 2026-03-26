@@ -42,12 +42,12 @@ export function C5ISRDomainCard({ domain, onClick }: C5ISRDomainCardProps) {
     >
       <div className="flex items-center justify-between w-full">
         <span
-          className="font-mono text-xs font-bold uppercase tracking-wider text-[#ffffff20]"
+          className="font-mono text-athena-floor font-bold uppercase tracking-wider text-[#ffffff20]"
         >
           {domain.domain}
         </span>
         <span
-          className="font-mono text-xs font-bold uppercase tracking-wider rounded-[var(--radius)]"
+          className="font-mono text-athena-floor font-bold uppercase tracking-wider rounded-[var(--radius)]"
           style={{
             color,
             backgroundColor: `${color}15`,
@@ -59,7 +59,7 @@ export function C5ISRDomainCard({ domain, onClick }: C5ISRDomainCardProps) {
       </div>
 
       <span
-        className="font-mono text-lg font-bold"
+        className="font-mono text-athena-heading-section font-bold"
         style={{ color }}
       >
         {pct}%
@@ -69,7 +69,7 @@ export function C5ISRDomainCard({ domain, onClick }: C5ISRDomainCardProps) {
 
       {domain.metricLabel && (
         <span
-          className="font-mono text-xs text-[#ffffff30]"
+          className="font-mono text-athena-floor text-[#ffffff30]"
         >
           {domain.numerator != null && domain.denominator != null
             ? `${domain.numerator}/${domain.denominator} `

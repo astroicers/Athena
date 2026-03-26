@@ -61,7 +61,7 @@ export function SlidePanel({ open, onClose, title, width = "md", children }: Sli
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)] shrink-0">
-          <h2 className="text-xs font-mono text-athena-text-tertiary uppercase tracking-wider font-bold">
+          <h2 className="text-athena-floor font-mono text-athena-text-tertiary uppercase tracking-wider font-bold">
             {title}
           </h2>
           <button

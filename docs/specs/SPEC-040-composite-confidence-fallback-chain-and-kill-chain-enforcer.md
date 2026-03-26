@@ -951,3 +951,6 @@ def test_is_terminal_error():
   - `backend/app/services/kill_chain_enforcer.py` — 本 SPEC 新增模組
   - `backend/app/ws_manager.py` — `WebSocketManager.broadcast()` 介面
   - `backend/app/database.py` — `technique_executions` 表 schema（第 111 行）、`attack_graph_nodes` 表
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

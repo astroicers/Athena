@@ -86,7 +86,7 @@ function ShellInner({ children }: { children: ReactNode }) {
                   <path d="M6 12.5a2 2 0 0 0 4 0" />
                 </svg>
                 {alertCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-athena-error-bg rounded-full text-xs font-mono font-bold text-white flex items-center justify-center">
+                  <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-athena-error-bg rounded-full text-athena-floor font-mono font-bold text-white flex items-center justify-center">
                     {alertCount > 9 ? "9+" : alertCount}
                   </span>
                 )}

@@ -96,8 +96,8 @@ describe("Operations Page", () => {
     });
 
     expect(screen.getByText("SHADOW FALCON")).toBeInTheDocument();
-    expect(screen.getByText("active")).toBeInTheDocument();
-    expect(screen.getByText("planning")).toBeInTheDocument();
+    expect(screen.getAllByText("active").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("planning").length).toBeGreaterThanOrEqual(1);
     expect(mockApi.get).toHaveBeenCalledWith("/operations");
   });
 

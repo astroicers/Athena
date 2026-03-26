@@ -80,3 +80,6 @@
 - ADR-011：部署架構
 - docs/ROADMAP.md Phase 7.2~7.4
 - CLAUDE.md 授權邊界段落
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

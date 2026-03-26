@@ -1,0 +1,32 @@
+# Handoff Template: ESCALATION
+# When: Any agent → Orchestrator/Human, with severity classification
+# Replaces: PAUSE_AND_REPORT() → structured escalation with P0-P3
+
+handoff_type: ESCALATION
+task_id: "TASK-{NNN}"
+timestamp: "YYYY-MM-DDTHH:MM:SSZ"
+from_agent:
+  role: "{agent_role_id}"
+severity: "P0"                  # P0 | P1 | P2 | P3
+
+# === Severity guide ===
+# P0: Security vulnerability, data loss, production down → pause ALL tracks
+# P1: auto_fix + reassign exhausted, unresolvable parallel conflict → pause current track
+# P2: Single module QA fail 3x, scope exceeded, unexpected dependency → reassign
+# P3: Tech debt accumulation, doc staleness → backlog
+
+reason: ""
+attempted_fixes:
+  - description: ""
+    result: ""
+
+# === Full context snapshot (NO summarization) ===
+context_snapshot:
+  test_output: |
+    # Full test output
+  files_affected: []
+  current_state: |
+    # Description of current codebase state
+  spec_reference: ""            # SPEC-NNN
+
+escalation_target: "{role_id|human}"

@@ -55,18 +55,18 @@ export function TacticToolSection({
       >
         <div className="flex items-center gap-2">
           <span
-            className={`text-sm font-mono transition-transform ${isOpen ? "rotate-90" : ""}`}
+            className={`text-athena-body font-mono transition-transform ${isOpen ? "rotate-90" : ""}`}
           >
             ▶
           </span>
-          <span className="text-xs font-mono font-bold text-athena-text-light uppercase">
+          <span className="text-athena-floor font-mono font-bold text-athena-text-light uppercase">
             {tacticLabel}
           </span>
-          <span className="text-sm font-mono text-athena-accent px-1.5 py-0.5 bg-athena-accent/10 rounded-full">
+          <span className="text-athena-body font-mono text-athena-accent px-1.5 py-0.5 bg-athena-accent/10 rounded-full">
             {tacticId}
           </span>
         </div>
-        <span className="text-sm font-mono text-athena-text-tertiary">
+        <span className="text-athena-body font-mono text-athena-text-tertiary">
           {tools.length} {t("toolCount")}
         </span>
       </button>

@@ -180,3 +180,6 @@
 - 資料架構：[data-architecture.md](../architecture/data-architecture.md) Section 7（UI-to-Data Traceability）
 - 設計稿：`athena-c5isr-board.pen`、`athena-mitre-navigator.pen`、`athena-mission-planner.pen`、`athena-battle-monitor.pen`
 - SPEC-005：前端基礎（依賴——型別、佈局、hooks、atoms）
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

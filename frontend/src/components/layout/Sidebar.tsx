@@ -23,8 +23,8 @@ export function Sidebar() {
     <aside className="w-[200px] h-full bg-athena-surface border-r border-[var(--color-border)] flex flex-col shrink-0">
       {/* Logo */}
       <div className="pt-4 pb-3 px-3 flex items-center gap-2">
-        <span className="w-7 h-7 flex items-center justify-center text-sm font-sans font-bold text-athena-text bg-athena-accent rounded-[var(--radius)]">A</span>
-        <span className="text-xs font-mono font-bold text-athena-text tracking-wider">ATHENA</span>
+        <span className="w-7 h-7 flex items-center justify-center text-athena-body font-sans font-bold text-athena-text bg-athena-accent rounded-[var(--radius)]">A</span>
+        <span className="text-athena-floor font-mono font-bold text-athena-text tracking-wider">ATHENA</span>
       </div>
 
       {/* Separator */}

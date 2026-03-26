@@ -1,0 +1,109 @@
+# Team Compositions — Scenario-based agent selection
+# Used by: recommend_team() in task_orchestrator.md
+# Referenced by: multi_agent_dispatch() in multi_agent.md
+
+scenarios:
+  NEW_FEATURE_simple:
+    description: "No architecture impact, <5 files, assess_architecture_impact() returns requires_adr: false"
+    agents: [spec, tdd, impl, qa, doc]
+    pipeline_phases: [PLAN, FOUNDATION, BUILD, HARDEN, DELIVER]
+    parallel: false
+
+  NEW_FEATURE_complex:
+    description: "Architecture impact, >15 files, requires_adr: true"
+    agents: [arch, spec, dep-analyst, tdd, impl, integ, qa, sec, reality, doc]
+    pipeline_phases: [SPECIFY, PLAN, FOUNDATION, BUILD, HARDEN, DELIVER]
+    parallel: true
+    parallel_strategy: "Split by module boundary from dep-analyst"
+
+  BUGFIX_trivial:
+    description: "severity == TRIVIAL (task_orchestrator classify_bug_severity)"
+    agents: [impl, qa]
+    pipeline_phases: [BUILD, HARDEN]
+    parallel: false
+
+  BUGFIX_non_trivial:
+    description: "severity >= NON_TRIVIAL, requires SPEC + reproduction test"
+    agents: [spec, tdd, impl, qa, doc]
+    pipeline_phases: [PLAN, FOUNDATION, BUILD, HARDEN, DELIVER]
+    parallel: false
+
+  BUGFIX_hotfix:
+    description: "request.is_production_incident — fast-track path"
+    agents: [impl, qa, sec, doc]
+    pipeline_phases: [BUILD, HARDEN, DELIVER]
+    parallel: false
+    auto_escalation: P0
+
+  MODIFICATION_L1_L2:
+    description: "determine_change_level() returns L1 (detail change) or L2 (SPEC override)"
+    agents: [spec, tdd, impl, qa, doc]
+    pipeline_phases: [PLAN, FOUNDATION, BUILD, HARDEN, DELIVER]
+    parallel: false
+
+  MODIFICATION_L3_L4:
+    description: "L3: ADR override, L4: direction pivot — requires full pipeline"
+    agents: [arch, spec, dep-analyst, tdd, impl, integ, qa, sec, reality, doc]
+    pipeline_phases: [SPECIFY, PLAN, FOUNDATION, BUILD, HARDEN, DELIVER]
+    parallel: true
+    parallel_strategy: "Old system + new system dual tracks"
+
+  REMOVAL:
+    description: "execute_removal() full dependency analysis flow"
+    agents: [dep-analyst, impl, qa, reality, doc]
+    pipeline_phases: [PLAN, BUILD, HARDEN, DELIVER]
+    parallel: false
+    note: "Dependency cleanup order matters — cannot parallelize"
+
+  GENERAL:
+    description: "Decomposed by decompose() — each sub-task matches its own scenario"
+    agents: []                    # Dynamic: determined per sub-task after decompose()
+    pipeline_phases: []           # Dynamic: determined per sub-task scenario
+    parallel: null                # Dynamic: determined by dependency graph
+    dynamic: true                 # Flag: this scenario is resolved at runtime
+
+# Dynamic adjustments during execution
+dynamic_adjustments:
+  auto_fix_exhausted:
+    action: "add sec"
+    reason: "May be security-related root cause"
+  scope_exceeded:
+    action: "add arch"
+    reason: "Needs architecture re-evaluation"
+  security_finding:
+    action: "add sec if absent"
+    reason: "Security concern discovered"
+  parallel_conflict:
+    action: "add integ"
+    reason: "Track convergence needed"
+  context_budget_high:
+    action: "checkpoint and prepare SESSION_BRIDGE"
+    reason: "Context usage >60%"
+
+# 領域驅動的角色追加（v3.1）
+# Used by: detect_bug_domain() in task_orchestrator.md
+# When a bug's root-cause domain is detected, these rules add specialized agents
+domain_adjustments:
+  auth:
+    add_agents: [sec]
+    reason: "Security-adjacent — auth 問題需要安全審查"
+  concurrency:
+    add_agents: [dep-analyst]
+    reason: "Parallel state — 需要跨模組影響分析"
+  api_contract:
+    add_agents: [sec, dep-analyst]
+    reason: "介面合約 — 需要攻擊面分析 + 下游影響評估"
+  data_integrity:
+    add_agents: []
+    force_full_test: true
+    reason: "資料層 — 必須全量測試，不能 test-filter"
+  state_machine:
+    add_agents: []
+    force_state_scan: true
+    reason: "狀態機 — 強制 scan_state_dependencies()"
+  boundary:
+    add_agents: []
+    reason: "邊界條件 — 擴大 grep 到同模組所有比較運算"
+  null_safety:
+    add_agents: []
+    reason: "空指標 — 掃描同模組所有未檢查的 nullable 存取"

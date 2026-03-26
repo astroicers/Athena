@@ -50,13 +50,13 @@ export function TargetPivotMarker({
           <circle cx="6" cy="8" r="0.5" fill="var(--color-warning)" />
         </svg>
 
-        <span className="text-xs font-bold text-athena-warning">
+        <span className="text-athena-floor font-bold text-athena-warning">
           TARGET PIVOT: {fromTarget} -&gt; {toTarget}
         </span>
       </div>
 
       {reason && (
-        <p className="text-xs text-athena-text-tertiary mt-1 ml-[18px]">
+        <p className="text-athena-floor text-athena-text-tertiary mt-1 ml-[18px]">
           {reason}
         </p>
       )}

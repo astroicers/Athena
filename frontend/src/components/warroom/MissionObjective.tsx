@@ -87,7 +87,7 @@ export function MissionObjective({
           />
         </svg>
 
-        <span className="text-sm font-bold text-athena-text-light">
+        <span className="text-athena-body font-bold text-athena-text-light">
           {t("objective", { name: objective })}
         </span>
       </div>
@@ -102,10 +102,10 @@ export function MissionObjective({
         </div>
 
         <div className="flex items-center justify-between">
-          <span className="text-xs text-athena-text-tertiary athena-tabular-nums">
+          <span className="text-athena-floor text-athena-text-tertiary athena-tabular-nums">
             {t("targetsProgress", { current: targetsCompromised, total: targetsTotal })}
           </span>
-          <span className="text-xs text-athena-accent font-bold athena-tabular-nums">
+          <span className="text-athena-floor text-athena-accent font-bold athena-tabular-nums">
             {pct}%
           </span>
         </div>

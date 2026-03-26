@@ -639,3 +639,6 @@ async def reload_technique_rules():
   - [MITRE ATT&CK Enterprise Matrix](https://attack.mitre.org/matrices/enterprise/)
   - SPEC-031（攻擊圖規格書）
   - SPEC-037（OODA Access Recovery — 參考 `credential.ssh.invalidated` fact 排除邏輯）
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

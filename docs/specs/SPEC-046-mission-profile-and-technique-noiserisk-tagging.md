@@ -98,3 +98,6 @@
 
 - ADR-039: Mission Profile 任務類型與 Technique Noise/Risk 標記制
 - Plan: `/home/ubuntu/.claude/plans/logical-munching-finch.md` Phase 1
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

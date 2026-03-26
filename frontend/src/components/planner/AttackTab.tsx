@@ -74,7 +74,7 @@ export function AttackTab({
     <div className="flex-1 space-y-5 min-h-0 overflow-y-auto p-5 px-6">
       {/* Attack Path Timeline */}
       <AttackPathTimeline data={attackPath} loading={false} />
-      <p className="text-xs font-mono text-[var(--color-text-tertiary)] -mt-2 ml-0.5">{tHints("attackPath")}</p>
+      <p className="text-athena-floor font-mono text-[var(--color-text-tertiary)] -mt-2 ml-0.5">{tHints("attackPath")}</p>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
         {/* ATT&CK Matrix */}
@@ -86,7 +86,7 @@ export function AttackTab({
                 variant="secondary"
                 size="sm"
                 onClick={() => onSetCompact(!compact)}
-                className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-accent)]"
+                className="text-athena-floor text-[var(--color-text-tertiary)] hover:text-[var(--color-accent)]"
               >
                 {compact ? t("expandView") : t("compactView")}
               </Button>
@@ -94,12 +94,12 @@ export function AttackTab({
           >
             {t("mitreMatrix")}
           </SectionHeader>
-          <p className="text-xs font-mono text-[var(--color-text-tertiary)] -mt-1 mb-1.5 ml-0.5">{tHints("mitreMatrix")}</p>
+          <p className="text-athena-floor font-mono text-[var(--color-text-tertiary)] -mt-1 mb-1.5 ml-0.5">{tHints("mitreMatrix")}</p>
           <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-[var(--radius)] p-2.5 overflow-x-auto">
             <div className="flex gap-1.5 min-w-max">
               {orderedTactics.map((tactic) => (
                 <div key={tactic} className={`${compact ? "w-20" : "w-28"} shrink-0`}>
-                  <div className="text-xs font-mono text-[var(--color-accent)] font-bold uppercase mb-1.5 truncate tracking-wider">
+                  <div className="text-athena-floor font-mono text-[var(--color-accent)] font-bold uppercase mb-1.5 truncate tracking-wider">
                     {tacticLabel(tactic)}
                   </div>
                   <div className="space-y-1">
@@ -131,7 +131,7 @@ export function AttackTab({
             />
           ) : (
             <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-[var(--radius)] p-3">
-              <span className="text-xs font-mono text-[var(--color-text-tertiary)]">
+              <span className="text-athena-floor font-mono text-[var(--color-text-tertiary)]">
                 {tEmpty("navigatorNoSelection")}
               </span>
             </div>

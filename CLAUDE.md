@@ -7,10 +7,10 @@
 ## 專案概覽
 
 <!-- ASP-AUTO-PROJECT-DESCRIPTION: START -->
-> 此區塊由 autopilot 自動產生（`make autopilot-validate` 或 autopilot 啟動時），請勿手動編輯。
-> 若需更新，修改 ROADMAP.yaml 後重新執行 `make autopilot-validate`。
-
-（尚未產生 — 執行 `make autopilot-validate` 或啟動 autopilot 時會自動填入）
+> **AI-SOP-Protocol (ASP)** — 軟體開發流程治理框架。
+> 把開發文化（ADR 先於實作、測試先於代碼、部署必須確認）寫成機器可讀的約束，讓 AI 自動遵守。
+> 20 個 Profile 分層載入、10 個 Claude Code 原生 Skill、7 維度健康審計、Autopilot 持續執行。
+> 詳見 README.md。
 <!-- ASP-AUTO-PROJECT-DESCRIPTION: END -->
 
 ---
@@ -48,12 +48,21 @@ FUNCTION validate_profile_config(ai_profile):
   IF loaded.design == "enabled" AND "frontend_quality" NOT IN loaded.profiles:
     AUTO_LOAD("frontend_quality.md")
     LOG("design: enabled → 自動載入 frontend_quality.md")
+
+  // ─── mode: auto 支援 ───
+  IF loaded.mode == "auto":
+    LOG("mode: auto — multi-agent profiles 將按需動態載入")
+
+  // ─── multi-agent 依賴保證 ───
+  IF "multi_agent" IN loaded.profiles AND "task_orchestrator" NOT IN loaded.profiles:
+    AUTO_LOAD("task_orchestrator.md")
+    LOG("mode: multi-agent → 自動載入 task_orchestrator.md")
 ```
 
 ```yaml
 # .ai_profile 完整欄位參考
 type:         system | content | architecture   # 必填
-mode:         single | multi-agent | committee  # 預設 single
+mode:         auto | single | multi-agent | committee  # 預設 auto（AI 自動判斷是否並行）
 workflow:     standard | vibe-coding            # 預設 standard
 rag:          enabled | disabled               # 預設 disabled
 guardrail:    enabled | disabled               # 預設 disabled
@@ -75,7 +84,8 @@ name:         your-project-name
 | `type: system` | `.asp/profiles/global_core.md` + `.asp/profiles/system_dev.md` |
 | `type: content` | `.asp/profiles/global_core.md` + `.asp/profiles/content_creative.md` |
 | `type: architecture` | `.asp/profiles/global_core.md` + `.asp/profiles/system_dev.md` |
-| `mode: multi-agent` | + `.asp/profiles/multi_agent.md` |
+| `mode: auto`（預設） | 不預載 multi-agent profiles，由 `auto_select_mode()` 動態判斷 |
+| `mode: multi-agent` | + `.asp/profiles/multi_agent.md` + `.asp/profiles/task_orchestrator.md`（自動）+ `.asp/profiles/pipeline.md` + `.asp/profiles/escalation.md` |
 | `mode: committee` | + `.asp/profiles/committee.md` |
 | `workflow: vibe-coding` | + `.asp/profiles/vibe_coding.md` |
 | `rag: enabled` | + `.asp/profiles/rag_context.md` |
@@ -89,6 +99,7 @@ name:         your-project-name
 | `design: enabled`（自動） | + `.asp/profiles/frontend_quality.md` |
 | `workflow: vibe-coding` + `hitl: minimal` | + `.asp/profiles/autonomous_dev.md` |
 | `autopilot: enabled` | + `.asp/profiles/autopilot.md` + `autonomous_dev.md` + `task_orchestrator.md`（自動） |
+| `mode: multi-agent` + `autonomous: enabled` | + 上述 + `.asp/profiles/reality_checker.md` + `.asp/profiles/dev_qa_loop.md` + `.asp/profiles/agent_memory.md` |
 
 ---
 
@@ -114,6 +125,8 @@ name:         your-project-name
 | 文件同步更新 | 緊急修復可延後，但同一 session 結束前必須補齊文件 |
 | Bug 修復後 grep 全專案 | 所有 Bug 修復後一律 grep，無豁免 |
 | Makefile 優先 | 緊急修復或 make 目標不存在時，可直接執行原生指令，需說明理由 |
+| Gherkin 場景先於測試 | 非 trivial 功能必須先寫測試矩陣 + Gherkin 場景，再寫測試代碼 | trivial（單行/typo/配置）或 config-only 可豁免，需標記 `tech-debt: scenario-pending` |
+| 使用者面向功能須定義可觀測性 | API / 資料處理 / 排程任務必須填寫 Observability 欄位 | 純 UI 或 config 變更可標注 N/A |
 
 ---
 
@@ -166,6 +179,13 @@ name:         your-project-name
 | 建立 SDS | `make sds-new` |
 | 建立 UI/UX Spec | `make uiux-spec-new` |
 | 建立 Deploy Spec | `make deploy-spec-new` |
+| Agent 交接單清單 | `make agent-handoff-list` |
+| Agent 交接單檢視 | `make agent-handoff-view ID=...` |
+| Agent 並行軌道 | `make agent-tracks` |
+| Agent 升級歷史 | `make agent-escalation-log` |
+| Agent 記憶 | `make agent-memory-show` |
+| Agent 記憶修剪 | `make agent-memory-prune AGE=90` |
+| Agent 團隊推薦 | `make agent-team-recommend TYPE=... COMPLEXITY=...` |
 
 > 以上為常用指令，完整列表請執行 `make help`
 

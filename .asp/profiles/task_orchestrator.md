@@ -35,6 +35,14 @@ FUNCTION on_task_received(request):
   PRESENT("  理由：{classification_reason}")
   AWAIT human_confirm  // 即使 hitl: minimal 也確認，錯誤分類代價太高
 
+  // ─── Step 1.5: 團隊推薦（v3.0）───
+  IF mode == "multi-agent":
+    team = recommend_team(task_type, request)
+    PRESENT("建議團隊：{team.agents}（場景：{team.scenario}）")
+    PRESENT("管線階段：{team.pipeline_phases}")
+    IF team.parallel:
+      PRESENT("並行策略：{team.parallel_strategy}")
+
   // ─── Step 2: 路由執行 ───
   MATCH task_type:
     NEW_FEATURE  → execute_new_feature(request)
@@ -87,6 +95,21 @@ FUNCTION project_health_audit():
       // 其他模組 → WARNING
       severity = is_core_module(file) ? BLOCKER : WARNING
       report.add(severity, "無測試覆蓋：{file}")
+
+  // ─── 1c. E2E 測試審計（全端專案專用）───
+  IF exists("frontend/") AND (exists("backend/") OR exists("api/") OR exists("server/")):
+    IF NOT exists("playwright.config.ts") AND NOT exists("playwright.config.js") AND NOT exists("frontend/playwright.config.ts") AND NOT exists("frontend/playwright.config.js"):
+      report.add(BLOCKER, "全端專案缺少 Playwright 設定（playwright.config.ts）")
+    ELSE:
+      e2e_dir = find_e2e_directory()  // e2e/, tests/e2e/, frontend/e2e/ 等
+      IF NOT e2e_dir:
+        report.add(BLOCKER, "全端專案缺少 E2E 測試目錄")
+      ELSE:
+        e2e_count = count_files_matching(e2e_dir, "*.spec.ts", "*.e2e.ts", "*.test.ts")
+        IF e2e_count == 0:
+          report.add(BLOCKER, "E2E 測試目錄存在但無測試檔案")
+        ELIF e2e_count < 3:
+          report.add(WARNING, "E2E 測試僅 {e2e_count} 個（建議 ≥ 3，至少覆蓋：導航、核心 CRUD、錯誤處理）")
 
   // ─── 2. SPEC 覆蓋 ───
   specs = list_specs()  // make spec-list
@@ -197,7 +220,11 @@ FUNCTION remediate_gaps(health_report):
   "adr_count": 5,
   "blockers": 2,
   "warnings": 8,
-  "info": 3
+  "info": 3,
+  "lint_warning_count": 0,
+  "todo_fixme_count": 0,
+  "side_effects_unverified": 0,
+  "rollback_untested_count": 0
 }
 ```
 
@@ -330,8 +357,22 @@ FUNCTION execute_new_feature(request):
   // Phase 4: 變更影響評估
   CALL assess_change_impact(spec)  // from system_dev.md
 
-  // Phase 5: TDD
-  WRITE test_files  // 所有測試應 FAIL
+  // Phase 5: TDD（v3.2 場景驅動）
+  IF spec.has_scenarios:
+    // 5a: 從 Gherkin 場景產生測試骨架
+    test_skeleton = generate_test_skeleton(spec.scenarios, spec.test_matrix)
+    WRITE test_skeleton TO spec.test_file
+
+    // 5b: 填入 assertion（從 Then 子句推導）
+    FOR scenario IN spec.scenarios:
+      FILL test_case(scenario) WITH assertions FROM scenario.then_clauses
+
+    // 5c: 驗證三方覆蓋（矩陣行 ↔ 場景 ↔ 測試）
+    verify_scenario_coverage(spec.test_matrix, spec.scenarios, test_files)
+  ELSE:
+    // fallback: 原有行為（從 Done When 推測測試）
+    WRITE test_files
+
   EXECUTE("make test-filter FILTER={spec.filter}")  // 確認 FAIL
 
   // Phase 6: 實作
@@ -370,6 +411,28 @@ FUNCTION execute_bugfix(request):
   // Phase 2: 嚴重度判斷
   severity = assess_severity(request)
 
+  // Phase 2.5: 根因領域偵測（v3.1）
+  domain_info = detect_bug_domain(request, severity)
+  PRESENT("根因領域：[{domain_info.domain}]")
+  IF domain_info.add_agents:
+    PRESENT("  領域追加角色：{domain_info.add_agents}")
+
+  // Phase 2.7: 主動記憶檢查（v3.1）
+  IF exists(".asp-agent-memory.yaml"):
+    proactive = proactive_memory_check("BUGFIX", domain_info.domain, request.module)
+    IF proactive.warnings:
+      PRESENT("📚 Agent Memory 歷史資訊：")
+      FOR w IN proactive.warnings:
+        PRESENT("  " + w)
+    IF proactive.suggested_strategy:
+      PRESENT("💡 建議策略：{proactive.suggested_strategy.strategy}（成功率 {proactive.suggested_strategy.success_rate}%）")
+    IF proactive.additional_agents:
+      domain_info.add_agents = domain_info.add_agents + proactive.additional_agents
+    IF proactive.pre_scan_targets:
+      PRESENT("🔍 修復前預掃描：")
+      FOR target IN proactive.pre_scan_targets:
+        EXECUTE("grep -rn \"{target.pattern}\" {target.module} --include=\"*.{ext}\"")
+
   IF severity == TRIVIAL:
     // 快速路徑
     LOG("trivial bug，豁免 SPEC，理由：{reason}")
@@ -390,6 +453,34 @@ FUNCTION execute_bugfix(request):
     Goal: "修復 {symptom}，根因：{root_cause_hypothesis}"
     Done When: 含重現測試條件
 
+  // Phase 4.5: Bug 場景矩陣（v3.2）
+  IF severity != TRIVIAL:
+    FILL spec.test_matrix:
+      P1: "修復後的正確行為"
+      N1: "原始 bug 的重現條件（reproduction test）"
+
+    // 根據根因領域追加典型負向案例
+    IF domain_info AND domain_info.domain != "general":
+      MATCH domain_info.domain:
+        "auth":         ADD N_cases: ["未授權存取", "token 過期", "權限不足"]
+        "null_safety":  ADD N_cases: ["null 輸入", "空字串", "undefined"]
+        "boundary":     ADD N_cases: ["最大值", "最小值", "零值"]
+        "api_contract": ADD N_cases: ["缺少必填欄位", "錯誤型別", "超出長度"]
+        "concurrency":  ADD N_cases: ["並發寫入", "讀寫競爭"]
+        "data_integrity": ADD N_cases: ["重複資料", "外鍵違反", "schema 不符"]
+        "state_machine":  ADD N_cases: ["非法狀態轉換", "並發狀態更新"]
+
+    FILL spec.scenarios FROM spec.test_matrix  // 自動產生 Gherkin 場景骨架
+
+  // Phase 4.7: 回歸基線捕獲（v3.3）
+  regression_baseline = EXECUTE("make test")
+  regression_baseline.snapshot = {
+    total_tests: regression_baseline.total,
+    passed: regression_baseline.passed,
+    failed: regression_baseline.failed,
+    test_names: regression_baseline.test_list
+  }
+
   // Phase 5: 重現（Reproduce）
   WRITE reproduction_test  // 必須 FAIL
   VERIFY reproduction_test FAILS
@@ -405,9 +496,26 @@ FUNCTION execute_bugfix(request):
       PAUSE("auto_fix_loop 防護觸發：{result.guard_type}，需人類介入")
   ELSE:
     EXECUTE("make test")
+  // 資料層 bug 強制全量測試（v3.1）
+  IF domain_info.force_full_test AND test_was_filtered:
+    EXECUTE("make test")  // 全量，覆蓋之前的 test-filter
+
+  // Phase 7.5: 回歸比對（v3.3）
+  post_result = EXECUTE("make test")
+  regression_check = compare_test_results(regression_baseline.snapshot, post_result)
+  IF regression_check.newly_failing:
+    WARN("🔴 回歸偵測：{LEN(regression_check.newly_failing)} 個之前通過的測試現在失敗")
+    FOR test IN regression_check.newly_failing:
+      WARN("  - {test.name}（PASS → FAIL）")
+    PAUSE("回歸偵測觸發，請修復後重新驗證")
+  IF regression_check.disappeared_tests:
+    WARN("⚠️ {LEN(regression_check.disappeared_tests)} 個測試消失（可能被誤刪）")
 
   // Phase 8: 全專案掃描（mandatory — global_core.md 鐵則）
   CALL grep_full_project(bug_pattern)
+  // Phase 8.5: 領域增強掃描（v3.1）
+  IF domain_info.grep_hint:
+    LOG("領域增強掃描：{domain_info.grep_hint}")
   // 回覆格式：「已掃描全專案，共 N 處相同模式，已全部修復」或「無其他相同模式」
   IF bug_type == STATE_DEPENDENCY:
     CALL scan_state_dependencies()
@@ -466,9 +574,52 @@ FUNCTION execute_modification(request):
       PRESENT full_impact_assessment
       AWAIT human_direction
 
+  // Phase 4.5: 場景同步驗證（v3.2）
+  IF existing_spec AND existing_spec.has_scenarios:
+    stale_scenarios = []
+    FOR scenario IN existing_spec.scenarios:
+      // 檢查場景是否與新行為矛盾
+      IF scenario_conflicts_with(scenario, request):
+        stale_scenarios.append(scenario)
+
+    IF stale_scenarios:
+      PRESENT("⚠️ 以下場景與新行為矛盾，自動更新：")
+      FOR s IN stale_scenarios:
+        PRESENT("  - {s.id}: {s.name}")
+      // AI 自動更新場景——不需要人類手動維護
+      FOR s IN stale_scenarios:
+        UPDATE_SCENARIO(s, request.new_behavior)
+
+    // 檢查是否需要新增場景（新行為可能帶來新的正/負向案例）
+    new_behaviors = extract_new_behaviors(request, existing_spec)
+    IF new_behaviors:
+      PRESENT("📝 新行為需要新增場景：")
+      FOR behavior IN new_behaviors:
+        new_scenario = GENERATE_SCENARIO(behavior)
+        existing_spec.scenarios.append(new_scenario)
+        PRESENT("  + {new_scenario.id}: {new_scenario.name}")
+
+    // 更新測試矩陣（新增/修改/刪除行）
+    sync_test_matrix(existing_spec.test_matrix, existing_spec.scenarios)
+
+  // L2 的新 SPEC 自帶場景（在 Phase 4 建立時已要求）
+  // L3/L4 的場景由新 ADR/SPEC 流程處理
+
+  // Phase 4.7: 回歸基線捕獲（v3.3）
+  regression_baseline = EXECUTE("make test")
+  regression_baseline.snapshot = {
+    total_tests: regression_baseline.total,
+    passed: regression_baseline.passed,
+    failed: regression_baseline.failed,
+    test_names: regression_baseline.test_list
+  }
+
   // Phase 5: 更新測試
   IDENTIFY affected_tests
   UPDATE or ADD tests to reflect new behavior
+  // 如果場景已更新，從新場景重新產生測試骨架
+  IF existing_spec AND existing_spec.has_scenarios AND stale_scenarios:
+    regenerate_test_skeleton(existing_spec.scenarios, existing_spec.test_matrix, affected_tests)
   EXECUTE("make test-filter FILTER={spec.filter}")
 
   // Phase 6: 實作
@@ -482,6 +633,17 @@ FUNCTION execute_modification(request):
   ELSE:
     EXECUTE("make test")
   CALL verify_stable_state(spec)
+
+  // Phase 7.5: 回歸比對（v3.3）
+  post_result = EXECUTE("make test")
+  regression_check = compare_test_results(regression_baseline.snapshot, post_result)
+  IF regression_check.newly_failing:
+    WARN("🔴 回歸偵測：{LEN(regression_check.newly_failing)} 個之前通過的測試現在失敗")
+    FOR test IN regression_check.newly_failing:
+      WARN("  - {test.name}（PASS → FAIL）")
+    PAUSE("回歸偵測觸發，請修復後重新驗證")
+  IF regression_check.disappeared_tests:
+    WARN("⚠️ {LEN(regression_check.disappeared_tests)} 個測試消失（可能被誤刪）")
 
   // Phase 8: 文件管線
   CALL documentation_pipeline(spec, task_type=MODIFICATION)
@@ -742,6 +904,10 @@ FUNCTION multi_agent_dispatch(sub_tasks):
       done_when: sub_task.spec.done_when
     }
 
+  // v3.0: 使用團隊組成表分派角色
+  team = recommend_team(sub_task.type, sub_task)
+  manifest.agent_role = select_role_for_subtask(sub_task, team)
+
   // 遵循 multi_agent.md 的分派流程
   CALL orchestrator_dispatch(manifests)
 
@@ -792,31 +958,118 @@ has_implementation_code(adr):
 ### 任務分解函數
 
 ```
-analyze_requirement(request):
+FUNCTION analyze_requirement(request):
   // 將自然語言需求結構化
-  1. 關鍵字提取 → grep 全專案 → 識別涉及的檔案
-  2. 從檔案路徑推導涉及模組
-  3. 分析 import/require 圖 → 識別模組間依賴
-  4. 回傳 {
+  // 1. 關鍵字提取 → grep 全專案 → 識別涉及的檔案
+  // 2. 從檔案路徑推導涉及模組
+  // 3. 分析 import/require 圖 → 識別模組間依賴
+  // 4. 回傳 {
        modules: ["auth", "api"],        // 涉及的模組
        dependencies: [("auth", "api")], // 模組間依賴邊
        estimated_files: 12,             // 預估影響檔案數
        complexity: "medium"             // low: ≤3 files, medium: 4-15, high: >15
      }
 
-decompose(analysis):
+FUNCTION decompose(analysis):
   // 將結構化分析拆解為可獨立執行的子任務
-  規則：
-    - 以模組邊界分割，每個子任務的修改檔案集合不重疊
-    - 有跨模組依賴 → 串行（標記 depends_on）
-    - 無依賴 → 可並行
-  回傳 [{
+  // 規則：
+  //   - 以模組邊界分割，每個子任務的修改檔案集合不重疊
+  //   - 有跨模組依賴 → 串行（標記 depends_on）
+  //   - 無依賴 → 可並行
+  // 回傳 [{
     id: "SUB-1",
     description: "...",
     modules: ["auth"],
     estimated_files: ["src/auth/handler.go", ...],
     depends_on: []  // 或 ["SUB-2"]
   }]
+```
+
+### 根因領域偵測（v3.1）
+
+```
+FUNCTION detect_bug_domain(request, severity):
+
+  signals = {
+    keywords:   extract_keywords(request.description),
+    files:      request.affected_files OR grep_infer_files(request),
+    modules:    infer_modules(signals.files),
+    error_msg:  request.error_message OR ""
+  }
+
+  // ─── 領域規則表（優先序由上往下）───
+  domain_rules = [
+    {
+      domain: "auth",
+      trigger: signals.modules INTERSECT ["auth/", "permission/", "rbac/", "session/", "middleware/auth"]
+               OR signals.keywords INTERSECT ["login", "token", "JWT", "permission", "RBAC", "session",
+                                              "認證", "授權", "登入", "權限"],
+      add_agents: ["sec"],
+      grep_hint: "擴大掃描到所有 auth 相關模組"
+    },
+    {
+      domain: "concurrency",
+      trigger: signals.keywords INTERSECT ["race", "concurrent", "deadlock", "mutex", "lock",
+                                            "atomic", "channel", "goroutine", "竟爭", "死鎖"]
+               OR signals.files MATCH "*cache*|*queue*|*worker*|*pool*",
+      add_agents: ["dep-analyst"],
+      grep_hint: "搜尋所有共享狀態存取點"
+    },
+    {
+      domain: "data_integrity",
+      trigger: signals.keywords INTERSECT ["schema", "migration", "constraint", "FK", "unique",
+                                            "duplicate", "資料", "遷移"]
+               OR signals.modules INTERSECT ["model/", "migration/", "db/", "store/", "repository/"],
+      add_agents: [],
+      grep_hint: "掃描同 schema 的所有 CRUD 操作",
+      force_full_test: true
+    },
+    {
+      domain: "api_contract",
+      trigger: signals.keywords INTERSECT ["API", "response", "status code", "breaking", "contract",
+                                            "endpoint", "schema mismatch"]
+               OR signals.modules INTERSECT ["api/", "handler/", "routes/", "controller/"],
+      add_agents: ["sec", "dep-analyst"],
+      grep_hint: "掃描所有消費該 API 的 client 端"
+    },
+    {
+      domain: "state_machine",
+      trigger: signals.keywords INTERSECT ["state", "transition", "status", "workflow", "FSM",
+                                            "狀態", "流程"]
+               OR signals.error_msg CONTAINS "invalid state|illegal transition",
+      add_agents: [],
+      force_state_scan: true
+    },
+    {
+      domain: "boundary",
+      trigger: signals.keywords INTERSECT ["edge case", "boundary", "overflow", "off-by-one",
+                                            "empty", "max", "min", "zero", "邊界"],
+      add_agents: [],
+      grep_hint: "掃描同模組所有比較運算和邊界檢查"
+    },
+    {
+      domain: "null_safety",
+      trigger: signals.keywords INTERSECT ["null", "nil", "undefined", "NullPointer",
+                                            "TypeError: Cannot read", "空指標"]
+               OR signals.error_msg CONTAINS "nil pointer|null reference|undefined is not",
+      add_agents: [],
+      grep_hint: "掃描同模組所有未檢查的 nullable 存取"
+    }
+  ]
+
+  matched = [r FOR r IN domain_rules IF evaluate_trigger(r.trigger, signals)]
+
+  IF matched:
+    primary = matched[0]
+    RETURN {
+      domain:           primary.domain,
+      add_agents:       primary.add_agents,
+      force_state_scan: primary.force_state_scan OR false,
+      force_full_test:  primary.force_full_test OR false,
+      grep_hint:        primary.grep_hint OR null
+    }
+  ELSE:
+    RETURN { domain: "general", add_agents: [], force_state_scan: false, grep_hint: null }
 ```
 
 ### 工作流判斷函數
@@ -873,6 +1126,237 @@ meets_postmortem_criteria(severity, retry_count):
 | `auto_fix_loop()` | `autonomous_dev.md`（含三重防護） | 自動修復循環（oscillation/cascade/smuggling 偵測） |
 | `design_gate(spec)` | `design_dev.md`「Design Gate」 | 設計規範驗證 |
 | `openapi_gate(spec)` | `openapi.md`「OpenAPI Gate」 | API 規格驗證 |
+| `detect_bug_domain()` | `task_orchestrator.md` Part H | Bug 根因領域偵測，產出 domain + 追加角色建議 |
+
+### 測試骨架產生（v3.2）
+
+```
+FUNCTION generate_test_skeleton(scenarios, test_matrix):
+  // 從 Gherkin 場景產生測試檔案骨架
+  //
+  // 輸出格式（依語言慣例）：
+  //   Go:     func TestS1_ValidLogin(t *testing.T) { ... }
+  //   Python: def test_s1_valid_login(): ...
+  //   TS/JS:  it("S1 - valid login", async () => { ... })
+  //
+  // 規則：
+  //   1. Scenario → test function
+  //   2. Scenario Outline + Examples → parameterized test
+  //   3. 測試分組：Positive / Negative / Boundary（依 test_matrix 類型）
+  //   4. Background → test setup / beforeEach
+  //   5. Given → arrange, When → act, Then → assert
+
+  skeleton = []
+  FOR scenario IN scenarios:
+    test_case = {
+      name: scenario.id + "_" + slugify(scenario.name),
+      group: lookup_matrix_type(scenario.id, test_matrix),
+      setup: scenario.given_clauses,
+      action: scenario.when_clauses,
+      assertions: scenario.then_clauses,
+      is_outline: scenario.has_examples
+    }
+    skeleton.append(test_case)
+
+  RETURN skeleton
+
+
+FUNCTION verify_scenario_coverage(test_matrix, scenarios, test_files):
+  // 驗證矩陣行 ↔ 場景 ↔ 測試三方覆蓋
+  uncovered = []
+  FOR row IN test_matrix:
+    IF row.scenario_ref NOT IN scenarios.ids:
+      uncovered.append("矩陣 {row.id} 無對應場景")
+    IF NOT has_test_for_scenario(row.scenario_ref, test_files):
+      uncovered.append("場景 {row.scenario_ref} 無對應測試")
+
+  IF uncovered:
+    WARN("場景覆蓋不完整：{uncovered}")
+    FOR gap IN uncovered:
+      AUTO_GENERATE missing scenario or test
+```
+
+### 場景同步維護（v3.2）
+
+```
+FUNCTION scenario_conflicts_with(scenario, request):
+  // 判斷既有場景是否與新行為矛盾
+  //
+  // 矛盾信號：
+  //   1. scenario.then_clauses 中的預期結果與 request 的新行為不一致
+  //      例：舊場景 Then status 200，新行為要改為 Then status 201
+  //   2. scenario.when_clauses 中的操作已被移除或重命名
+  //      例：舊場景 When POST /api/v1/login，新行為改為 /api/v2/auth
+  //   3. scenario.given_clauses 中的前置條件已不成立
+  //      例：舊場景 Given admin role exists，新行為移除 admin 角色
+  //
+  // 比對方式：
+  //   - 將 request.description 與 scenario 的 Given/When/Then 逐一比對
+  //   - 如果 request 修改了 scenario 涉及的 API endpoint / 資料欄位 / 狀態值 → 矛盾
+  //   - 如果 request.affected_files 包含 scenario 測試引用的 source file → 可能矛盾（需進一步檢查）
+
+  affected = request.affected_files OR grep_infer_files(request)
+  scenario_refs = extract_code_references(scenario)  // 從 When/Then 中提取 API path、函數名等
+
+  IF any(ref IN affected FOR ref IN scenario_refs):
+    RETURN true  // 場景引用的程式碼被修改 → 場景可能過時
+
+  IF request.changes_api_contract AND scenario.when_clauses REFERENCES request.changed_endpoints:
+    RETURN true
+
+  IF request.changes_response_format AND scenario.then_clauses REFERENCES request.changed_fields:
+    RETURN true
+
+  RETURN false
+
+
+FUNCTION sync_test_matrix(test_matrix, scenarios):
+  // 同步測試矩陣：確保矩陣行與場景 ID 一致
+  //
+  // 1. 移除矩陣中引用已刪除場景的行
+  // 2. 為新場景自動新增矩陣行
+  // 3. 更新矩陣行的「預期結果」欄位（從場景 Then 推導）
+
+  // 移除過時行
+  FOR row IN test_matrix:
+    IF row.scenario_ref NOT IN scenarios.ids:
+      REMOVE row
+      LOG("矩陣行 {row.id} 已移除（場景 {row.scenario_ref} 不存在）")
+
+  // 新增缺失行
+  FOR scenario IN scenarios:
+    IF scenario.id NOT IN test_matrix.scenario_refs:
+      new_row = {
+        id: next_matrix_id(test_matrix, scenario),  // P{N} / N{N} / B{N}
+        type: infer_type_from_scenario(scenario),     // 正向/負向/邊界
+        input: summarize(scenario.given_clauses + scenario.when_clauses),
+        expected: summarize(scenario.then_clauses),
+        scenario_ref: scenario.id
+      }
+      test_matrix.append(new_row)
+      LOG("矩陣新增行 {new_row.id}（對應場景 {scenario.id}）")
+
+
+FUNCTION regenerate_test_skeleton(scenarios, test_matrix, existing_tests):
+  // 當場景更新後，重新產生測試骨架
+  //
+  // 策略：增量更新（不覆蓋已有的測試邏輯）
+  //   - 新場景 → 產生新 test function
+  //   - 修改的場景 → 更新 test function 的 Given/When/Then 註解，保留手寫的 assertion
+  //   - 刪除的場景 → 標記對應 test function 為 DEPRECATED（不自動刪除）
+
+  new_skeleton = generate_test_skeleton(scenarios, test_matrix)
+
+  FOR test_case IN new_skeleton:
+    existing = find_existing_test(test_case.name, existing_tests)
+    IF NOT existing:
+      // 新場景 → 產生新測試
+      APPEND test_case TO test_file
+    ELIF existing.scenario_hash != test_case.scenario_hash:
+      // 場景已更新 → 更新註解，保留 assertion body
+      UPDATE existing.comments WITH test_case.setup, test_case.action, test_case.assertions
+      LOG("更新測試 {test_case.name} 的場景註解（保留 assertion body）")
+
+  // 標記刪除的場景對應測試
+  FOR existing_test IN existing_tests:
+    IF existing_test.scenario_id NOT IN scenarios.ids:
+      MARK existing_test AS DEPRECATED
+      LOG("標記測試 {existing_test.name} 為 DEPRECATED（場景已移除）")
+```
+
+### 回歸比對（v3.3）
+
+```
+FUNCTION compare_test_results(baseline, current):
+  // 比較修改前後的測試結果，偵測回歸和測試消失
+  baseline_set = SET(baseline.test_names)
+  current_set = SET(current.test_names)
+
+  RETURN {
+    newly_failing: [t FOR t IN current.test_list
+                    IF t.name IN baseline_set
+                    AND baseline.status(t.name) == PASS
+                    AND t.status == FAIL],
+    newly_passing: [t FOR t IN current.test_list
+                    IF t.name IN baseline_set
+                    AND baseline.status(t.name) == FAIL
+                    AND t.status == PASS],
+    disappeared_tests: baseline_set - current_set,
+    new_tests: current_set - baseline_set
+  }
+```
+
+---
+
+## Part I: 團隊推薦（v3.0）
+
+```
+FUNCTION recommend_team(task_type, request):
+  // 載入場景表
+  compositions = LOAD(".asp/agents/team_compositions.yaml")
+
+  // 根據 task_type 和複雜度選擇場景
+  MATCH task_type:
+    NEW_FEATURE:
+      impact = assess_architecture_impact(request)
+      IF impact.requires_adr OR LEN(grep_affected_files(request)) > 15:
+        scenario = compositions.scenarios.NEW_FEATURE_complex
+      ELSE:
+        scenario = compositions.scenarios.NEW_FEATURE_simple
+
+    BUGFIX:
+      severity = assess_severity(request)
+      domain_info = detect_bug_domain(request, severity)  // v3.1
+
+      IF request.is_production_incident:
+        scenario = compositions.scenarios.BUGFIX_hotfix
+      ELIF severity == TRIVIAL:
+        scenario = compositions.scenarios.BUGFIX_trivial
+      ELSE:
+        scenario = compositions.scenarios.BUGFIX_non_trivial
+
+      // v3.1: 根據領域追加角色
+      IF domain_info.add_agents:
+        scenario = copy(scenario)
+        scenario.agents = deduplicate(scenario.agents + domain_info.add_agents)
+
+    MODIFICATION:
+      level = determine_change_level(request)
+      IF level IN [L3, L4]:
+        scenario = compositions.scenarios.MODIFICATION_L3_L4
+      ELSE:
+        scenario = compositions.scenarios.MODIFICATION_L1_L2
+
+    REMOVAL:
+      scenario = compositions.scenarios.REMOVAL
+
+    GENERAL:
+      scenario = compositions.scenarios.GENERAL
+
+  RETURN scenario
+```
+
+---
+
+## Part J: 管線整合（v3.0）
+
+> 將 Part D 的 execute_*() 包裝到管線階段中。pipeline.md 定義管線邏輯，本節定義整合點。
+
+```
+FUNCTION execute_with_pipeline(task_type, request, team):
+  // 載入管線（如果 pipeline.md 已載入）
+  IF pipeline_loaded:
+    phases = team.pipeline_phases
+    RETURN execute_pipeline(request, team, phases)  // from pipeline.md
+  ELSE:
+    // fallback: 原有行為（直接呼叫 execute_*）
+    MATCH task_type:
+      NEW_FEATURE:   RETURN execute_new_feature(request)
+      BUGFIX:        RETURN execute_bugfix(request)
+      MODIFICATION:  RETURN execute_modification(request)
+      REMOVAL:       RETURN execute_removal(request)
+      GENERAL:       RETURN execute_general(request)
+```
 
 ---
 

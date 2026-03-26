@@ -1,0 +1,38 @@
+# Handoff Template: TASK_COMPLETE
+# When: Worker → Orchestrator, task finished (pass or fail)
+# Replaces: completed.jsonl 3-field format → full context
+
+handoff_type: TASK_COMPLETE
+task_id: "TASK-{NNN}"
+timestamp: "YYYY-MM-DDTHH:MM:SSZ"
+from_agent:
+  role: "{agent_role_id}"       # e.g., impl, tdd, qa
+  task_manifest: "{manifest_ref}"
+status: "{success|failed|needs_review}"  # Maps to auto_fix_loop returns
+
+# === Context: Full transfer, NO summarization ===
+artifacts:
+  files_modified: []            # git diff --stat full output
+  files_created: []
+  diff_summary: |
+    # Full git diff content
+  test_output: |
+    # Full make test-filter output
+  test_checksums:               # For smuggling detection
+    # "path/to/test_file.go": "sha256:..."
+
+# === On failure (status != success) ===
+failure_context:
+  root_cause_analysis: ""
+  attempted_fixes:
+    - attempt: 1
+      description: ""
+      result: ""                # "oscillation", "cascade", "pass", etc.
+  guard_triggered: null         # null | oscillation | cascade | smuggling
+  remaining_failures: []
+
+# === On success ===
+success_context:
+  spec_done_when_status:
+    - criterion: ""
+      verified: false

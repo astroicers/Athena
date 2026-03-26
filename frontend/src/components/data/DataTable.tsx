@@ -65,20 +65,20 @@ export function DataTable<T extends Record<string, unknown>>({
   if (data.length === 0) {
     return (
       <div className="border border-[var(--color-border)] rounded-[var(--radius)] p-6 text-center">
-        <span className="text-xs font-mono text-[var(--color-text-secondary)]">{emptyMessage}</span>
+        <span className="text-athena-floor font-mono text-[var(--color-text-secondary)]">{emptyMessage}</span>
       </div>
     );
   }
 
   return (
     <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-[var(--radius)] overflow-hidden">
-      <table className="w-full text-xs font-mono">
+      <table className="w-full text-athena-floor font-mono">
         <thead>
           <tr className="border-b border-[var(--color-border)] bg-[var(--color-bg-surface)]">
             {columns.map((col) => (
               <th
                 key={col.key}
-                className={`h-9 px-4 text-left text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)] ${
+                className={`h-9 px-4 text-left text-athena-floor font-bold uppercase tracking-wider text-[var(--color-text-secondary)] ${
                   col.sortable ? "cursor-pointer hover:text-[var(--color-accent)] select-none" : ""
                 }`}
                 style={col.width ? { width: col.width } : undefined}

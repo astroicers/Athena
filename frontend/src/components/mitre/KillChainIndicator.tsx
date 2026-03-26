@@ -51,7 +51,7 @@ export function KillChainIndicator({ stageCounts }: KillChainIndicatorProps) {
       <SectionHeader level="card" className="mb-1">
         {t("progress")}
       </SectionHeader>
-      <p className="text-sm font-mono text-athena-text-tertiary mb-3">{tHints("killChain")}</p>
+      <p className="text-athena-body font-mono text-athena-text-tertiary mb-3">{tHints("killChain")}</p>
       <div className="flex items-end gap-1.5 h-20">
         {STAGES.map((stage) => {
           const data = stageCounts[stage.key] || {
@@ -72,7 +72,7 @@ export function KillChainIndicator({ stageCounts }: KillChainIndicatorProps) {
               key={stage.key}
               className="flex-1 flex flex-col items-center gap-1"
             >
-              <span className="text-sm font-mono text-athena-accent font-bold">
+              <span className="text-athena-body font-mono text-athena-accent font-bold">
                 {data.total > 0 ? `${data.tested}/${data.total}` : ""}
               </span>
               <div
@@ -98,7 +98,7 @@ export function KillChainIndicator({ stageCounts }: KillChainIndicatorProps) {
                   />
                 )}
               </div>
-              <span className="text-sm font-mono text-athena-text-tertiary">
+              <span className="text-athena-body font-mono text-athena-text-tertiary">
                 {t(stage.key as any)}
               </span>
             </div>
@@ -108,19 +108,19 @@ export function KillChainIndicator({ stageCounts }: KillChainIndicatorProps) {
       <div className="flex items-center gap-3 mt-2">
         <div className="flex items-center gap-1">
           <div className="w-2 h-2 rounded-[var(--radius)] bg-athena-accent/70" />
-          <span className="text-sm font-mono text-athena-text-tertiary">
+          <span className="text-athena-body font-mono text-athena-text-tertiary">
             {t("tested")}
           </span>
         </div>
         <div className="flex items-center gap-1">
           <div className="w-2 h-2 rounded-[var(--radius)] bg-athena-error-bg/50" />
-          <span className="text-sm font-mono text-athena-text-tertiary">
+          <span className="text-athena-body font-mono text-athena-text-tertiary">
             {t("failed")}
           </span>
         </div>
         <div className="flex items-center gap-1">
           <div className="w-2 h-2 rounded-[var(--radius)] bg-athena-elevated/40" />
-          <span className="text-sm font-mono text-athena-text-tertiary">
+          <span className="text-athena-body font-mono text-athena-text-tertiary">
             {t("untested")}
           </span>
         </div>

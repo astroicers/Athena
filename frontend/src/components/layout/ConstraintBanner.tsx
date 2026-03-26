@@ -69,7 +69,7 @@ export function ConstraintBanner({
 
   return (
     <div
-      className={`${bgClass} text-white text-xs font-mono px-4 py-1.5 text-center flex items-center justify-center gap-2`}
+      className={`${bgClass} text-white text-athena-floor font-mono px-4 py-1.5 text-center flex items-center justify-center gap-2`}
     >
       <span className="font-bold">CONSTRAINT ACTIVE</span>
       <span>|</span>
@@ -82,7 +82,7 @@ export function ConstraintBanner({
               key={domain}
               onClick={() => handleOverride(domain)}
               disabled={overriding === domain}
-              className="px-1.5 py-0.5 bg-white/20 hover:bg-white/5 rounded-[var(--radius)] text-xs uppercase font-bold tracking-wider transition-colors disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-white/20"
+              className="px-1.5 py-0.5 bg-white/20 hover:bg-white/5 rounded-[var(--radius)] text-athena-floor uppercase font-bold tracking-wider transition-colors disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-white/20"
             >
               {overriding === domain ? "..." : `Override ${domain}`}
             </button>

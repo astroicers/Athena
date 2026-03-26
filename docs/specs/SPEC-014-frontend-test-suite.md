@@ -106,3 +106,6 @@
 - SPEC-006：4 畫面實作（被測對象）
 - SPEC-013：Backend Test Suite（格式參考）
 - ADR-009：前端元件架構（元件分層設計）
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

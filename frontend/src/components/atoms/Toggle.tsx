@@ -32,7 +32,7 @@ export function Toggle({ checked, onChange, label }: ToggleProps) {
         />
       </button>
       {label && (
-        <span className="text-xs font-mono text-athena-text-tertiary">
+        <span className="text-athena-floor font-mono text-athena-text-tertiary">
           {label}
         </span>
       )}

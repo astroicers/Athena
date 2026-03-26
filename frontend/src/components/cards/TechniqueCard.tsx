@@ -53,7 +53,7 @@ export function TechniqueCard({ technique, relatedTools }: TechniqueCardProps) {
   return (
     <div className="bg-athena-surface border border-[var(--color-border)] rounded-[var(--radius)] p-4">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-mono text-athena-accent">
+        <span className="text-athena-floor font-mono text-athena-accent">
           {technique.mitreId}
         </span>
         {technique.latestStatus && (
@@ -62,15 +62,15 @@ export function TechniqueCard({ technique, relatedTools }: TechniqueCardProps) {
           </Badge>
         )}
       </div>
-      <h3 className="text-sm font-mono font-bold text-athena-text-light mb-2">
+      <h3 className="text-athena-body font-mono font-bold text-athena-text-light mb-2">
         {technique.name}
       </h3>
       {technique.description && (
-        <p className="text-xs font-mono text-athena-text-tertiary mb-3 line-clamp-3">
+        <p className="text-athena-floor font-mono text-athena-text-tertiary mb-3 line-clamp-3">
           {technique.description}
         </p>
       )}
-      <div className="flex items-center gap-3 text-sm font-mono text-athena-text-tertiary">
+      <div className="flex items-center gap-3 text-athena-body font-mono text-athena-text-tertiary">
         <span>{t("tactic")} {technique.tactic}</span>
         <Badge variant={RISK_VARIANT[technique.riskLevel] || "info"}>
           {tRisk(technique.riskLevel as any)}
@@ -79,7 +79,7 @@ export function TechniqueCard({ technique, relatedTools }: TechniqueCardProps) {
 
       {relatedTools && relatedTools.length > 0 && (
         <div className="mt-3 pt-3 border-t border-[var(--color-border)]">
-          <span className="text-sm font-mono text-athena-text-tertiary uppercase tracking-wider">
+          <span className="text-athena-body font-mono text-athena-text-tertiary uppercase tracking-wider">
             {t("relatedTools")}
           </span>
           <div className="mt-1.5 space-y-1">
@@ -93,7 +93,7 @@ export function TechniqueCard({ technique, relatedTools }: TechniqueCardProps) {
                   <span
                     className={`w-2.5 h-2.5 rounded-full shrink-0 ${tool.enabled ? "bg-athena-success-bg" : "bg-athena-text-tertiary/40"}`}
                   />
-                  <span className="text-xs font-mono text-athena-text-light truncate group-hover:text-athena-accent transition-colors">
+                  <span className="text-athena-floor font-mono text-athena-text-light truncate group-hover:text-athena-accent transition-colors">
                     {tool.name}
                   </span>
                 </div>

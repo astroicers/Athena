@@ -108,7 +108,7 @@ export function StatusPanel({
       {targets && targets.length > 0 && (
         <>
           <div className="flex flex-col gap-2">
-            <span className="text-xs font-bold tracking-[2px] text-[var(--color-text-secondary)]">
+            <span className="text-athena-floor font-bold tracking-[2px] text-[var(--color-text-secondary)]">
               {t("targets")} ({targets.length})
             </span>
             {targets.map((tgt) => (
@@ -120,13 +120,13 @@ export function StatusPanel({
                       : "bg-[var(--color-text-tertiary)]"
                   }`}
                 />
-                <span className="text-xs font-mono text-[var(--color-text-primary)] flex-1 truncate">
+                <span className="text-athena-floor font-mono text-[var(--color-text-primary)] flex-1 truncate">
                   {tgt.ipAddress}
                 </span>
-                <span className="text-xs font-mono text-[var(--color-text-tertiary)]">
+                <span className="text-athena-floor font-mono text-[var(--color-text-tertiary)]">
                   {tgt.privilegeLevel}
                 </span>
-                <span className="text-xs font-mono text-[var(--color-text-tertiary)]">
+                <span className="text-athena-floor font-mono text-[var(--color-text-tertiary)]">
                   {tgt.iterationCount}x
                 </span>
               </div>
@@ -138,7 +138,7 @@ export function StatusPanel({
 
       {/* Section 1: C5ISR HEALTH */}
       <div className="flex flex-col gap-2">
-        <span className="text-xs text-athena-text-tertiary uppercase tracking-wider font-semibold">
+        <span className="text-athena-floor text-athena-text-tertiary uppercase tracking-wider font-semibold">
           {t("c5isrHealth")}
         </span>
 
@@ -147,7 +147,7 @@ export function StatusPanel({
             const color = healthColor(d.healthPct);
             return (
               <div key={d.id} className="flex items-center gap-2">
-                <span className="text-xs text-athena-text-tertiary w-10 shrink-0 uppercase tracking-wider">
+                <span className="text-athena-floor text-athena-text-tertiary w-10 shrink-0 uppercase tracking-wider">
                   {domainLabel(d.domain)}
                 </span>
                 <div className="flex-1 h-1 rounded-full bg-athena-elevated overflow-hidden">
@@ -160,7 +160,7 @@ export function StatusPanel({
                   />
                 </div>
                 <span
-                  className="text-xs athena-tabular-nums w-8 text-right shrink-0"
+                  className="text-athena-floor athena-tabular-nums w-8 text-right shrink-0"
                   style={{ color }}
                 >
                   {Math.round(d.healthPct)}%
@@ -176,18 +176,18 @@ export function StatusPanel({
 
       {/* Section 2: TACTICAL STATUS */}
       <div className="flex flex-col gap-2">
-        <span className="text-xs text-athena-text-tertiary uppercase tracking-wider font-semibold">
+        <span className="text-athena-floor text-athena-text-tertiary uppercase tracking-wider font-semibold">
           {t("tacticalStatus")}
         </span>
 
         <div className="flex gap-2">
           {/* Noise box */}
           <div className="flex-1 bg-athena-bg rounded-[var(--radius)] p-2 flex flex-col items-center gap-0.5">
-            <span className="text-xs text-athena-text-tertiary uppercase tracking-wider">
+            <span className="text-athena-floor text-athena-text-tertiary uppercase tracking-wider">
               {t("noise")}
             </span>
             <span
-              className="text-lg font-bold athena-tabular-nums"
+              className="text-athena-heading-section font-bold athena-tabular-nums"
               style={{ color: noiseColor(noiseLevel) }}
             >
               {Math.round(noiseLevel)}%
@@ -196,11 +196,11 @@ export function StatusPanel({
 
           {/* Risk box */}
           <div className="flex-1 bg-athena-bg rounded-[var(--radius)] p-2 flex flex-col items-center gap-0.5">
-            <span className="text-xs text-athena-text-tertiary uppercase tracking-wider">
+            <span className="text-athena-floor text-athena-text-tertiary uppercase tracking-wider">
               {t("risk")}
             </span>
             <span
-              className="text-lg font-bold uppercase"
+              className="text-athena-heading-section font-bold uppercase"
               style={{ color: riskColor(riskLevel) }}
             >
               {riskLevel}
@@ -214,7 +214,7 @@ export function StatusPanel({
 
       {/* Section 3: DECISION */}
       <div className="flex flex-col gap-2">
-        <span className="text-xs text-athena-text-tertiary uppercase tracking-wider font-semibold">
+        <span className="text-athena-floor text-athena-text-tertiary uppercase tracking-wider font-semibold">
           {t("decision")}
         </span>
 
@@ -232,7 +232,7 @@ export function StatusPanel({
 
       {/* Section 4: CONFIDENCE */}
       <div className="flex flex-col gap-2">
-        <span className="text-xs text-athena-text-tertiary uppercase tracking-wider font-semibold">
+        <span className="text-athena-floor text-athena-text-tertiary uppercase tracking-wider font-semibold">
           {t("confidence")}
         </span>
 

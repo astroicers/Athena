@@ -201,3 +201,6 @@ queued → running → completed
   - `backend/app/routers/agents.py` — `POST /agents/sync` 202 pattern
   - `frontend/src/lib/api.ts` — AbortController timeout guard
   - `frontend/src/app/planner/page.tsx` — WebSocket event subscriptions
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

@@ -36,7 +36,7 @@ export function MITRECell({ mitreId, name, status, isSelected, onClick, compact 
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left p-1.5 rounded-[var(--radius)] text-sm font-mono transition-all ${colorClass} ${
+      className={`w-full text-left p-1.5 rounded-[var(--radius)] text-athena-body font-mono transition-all ${colorClass} ${
         isSelected ? "ring-1 ring-[var(--color-accent)]" : ""
       } hover:brightness-110 cursor-pointer`}
     >

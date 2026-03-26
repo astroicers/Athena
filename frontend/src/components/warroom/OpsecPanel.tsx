@@ -122,11 +122,11 @@ function MetricCard({
       >
         {value}
       </span>
-      <span className="font-mono text-xs uppercase font-semibold text-athena-text-tertiary tracking-wider">
+      <span className="font-mono text-athena-floor uppercase font-semibold text-athena-text-tertiary tracking-wider">
         {label}
       </span>
       {subLabel && (
-        <span className="font-mono text-xs text-athena-text-tertiary">
+        <span className="font-mono text-athena-floor text-athena-text-tertiary">
           {subLabel}
         </span>
       )}
@@ -225,7 +225,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
   if (loading && !opsec) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-sm font-mono text-athena-text-tertiary">
+        <p className="text-athena-body font-mono text-athena-text-tertiary">
           {t("title")}...
         </p>
       </div>
@@ -236,7 +236,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
   if (error && !opsec) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-sm font-mono text-athena-error">
+        <p className="text-athena-body font-mono text-athena-error">
           {t("errorLoading")}
         </p>
       </div>
@@ -247,7 +247,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
   if (!opsec) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-sm font-mono text-athena-text-tertiary">
+        <p className="text-athena-body font-mono text-athena-text-tertiary">
           {t("noData")}
         </p>
       </div>
@@ -268,7 +268,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
     <section className="flex flex-col gap-4">
       {/* Section label */}
       <h2
-        className="font-mono uppercase text-athena-text-secondary text-xs font-semibold tracking-widest"
+        className="font-mono uppercase text-athena-text-secondary text-athena-floor font-semibold tracking-widest"
       >
         OPERATIONAL SECURITY STATUS
       </h2>
@@ -317,12 +317,12 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
       >
         <div className="flex items-center justify-between">
           <span
-            className="font-mono uppercase font-semibold text-athena-text-light text-xs tracking-wider"
+            className="font-mono uppercase font-semibold text-athena-text-light text-athena-floor tracking-wider"
           >
             NOISE SCORE TREND
           </span>
           <span
-            className="font-mono text-athena-text-secondary text-xs"
+            className="font-mono text-athena-text-secondary text-athena-floor"
           >
             Last 6 hours
           </span>
@@ -344,12 +344,12 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
         {/* Header */}
         <div className="flex items-center gap-2 h-10 px-4">
           <span
-            className="font-mono uppercase font-semibold text-athena-text-light text-xs tracking-wider"
+            className="font-mono uppercase font-semibold text-athena-text-light text-athena-floor tracking-wider"
           >
             OPSEC EVENTS
           </span>
           <span
-            className="font-mono text-xs rounded-[var(--radius)] px-2 py-1 text-athena-error bg-athena-error-bg"
+            className="font-mono text-athena-floor rounded-[var(--radius)] px-2 py-1 text-athena-error bg-athena-error-bg"
           >
             {t("eventCount", { count: events.length })}
           </span>
@@ -358,7 +358,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
         {/* Event list */}
         <div className="flex-1 overflow-y-auto">
           {events.length === 0 ? (
-            <p className="text-xs font-mono py-4 text-center text-athena-text-tertiary">
+            <p className="text-athena-floor font-mono py-4 text-center text-athena-text-tertiary">
               {t("noEvents")}
             </p>
           ) : (
@@ -376,7 +376,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
                 />
                 {/* Timestamp */}
                 <span
-                  className="font-mono text-xs shrink-0 athena-tabular-nums text-athena-text-tertiary"
+                  className="font-mono text-athena-floor shrink-0 athena-tabular-nums text-athena-text-tertiary"
                 >
                   {new Date(event.timestamp).toLocaleTimeString("en-US", {
                     hour: "2-digit",
@@ -387,7 +387,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
                 </span>
                 {/* Message */}
                 <span
-                  className="font-mono text-xs truncate flex-1 text-athena-text-secondary"
+                  className="font-mono text-athena-floor truncate flex-1 text-athena-text-secondary"
                 >
                   {event.message}
                 </span>
@@ -395,7 +395,7 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="text-xs px-2 py-0.5 shrink-0 text-athena-warning"
+                  className="text-athena-floor px-2 py-0.5 shrink-0 text-athena-warning"
                 >
                   {t("view")}
                 </Button>

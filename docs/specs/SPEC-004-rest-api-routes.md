@@ -196,3 +196,6 @@ WS     /ws/{operation_id}                               → Event stream
 - ADR-011：[POC 無身份驗證](../adr/ADR-011-no-auth-for-poc.md)
 - SPEC-002：Pydantic Models（依賴）
 - SPEC-003：Database 層（依賴）
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

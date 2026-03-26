@@ -1,0 +1,30 @@
+# Handoff Template: PHASE_GATE
+# When: Pipeline phase boundary, contains quality gate results
+# NEW — does not exist in ASP v2.x
+
+handoff_type: PHASE_GATE
+task_id: "TASK-{NNN}"
+timestamp: "YYYY-MM-DDTHH:MM:SSZ"
+
+gate:
+  id: "G1"                     # G1-G6
+  name: ""                     # e.g., "Architecture Gate", "Verification Gate"
+  phase_from: ""               # SPECIFY | PLAN | FOUNDATION | BUILD | HARDEN | DELIVER
+  phase_to: ""
+
+# === Agent verdicts ===
+evaluations:
+  - agent_role: ""
+    verdict: "PASS"            # PASS | NEEDS_WORK
+    evidence:
+      - ""
+  # Reality Checker (if participating) has veto power
+  - agent_role: "reality"
+    verdict: "NEEDS_WORK"
+    evidence:
+      - ""
+
+# === Gate result ===
+final_verdict: "FAIL"          # PASS | FAIL
+blocking_agent: ""             # Which agent blocked (if FAIL)
+next_action: ""                # What needs to happen before retry

@@ -131,6 +131,15 @@ if [ -n "$WORKFLOW" ] && [ "$WORKFLOW" != "standard" ] && [ "$WORKFLOW" != "vibe
   ERRORS=$((ERRORS + 1))
 fi
 
+# 規則 9：mode 值驗證
+if [ -n "$MODE" ] && [ "$MODE" != "single" ] && [ "$MODE" != "auto" ] && [ "$MODE" != "multi-agent" ] && [ "$MODE" != "committee" ]; then
+  echo "  🔴 ERROR: mode 值無效：「$MODE」（允許值：single | auto | multi-agent | committee）"
+  ERRORS=$((ERRORS + 1))
+fi
+if [ "$MODE" = "auto" ]; then
+    echo "  ℹ️ mode: auto — AI 將根據任務複雜度自動判斷是否並行"
+fi
+
 echo ""
 echo "── 載入的 Profile 清單 ──"
 echo "  必載："
@@ -154,7 +163,17 @@ case "$TYPE" in
 esac
 
 echo "  條件載入："
-[ "$MODE" = "multi-agent" ]         && echo "    • multi_agent.md"
+if [ "$MODE" = "multi-agent" ]; then
+    echo "    • multi_agent.md"
+    echo "    • task_orchestrator.md（auto）"
+    echo "    • pipeline.md（auto）"
+    echo "    • escalation.md（auto）"
+fi
+if [ "$MODE" = "multi-agent" ] && [ "$AUTONOMOUS" = "enabled" ]; then
+    echo "    • reality_checker.md（auto）"
+    echo "    • dev_qa_loop.md（auto）"
+    echo "    • agent_memory.md（auto）"
+fi
 [ "$MODE" = "committee" ]           && echo "    • committee.md"
 [ "$WORKFLOW" = "vibe-coding" ]     && echo "    • vibe_coding.md"
 [ "$RAG" = "enabled" ]              && echo "    • rag_context.md"

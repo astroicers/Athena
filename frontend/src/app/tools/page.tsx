@@ -58,7 +58,7 @@ function ToolsContent() {
         <div className="flex items-center h-full">
         <button
           onClick={() => setActiveTab("registry")}
-          className={`relative h-full px-4 font-mono text-[12px] flex items-center cursor-pointer bg-transparent border-none transition-colors ${
+          className={`relative h-full px-4 font-mono text-athena-floor flex items-center cursor-pointer bg-transparent border-none transition-colors ${
             activeTab === "registry"
               ? "text-[var(--color-accent)] font-semibold"
               : "text-[var(--color-text-tertiary)] font-normal hover:text-[var(--color-text-secondary)]"
@@ -71,7 +71,7 @@ function ToolsContent() {
         </button>
         <button
           onClick={() => setActiveTab("playbooks")}
-          className={`relative h-full px-4 font-mono text-[12px] flex items-center cursor-pointer bg-transparent border-none transition-colors ${
+          className={`relative h-full px-4 font-mono text-athena-floor flex items-center cursor-pointer bg-transparent border-none transition-colors ${
             activeTab === "playbooks"
               ? "text-[var(--color-accent)] font-semibold"
               : "text-[var(--color-text-tertiary)] font-normal hover:text-[var(--color-text-secondary)]"
@@ -85,7 +85,7 @@ function ToolsContent() {
         </div>
         <button
           onClick={() => setShowGuide(true)}
-          className="font-mono text-xs font-semibold text-[var(--color-text-primary)] bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] rounded-[var(--radius)] px-3 py-1 cursor-pointer hover:bg-[var(--color-bg-elevated)] transition-colors"
+          className="font-mono text-athena-floor font-semibold text-[var(--color-text-primary)] bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] rounded-[var(--radius)] px-3 py-1 cursor-pointer hover:bg-[var(--color-bg-elevated)] transition-colors"
         >
           {t("howToAdd")}
         </button>

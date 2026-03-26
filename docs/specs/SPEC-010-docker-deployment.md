@@ -264,3 +264,6 @@ docker-clean:
 - ADR-011：[POC 無身份驗證](../adr/ADR-011-no-auth-for-poc.md)（127.0.0.1 綁定）
 - SPEC-001：專案骨架（依賴——docker-compose.yml 基礎結構）
 - SPEC-004：REST API（依賴——`/api/health` 端點）
+
+<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
+<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

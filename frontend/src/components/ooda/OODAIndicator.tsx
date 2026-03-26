@@ -34,7 +34,7 @@ export function OODAIndicator({ currentPhase }: OODAIndicatorProps) {
       <SectionHeader level="card" className="mb-1">
         {t("cycle")}
       </SectionHeader>
-      <p className="text-sm font-mono text-athena-text-tertiary mb-3">{tHints("oodaCycle")}</p>
+      <p className="text-athena-body font-mono text-athena-text-tertiary mb-3">{tHints("oodaCycle")}</p>
       <div className="flex items-center gap-1">
         {PHASE_KEYS.map((phase, i) => {
           const isActive = currentPhase === phase.key;
@@ -44,7 +44,7 @@ export function OODAIndicator({ currentPhase }: OODAIndicatorProps) {
           return (
             <div key={phase.key} className="flex items-center gap-1 flex-1">
               <div
-                className={`flex flex-col items-center justify-center w-full py-2 rounded-[var(--radius)] text-sm font-mono font-bold transition-all ${
+                className={`flex flex-col items-center justify-center w-full py-2 rounded-[var(--radius)] text-athena-body font-mono font-bold transition-all ${
                   isActive
                     ? "bg-athena-accent-bg text-athena-accent border border-[var(--color-accent)]"
                     : isPast
@@ -55,7 +55,7 @@ export function OODAIndicator({ currentPhase }: OODAIndicatorProps) {
                 {t(phase.tKey)}
               </div>
               {i < PHASE_KEYS.length - 1 && (
-                <span className="text-athena-text-tertiary text-xs shrink-0">→</span>
+                <span className="text-athena-text-tertiary text-athena-floor shrink-0">→</span>
               )}
             </div>
           );

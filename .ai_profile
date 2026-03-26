@@ -1,5 +1,5 @@
 type: system
-mode: multi-agent
+mode: auto
 workflow: vibe-coding
 rag: disabled
 guardrail: disabled
@@ -9,6 +9,5 @@ autonomous: enabled
 design: enabled
 coding_style: disabled
 openapi: disabled
-orchestrator: disabled
-frontend_quality: disabled
+frontend_quality: enabled
 autopilot: disabled

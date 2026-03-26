@@ -171,7 +171,7 @@ export function PlaybookBrowser() {
   if (loading) {
     return (
       <div className="bg-athena-surface border border-[var(--color-border)] rounded-[var(--radius)] p-6 text-center">
-        <span className="text-xs font-mono text-athena-text-tertiary">
+        <span className="text-athena-floor font-mono text-athena-text-tertiary">
           {t("loading")}
         </span>
       </div>
@@ -187,7 +187,7 @@ export function PlaybookBrowser() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t("search")}
-          className="flex-1 bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-1.5 text-xs font-mono text-athena-text-light placeholder:text-athena-text-tertiary focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+          className="flex-1 bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-1.5 text-athena-floor font-mono text-athena-text-light placeholder:text-athena-text-tertiary focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
         />
         <Button variant="secondary" size="sm" onClick={openCreateForm}>
           {t("addPlaybook")}
@@ -197,12 +197,12 @@ export function PlaybookBrowser() {
       {/* Create / Edit Form */}
       {showForm && (
         <div className="bg-athena-surface border border-[var(--color-border)] rounded-[var(--radius)] p-4 space-y-3">
-          <h3 className="text-xs font-mono font-bold text-athena-text-light uppercase tracking-wider">
+          <h3 className="text-athena-floor font-mono font-bold text-athena-text-light uppercase tracking-wider">
             {editingId ? t("editing") : t("addPlaybook")}
           </h3>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-mono text-athena-text-tertiary mb-1">
+              <label className="block text-athena-floor font-mono text-athena-text-tertiary mb-1">
                 {t("mitreId")} *
               </label>
               <input
@@ -211,18 +211,18 @@ export function PlaybookBrowser() {
                 onChange={(e) => setForm({ ...form, mitreId: e.target.value })}
                 disabled={!!editingId}
                 placeholder="T1059.001"
-                className="w-full bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-1.5 text-xs font-mono text-athena-text-light disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+                className="w-full bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-1.5 text-athena-floor font-mono text-athena-text-light disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
               />
             </div>
             <div>
-              <label className="block text-xs font-mono text-athena-text-tertiary mb-1">
+              <label className="block text-athena-floor font-mono text-athena-text-tertiary mb-1">
                 {t("platform")}
               </label>
               <select
                 value={form.platform}
                 onChange={(e) => setForm({ ...form, platform: e.target.value })}
                 disabled={!!editingId}
-                className="w-full bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-1.5 text-xs font-mono text-athena-text-light disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+                className="w-full bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-1.5 text-athena-floor font-mono text-athena-text-light disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
               >
                 <option value="linux">{t("linux")}</option>
                 <option value="windows">{t("windows")}</option>
@@ -231,19 +231,19 @@ export function PlaybookBrowser() {
             </div>
           </div>
           <div>
-            <label className="block text-xs font-mono text-athena-text-tertiary mb-1">
+            <label className="block text-athena-floor font-mono text-athena-text-tertiary mb-1">
               {t("command")} *
             </label>
             <textarea
               value={form.command}
               onChange={(e) => setForm({ ...form, command: e.target.value })}
               rows={3}
-              className="w-full bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-1.5 text-xs font-mono text-athena-text-light focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] resize-none"
+              className="w-full bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-1.5 text-athena-floor font-mono text-athena-text-light focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] resize-none"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-mono text-athena-text-tertiary mb-1">
+              <label className="block text-athena-floor font-mono text-athena-text-tertiary mb-1">
                 {t("outputParser")}
               </label>
               <input
@@ -252,11 +252,11 @@ export function PlaybookBrowser() {
                 onChange={(e) =>
                   setForm({ ...form, outputParser: e.target.value })
                 }
-                className="w-full bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-1.5 text-xs font-mono text-athena-text-light focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+                className="w-full bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-1.5 text-athena-floor font-mono text-athena-text-light focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
               />
             </div>
             <div>
-              <label className="block text-xs font-mono text-athena-text-tertiary mb-1">
+              <label className="block text-athena-floor font-mono text-athena-text-tertiary mb-1">
                 {t("factsTraits")}
               </label>
               <input
@@ -266,12 +266,12 @@ export function PlaybookBrowser() {
                   setForm({ ...form, factsTraits: e.target.value })
                 }
                 placeholder="trait1, trait2"
-                className="w-full bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-1.5 text-xs font-mono text-athena-text-light focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+                className="w-full bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-1.5 text-athena-floor font-mono text-athena-text-light focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
               />
             </div>
           </div>
           <div>
-            <label className="block text-xs font-mono text-athena-text-tertiary mb-1">
+            <label className="block text-athena-floor font-mono text-athena-text-tertiary mb-1">
               {t("tags")}
             </label>
             <input
@@ -279,7 +279,7 @@ export function PlaybookBrowser() {
               value={form.tags}
               onChange={(e) => setForm({ ...form, tags: e.target.value })}
               placeholder="tag1, tag2"
-              className="w-full bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-1.5 text-xs font-mono text-athena-text-light focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+              className="w-full bg-athena-bg border border-[var(--color-border)] rounded-[var(--radius)] px-3 py-1.5 text-athena-floor font-mono text-athena-text-light focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
             />
           </div>
           <div className="flex items-center gap-2 justify-end">
@@ -301,13 +301,13 @@ export function PlaybookBrowser() {
       {/* Playbook List */}
       {filtered.length === 0 ? (
         <div className="bg-athena-surface border border-[var(--color-border)] rounded-[var(--radius)] p-6 text-center">
-          <span className="text-xs font-mono text-athena-text-tertiary">
+          <span className="text-athena-floor font-mono text-athena-text-tertiary">
             {t("noPlaybooks")}
           </span>
         </div>
       ) : (
         <div className="bg-athena-surface border border-[var(--color-border)] rounded-[var(--radius)] overflow-hidden">
-          <table className="w-full text-xs font-mono">
+          <table className="w-full text-athena-floor font-mono">
             <thead>
               <tr className="border-b border-[var(--color-border)]">
                 <th className="px-3 py-2 text-left text-athena-text-tertiary font-medium uppercase tracking-wider">
@@ -346,7 +346,7 @@ export function PlaybookBrowser() {
                     </Badge>
                   </td>
                   <td className="px-3 py-2 text-athena-text-light max-w-[300px]">
-                    <code className="block truncate bg-athena-bg px-2 py-1 rounded-[var(--radius)] text-xs">
+                    <code className="block truncate bg-athena-bg px-2 py-1 rounded-[var(--radius)] text-athena-floor">
                       {pb.command}
                     </code>
                   </td>
@@ -360,7 +360,7 @@ export function PlaybookBrowser() {
                       {pb.tags.map((tag) => (
                         <span
                           key={tag}
-                          className="text-xs font-mono text-athena-accent bg-athena-accent/10 px-1.5 py-0.5 rounded-[var(--radius)]"
+                          className="text-athena-floor font-mono text-athena-accent bg-athena-accent/10 px-1.5 py-0.5 rounded-[var(--radius)]"
                         >
                           {tag}
                         </span>

@@ -44,7 +44,7 @@ export function OODAFlowDiagram({
   if (!definition) {
     return (
       <div
-        className="rounded-[var(--radius)] border font-mono text-xs flex items-center justify-center bg-athena-surface border-[var(--color-border)] text-athena-text-tertiary p-6 min-h-[120px]"
+        className="rounded-[var(--radius)] border font-mono text-athena-floor flex items-center justify-center bg-athena-surface border-[var(--color-border)] text-athena-text-tertiary p-6 min-h-[120px]"
       >
         Waiting for OODA data...
       </div>
@@ -54,7 +54,7 @@ export function OODAFlowDiagram({
   return (
     <div>
       <span
-        className="font-mono text-xs font-bold uppercase tracking-wider mb-2 block text-[#ffffff20]"
+        className="font-mono text-athena-floor font-bold uppercase tracking-wider mb-2 block text-[#ffffff20]"
       >
         DECISION FLOW
       </span>

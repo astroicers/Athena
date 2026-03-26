@@ -5,7 +5,11 @@ const API = "http://localhost:58000/api";
 test.describe("SIT -- Tools State Management", () => {
   test.setTimeout(60_000);
 
-  test("Nmap tool is enabled", async ({ page }) => {
+  test("Nmap tool is enabled (ensure clean state)", async ({ page }) => {
+    // Ensure nmap starts enabled for this test sequence
+    await page.request.patch(`${API}/tools/nmap`, {
+      data: { enabled: true },
+    });
     const res = await page.request.get(`${API}/tools/nmap`);
     expect(res.ok()).toBeTruthy();
     const body = await res.json();

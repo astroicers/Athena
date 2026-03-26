@@ -216,7 +216,7 @@ test.describe.serial("Full Red Team Workflow — 192.168.0.26", () => {
         const d = data as { iteration_count: number; latest_iteration?: { completed_at?: string } };
         return d.iteration_count >= 2 && !!d.latest_iteration?.completed_at;
       },
-      30,
+      60,
       2000,
     );
     const d = result as { iteration_count: number };

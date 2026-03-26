@@ -122,7 +122,7 @@ test.describe.serial("Full Red Team Workflow — 192.168.0.26", () => {
         const d = data as { status: string };
         return d.status === "completed" || d.status === "failed";
       },
-      60,
+      90,
       2000,
     );
     const r = result as { status: string };

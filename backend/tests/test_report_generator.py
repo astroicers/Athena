@@ -25,8 +25,8 @@ from app.models.report import PentestReport, Finding
 def make_mock_db(op_row=None, eng_row=None, targets=None, facts=None, ooda_rows=None, rec_rows=None, mitre_rows=None, recon_rows=None):
     """Build a mock DB that returns predetermined rows for asyncpg direct methods.
 
-    The generate() method now uses db.fetchrow() and db.fetch() directly via
-    asyncio.gather. We use side_effect functions that inspect SQL to route results.
+    The generate() method uses sequential db.fetchrow() and db.fetch() calls.
+    We use side_effect functions that inspect SQL to route results.
     """
     db = AsyncMock()
 

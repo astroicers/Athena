@@ -41,10 +41,8 @@ async def test_get_operation_report_unknown_op(client: AsyncClient):
 async def test_get_structured_report(client: AsyncClient):
     """GET /api/operations/test-op-1/report/structured -> 200 with PentestReport.
 
-    ReportGenerator.generate uses asyncio.gather over a single asyncpg connection
-    which raises InterfaceError in test mode.  We mock it to return a minimal
-    PentestReport so the router/serialisation path is exercised without hitting
-    the concurrent-query limitation.
+    ReportGenerator.generate is mocked to return a minimal PentestReport so the
+    router/serialisation path is exercised without requiring full DB state.
     """
     from app.models.report import PentestReport
 
@@ -92,10 +90,7 @@ async def test_get_structured_report(client: AsyncClient):
 
 
 async def test_get_markdown_report(client: AsyncClient):
-    """GET /api/operations/test-op-1/report/markdown -> 200, text/markdown content.
-
-    Same concurrent-query constraint as structured report — mock ReportGenerator.
-    """
+    """GET /api/operations/test-op-1/report/markdown -> 200, text/markdown content."""
     from app.models.report import PentestReport
     from app.services.report_generator import ReportGenerator as _RG
 

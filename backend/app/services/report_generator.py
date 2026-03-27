@@ -10,7 +10,6 @@
 
 """ReportGenerator — assembles PentestReport from DB (A.5)."""
 
-import asyncio
 import json
 import logging
 from datetime import datetime, timezone
@@ -32,7 +31,7 @@ _MOCK_EXECUTIVE_SUMMARY = (
 
 
 class ReportGenerator:
-    # ── Private fetch helpers (parallelized via asyncio.gather) ──────
+    # ── Private fetch helpers (sequential — asyncpg Connection is single-coroutine) ──
 
     @staticmethod
     async def _fetch_operation(db: asyncpg.Connection, op_id: str):
@@ -129,22 +128,18 @@ class ReportGenerator:
         """Assemble PentestReport from all DB tables for this operation."""
         generated_at = datetime.now(timezone.utc).isoformat()
 
-        # Fetch all independent data in parallel
-        (
-            op, eng, targets_rows, subdomains_found, services_scanned,
-            vuln_rows, ooda_rows, rec_rows, mitre_rows, access_count,
-        ) = await asyncio.gather(
-            self._fetch_operation(db, operation_id),
-            self._fetch_engagement(db, operation_id),
-            self._fetch_targets(db, operation_id),
-            self._fetch_subdomain_count(db, operation_id),
-            self._fetch_service_count(db, operation_id),
-            self._fetch_vulns(db, operation_id),
-            self._fetch_ooda(db, operation_id),
-            self._fetch_recommendations(db, operation_id),
-            self._fetch_mitre(db, operation_id),
-            self._fetch_access_count(db, operation_id),
-        )
+        # Fetch sequentially — asyncpg.Connection cannot run concurrent queries.
+        # All queries are lightweight single-table SELECTs; sequential overhead is negligible.
+        op = await self._fetch_operation(db, operation_id)
+        eng = await self._fetch_engagement(db, operation_id)
+        targets_rows = await self._fetch_targets(db, operation_id)
+        subdomains_found = await self._fetch_subdomain_count(db, operation_id)
+        services_scanned = await self._fetch_service_count(db, operation_id)
+        vuln_rows = await self._fetch_vulns(db, operation_id)
+        ooda_rows = await self._fetch_ooda(db, operation_id)
+        rec_rows = await self._fetch_recommendations(db, operation_id)
+        mitre_rows = await self._fetch_mitre(db, operation_id)
+        access_count = await self._fetch_access_count(db, operation_id)
 
         # Process fetched data
         op_name = op["name"] if op else "Unknown Operation"
@@ -174,7 +169,7 @@ class ReportGenerator:
                 observe_summary=r["observe_summary"],
                 act_summary=r["act_summary"],
                 technique_id=r["recommended_technique_id"],
-                completed_at=r["completed_at"],
+                completed_at=r["completed_at"].isoformat() if r["completed_at"] else None,
             )
             for r in ooda_rows
         ]

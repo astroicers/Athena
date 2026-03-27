@@ -251,16 +251,73 @@ async def test_service_banner_mismatch(tmp_db, engine):
 
 
 # ---------------------------------------------------------------------------
-# Tests: Version range (always skipped)
+# Tests: Version range (SPEC-028 Phase 4)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_version_range_always_skipped(tmp_db, engine):
-    """Version range check returns skipped (Phase 1)."""
-    service_facts = [{"trait": "service.version", "value": "vsftpd 2.3.4"}]
+async def test_version_range_known_vulnerable(tmp_db, engine):
+    """Version in known vulnerable range → passed."""
+    service_facts = [
+        {"trait": "service.open_port", "value": "21/tcp ftp vsftpd 2.3.4"},
+        {"trait": "service.version", "value": "vsftpd 2.3.4"},
+    ]
+    result = await engine._check_version_range("T1190", service_facts)
+    assert result["result"] == "passed"
+    assert "CVE-2011-2523" in result["detail"]
+
+
+@pytest.mark.asyncio
+async def test_version_range_patched(tmp_db, engine):
+    """Version above vulnerable range → failed (likely patched)."""
+    service_facts = [
+        {"trait": "service.open_port", "value": "80/tcp http Apache 2.4.52"},
+        {"trait": "service.version", "value": "Apache 2.4.52"},
+    ]
+    result = await engine._check_version_range("T1190", service_facts)
+    assert result["result"] == "failed"
+    assert "patched" in result["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_version_range_no_match(tmp_db, engine):
+    """Unknown service/version → skipped (inconclusive)."""
+    service_facts = [{"trait": "service.version", "value": "customd 1.0.0"}]
     result = await engine._check_version_range("T1190", service_facts)
     assert result["result"] == "skipped"
-    assert "deferred" in result["detail"]
+    assert "no known range" in result["detail"]
+
+
+@pytest.mark.asyncio
+async def test_version_range_no_version(tmp_db, engine):
+    """No version detected → skipped."""
+    service_facts = [{"trait": "service.name", "value": "vsftpd"}]
+    result = await engine._check_version_range("T1190", service_facts)
+    assert result["result"] == "skipped"
+    assert "no version" in result["detail"]
+
+
+@pytest.mark.asyncio
+async def test_version_range_apache_cve_2021(tmp_db, engine):
+    """Apache 2.4.49 in CVE-2021-41773 range → passed."""
+    service_facts = [
+        {"trait": "service.open_port", "value": "80/tcp http apache"},
+        {"trait": "service.version", "value": "Apache/2.4.49"},
+    ]
+    result = await engine._check_version_range("T1190", service_facts)
+    assert result["result"] == "passed"
+    assert "CVE-2021-41773" in result["detail"]
+
+
+@pytest.mark.asyncio
+async def test_version_range_samba_sambacry(tmp_db, engine):
+    """Samba 4.5.9 in SambaCry range → passed."""
+    service_facts = [
+        {"trait": "service.open_port", "value": "445/tcp samba"},
+        {"trait": "service.version", "value": "Samba 4.5.9"},
+    ]
+    result = await engine._check_version_range("T1190", service_facts)
+    assert result["result"] == "passed"
+    assert "CVE-2017-7494" in result["detail"]
 
 
 # ---------------------------------------------------------------------------

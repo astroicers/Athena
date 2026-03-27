@@ -80,10 +80,13 @@ docker-compose.override.yml
 logs/
 
 # ====================================
-# 測試覆蓋率
+# 測試覆蓋率 & 結果
 # ====================================
 .coverage
 htmlcov/
+test-results/
+frontend/test-results/
+playwright-report/
 
 # ====================================
 # 專案特定

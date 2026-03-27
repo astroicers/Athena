@@ -206,8 +206,9 @@ class ValidationEngine:
     ) -> dict:
         """Check CVE affected version range vs detected version.
 
-        Currently only does existence check. Full CPE match / NVD
-        version range comparison deferred to future SPEC.
+        TODO(SPEC-028-P4): Implement full SafeProbeStrategy — CPE match,
+        NVD version range comparison, TCP banner analysis, HTTP header
+        verification. Currently only records detected version.
         """
         detected_version = self._extract_version(service_facts)
         if not detected_version:

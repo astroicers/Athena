@@ -196,16 +196,16 @@ make up                 # docker-compose up --build -d
 
 | 層級 | 技術 |
 |------|------|
-| 後端 | Python 3.11 + FastAPI + Pydantic v2 + SQLite (aiosqlite) |
+| 後端 | Python 3.12 + FastAPI + Pydantic v2 + PostgreSQL 16 (asyncpg) |
 | 前端 | Next.js 14 + React 18 + Tailwind CSS v4 + next-intl |
 | 3D 拓樸 | react-force-graph-3d + Three.js |
 | AI 決策 | OrientEngine + Claude API (api_key / oauth / auto) |
 | SSH 執行 | PersistentSSHEngine (連線池) / DirectSSHEngine (單次) |
 | OSINT | crt.sh + subfinder + dnspython |
-| 漏洞情報 | NVD NIST API v2 + SQLite 24h 快取 |
+| 漏洞情報 | NVD NIST API v2 + PostgreSQL 24h 快取 |
 | 排程 | APScheduler |
 | 容器化 | Docker + docker-compose |
-| 測試 | pytest (370+) + Vitest (63+) |
+| 測試 | pytest (370+) + Vitest (63+) + Playwright E2E (158+) |
 
 ---
 

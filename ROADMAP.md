@@ -39,8 +39,41 @@
 - Tech debt: `_get_output_parser` now platform-aware (`platform='windows'` for WinRM path); seed INSERT bug fixed (output_parser column was missing)
 - 202 tests passing
 
-## v0.3.0 (Planned) — Advanced Orchestration
+## v0.3.0 (Released) — C5ISR + Attack Graph + MCP Tools
 
-- Multi-stage campaign automation (ADR required)
-- Attack graph visualization (ADR required)
-- Custom playbook editor UI (ADR required)
+### Completed (Phase 10-11)
+
+- PostgreSQL migration (asyncpg + Alembic, replaced SQLite)
+- Attack Graph engine with YAML-based technique rules (13 rules, Dijkstra weighted paths)
+- C5ISR 6-domain battle dashboard (Command/Control/Comms/Computers/Cyber/ISR)
+- Constraint engine (mission profile-aware noise/risk thresholds)
+- OPSEC monitoring (noise tracking, threat level computation, cross-domain penalty)
+- MCP tool servers: nmap-scanner, osint-recon, vuln-lookup, credential-checker, attack-executor, web-scanner, api-fuzzer, msf-rpc
+- Tool Registry with enable/disable toggle, health checks, and execution API
+- Vulnerability management module (severity heat strip, status pipeline, PoC evidence)
+- Engagement/ROE lifecycle (draft -> active -> suspended)
+- Dashboard aggregate APIs (kill-chain, attack-surface, time-series, credential-graph)
+- Structured pentest report (JSON + Markdown export)
+- OODA directive system (operator guidance for orient phase)
+- Batch target import (CIDR/IP/hostname, max 512)
+- Network topology visualization
+- Web Terminal (SSH interactive console for compromised targets)
+- Notification center
+- 158+ E2E tests (Playwright), 370+ backend tests (pytest), 63+ frontend unit tests (Vitest)
+
+## v0.4.0 (Planned) — Advanced Orchestration
+
+### Priority 1: SPEC-039 — Attack Graph YAML Externalization + 50 Rules
+### Priority 2: SPEC-032 — mcp-web-scanner (httpx + Nuclei)
+### Priority 3: SPEC-028 Phase 4 — ExploitValidator SafeProbe
+### Priority 4: SPEC-044 — Vulnerability Dynamic Validation Pipeline
+### Priority 5: SPEC-027 — UI Optimization (5 phases)
+
+## v1.0.0 (Future) — Production Ready
+
+- Authentication & RBAC (JWT + Commander/Operator/Observer roles)
+- Multi-operation support (sidebar switcher, cross-op intelligence sharing)
+- Advanced topology (VR mode, attack path replay)
+- PDF report generation + MITRE coverage heatmap export
+- External integrations (BloodHound, Cobalt Strike, Slack/Teams notifications)
+- Helm Chart for Kubernetes deployment

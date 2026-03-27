@@ -7,6 +7,28 @@
 
 ## [Unreleased]
 
+### UAT 全覆蓋 + Report Bug Fix + 專案整理（2026-03-27）
+
+#### Added
+- **UAT Phase 1**：26 個 Playwright E2E 測試，覆蓋 Operations CRUD、War Room（Timeline/Targets/Mission）、Attack Surface、Vulnerabilities、Tools、導航重導向、報告匯出（`frontend/e2e/uat-sop.spec.ts`）
+- **UAT Phase 2**：39 個 Playwright E2E 測試，補齊 Engagement CRUD、Dashboard 聚合 API（kill-chain/time-series/credential-graph/attack-surface）、Operation reset/summary、MCP status、OSINT discover、OODA directive、Recommendations、batch target import、topology、mission profiles、PoC records、agent sync、tool create/delete/execute/check、playbook bulk import、6 個 UI 互動測試（`frontend/e2e/uat-sop-phase2.spec.ts`）
+- **ASP Agent Roles**：11 個 agent YAML 定義檔（arch, dep-analyst, doc, impl, integ, qa, reality, sec, spec, tdd, team_compositions）
+
+#### Fixed
+- **Structured Report 500 Error**：`ReportGenerator.generate()` 使用 `asyncio.gather` 對單一 asyncpg Connection 並行 10 個查詢導致 `InterfaceError`，改為 sequential await（`backend/app/services/report_generator.py`）
+- **AttackStep datetime 類型不匹配**：DB 返回 `datetime` 但 Pydantic model 期望 `str`，新增 `.isoformat()` 轉換
+- **Notification center close**：通知面板覆蓋 bell button 導致 Playwright click 失敗，改用 Escape 鍵關閉
+
+#### Changed
+- **Frontend CSS tokens**：Badge、Button、TabBar 從 `var(--color-*)` 遷移到 Tailwind `athena-*` 語義 token
+- **WarRoom semantic HTML**：外層 `<div>` → `<main>` 提升語義正確性
+- **README.md**：技術棧更新（SQLite → PostgreSQL 16、新增 Playwright E2E 測試數量）
+- **ROADMAP.md**：新增 v0.3.0 完成項目、v0.4.0 計畫、v1.0.0 未來規劃
+- **.gitignore**：新增 `test-results/`、`frontend/test-results/`、`playwright-report/`
+- **SafeProbe stub**：加上 `TODO(SPEC-028-P4)` 明確標記
+
+---
+
 ### 整合測試補齊 + Audit Warning 修復（2026-03-17）
 
 #### Added

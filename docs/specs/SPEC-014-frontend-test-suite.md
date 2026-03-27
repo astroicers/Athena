@@ -79,6 +79,93 @@
 
 ---
 
+## 副作用與連動（Side Effects）
+
+| 變更項目 | 影響範圍 | 說明 |
+|----------|----------|------|
+| `vitest.config.ts` | 前端測試基礎設施 | 新增 jsdom 環境、globals、setup file、path alias 設定 |
+| `package.json` devDependencies | 開發環境 | 新增 vitest, @testing-library/react, @testing-library/jest-dom 等 7 個測試依賴 |
+| `package.json` scripts | CI/CD | 新增 `test`, `test:coverage`, `test:watch` scripts |
+| `src/test/setup.ts` | 全前端測試 | 全域 @testing-library/jest-dom matchers 設定 |
+
+---
+
+## Rollback Plan
+
+| 步驟 | 指令 | 驗證 |
+|------|------|------|
+| 1. 還原程式碼 | `git revert <commit>` | `git log` 確認 revert commit |
+| 2. 移除 test 依賴 | `cd frontend && npm install` | package-lock.json 更新 |
+| 3. 確認 build 不受影響 | `cd frontend && npm run build` | build 成功（測試碼不影響 production） |
+
+---
+
+## 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 輸入 | 預期結果 |
+|----|------|------|------|----------|
+| P1 | Positive | API 工具函式 — toSnakeCase | `{ operationId: "abc" }` | `{ operation_id: "abc" }` |
+| P2 | Positive | Button 元件渲染 | `<Button>Click</Button>` | 渲染 button element，文字 "Click" 可見 |
+| P3 | Positive | useOperation hook | mock fetch 回傳 operation 資料 | hook 回傳 loading=false, data 正確 |
+| N1 | Negative | API 工具函式 — 空物件 | `convertKeys({})` | 回傳 `{}` 不拋錯 |
+| N2 | Negative | HexConfirmModal — 取消操作 | 點擊 Cancel 按鈕 | onCancel callback 被呼叫，modal 關閉 |
+| B1 | Boundary | DataTable — 空資料 | `<DataTable data={[]} />` | 渲染空表格或 empty state |
+| B2 | Boundary | Toggle — disabled 狀態 | `<Toggle disabled={true} />` | 點擊無反應，onChange 不觸發 |
+
+---
+
+## 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: Frontend Test Suite — Vitest 元件與 Hook 測試
+
+  Scenario: S1 — Vitest 測試套件全數通過
+    Given frontend/src/ 包含 atoms, cards, modal, ooda, hooks, lib 測試目錄
+    And vitest.config.ts 設定 jsdom 環境與 path alias
+    When 執行 cd frontend && npm test
+    Then 所有測試通過（0 failures）
+    And 測試數量 >= 40
+
+  Scenario: S2 — WebGL 元件正確排除不導致測試失敗
+    Given NetworkTopology.tsx 使用 Three.js WebGL
+    And jsdom 不支援 WebGL context
+    When 執行 npm test
+    Then 不包含 NetworkTopology 測試
+    And 無 WebGL 相關錯誤
+
+  Scenario: S3 — 測試覆蓋率達標
+    Given 所有測試通過
+    When 執行 npm run test:coverage
+    Then 覆蓋率報告 > 50%
+```
+
+---
+
+## 追溯性（Traceability）
+
+| 類型 | 路徑 |
+|------|------|
+| Vitest 配置 | `frontend/vitest.config.ts` |
+| Test Setup | `frontend/src/test/setup.ts` |
+| API 工具測試 | `frontend/src/lib/__tests__/api.test.ts` |
+| Atom 元件測試 | `frontend/src/components/atoms/__tests__/Button.test.tsx`, `Toggle.test.tsx`, `Badge.test.tsx`, `StatusDot.test.tsx`, `ProgressBar.test.tsx`, `HexIcon.test.tsx` |
+| Card 元件測試 | `frontend/src/components/cards/__tests__/MetricCard.test.tsx`, `TechniqueCard.test.tsx`, `RecommendCard.test.tsx` |
+| Data 元件測試 | `frontend/src/components/data/__tests__/DataTable.test.tsx`, `LogEntryRow.test.tsx` |
+| Modal 測試 | `frontend/src/components/modal/__tests__/HexConfirmModal.test.tsx` |
+| OODA 元件測試 | `frontend/src/components/ooda/__tests__/OODAIndicator.test.tsx`, `OODATimeline.test.tsx`, `RecommendationPanel.test.tsx` |
+| MITRE 測試 | `frontend/src/components/mitre/__tests__/MITRECell.test.tsx` |
+| Nav 測試 | `frontend/src/components/nav/__tests__/TabBar.test.tsx` |
+| Hook 測試 | `frontend/src/hooks/__tests__/useOperation.test.ts`, `useOODA.test.ts`, `useLiveLog.test.ts` |
+| Package 配置 | `frontend/package.json` |
+
+---
+
+## 可觀測性（Observability）
+
+N/A — 純前端測試套件，不涉及後端 API 或資料處理。CI 測試結果透過 `npm test` 標準輸出觀測。
+
+---
+
 ## ✅ 驗收標準（Done When）
 
 - [x] `cd frontend && npm test` 全數通過（40+ tests, 0 failures）
@@ -107,5 +194,3 @@
 - SPEC-013：Backend Test Suite（格式參考）
 - ADR-009：前端元件架構（元件分層設計）
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

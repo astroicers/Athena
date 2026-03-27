@@ -26,5 +26,38 @@
 - [ ] OODA controller 在循環開始前呼叫 constraint_engine
 - [ ] `make test` 通過，無回歸
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->
+---
+
+## 🔗 副作用與連動（Side Effects）
+
+無跨模組副作用。
+
+---
+
+## 🧪 測試矩陣（Test Matrix）
+
+N/A — schema-only SPEC，詳細測試定義於實作 SPEC 中。
+
+---
+
+## 🎬 驗收場景（Acceptance Scenarios）
+
+N/A — trivial schema SPEC，驗收場景由相關實作 SPEC（SPEC-048、SPEC-050）定義。
+
+---
+
+## 📊 可觀測性（Observability）
+
+N/A
+
+---
+
+## 🔗 追溯性（Traceability）
+
+| 實作檔案 | 測試檔案 | 最後驗證日期 |
+|----------|----------|-------------|
+| `backend/app/services/constraint_engine.py` | `backend/tests/test_constraint_engine.py` | 2026-03-26 |
+| `backend/app/models/constraint.py` | `backend/tests/test_constraints_router.py` | 2026-03-26 |
+| `backend/app/routers/constraints.py` | `backend/tests/test_constraints_router.py` | 2026-03-26 |
+| `backend/app/services/c5isr_mapper.py` | `backend/tests/test_c5isr_router.py` | 2026-03-26 |
+| `backend/app/models/c5isr.py` | `backend/tests/test_c5isr_domain_reports.py` | 2026-03-26 |

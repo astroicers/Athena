@@ -127,13 +127,13 @@ interface NetworkTopologyProps {
 
 ## 副作用與連動（Side Effects）
 
-| 本功能的狀態變動 | 受影響的既有功能 | 預期行為 |
-|-----------------|----------------|---------|
-| `graph.updated` 事件新增 `recommended_path` 欄位 | 所有訂閱 `graph.updated` 的前端元件 | 新欄位為追加性質（additive），不影響現有消費者。未處理該欄位的元件直接忽略 |
-| topology endpoint 新增 `network_segment` 至 node data | NetworkTopology 元件 | 新增 optional 欄位，未使用時不影響現有佈局 |
-| D3 force 參數變更 | NetworkTopology 節點佈局 | 節點收斂更快、漂移減少。佈局結果可能與舊版不同，但功能不受影響 |
-| 新增 `d3.forceCollide` | 節點間距 | 節點不再重疊，可能導致整體佈局略微擴展 |
-| TopologyLegend 新增「攻擊路徑」圖例 | Legend 展開高度 | 新增一個 edge 項目，高度增加約 16px |
+| 副作用 | 觸發條件 | 影響模組 | 驗證方式 |
+|--------|----------|----------|----------|
+| `graph.updated` 事件新增 `recommended_path` 欄位 | 攻擊圖 `rebuild()` 執行後 WebSocket broadcast | 所有訂閱 `graph.updated` 的前端元件 | 單元測試驗證 payload 含 `recommended_path`；空路徑時為 `[]` |
+| topology endpoint 新增 `network_segment` 至 node data | `GET /operations/{op_id}/topology` 回傳時 | `frontend/src/components/ui/Skeleton.tsx`（NetworkTopology 元件） | API 測試驗證 node.data 含 `network_segment` 欄位 |
+| D3 force 參數變更（alphaDecay、velocityDecay、cooldownTime） | NetworkTopology 元件載入時 | 拓撲圖節點佈局 | E2E 驗證：節點 3 秒內停止漂移 |
+| 新增 `d3.forceCollide` 碰撞力 | force 引擎初始化時 | 節點間距擴展 | 視覺檢查：任意兩節點中心距離 > 半徑和 |
+| TopologyLegend 新增「攻擊路徑」圖例 | Legend 渲染時 | Legend 展開高度增加 ~16px | i18n 測試：`en.json` 和 `zh-TW.json` 含 `Legend.attackPath` |
 
 ---
 
@@ -148,11 +148,98 @@ interface NetworkTopologyProps {
 - **Case 7**：D3 force 引擎尚未停止時收到新 `graph.updated` — 以最新路徑覆蓋，不累積。用 `useRef` 儲存最新路徑以避免 stale closure
 - **Case 8**：節點數量 > 50 — 子網邊界框仍正確計算，但 `forceCollide` 半徑不隨節點數量動態調整（維持 `nodeSize + 5`）
 
-### 回退方案（Rollback Plan）
+## Rollback Plan
 
-- **回退方式**：revert commit
-- **不可逆評估**：此變更完全可逆。所有修改均為前端渲染邏輯和 WebSocket payload 追加欄位，無 DB schema 變更
-- **資料影響**：回退後無資料損失。`recommended_path` 為攻擊圖引擎即時計算的衍生值，不持久化為新欄位
+| 回滾步驟 | 資料影響 | 回滾驗證 | 回滾已測試 |
+|----------|----------|----------|-----------|
+| `git revert <commit>` | 無資料損失。`recommended_path` 為攻擊圖引擎即時計算的衍生值，不持久化 | `make test && make lint` 全數通過；拓撲圖恢復舊版佈局 | 否（待實作後驗證） |
+| 無需額外 DB migration | 無 DB schema 變更 | N/A | N/A |
+
+> **不可逆評估**：此變更完全可逆。所有修改均為前端渲染邏輯和 WebSocket payload 追加欄位。
+
+---
+
+## 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景描述 | 輸入 | 預期結果 | 對應驗收場景 |
+|----|------|----------|------|----------|-------------|
+| P1 | 正向 | 攻擊路徑高亮渲染 — recommended_path 含 4 個節點 | WebSocket `graph.updated` 含 `recommended_path: ["T1595.001::t1","T1190::t1","T1059.004::t1","T1021.004::t2"]` | 拓撲圖中 C2→t1 和 t1→t2 邊以紅色 `#ff2222` 渲染，寬度 3px | Scenario: Attack path rendering on topology |
+| P2 | 正向 | 子網分組 — 2 個不同子網 | topology API 回傳 target-A `10.0.1.0/24`、target-B `10.0.2.0/24` | 兩組節點在 X 軸偏移 200px，各有虛線邊界框和 CIDR 標籤 | Scenario: Subnet grouping layout |
+| P3 | 正向 | D3 force 參數收斂 | 拓撲圖載入 5 個節點 | 節點 3 秒內停止漂移（`onEngineStop` 觸發） | Scenario: Attack path rendering on topology |
+| N1 | 負向 | recommended_path 為空 | WebSocket 事件 `recommended_path: []` | 無高亮邊線，畫面與修改前一致 | Scenario: Attack path rendering on topology |
+| N2 | 負向 | 路徑節點 ID 無法匹配拓撲邊 | `recommended_path` 含不存在的 target ID | 跳過無法匹配的段落，不拋錯 | Scenario: Attack path rendering on topology |
+| N3 | 負向 | 僅 1 個節點（C2 + 0 targets） | topology API 回傳空 targets | 不渲染子網分組、不渲染攻擊路徑 | Scenario: Subnet grouping layout |
+| B1 | 邊界 | network_segment 為 NULL | topology API 回傳 target 無 network_segment | 歸入未分類群組，不繪製邊界框 | Scenario: Subnet grouping layout |
+| B2 | 邊界 | 所有 target 同子網 | 全部 target `network_segment=10.0.1.0/24` | `forceX` 偏移為 0（置中），不影響佈局 | Scenario: Subnet grouping layout |
+| B3 | 邊界 | force 引擎未停止時收到新 graph.updated | 快速連續 2 次 WebSocket 事件 | 以最新路徑覆蓋，不累積 | Scenario: Attack path rendering on topology |
+
+---
+
+## 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: Network Topology Stabilization and Attack Path Highlighting
+  SPEC-042 — D3 force 穩定化、攻擊路徑高亮、子網分組。
+
+  Background:
+    Given 系統已初始化且 operation "op-test" 已建立
+    And operation 中有 target "target-001" IP "10.0.1.5" network_segment "10.0.1.0/24"
+    And operation 中有 target "target-002" IP "10.0.2.10" network_segment "10.0.2.0/24"
+
+  Scenario: Attack path rendering on topology
+    Given 攻擊圖引擎計算出 recommended_path ["T1595.001::target-001","T1190::target-001","T1021.004::target-002"]
+    When WebSocket 廣播 graph.updated 事件含 recommended_path
+    Then WarRoom 頁面中 NetworkTopology 元件收到 recommendedPath prop
+    And 拓撲圖中 C2→target-001 邊以紅色 #ff2222 渲染、寬度 3px
+    And 拓撲圖中 target-001→target-002 邊以紅色 #ff2222 渲染、寬度 3px
+    And 路徑邊線具有 opacity 脈動動畫（週期 1.5s）
+    And 路徑邊線粒子數為 4，顏色 #ff2222
+    When recommended_path 為空陣列
+    Then 無高亮邊線渲染，畫面與修改前一致
+    When recommended_path 含無法匹配的節點 ID
+    Then 跳過該段，不拋出錯誤
+
+  Scenario: Subnet grouping layout
+    When 拓撲圖載入含 2 個不同子網的 targets
+    Then target-001 和 target-002 在 X 軸上有 200px 偏移
+    And 每個子網繪製虛線邊界框（stroke rgba(255,255,255,0.15)、dash [6,4]）
+    And 邊界框左上角標示子網 CIDR（如 "10.0.1.0/24"）
+    When 所有 target 屬於同一子網
+    Then forceX 偏移為 0，佈局不受影響
+    When target 的 network_segment 為 NULL
+    Then 該節點不繪製邊界框
+    And TopologyLegend 顯示「攻擊路徑（建議）」項目
+```
+
+---
+
+## 追溯性（Traceability）
+
+| 項目 | 檔案路徑 | 狀態 | 備註 |
+|------|----------|------|------|
+| SPEC 文件 | `docs/specs/SPEC-042-network-topology-stabilization-and-attack-path-highlighting.md` | 已建立 | 本文件 |
+| 後端實作 — 攻擊圖引擎 | `backend/app/services/attack_graph_engine.py` | 已存在 | broadcast payload 擴充 `recommended_path` |
+| 後端實作 — Topology API | `backend/app/routers/targets.py` | 已存在 | `get_topology()` node data 加入 `network_segment` |
+| 後端模型 — AttackGraph | `backend/app/models/attack_graph.py` | 已存在 | `recommended_path: list[str]` |
+| 前端實作 — NetworkTopology | `frontend/src/components/ui/Skeleton.tsx` | 已存在 | （待實作）force 參數、攻擊路徑渲染、子網分組 |
+| 前端實作 — WarRoom | `frontend/src/app/warroom/page.tsx` | 已存在 | `graph.updated` 訂閱、`recommendedPath` state |
+| 後端測試 — 攻擊圖 | `backend/tests/test_attack_graph.py` | 已存在 | 攻擊圖相關測試 |
+| 後端測試 — 攻擊圖 router | `backend/tests/test_attack_graph_router.py` | 已存在 | 攻擊圖 API 測試 |
+| E2E 測試 — WarRoom | `frontend/e2e/warroom.spec.ts` | 已存在 | WarRoom E2E 測試 |
+| E2E 測試 — WarRoom tabs | `frontend/e2e/sit-warroom-tabs.spec.ts` | 已存在 | WarRoom SIT 測試 |
+| ADR | ADR-036 | 已接受 | 攻擊圖譜路徑最佳化 |
+
+> 追溯日期：2026-03-26
+
+---
+
+## 可觀測性（Observability）
+
+| 項目 | 類型 | 名稱/格式 | 觸發條件 | 說明 |
+|------|------|-----------|----------|------|
+| 攻擊路徑廣播 | log (INFO) | `graph.updated broadcast: recommended_path length=%d` | `rebuild()` 完成後 | 記錄路徑節點數量 |
+| Topology API network_segment | log (DEBUG) | `topology node %s: network_segment=%s` | `get_topology()` 執行時 | 記錄每個節點的子網歸屬 |
+| 前端 | N/A | — | — | 前端為純渲染邏輯，無後端可觀測需求 |
 
 ---
 
@@ -492,5 +579,4 @@ const EDGE_ENTRIES = [
   - `frontend/messages/en.json`（`Legend.attackPath` 翻譯）
   - `frontend/messages/zh-TW.json`（`Legend.attackPath` 翻譯）
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->
+

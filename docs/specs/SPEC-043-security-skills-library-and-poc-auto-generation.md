@@ -246,16 +246,16 @@ GET /api/operations/{operation_id}/poc
 
 ---
 
-## 🔗 副作用與連動（Side Effects）
+## 副作用與連動（Side Effects）
 
-| 本功能的狀態變動 | 受影響的既有功能 | 預期行為 |
-|-----------------|----------------|---------|
-| Skill 內容注入 Orient prompt | Orient LLM 回應 | 推薦品質提升，reasoning_text 引用 skill 知識；prompt token 量增加（每 skill 約 400-800 tokens） |
-| `poc.*` fact 插入 facts 表 | Observe 階段 fact 統計 | PoC fact 納入 fact count，但 Orient summarize 不應將 PoC 當作一般情報 |
-| `poc.*` fact 插入 facts 表 | Orient categorized_facts | 需排除 `poc.*` trait（避免 prompt 膨脹） |
-| `poc.*` fact 插入 facts 表 | Attack Graph fact processing | Attack Graph 應忽略 `poc.*` trait（非攻擊路徑節點） |
-| FactCategory 新增 `POC` | FactCategory enum | 需更新 `app/models/enums.py` 新增 `POC = "poc"` |
-| 新增 `/api/operations/{id}/poc` | 前端 OperationDetail | 前端新增 PoC 區塊顯示 PoC 列表 |
+| 副作用 | 觸發條件 | 影響模組 | 驗證方式 |
+|--------|----------|----------|----------|
+| Skill 內容注入 Orient prompt（+400-800 tokens/skill） | Orient `_build_prompt()` 執行時 | `backend/app/services/orient_engine.py` | 單元測試驗證 prompt 含 `## 8.5. RELEVANT SECURITY KNOWLEDGE` |
+| `poc.*` fact 插入 facts 表 | `_finalize_execution` 成功路徑 / `_execute_metasploit` 成功路徑 | `backend/app/services/engine_router.py` | 單元測試驗證 DB 中 `poc.*` fact 存在 |
+| Orient `_format_categorized_facts` 排除 `poc.*` trait | Orient prompt 組裝時 | `backend/app/services/orient_engine.py` | 單元測試驗證 categorized_facts 不含 `poc.*` |
+| Attack Graph 忽略 `poc.*` trait | 攻擊圖 rebuild 時 | `backend/app/services/attack_graph_engine.py` | 單元測試驗證 `poc.*` 不產生攻擊圖節點 |
+| FactCategory enum 新增 `POC = "poc"` | 系統初始化時 | `backend/app/models/enums.py` | import 驗證 `FactCategory.POC` 存在 |
+| 新增 `/api/operations/{id}/poc` API | HTTP GET 請求 | `backend/app/routers/poc.py` | API 測試驗證回傳結構正確 |
 
 ---
 
@@ -269,11 +269,109 @@ GET /api/operations/{operation_id}/poc
 - **Case 6**：`commands_executed` 資訊不可得（如 mock engine）— 設為 `["(mock execution)"]`，`reproducible` 設為 `False`
 - **Case 7**：Skill 檔案超過 token budget — 截取前 800 tokens（以字元估算：約 3200 字元）
 
-### 回退方案（Rollback Plan）
+## Rollback Plan
 
-- **回退方式**：revert commit
-- **不可逆評估**：完全可逆。Skill 檔案為靜態 Markdown，刪除即可。`poc.*` facts 在 revert 後不影響既有功能（trait 前綴隔離）
-- **資料影響**：回退後已產出的 `poc.*` facts 保留在 DB 中不會造成問題，可透過 `DELETE FROM facts WHERE trait LIKE 'poc.%'` 清理
+| 回滾步驟 | 資料影響 | 回滾驗證 | 回滾已測試 |
+|----------|----------|----------|-----------|
+| `git revert <commit>` | Skill 檔案為靜態 Markdown，刪除即可。`poc.*` facts 保留在 DB 中不影響既有功能（trait 前綴隔離） | `make test` 全數通過；grep 確認 `skill_loader` / `poc_record` import 不存在 | 否（待實作後驗證） |
+| 可選：`DELETE FROM facts WHERE trait LIKE 'poc.%'` | 清理殘留 PoC facts | 查詢 `SELECT COUNT(*) FROM facts WHERE trait LIKE 'poc.%'` 回傳 0 | 否 |
+
+> **不可逆評估**：完全可逆。Skill 檔案為靜態 Markdown，`poc.*` facts 以 trait 前綴隔離。
+
+---
+
+## 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景描述 | 輸入 | 預期結果 | 對應驗收場景 |
+|----|------|----------|------|----------|-------------|
+| P1 | 正向 | Skill 精確匹配 — T1190 | `load_skills("T1190")` | 回傳含 `sql_injection` 和 `xss` 的 skill 內容 | Scenario: Security skills injection into Orient prompt |
+| P2 | 正向 | Skill 父級匹配 — T1003.001 | `load_skills("T1003.001")` | 回傳 `credential_dumping` 內容 | Scenario: Security skills injection into Orient prompt |
+| P3 | 正向 | Skill tactic fallback — TA0008 | `load_skills("T9999", "TA0008")` | 回傳 `lateral_movement` 內容 | Scenario: Security skills injection into Orient prompt |
+| P4 | 正向 | PoC 自動記錄 — _finalize_execution 成功 | `result.success=True, result.output="uid=0(root)"` | DB 中出現 `poc.{technique_id}` fact，value 為合法 JSON | Scenario: PoC auto generation on successful exploit |
+| P5 | 正向 | PoC API — 正常查詢 | `GET /api/operations/{op_id}/poc` | 回傳 `{"poc_records": [...], "total": N}` | Scenario: PoC auto generation on successful exploit |
+| P6 | 正向 | Metasploit PoC 記錄 | `_execute_metasploit` 成功 | DB 中出現 `poc.{technique_id}` fact，`commands_executed` 含 `metasploit:` 前綴 | Scenario: PoC auto generation on successful exploit |
+| N1 | 負向 | Skill 檔案不存在 | `load_skills("T9999")` | 回傳空字串，Orient 照常運作 | Scenario: Security skills injection into Orient prompt |
+| N2 | 負向 | PoC API — operation 不存在 | `GET /api/operations/invalid-id/poc` | 404 `{"detail": "Operation not found"}` | Scenario: PoC auto generation on successful exploit |
+| N3 | 負向 | PoC — result.output 為空 | `result.success=True, result.output=""` | `output_snippet=""`, `reproducible=False` | Scenario: PoC auto generation on successful exploit |
+| B1 | 邊界 | Skill token budget — 超過 3200 字元 | skill 檔案內容 5000 字元 | 截取前 3200 字元 | Scenario: Security skills injection into Orient prompt |
+| B2 | 邊界 | 同一 technique 多次成功執行 PoC | 連續 2 次 `_finalize_execution` 成功 | `INSERT OR IGNORE` 不產生重複 fact | Scenario: PoC auto generation on successful exploit |
+| B3 | 邊界 | Orient categorized_facts 排除 poc.* | facts 表含 `poc.T1190` fact | `_format_categorized_facts` 不包含 `poc.*` | Scenario: Security skills injection into Orient prompt |
+
+---
+
+## 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: Security Skills Library and PoC Auto Generation
+  SPEC-043 — Skill 知識注入 Orient + 成功 exploit 自動記錄 PoC。
+
+  Background:
+    Given 系統已初始化資料庫
+    And operation "op-test" 已建立
+    And target "target-001" IP "192.168.0.23" 已加入 operation
+
+  Scenario: Security skills injection into Orient prompt
+    Given skill 檔案 "sql_injection.md" 存在於 backend/app/data/skills/
+    When 呼叫 load_skills("T1190")
+    Then 回傳字串含 "## 8.5. RELEVANT SECURITY KNOWLEDGE"
+    And 回傳字串含 "SQL Injection" 內容
+    When 呼叫 load_skills("T1003.001")
+    Then 回傳字串含 "credential_dumping" 相關內容（父級匹配）
+    When 呼叫 load_skills("T9999", "TA0008")
+    Then 回傳字串含 "lateral_movement" 相關內容（tactic fallback）
+    When 呼叫 load_skills("T9999")
+    Then 回傳空字串
+    And Orient prompt 組裝正常完成無 exception
+
+  Scenario: PoC auto generation on successful exploit
+    Given technique "T1003.001" 對 target "target-001" 執行成功
+    And result.output 為 "Authentication Id : 0 ; 999\nNTLM : aad3b435..."
+    When _finalize_execution 完成
+    Then DB 中存在 fact trait="poc.T1003.001" category="poc"
+    And fact value 為合法 JSON 且可透過 PoCRecord.from_json() 反序列化
+    And PoCRecord.output_snippet 不超過 1000 字元
+    When GET /api/operations/op-test/poc
+    Then 回傳 HTTP 200
+    And response 含 "poc_records" 陣列長度 >= 1
+    And poc_records[0].technique_id 為 "T1003.001"
+    When GET /api/operations/invalid-id/poc
+    Then 回傳 HTTP 404
+```
+
+---
+
+## 追溯性（Traceability）
+
+| 項目 | 檔案路徑 | 狀態 | 備註 |
+|------|----------|------|------|
+| SPEC 文件 | `docs/specs/SPEC-043-security-skills-library-and-poc-auto-generation.md` | 已建立 | 本文件 |
+| 後端實作 — SkillLoader | `backend/app/services/skill_loader.py` | 已存在 | Skill 載入模組 |
+| 後端實作 — Orient 整合 | `backend/app/services/orient_engine.py` | 已存在 | skill section 注入 + poc fact 排除 |
+| 後端實作 — PoCRecord | `backend/app/models/poc_record.py` | 已存在 | PoC dataclass |
+| 後端實作 — PoC 記錄 | `backend/app/services/engine_router.py` | 已存在 | `_record_poc()` / `_execute_metasploit` PoC |
+| 後端實作 — PoC API | `backend/app/routers/poc.py` | 已存在 | PoC 報告 API |
+| 後端實作 — Enum | `backend/app/models/enums.py` | 已存在 | `FactCategory.POC` |
+| 後端測試 — SkillLoader | `backend/tests/test_skill_loader.py` | 已存在 | skill 載入測試 |
+| 後端測試 — PoC | `backend/tests/test_poc.py` | 已存在 | PoC 記錄測試 |
+| 後端測試 — PoC router | `backend/tests/test_poc_router.py` | 已存在 | PoC API 路由測試 |
+| Skill 檔案 | `backend/app/data/skills/*.md` | （待確認） | 8 個 Markdown skill 檔案 |
+| 前端實作 | — | （待實作） | Operation Detail PoC 區塊 |
+| E2E 測試 | — | N/A | 前端 PoC 顯示可延後 |
+
+> 追溯日期：2026-03-26
+
+---
+
+## 可觀測性（Observability）
+
+| 項目 | 類型 | 名稱/格式 | 觸發條件 | 說明 |
+|------|------|-----------|----------|------|
+| Skill 載入 | log (DEBUG) | `Skill file not found: %s` | skill 檔案不存在 | 記錄缺失的 skill 路徑 |
+| Skill 讀取失敗 | log (WARNING) | `Failed to read skill file: %s` | skill 檔案讀取異常 | 含 exc_info |
+| PoC 記錄成功 | log (INFO) | `PoC recorded: technique=%s target=%s` | `_record_poc()` 成功寫入 | 記錄 technique_id 和 target_id |
+| PoC 重複跳過 | log (DEBUG) | `PoC fact already exists: poc.%s` | `INSERT OR IGNORE` 未插入 | 冪等執行記錄 |
+| Orient prompt token 增量 | log (DEBUG) | `Skills section injected: %d chars (%d skills)` | skill section 非空 | 記錄注入字元數和 skill 數量 |
+| 前端 | N/A | — | — | 前端 PoC 顯示為純渲染，無後端可觀測需求 |
 
 ---
 
@@ -645,5 +743,4 @@ if trait.startswith("poc."):
   - `backend/app/services/orient_engine.py` — 修改：注入 skill section + 排除 poc facts
   - `backend/app/services/engine_router.py` — 修改：`_finalize_execution` + `_execute_metasploit` 新增 PoC 記錄
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->
+

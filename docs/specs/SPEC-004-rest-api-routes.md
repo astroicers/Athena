@@ -163,6 +163,123 @@ WS     /ws/{operation_id}                               → Event stream
 
 ---
 
+## 🔗 副作用與連動（Side Effects）
+
+| 副作用 | 觸發條件 | 影響的系統/模組 | 驗證方式 |
+|--------|---------|----------------|----------|
+| API 路徑變更影響前端 fetch 呼叫 | 任一端點 URL 或 HTTP method 變更時 | SPEC-005 `lib/api.ts`、所有 `useOperation`/`useOODA` 等 hooks | 前端 `npm run build` 無錯誤；E2E 測試通過 |
+| WebSocket 事件格式變更影響即時更新 | WS 事件名稱或 data 結構變更時 | SPEC-005 `useWebSocket` hook、前端所有訂閱 WS 的元件 | WebSocket 連線測試確認事件格式正確 |
+| CORS 設定影響跨域請求 | `allow_origins` 清單變更時 | 前端 localhost:3000 的 API 呼叫 | `curl -H "Origin: http://localhost:3000" ...` 確認 CORS header |
+| `main.py` lifespan 影響 DB 初始化 | startup 事件順序或 seed 邏輯變更時 | SPEC-003 `init_db()` 與 `demo_scenario` | 啟動 uvicorn 後確認 `/api/health` 回傳 ok |
+
+### 🔄 Rollback Plan
+
+| 項目 | 說明 |
+|------|------|
+| **回滾步驟** | 1. `git revert <commit>` 還原 router 與 main.py 變更 2. 確認前端 API 呼叫回退至對應版本 |
+| **資料影響** | API 層不持久化資料——資料由 SPEC-003 DB 層管理；POST/PATCH 端點的資料變更需檢查 DB 狀態 |
+| **回滾驗證** | `uvicorn app.main:app` 啟動成功；Swagger UI `/docs` 顯示正確端點數 |
+| **回滾已測試** | ☑ 否（API 層無狀態，回滾風險低） |
+
+## 🧪 測試矩陣（Test Matrix）
+
+| # | 類型 | 輸入條件 | 預期結果 | 對應場景 |
+|---|------|---------|---------|---------|
+| P1 | ✅ 正向 | `GET /api/operations` | 200，回傳 Operation 列表（含種子 OP-2024-017） | S1 |
+| P2 | ✅ 正向 | `POST /api/operations` 含有效 body | 201，建立新 Operation 並回傳完整物件 | S1 |
+| P3 | ✅ 正向 | `GET /api/operations/{id}/c5isr` | 200，回傳 6 筆 C5ISR 狀態 | S1 |
+| P4 | ✅ 正向 | `GET /api/health` | 200，回傳 `{"status": "ok", ...}` 含服務狀態 | S1 |
+| P5 | ✅ 正向 | `WS /ws/{operation_id}` 連線 | WebSocket 握手成功，接收事件 | S1 |
+| N1 | ❌ 負向 | `GET /api/operations/nonexistent-id` | 404，`{"detail": "Operation not found"}` | S2 |
+| N2 | ❌ 負向 | `POST /api/operations` body 缺少必填欄位 | 422，Pydantic ValidationError 詳情 | S2 |
+| N3 | ❌ 負向 | `PATCH /api/operations/{id}/c5isr/invalid_domain` | 400，`{"detail": "Invalid domain"}` | S2 |
+| B1 | 🔶 邊界 | `GET /api/operations/{id}/logs?page=1&page_size=0` | 回傳空列表或 422 參數錯誤 | S3 |
+| B2 | 🔶 邊界 | 種子資料未載入時 `GET /api/operations` | 200，回傳空列表（不報錯） | S3 |
+| B3 | 🔶 邊界 | WebSocket 連線斷開後重連 | connection pool 清理完成，新連線正常 | S3 |
+
+## 🎭 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: SPEC-004 REST API 路由
+  作為 Athena 平台開發者
+  我想要 35+ REST API 端點與 WebSocket 路由
+  以便 前端與外部工具可消費完整的後端 API 層
+
+  Background:
+    Given 後端已啟動（uvicorn app.main:app）
+    And 資料庫已初始化並載入種子資料（SPEC-003）
+
+  # --- 正向場景 ---
+
+  Scenario: S1 - Operations CRUD 端點正常運作
+    Given 種子資料包含 OP-2024-017
+    When GET /api/operations
+    Then 回傳 200 且列表包含至少 1 筆 Operation
+    And 每筆 Operation 含 id、code、codename、status 欄位
+
+  Scenario: S1b - Swagger UI 顯示所有端點
+    When 存取 /docs
+    Then 頁面渲染 Swagger UI
+    And 顯示 35+ 端點按 tag 分組（Operations、OODA、Techniques、Mission 等）
+
+  Scenario: S1c - WebSocket 連線與事件廣播
+    Given 有效的 operation_id
+    When 建立 WebSocket 連線至 /ws/{operation_id}
+    Then 連線握手成功
+    And 可接收 JSON 格式事件（含 event、data、timestamp 欄位）
+
+  # --- 負向場景 ---
+
+  Scenario: S2 - 不存在的 Operation 回傳 404
+    Given 資料庫中無 id 為 "nonexistent" 的 Operation
+    When GET /api/operations/nonexistent
+    Then 回傳 404
+    And body 包含 {"detail": "Operation not found"}
+
+  Scenario: S2b - 參數格式錯誤回傳 422
+    When POST /api/operations 且 body 缺少 code 欄位
+    Then 回傳 422
+    And body 包含 Pydantic 驗證錯誤詳情
+
+  # --- 邊界場景 ---
+
+  Scenario: S3 - 種子資料未載入時回傳空列表
+    Given 資料庫已初始化但無種子資料
+    When GET /api/operations
+    Then 回傳 200 且列表為空
+    And 不拋出錯誤
+```
+
+## 🔗 追溯性（Traceability）
+
+| 實作檔案 | 測試檔案 | 最後驗證日期 |
+|----------|----------|-------------|
+| `backend/app/main.py` | `backend/tests/test_spec_004_api.py` | 2026-03-26 |
+| `backend/app/routers/operations.py` | `backend/tests/test_operations_router.py` | 2026-03-26 |
+| `backend/app/routers/ooda.py` | `backend/tests/test_ooda_router.py` | 2026-03-26 |
+| `backend/app/routers/techniques.py` | `backend/tests/test_techniques_router.py` | 2026-03-26 |
+| `backend/app/routers/missions.py` | `backend/tests/test_missions_router.py` | 2026-03-26 |
+| `backend/app/routers/targets.py` | `backend/tests/test_targets_router.py` | 2026-03-26 |
+| `backend/app/routers/agents.py` | `backend/tests/test_agents_router.py` | 2026-03-26 |
+| `backend/app/routers/facts.py` | `backend/tests/test_facts_router.py` | 2026-03-26 |
+| `backend/app/routers/c5isr.py` | `backend/tests/test_c5isr_router.py` | 2026-03-26 |
+| `backend/app/routers/logs.py` | `backend/tests/test_logs_router.py` | 2026-03-26 |
+| `backend/app/routers/recommendations.py` | `backend/tests/test_recommendations_router.py` | 2026-03-26 |
+| `backend/app/routers/health.py` | `backend/tests/test_health_router.py` | 2026-03-26 |
+| `backend/app/routers/ws.py` | `backend/tests/test_spec_004_api.py`（WebSocket 測試） | 2026-03-26 |
+| `backend/app/ws_manager.py` | `backend/tests/test_spec_004_api.py` | 2026-03-26 |
+
+## 📊 可觀測性（Observability）
+
+| 面向 | 說明 |
+|------|------|
+| **關鍵指標** | API 回應延遲（p50/p95/p99）、每端點錯誤率（4xx/5xx）、WebSocket 活躍連線數、每秒請求數 |
+| **日誌** | 每個請求記錄 method + path + status_code + latency（INFO）；422/500 錯誤記錄完整 body（ERROR）；WebSocket 連線/斷開記錄（INFO） |
+| **告警** | 5xx 錯誤率 > 1% 持續 5 分鐘觸發告警；API 回應延遲 p95 > 2s 觸發告警 |
+| **如何偵測故障** | `GET /api/health` 回傳各子系統狀態（database、caldera、shannon、websocket、llm）；Swagger UI `/docs` 可存取性 |
+
+---
+
 ## ✅ 驗收標準（Done When）
 
 - [x] `make test-filter FILTER=spec_004` 全數通過
@@ -197,5 +314,3 @@ WS     /ws/{operation_id}                               → Event stream
 - SPEC-002：Pydantic Models（依賴）
 - SPEC-003：Database 層（依賴）
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

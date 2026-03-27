@@ -184,6 +184,100 @@ class MockCalderaClient(BaseEngineClient):
 
 ---
 
+## 🔗 副作用與連動（Side Effects）
+
+| 副作用 | 觸發條件 | 影響的系統/模組 | 驗證方式 |
+|--------|---------|----------------|----------|
+| Mock 模式自動切換 | Caldera URL 不可達 | `engine_router`（SPEC-007）fallback 至 `MockCalderaClient` | `GET /api/health` → `services.caldera` 顯示 "mock" |
+| Agent 狀態同步 | `CalderaClient.sync_agents()` 呼叫 | `Agent` 表（DB）、前端 Battle Monitor 的 AgentBeacon | `GET /api/agents` 確認 Agent 列表與 Caldera 同步 |
+| ExecutionResult 傳播 | `execute()` 完成後 | `engine_router` → `fact_collector`（SPEC-007）萃取情報 | 確認 `ExecutionResult.facts` 被正確傳遞至 `fact_collector.collect()` |
+
+### 🔄 Rollback Plan
+
+| 項目 | 說明 |
+|------|------|
+| **回滾步驟** | `git revert` 移除 `backend/app/clients/` 目錄（`c2_client.py`、`mock_c2_client.py`、`mcp_engine_client.py`、`metasploit_client.py`、`__init__.py`） |
+| **資料影響** | Client 為無狀態 HTTP 封裝，無 DB schema 變更；回滾後 `engine_router` 需同步移除 client 呼叫 |
+| **回滾驗證** | `make test` 全數通過（移除 client 後 OODA Act 階段需 stub）；確認無 `import shannon` 殘留 |
+| **回滾已測試** | ☐ 是 / ☑ 否（client 為 OODA 引擎的硬依賴，回滾需連帶處理 SPEC-007） |
+
+## 🧪 測試矩陣（Test Matrix）
+
+| # | 類型 | 輸入條件 | 預期結果 | 對應場景 |
+|---|------|---------|---------|---------|
+| P1 | ✅ 正向 | `MockCalderaClient.execute("T1595.001", target)` | `ExecutionResult(success=True, facts=[{type: "network.host.ip", ...}])` | S1 |
+| P2 | ✅ 正向 | `MockCalderaClient.execute("T1003.001", target)` | `ExecutionResult(success=True, facts=[{type: "credential.hash", ...}])` | S1 |
+| P3 | ✅ 正向 | `CalderaClient.is_available()` 對可達的 Caldera | 回傳 `True` | S1 |
+| N1 | ❌ 負向 | `CalderaClient.execute()` 對不可達的 Caldera | `ExecutionResult(success=False, error="timeout")` 或 fallback 至 mock | S2 |
+| N2 | ❌ 負向 | `ShannonClient` 且 `SHANNON_URL=""` | `is_available()` 回傳 `False`；`execute()` 拋出 `EngineNotAvailableError` | S2 |
+| N3 | ❌ 負向 | Caldera API 回傳非 JSON 格式 | `ExecutionResult(success=False, error="parse error")` | S2 |
+| B1 | 🔶 邊界 | `MockCalderaClient.execute()` 未知 ability_id | `ExecutionResult(success=True, facts=[])` | S3 |
+| B2 | 🔶 邊界 | httpx timeout 30s 到期 | 回傳 `ExecutionResult(success=False, error="timeout")` | S3 |
+
+## 🎬 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: SPEC-008 執行引擎客戶端
+  作為 Athena 平台開發者
+  我想要 Caldera 和 Shannon 的統一 HTTP 客戶端介面
+  以便 OODA Act 階段可透過統一介面執行 MITRE ATT&CK 技術
+
+  Background:
+    Given 後端已啟動
+    And 環境變數已設定（CALDERA_URL、SHANNON_URL）
+
+  Scenario: S1 - Mock 模式執行預錄技術
+    Given CALDERA_URL 未設定或不可達
+    And MockCalderaClient 自動啟用
+    When execute("T1595.001", "192.168.1.10")
+    Then 回傳 ExecutionResult(success=True)
+    And facts 含 network.host.ip 類型情報
+    And 執行延遲 2-5 秒（模擬真實感）
+
+  Scenario: S2 - Shannon 未配置時完全停用
+    Given SHANNON_URL 為空字串
+    When ShannonClient 初始化
+    Then is_available() 回傳 False
+    And execute() 拋出 EngineNotAvailableError
+
+  Scenario: S3 - 未知 ability_id 仍回傳成功
+    Given MockCalderaClient 已啟用
+    When execute("T9999.999", "192.168.1.10")
+    Then 回傳 ExecutionResult(success=True, facts=[])
+    And 不拋出例外
+
+  Scenario: S4 - 授權隔離驗證
+    Given codebase 中所有 Python 檔案
+    When 搜尋 "import shannon" 或 "from shannon import"
+    Then 搜尋結果為零筆
+```
+
+## 🔍 追溯性（Traceability）
+
+| 類型 | 檔案路徑 |
+|------|---------|
+| 實作 — Client 基礎 | `backend/app/clients/__init__.py` |
+| 實作 — C2 Client | `backend/app/clients/c2_client.py` |
+| 實作 — Mock C2 Client | `backend/app/clients/mock_c2_client.py` |
+| 實作 — MCP Engine Client | `backend/app/clients/mcp_engine_client.py` |
+| 實作 — Metasploit Client | `backend/app/clients/metasploit_client.py` |
+| 實作 — 引擎註冊 | `backend/app/services/engine_registry.py` |
+| 實作 — 引擎路由 | `backend/app/services/engine_router.py` |
+| 測試 — Engine Fallback | `backend/tests/test_engine_fallback.py` |
+| 測試 — MCP Engine Routing | `backend/tests/test_mcp_engine_routing.py` |
+| 測試 — E2E OODA（含 client 呼叫） | `backend/tests/test_e2e_ooda_loop.py` |
+
+## 👁️ 可觀測性（Observability）
+
+| 項目 | 說明 |
+|------|------|
+| **關鍵指標** | `execute()` 延遲（ms）、成功率、引擎切換次數（Caldera↔Shannon↔Mock） |
+| **日誌** | 每次 `execute()` 記錄 `INFO`：ability_id + target + engine + duration；Mock 模式記錄 `DEBUG` |
+| **錯誤追蹤** | 連線失敗 → `WARNING` + fallback 記錄；timeout → `ERROR` + ExecutionResult.error |
+| **健康檢查** | `GET /api/health` → `services.caldera`（connected/disconnected/mock）、`services.shannon`（connected/disabled） |
+
+---
+
 ## ✅ 驗收標準（Done When）
 
 - [x] `make test-filter FILTER=spec_008` 全數通過
@@ -215,5 +309,3 @@ class MockCalderaClient(BaseEngineClient):
 - Caldera API 文件：https://caldera.readthedocs.io/en/latest/Server-Configuration.html
 - SPEC-007：OODA Loop Engine（被依賴——engine_router 呼叫 client）
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

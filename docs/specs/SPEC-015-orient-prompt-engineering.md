@@ -200,6 +200,103 @@ OpenAI — system message 前置：
 
 ---
 
+## 副作用與連動（Side Effects）
+
+| 變更項目 | 影響範圍 | 說明 |
+|----------|----------|------|
+| `_build_prompt()` 簽章變更 | `orient_engine.py` 內部 | 回傳從 `str` 改為 `tuple[str, str]`，影響 `_call_llm`, `_call_claude`, `_call_openai` |
+| `_call_claude()` API 參數 | Anthropic API 呼叫 | 新增 `system` 參數，改變 API request body 結構 |
+| `_call_openai()` messages 結構 | OpenAI API 呼叫 | 前置 `role: "system"` message，改變 messages 陣列 |
+| 新增 DB 查詢 | `mission_steps`, `ooda_iterations`, `recommendations`, `techniques`, `facts` | `_build_prompt()` 新增 5 個 SQL 查詢，增加 DB 讀取負載 |
+| `MOCK_LLM` 路徑不受影響 | 無 | `analyze()` 在 mock 模式提前返回，不執行 `_build_prompt()` |
+
+---
+
+## Rollback Plan
+
+| 步驟 | 指令 | 驗證 |
+|------|------|------|
+| 1. 還原程式碼 | `git revert <commit>` | `git log` 確認 revert commit |
+| 2. 驗證 mock 模式 | `MOCK_LLM=true make test-filter FILTER=spec_007` | 所有 OODA 測試通過 |
+| 3. 驗證 API 格式 | 確認 `analyze()` 回傳 dict 結構不變 | `decision_engine.py`, `ooda_controller.py` 正常運作 |
+
+---
+
+## 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 輸入 | 預期結果 |
+|----|------|------|------|----------|
+| P1 | Positive | System prompt 包含 5 個分析框架 | 讀取 `_ORIENT_SYSTEM_PROMPT` 常數 | 包含 KILL CHAIN, NEGATIVE BRANCH, PREREQUISITE, ENGINE ROUTING, RISK CALIBRATION |
+| P2 | Positive | User prompt 包含 8 段落 | `_build_prompt(db, op_id, summary)` | 回傳 tuple，user prompt 含 OPERATION BRIEF, MISSION TASK TREE, KILL CHAIN POSITION 等 8 段落 |
+| P3 | Positive | Mock 模式不受影響 | `MOCK_LLM=true`, `analyze(op_id, summary)` | 回傳 `_MOCK_RECOMMENDATION`，不呼叫 `_build_prompt()` |
+| N1 | Negative | 無歷史資料的首次迭代 | `ooda_iterations` 為空 | 歷史段落 = "No prior cycles -- first iteration." |
+| N2 | Negative | mission_steps 為空 | 無任務步驟 | 任務樹段落 = "No mission steps defined." |
+| B1 | Boundary | Token 預算限制 | 歷史 LIMIT 3, 建議 LIMIT 2, 情報每類 LIMIT 5 | user prompt <= ~1500 tokens |
+| B2 | Boundary | facts 表全空 | 所有 category 無資料 | 各分類情報 = "No intelligence collected." |
+
+---
+
+## 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: Orient Prompt 工程 — 結構化雙 Prompt 架構
+
+  Scenario: S1 — _build_prompt 回傳結構化 system + user prompt tuple
+    Given 存在 operation "op-001" 含 3 個 mission_steps
+    And ooda_iterations 包含 2 筆歷史紀錄
+    And facts 包含 credential 與 network 類別各 2 筆
+    When 呼叫 _build_prompt(db, "op-001", "Port 22 open on target")
+    Then 回傳 tuple 長度為 2
+    And system_prompt 包含 "KILL CHAIN PROGRESSION"
+    And user_prompt 包含 "MISSION TASK TREE"
+    And user_prompt 包含 "Port 22 open on target"
+
+  Scenario: S2 — 無歷史資料時 prompt 使用 fallback 文字
+    Given 存在 operation "op-002" 但無 ooda_iterations
+    And mission_steps 為空
+    And facts 為空
+    When 呼叫 _build_prompt(db, "op-002", "Initial scan")
+    Then user_prompt 包含 "No prior cycles"
+    And user_prompt 包含 "No mission steps defined"
+    And user_prompt 包含 "No intelligence collected"
+
+  Scenario: S3 — MOCK_LLM 模式完全繞過 prompt 建構
+    Given 環境變數 MOCK_LLM=true
+    When 呼叫 analyze("op-001", "any summary")
+    Then 回傳 _MOCK_RECOMMENDATION 內容
+    And _build_prompt 未被呼叫
+```
+
+---
+
+## 追溯性（Traceability）
+
+| 類型 | 路徑 |
+|------|------|
+| 實作 — Orient Engine | `backend/app/services/orient_engine.py` |
+| 實作 — LLM Client | `backend/app/services/llm_client.py` |
+| 連動 — Decision Engine | `backend/app/services/decision_engine.py` |
+| 連動 — OODA Controller | `backend/app/services/ooda_controller.py` |
+| 連動 — Fact Collector | `backend/app/services/fact_collector.py` |
+| 單元測試 | `backend/tests/test_orient_engine.py` |
+| OODA Service Tests | `backend/tests/test_spec_007_ooda_services.py` |
+| E2E Tests | `backend/tests/test_e2e_ooda_loop.py` |
+| LLM Routing Tests | `backend/tests/test_llm_model_routing.py` |
+| ADR | `docs/adr/ADR-013-orient-prompt-engineering-strategy.md` |
+
+---
+
+## 可觀測性（Observability）
+
+| 項目 | 內容 |
+|------|------|
+| Prompt Token 計數 | `_build_prompt()` 完成後 log system prompt 與 user prompt 的估算 token 數 |
+| LLM 呼叫延遲 | `_call_claude()` / `_call_openai()` 記錄回應時間（ms） |
+| Fallback 觸發 | LLM 回傳格式不符 schema 時記錄 `WARNING` log 並 fallback 至 `_MOCK_RECOMMENDATION` |
+| DB 查詢計數 | `_build_prompt()` 執行 5 個 SQL 查詢，可透過 DB 連線 pool 監控 |
+
+---
+
 ## ✅ 驗收標準（Done When）
 
 - [x] `_ORIENT_SYSTEM_PROMPT` 常數定義，含 5 個分析框架指令
@@ -248,5 +345,3 @@ OpenAI — system message 前置：
 | [Threats2MITRE](https://github.com/LiuYuancheng/Threats_2_MITRE_AI_Mapper) | MIT | Pattern 4: Kill Chain 映射 |
 | [PentAGI](https://github.com/vxcontrol/pentagi) | MIT | Pattern 5: 三層記憶 |
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

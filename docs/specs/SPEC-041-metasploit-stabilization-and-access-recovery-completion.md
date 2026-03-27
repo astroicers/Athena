@@ -449,13 +449,13 @@ async def _recovery_phase3_pivot(
 
 ## 副作用與連動（Side Effects）
 
-| 本功能的狀態變動 | 受影響的既有功能 | 預期行為 |
-|-----------------|----------------|---------|
-| `asyncio.sleep(2)` 移除 | `_run_exploit()` session reuse + new session path | 使用 `_read_shell_output()` 替代，最快 0.3s 回應、最慢 15s 超時 |
-| `_check_session_health()` 新增 | session reuse 路徑 | 不健康的 session 跳過 reuse，改走 launch exploit 路徑 |
-| `access.recovery_candidate` fact | Orient prompt observe_summary | AI 看到可恢復存取的候選目標與其已知開放 port |
-| `access.alternative_available` fact | Orient prompt CREDENTIAL INTELLIGENCE | AI 看到替代通訊協定可用（WinRM、SMB、SSH Key） |
-| `access.pivot_candidate` fact | Orient prompt 攻擊建議 | AI 推薦透過已控制主機進行橫向移動 |
+| 副作用 | 觸發條件 | 影響模組 | 驗證方式 |
+|--------|----------|----------|----------|
+| `asyncio.sleep(2)` 移除，改用 `_read_shell_output()` | `_run_exploit()` session reuse + new session path 執行時 | `backend/app/clients/metasploit_client.py` — `_run_exploit()` | 單元測試驗證 `_read_shell_output()` 回傳正確輸出；grep 確認無殘留 `sleep(2)` |
+| `_check_session_health()` 新增 | session reuse 路徑進入前呼叫 | `backend/app/clients/metasploit_client.py` — session reuse path | 單元測試 mock unhealthy session → 跳過 reuse |
+| `access.recovery_candidate` fact 寫入 | `_handle_access_lost()` 觸發後 Phase 1 | `backend/app/services/orient_engine.py` — observe_summary prompt | 單元測試驗證 DB 中 fact 存在；Orient prompt 含 recovery 候選 |
+| `access.alternative_available` fact 寫入 | `_handle_access_lost()` 觸發後 Phase 2 | `backend/app/services/orient_engine.py` — CREDENTIAL INTELLIGENCE prompt | 單元測試驗證 WinRM/SMB/SSH Key fact 正確寫入 |
+| `access.pivot_candidate` fact 寫入 | `_handle_access_lost()` 觸發後 Phase 3 | `backend/app/services/orient_engine.py` — 攻擊建議 prompt | 單元測試驗證 pivot fact 含 `pivot:{src}->{tgt}:via=` 格式 |
 
 ---
 
@@ -476,11 +476,102 @@ async def _recovery_phase3_pivot(
 - **Case 8**：多個 OODA 迭代連續觸發 access_lost — 三階段恢復冪等執行，不會產生重複 fact
 - **Case 9**：Phase 2 發現替代協定後下一個 Orient 迭代推薦使用 — Orient 從 `access.alternative_available` fact 讀取，由 AI 決策是否嘗試
 
-### 回退方案（Rollback Plan）
+## Rollback Plan
 
-- **回退方式**：revert commit
-- **不可逆評估**：完全可逆。新增的 `_read_shell_output()` / `_check_session_health()` 為純新增方法；recovery facts 為新 trait，移除後不影響既有功能
-- **資料影響**：回退後已寫入的 `access.recovery_candidate` / `access.alternative_available` / `access.pivot_candidate` facts 殘留在 DB 中但不會被任何程式碼讀取，無副作用
+| 回滾步驟 | 資料影響 | 回滾驗證 | 回滾已測試 |
+|----------|----------|----------|-----------|
+| `git revert <commit>` | 已寫入的 `access.recovery_candidate` / `access.alternative_available` / `access.pivot_candidate` facts 殘留在 DB 中，但不被任何程式碼讀取，無副作用 | `make test` 全數通過；grep 確認 `_read_shell_output` / `_check_session_health` / `_recovery_phase` 方法不存在 | 否（待實作後驗證） |
+| 無需額外 DB migration | 無 schema 變更，無需 rollback DDL | N/A | N/A |
+
+> **不可逆評估**：完全可逆。新增的 `_read_shell_output()` / `_check_session_health()` 為純新增方法；recovery facts 為新 trait，移除後不影響既有功能。
+
+---
+
+## 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景描述 | 輸入 | 預期結果 | 對應驗收場景 |
+|----|------|----------|------|----------|-------------|
+| P1 | 正向 | Shell 正常讀取 — mock shell 回傳 3 次空、第 4 次回傳 `uid=0(root)` | `_read_shell_output(shell)` | 回傳 `uid=0(root)` 完整字串 | Scenario: Shell output with exponential backoff |
+| P2 | 正向 | Prompt 偵測 — shell 回傳 `root@target#` | `_read_shell_output(shell)` | 提前結束讀取，回傳累積 output | Scenario: Shell output with exponential backoff |
+| P3 | 正向 | Session health — session 存在且 type=shell | `_check_session_health(client, sid)` | `True` | Scenario: Shell output with exponential backoff |
+| P4 | 正向 | Recovery Phase 1 — target 有 open ports | `_recovery_phase1_rescan(db, ...)` | DB 中出現 `access.recovery_candidate` fact | Scenario: Access recovery three-phase execution |
+| P5 | 正向 | Recovery Phase 2 — target 有 5985 port | `_recovery_phase2_alt_protocol(db, ...)` | DB 中出現 `access.alternative_available` = `winrm:{ip}:5985` | Scenario: Access recovery three-phase execution |
+| P6 | 正向 | Recovery Phase 3 — 同 operation 有 root shell 主機 | `_recovery_phase3_pivot(db, ...)` | DB 中出現 `access.pivot_candidate` fact | Scenario: Access recovery three-phase execution |
+| N1 | 負向 | Shell 永遠回傳空 — 15s timeout | `_read_shell_output(shell, timeout=15)` | 回傳空字串，不拋異常 | Scenario: Shell output with exponential backoff |
+| N2 | 負向 | Session 不存在 | `_check_session_health(client, "invalid-sid")` | `False` | Scenario: Shell output with exponential backoff |
+| N3 | 負向 | Session type=unknown | `_check_session_health(client, sid)` | `False` | Scenario: Shell output with exponential backoff |
+| N4 | 負向 | Target 無 open_port facts | `_recovery_phase1_rescan(db, ...)` | 不寫入任何 fact | Scenario: Access recovery three-phase execution |
+| N5 | 負向 | 無其他 compromised 主機 | `_recovery_phase3_pivot(db, ...)` | 不寫入 pivot fact | Scenario: Access recovery three-phase execution |
+| B1 | 邊界 | 重複觸發 `_handle_access_lost()` | 連續 2 次呼叫 | `INSERT OR IGNORE` 不產生重複 fact | Scenario: Access recovery three-phase execution |
+| B2 | 邊界 | Shell 已斷線 `shell.read()` 拋例外 | `_read_shell_output(broken_shell)` | 外層 try/except 捕獲，不 crash | Scenario: Shell output with exponential backoff |
+| B3 | 邊界 | target_ip 為 None | `_recovery_phase1_rescan(db, ..., target_ip=None)` | 直接 return，不寫入 fact | Scenario: Access recovery three-phase execution |
+
+---
+
+## 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: Metasploit Shell Stabilization & Access Recovery Completion
+  SPEC-041 — 替換 magic sleep 為指數退避、新增三階段存取恢復。
+
+  Background:
+    Given 系統已初始化資料庫並建立 operation "op-test"
+    And target "target-001" IP 為 "192.168.0.26" 已加入 operation
+
+  Scenario: Shell output with exponential backoff
+    Given Metasploit RPC session "sess-1" 存在且 type 為 "shell"
+    When 呼叫 _read_shell_output 且 mock shell 第 1-3 次回傳空、第 4 次回傳 "uid=0(root)"
+    Then _read_shell_output 回傳包含 "uid=0(root)" 的字串
+    And 實際等待時間小於 15 秒
+    When 呼叫 _read_shell_output 且 mock shell 回傳 "root@target#"
+    Then _read_shell_output 因 prompt 偵測提前結束
+    When 呼叫 _check_session_health 且 session 存在 type=shell
+    Then 回傳 True
+    When 呼叫 _check_session_health 且 session 不存在
+    Then 回傳 False
+
+  Scenario: Access recovery three-phase execution
+    Given target "target-001" 已有 facts: service.open_port="22/tcp:ssh", service.open_port="5985/tcp:winrm"
+    And target "target-002" IP "192.168.0.27" is_compromised=1, access_status="active", privilege_level="root"
+    And target "target-002" 已有 fact: credential.root_shell="true"
+    When _handle_access_lost 觸發（operation="op-test", target="target-001"）
+    Then DB 中存在 trait="access.recovery_candidate" 且 value 包含 "rescan:192.168.0.26:ports="
+    And DB 中存在 trait="access.alternative_available" 且 value="winrm:192.168.0.26:5985"
+    And DB 中存在 trait="access.pivot_candidate" 且 value 包含 "pivot:192.168.0.27->192.168.0.26:via=root_shell"
+    When 再次觸發 _handle_access_lost（相同參數）
+    Then DB 中不產生重複 fact（INSERT OR IGNORE 生效）
+```
+
+---
+
+## 追溯性（Traceability）
+
+| 項目 | 檔案路徑 | 狀態 | 備註 |
+|------|----------|------|------|
+| SPEC 文件 | `docs/specs/SPEC-041-metasploit-stabilization-and-access-recovery-completion.md` | 已建立 | 本文件 |
+| 後端實作 — Metasploit client | `backend/app/clients/metasploit_client.py` | 已存在 | `_read_shell_output()`, `_check_session_health()` 待新增 |
+| 後端實作 — Engine router | `backend/app/services/engine_router.py` | 已存在 | `_recovery_phase1/2/3` 待新增 |
+| 後端測試 — Shell | `backend/tests/test_metasploit_shell.py` | 已存在 | shell 相關單元測試 |
+| 後端測試 — Access recovery | `backend/tests/test_access_recovery.py` | 已存在 | 26 個 access recovery 測試 |
+| 後端測試 — Recovery phases | `backend/tests/test_access_recovery_phases.py` | 已存在 | 三階段 recovery 測試 |
+| ADR | ADR-033 | 已接受 | Access Recovery 決策 |
+| 前端實作 | — | N/A | 本 SPEC 無前端變更 |
+| E2E 測試 | — | N/A | 本 SPEC 無 E2E 測試需求 |
+
+> 追溯日期：2026-03-26
+
+---
+
+## 可觀測性（Observability）
+
+| 項目 | 類型 | 名稱/格式 | 觸發條件 | 說明 |
+|------|------|-----------|----------|------|
+| Shell 讀取完成 | log (DEBUG) | `Prompt detected, output complete (%d chars)` | prompt 偵測成功 | 記錄讀取字元數 |
+| Shell 連續空讀結束 | log (DEBUG) | `2 consecutive empty reads after output, done (%d chars)` | 2+ 連續空讀 | 記錄累積字元數 |
+| Shell 讀取超時 | log (WARNING) | `Shell read timed out after %.1fs (%d chars accumulated)` | 超過 timeout | 記錄超時秒數與累積字元數 |
+| Session health 失敗 | log (WARNING) | `Session %s not found in sessions list` / `unexpected type '%s'` | session 不健康 | 記錄 session ID 和 type |
+| Recovery phase 1 | log (DEBUG) | `recovery_candidate fact already exists for %s` | fact 重複 | 冪等執行記錄 |
+| 前端 | N/A | — | — | 本 SPEC 無前端變更 |
 
 ---
 
@@ -544,5 +635,4 @@ async def _recovery_phase3_pivot(
   - `backend/app/services/engine_router.py` — 現有 `_handle_access_lost()`（line 517-562）
   - `backend/tests/test_access_recovery.py` — 既有 26 個 access recovery 測試
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->
+

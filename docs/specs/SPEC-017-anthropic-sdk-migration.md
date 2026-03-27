@@ -135,5 +135,98 @@
 - SDK 認證文件：支援 `api_key`（X-Api-Key header）+ `auth_token`（Authorization: Bearer header）
 - 實施計畫：`/home/ubuntu/.claude/plans/compressed-squishing-sunset.md`
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->
+---
+
+## 副作用與連動（Side Effects）
+
+| 副作用 | 觸發條件 | 影響模組 | 驗證方式 |
+|--------|----------|----------|----------|
+| SDK client 單例生命週期 | `AsyncAnthropic` lazy init，首次 `_call_claude()` 時建立 | `backend/app/services/orient_engine.py` | `test_spec_007_ooda_services.py` 驗證 mock SDK |
+| 錯誤類型變更 | `httpx.HTTPStatusError` → `anthropic.RateLimitError` 等 | `ooda_controller.py` 上層 try/except | 既有 OODA 測試迴歸 |
+| `config.py` 新增欄位 | `ANTHROPIC_AUTH_TOKEN` 環境變數 | `backend/app/config.py`、`.env.example` | `make test` 驗證預設值無破壞 |
+| Health endpoint 行為變更 | 僅設 `AUTH_TOKEN` 時 LLM 狀態顯示 `"claude"` | `backend/app/routers/health.py` | 健康檢查單元測試 |
+
+---
+
+## Rollback Plan
+
+| 回滾步驟 | 資料影響 | 回滾驗證 | 回滾已測試 |
+|----------|----------|----------|------------|
+| 1. `git revert` SDK 遷移 commit，還原 `_call_claude()` 為 httpx 版本 | 無資料影響（stateless API 呼叫） | `make test` 全通過 | 是（遷移前測試通過） |
+| 2. 移除 `anthropic` 依賴（`pyproject.toml`） | 無 | `pip install -e .` 成功 | 是 |
+| 3. 還原 `config.py` 移除 `ANTHROPIC_AUTH_TOKEN` | 無（env var 不影響 DB） | `make test` 全通過 | 是 |
+
+---
+
+## 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 輸入 | 預期結果 | 場景參照 |
+|----|------|------|------|----------|----------|
+| P1 | 正向 | SDK 正常呼叫 Claude 並回傳 JSON | `ANTHROPIC_API_KEY` 有效 + prompt | `_call_claude()` 回傳 str（JSON 內容） | S1 |
+| P2 | 正向 | Bearer token 認證成功 | 僅設 `ANTHROPIC_AUTH_TOKEN` | SDK 使用 `auth_token=` 初始化，呼叫成功 | S1 |
+| N1 | 負向 | 兩個認證都未設定 | 無 `API_KEY` 且無 `AUTH_TOKEN` | `_call_llm()` 跳過 Claude，嘗試 OpenAI fallback | S2 |
+| N2 | 負向 | Claude API 回傳空 content | SDK 回傳 `message.content = []` | 拋出 `ValueError("Empty content")`，fallback OpenAI | S2 |
+| B1 | 邊界 | Claude API 429 rate limit | SDK 自動重試 2 次後仍 429 | `RateLimitError` 被捕獲，fallback OpenAI | S3 |
+| B2 | 邊界 | `MOCK_LLM=True` | 環境變數 `MOCK_LLM=true` | SDK 完全不初始化，`analyze()` 回傳 mock 結果 | S3 |
+
+---
+
+## 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: Anthropic SDK 遷移
+
+  Background:
+    Given OrientEngine 已初始化
+    And MOCK_LLM 為 false
+
+  Scenario: S1 — SDK 使用 API key 正常呼叫 Claude
+    Given 環境變數 ANTHROPIC_API_KEY 已設定為有效值
+    And CLAUDE_MODEL 設為 "claude-opus-4-6"
+    When OrientEngine._call_claude() 被呼叫
+    Then SDK 使用 AsyncAnthropic(api_key=...) 建立 client
+    And 回傳值為 str 型別
+    And 回傳值包含有效 JSON 內容
+
+  Scenario: S2 — 認證全缺時 fallback 至 OpenAI
+    Given 環境變數 ANTHROPIC_API_KEY 未設定
+    And 環境變數 ANTHROPIC_AUTH_TOKEN 未設定
+    When OrientEngine._call_llm() 被呼叫
+    Then _call_claude() 被跳過
+    And _call_openai() 被嘗試作為 fallback
+
+  Scenario: S3 — MOCK_LLM 模式下 SDK 不初始化
+    Given 環境變數 MOCK_LLM 設為 true
+    When OrientEngine.analyze() 被呼叫
+    Then AsyncAnthropic 未被實例化
+    And 回傳值為預設 mock JSON
+```
+
+---
+
+## 追溯性（Traceability）
+
+| 項目 | 路徑 / 識別碼 | 狀態 |
+|------|---------------|------|
+| 規格文件 | `docs/specs/SPEC-017-anthropic-sdk-migration.md` | Done |
+| 關聯 ADR | `docs/adr/ADR-005` | Accepted |
+| OrientEngine 實作 | `backend/app/services/orient_engine.py` | 已遷移 |
+| LLM Client | `backend/app/services/llm_client.py` | 已更新 |
+| Config 欄位 | `backend/app/config.py` | 已新增 AUTH_TOKEN |
+| Health Router | `backend/app/routers/health.py` | 已更新 |
+| 單元測試 — OODA | `backend/tests/test_spec_007_ooda_services.py` | 已重寫 mock |
+| 單元測試 — Orient | `backend/tests/test_orient_engine.py` | 通過 |
+| 整合測試 | `backend/tests/test_integration_real_mode.py` | 已修正 |
+| LLM 路由測試 | `backend/tests/test_llm_model_routing.py` | 通過 |
+| 更新日期 | 2026-03-26 | — |
+
+---
+
+## 可觀測性（Observability）
+
+| 面向 | 內容 |
+|------|------|
+| **指標（Metrics）** | `orient.claude_call.duration_seconds`（histogram）、`orient.claude_call.success_total` / `orient.claude_call.error_total`（counter）、`orient.fallback_to_openai_total`（counter） |
+| **日誌（Logs）** | SDK 初始化模式（api_key / auth_token / both）、Claude 呼叫開始/完成/失敗（含 model 名稱）、Fallback 觸發原因 |
+| **告警（Alerts）** | Claude API 連續失敗 ≥ 3 次（含 429）、fallback 比例超過 50%、MOCK_LLM=false 但 SDK 未初始化 |
+| **故障偵測（Fault Detection）** | `RateLimitError` 頻率監控（sliding window 1min）、empty content 回傳頻率、SDK client 初始化失敗時立即 log error + 降級至 fallback |

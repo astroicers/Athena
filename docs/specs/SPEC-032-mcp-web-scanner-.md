@@ -224,14 +224,14 @@ Web page screenshot capture via httpx screenshot mode。
 
 ## 🔗 副作用與連動（Side Effects）
 
-| 本功能的狀態變動 | 受影響的既有功能 | 預期行為 |
-|-----------------|----------------|---------|
-| 新增 `web.http.*` / `web.vuln.*` / `web.dir.*` / `web.screenshot` facts 至 `facts` 表 | **OrientEngine** — 讀取 facts 進行 cross-fact reasoning | OrientEngine 接收 web facts 後，可推薦應用層攻擊手法（需後續 ADR-029 Phase 5 擴展 prompt） |
-| ReconEngine 在 nmap 偵測到 HTTP service 後自動觸發 `web_http_probe` | **ReconEngine** — `recon_engine.py` 新增 Step 8b | Reconnaissance Chain 延伸：nmap -> web_http_probe -> facts 入庫。失敗時 graceful fallback，不影響 nmap 結果 |
-| MCPClientManager 自動發現 4 個新工具，同步至 `tool_registry` | **Tool Registry UI** — `ToolRegistryTable.tsx` | 前端自動顯示 4 個新工具及其連線狀態；無需前端程式碼修改 |
-| `mcp_servers.json` 新增 `web-scanner` 配置 | **MCPClientManager startup** | 啟動時自動連線 web-scanner，Circuit Breaker 保護啟用 |
-| `docker-compose.yml` 新增 `mcp-web-scanner` service | **Docker 部署流程** | `docker compose --profile mcp up` 自動啟動 web-scanner 容器 |
-| WebSocket 廣播 `fact.new` 事件（web.* traits） | **War Room 前端** — fact panel + topology | 即時顯示 Web 偵察結果；現有 `fact.new` handler 自動處理新 trait |
+| 副作用 | 觸發條件 | 影響模組 | 驗證方式 |
+|--------|---------|---------|---------|
+| 新增 `web.http.*` / `web.vuln.*` / `web.dir.*` / `web.screenshot` facts 至 `facts` 表 | MCP 工具呼叫完成 | **OrientEngine** — cross-fact reasoning | `SELECT * FROM facts WHERE trait LIKE 'web.%'` 確認寫入 |
+| ReconEngine Step 8b 自動觸發 `web_http_probe` | nmap 偵測到 HTTP service（port 80/443/8080） | **ReconEngine** — `recon_engine.py` | 測試：nmap scan 含 HTTP port → web facts 自動入庫 |
+| MCPClientManager 自動發現 4 個新工具，同步至 `tool_registry` | MCP server 啟動 | **Tool Registry UI** — `ToolRegistryTable.tsx` | `list_tools()` 回傳 4 個工具 |
+| `mcp_servers.json` 新增 `web-scanner` 配置 | 部署時 | **MCPClientManager startup** | 啟動 log 確認連線成功 |
+| `docker-compose.yml` 新增 `mcp-web-scanner` service | `docker compose --profile mcp up` | **Docker 部署流程** | container 啟動 + healthcheck |
+| WebSocket 廣播 `fact.new` 事件（web.* traits） | web facts 寫入後 | **War Room 前端** — fact panel + topology | WS 訊息包含 `web.http.*` traits |
 
 ---
 
@@ -267,9 +267,104 @@ Web page screenshot capture via httpx screenshot mode。
 
 ### 回退方案（Rollback Plan）
 
-- **回退方式**：revert commit + 移除 `docker-compose.yml` 中 `mcp-web-scanner` service + 移除 `mcp_servers.json` 中 `web-scanner` 配置 + revert `recon_engine.py` 的 auto-trigger 變更。三步驟均為 git revert 即可完成。
-- **不可逆評估**：此變更無不可逆部分。新增的 `web.*` facts 會留在資料庫但不影響既有功能（OrientEngine 忽略無對應推理規則的 trait prefix）。若需清理，可執行 `DELETE FROM facts WHERE trait LIKE 'web.%'`。
-- **資料影響**：回退後已寫入的 web facts 不會自動刪除，但不影響系統正常運作。`tool_registry` 中的 mcp_discovery 記錄會在 MCPClientManager 偵測到 server 不可用後自動 soft-delete。
+| 回滾步驟 | 資料影響 | 回滾驗證 | 回滾已測試 |
+|----------|---------|---------|-----------|
+| `git revert` commit（含 recon_engine.py auto-trigger 變更） | 已寫入的 `web.*` facts 保留但不影響既有功能（OrientEngine 忽略無對應推理規則的 trait） | `make test` 通過；OODA 循環正常運作 | Yes — 三步驟均為 git revert |
+| 移除 `docker-compose.yml` 中 `mcp-web-scanner` service | 容器停止 | `docker compose ps` 無 web-scanner | Yes |
+| 移除 `mcp_servers.json` 中 `web-scanner` 配置 | `tool_registry` mcp_discovery 記錄自動 soft-delete | MCPClientManager 不再連線 web-scanner | Yes |
+| （可選）`DELETE FROM facts WHERE trait LIKE 'web.%'` | 清理 web facts | `SELECT COUNT(*) FROM facts WHERE trait LIKE 'web.%'` = 0 | Yes |
+
+---
+
+## 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 輸入 | 預期結果 | 場景參考 |
+|----|------|------|------|---------|---------|
+| P1 | 正向 | HTTP probe 成功偵測 web service | target=192.168.1.5, ports=[80,8080] | facts 含 `web.http.service`、`web.http.technology`、`web.http.waf` | Scenario: Successful HTTP probe |
+| P2 | 正向 | Nuclei 漏洞掃描發現 SQLi | url=http://target:8080, severity=high | facts 含 `web.vuln.sqli` + confirmed severity | Scenario: Vulnerability scan finds SQLi |
+| P3 | 正向 | 目錄枚舉發現敏感路徑 | url=http://target:8080, wordlist=common | facts 含 `web.dir.sensitive`（.git/、.env） | Scenario: Directory enum finds sensitive paths |
+| N1 | 負向 | Target 不可達 | target=unreachable.host | facts=[], raw_output 含 CONNECTION_ERROR | Scenario: Unreachable target graceful fallback |
+| N2 | 負向 | ScopeValidator 阻擋 | target=out-of-scope IP | facts=[], raw_output 含 SCOPE_VIOLATION | Scenario: Out-of-scope target blocked |
+| N3 | 負向 | Nuclei binary 缺失 | nuclei 不在 PATH | facts=[], raw_output 含 DEPENDENCY_ERROR | Scenario: Missing dependency handled |
+| B1 | 邊界 | WAF 攔截（429/403） | target 有 WAF 保護 | `web.http.waf` fact 記錄 WAF 名稱，降低 rate 重試一次 | Scenario: WAF detection and rate reduction |
+| B2 | 邊界 | dir_enum 結果 >500 | 大量可達路徑 | 截斷至 500 筆，sensitive 優先保留 | Scenario: Large dir_enum truncation |
+| B3 | 邊界 | 掃描超時 | slow target | 回傳 partial results + TIMEOUT raw_output | Scenario: Scan timeout returns partial results |
+
+---
+
+## 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: mcp-web-scanner MCP 工具伺服器
+  作為紅隊操作員，我需要 Web 層偵察能力以發現應用層漏洞。
+
+  Background:
+    Given mcp-web-scanner 容器已啟動且 MCP server ready
+    And MCPClientManager 已連線 web-scanner
+    And target "192.168.1.5" 在 scope 內
+
+  Scenario: Successful HTTP probe
+    Given target 上運行 Apache/2.4.6 + PHP/7.2
+    When 呼叫 web_http_probe(target="192.168.1.5", ports=[80, 8080])
+    Then facts 包含至少一筆 trait="web.http.service"
+    And facts 包含 trait="web.http.technology" value 含 "Apache"
+    And facts 包含 trait="web.http.waf"
+    And raw_output 為截斷後的 httpx JSON（max 4000 chars）
+
+  Scenario: Vulnerability scan finds SQLi
+    Given target 上運行含 SQL injection 漏洞的 Web 應用
+    When 呼叫 web_vuln_scan(url="http://192.168.1.5:8080", severity="high")
+    Then facts 包含至少一筆 trait="web.vuln.sqli"
+    And fact value 含 "severity=high" 和 "confidence=confirmed"
+
+  Scenario: ReconEngine auto-trigger after nmap
+    Given nmap 掃描偵測到 port 80 為 HTTP service
+    When ReconEngine Step 8b 觸發
+    Then web_http_probe 自動呼叫
+    And web facts 寫入 facts 表
+    And WebSocket 廣播 fact.new 事件
+
+  Scenario: Unreachable target graceful fallback
+    Given target "10.99.99.99" 不可達
+    When 呼叫 web_http_probe(target="10.99.99.99")
+    Then facts 為空 list
+    And raw_output 含 "CONNECTION_ERROR"
+    And 不拋出 exception
+```
+
+---
+
+## 追溯性（Traceability）
+
+| 產出物 | 檔案路徑 | 狀態 | 追溯日期 |
+|--------|---------|------|---------|
+| MCP Server 實作 | `tools/web-scanner/server.py` | 已實作 | 2026-03-26 |
+| Dockerfile | `tools/web-scanner/Dockerfile` | 已實作 | 2026-03-26 |
+| 套件定義 | `tools/web-scanner/pyproject.toml` | 已實作 | 2026-03-26 |
+| Tool metadata | `tools/web-scanner/tool.yaml` | 已實作 | 2026-03-26 |
+| Package marker | `tools/web-scanner/__init__.py` | 已實作 | 2026-03-26 |
+| MCP 配置 | `mcp_servers.json`（web-scanner entry） | 已實作 | 2026-03-26 |
+| ReconEngine 整合 | `backend/app/services/recon_engine.py`（Step 8b） | 已實作 | 2026-03-26 |
+| MCP Client 整合 | `backend/app/services/mcp_client_manager.py` | 已實作（auto-discover） | 2026-03-26 |
+| DB Seed | `backend/app/database/seed.py`（web-scanner entry） | 已實作 | 2026-03-26 |
+| 單元測試 | `backend/tests/test_mcp_web_scanner.py` | 已實作 | 2026-03-26 |
+| 前端 e2e 測試 | （待實作） | — | 2026-03-26 |
+
+---
+
+## 可觀測性（Observability）
+
+| 指標名稱 | 類型 | 標籤 | 告警條件 |
+|----------|------|------|---------|
+| `mcp.web_scanner.tool_call.duration_ms` | Histogram | `tool_name`, `target` | > 120s (web_vuln_scan) |
+| `mcp.web_scanner.tool_call.success` | Counter | `tool_name` | — |
+| `mcp.web_scanner.tool_call.error` | Counter | `tool_name`, `error_type` | > 5/min |
+| `mcp.web_scanner.facts_produced` | Counter | `trait_prefix` (web.http/web.vuln/web.dir) | — |
+| `mcp.web_scanner.rate_limit.throttled` | Counter | — | > 10/min |
+| `mcp.web_scanner.waf_detected` | Counter | `waf_name` | — |
+| Log: `web_scanner.scan_complete` | Structured log | tool_name, target, duration_ms, fact_count | — |
+| Log: `web_scanner.dependency_missing` | ERROR log | binary_name | 任何出現 |
+| Log: `web_scanner.scope_violation` | WARNING log | target | 任何出現 |
 
 ---
 
@@ -607,5 +702,3 @@ if http_services and settings.MCP_ENABLED:
 
 新增 helper method `_write_web_facts()` 遵循與 `_write_facts()` 相同的 pattern — parse MCP JSON response、寫入 facts 表、broadcast WebSocket event。
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

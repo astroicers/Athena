@@ -207,15 +207,15 @@ class KillChainPenalty:
 
 ## 🔗 副作用與連動（Side Effects）
 
-| 本功能的狀態變動 | 受影響的既有功能 | 預期行為 |
-|-----------------|----------------|---------|
-| `confidence` 改為複合計算 | `DecisionEngine.evaluate()` 中的 `confidence < 0.5` 閘控（第 144 行） | 使用 `composite_confidence` 取代 `raw_confidence` 進行閘控判斷 |
-| 複合信心可能低於原始 LLM 信心 | 自動核准門檻判斷 | 某些原本自動核准的技術可能降為需確認（歷史成功率低或目標有 EDR） |
-| 複合信心可能高於原始 LLM 信心 | 同上 | 某些原本需確認的技術可能升為自動核准（歷史成功率高時） |
-| `execute()` 重命名為 `_execute_single()` | `ooda_controller.py` 中呼叫 `engine_router.execute()` | 無影響 — 外部 API 維持 `execute()` 不變 |
-| 回退嘗試產生額外 `technique_executions` 記錄 | Orient 的歷史執行摘要 | 回退嘗試的 engine 欄位正確記錄實際使用的引擎 |
-| `execution.fallback` WebSocket 事件 | 前端 WarRoom 即時更新 | 前端需處理新事件類型（可選，初版不處理不影響功能） |
-| KillChainEnforcer 懲罰扣分 | 複合信心最終值 | 跳階推薦的信心值降低，可能觸發人工確認 |
+| 說明 | 觸發條件 | 受影響模組 | 驗證方式 |
+|------|---------|-----------|---------|
+| confidence 改為複合計算 | DecisionEngine.evaluate() 每次呼叫 | `confidence < 0.5` 閘控判斷 | 單元測試驗證使用 composite_confidence 而非 raw |
+| 複合信心可能低於原始 LLM 信心 | 歷史成功率低或目標有 EDR | 自動核准門檻判斷 | 原本自動核准的技術降為需確認 |
+| 複合信心可能高於原始 LLM 信心 | 歷史成功率高 | 自動核准門檻判斷 | 原本需確認的技術升為自動核准 |
+| execute() 重命名為 _execute_single() | engine_router 內部重構 | ooda_controller 呼叫 execute() | 外部 API 不變，ooda_controller 無需修改 |
+| 回退嘗試產生額外 technique_executions 記錄 | 引擎回退觸發 | Orient 歷史執行摘要 | engine 欄位正確記錄實際使用的引擎 |
+| execution.fallback WebSocket 事件 | 引擎回退觸發 | 前端 WarRoom（可選，初版不處理不影響） | WS payload 包含 failed_engine + fallback_engine |
+| KillChainEnforcer 懲罰扣分 | 跳階推薦 | 複合信心最終值 | 跳階後信心值降低，可能觸發人工確認 |
 
 ---
 
@@ -246,11 +246,108 @@ class KillChainPenalty:
 - **Case C4**：推薦 TA0043（Reconnaissance，stage 0） — 無前置階段可跳過，penalty = 0.0
 - **Case C5**：同一 target 在不同 OODA 迭代中完成不同階段 — 查詢該 target 的所有成功執行記錄，跨迭代累計
 
-### 回退方案（Rollback Plan）
+### Rollback Plan
 
-- **回退方式**：revert commit(s)
-- **不可逆評估**：此變更完全可逆。新增的 `kill_chain_enforcer.py` 為獨立模組，刪除後不影響既有功能。`_execute_single()` 重命名可在 revert 時恢復為 `execute()`
-- **資料影響**：無 DB schema 變更，回退不影響資料
+| 項目 | 內容 |
+|------|------|
+| **回退步驟** | 1. Revert commit(s) 2. 刪除 `backend/app/services/kill_chain_enforcer.py` 3. `_execute_single()` 自動恢復為 `execute()` |
+| **資料影響** | 無 DB schema 變更，回退不影響資料；回退嘗試產生的 technique_executions 記錄保留不影響功能 |
+| **驗證方式** | `make test` 通過 + DecisionEngine 恢復使用 raw LLM confidence |
+| **已測試** | 否（Phase 整合測試覆蓋） |
+
+---
+
+## 🧪 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 預期結果 | 參考場景 |
+|----|------|------|---------|---------|
+| P1 | 正向 | 四來源正常計算 composite confidence | 0.30*llm + 0.30*hist + 0.25*graph + 0.15*target - kc_penalty | S1 |
+| P2 | 正向 | 主引擎成功不觸發回退 | fallback_history = [], final_engine = 主引擎 | S1 |
+| P3 | 正向 | Kill chain 無跳階 | penalty = 0.0 | S1 |
+| P4 | 正向 | 主引擎失敗回退成功 | status=success, final_engine=回退引擎 | S2 |
+| N1 | 負向 | 終端性錯誤不觸發回退 | scope violation → 直接回傳失敗 | S3 |
+| N2 | 負向 | 所有引擎都失敗 | fallback_history 含所有嘗試記錄 | S3 |
+| N3 | 負向 | LLM confidence 超出 0-1 範圍 | clamp 至 [0.0, 1.0] | S1 |
+| B1 | 邊界 | 無歷史執行記錄 | historical 回退為 0.5 | S1 |
+| B2 | 邊界 | target_id 為 None | 使用預設值 {hist:0.5, graph:0.5, target:0.5} | S1 |
+| B3 | 邊界 | 跳過 6+ 必要階段 | penalty 上限 0.25 | S1 |
+| B4 | 邊界 | engine 不在 _FALLBACK_CHAIN | 不觸發回退 | S2 |
+| B5 | 邊界 | 歷史成功率 0%（全部失敗） | historical = 0.0，顯著拉低信心 | S1 |
+
+---
+
+## 🎬 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: 複合信心評分、引擎回退鏈與 Kill Chain 強制器
+  Background:
+    Given 存在一個活躍的 operation 和至少一個 target
+    And DecisionEngine 已初始化 KillChainEnforcer 實例
+
+  Scenario: 複合信心正確計算並影響閘控決策
+    Given LLM 回傳 confidence = 0.80
+    And technique_executions 中該技術有 60% 成功率
+    And attack_graph_nodes 中該節點 confidence = 0.70
+    And target 為 compromised 但 access_status = active
+    When DecisionEngine.evaluate() 執行
+    Then 回傳包含 composite_confidence 和 confidence_breakdown
+    And composite_confidence 使用加權公式計算
+    And confidence < 0.5 閘控使用 composite_confidence 判斷
+
+  Scenario: 引擎回退鏈 — 主引擎失敗後自動切換
+    Given engine = "mcp_ssh" 且 _FALLBACK_CHAIN 包含 ["metasploit", "c2"]
+    When mcp_ssh 執行回傳 error = "connection timed out"
+    Then 系統自動嘗試 metasploit 引擎
+    And 廣播 execution.fallback WebSocket 事件
+    And 事件包含 failed_engine="mcp_ssh" 和 fallback_engine="metasploit"
+    When metasploit 執行成功
+    Then 最終結果 status = "success"
+    And final_engine = "metasploit"
+    And fallback_history 包含 mcp_ssh 失敗記錄
+
+  Scenario: Kill Chain 跳階懲罰降低信心
+    Given target 只完成了 TA0043 (Reconnaissance)
+    When 推薦技術的 tactic_id = TA0004 (Privilege Escalation)
+    Then KillChainEnforcer 計算跳過 TA0001 (Initial Access) 和 TA0002 (Execution)
+    And penalty = 0.10 (2 * 0.05)
+    And composite_confidence 被扣除 0.10
+    And KillChainPenalty.warning 包含跳過的階段資訊
+```
+
+---
+
+## 📎 追溯性（Traceability）
+
+| 類型 | 路徑 | 說明 | 日期 |
+|------|------|------|------|
+| 後端實作 | `backend/app/services/decision_engine.py` | _compute_composite_confidence() 及四個子方法 | 2026-03-26 |
+| 後端實作 | `backend/app/services/engine_router.py` | execute() 回退鏈包裝、_execute_single() 重命名 | 2026-03-26 |
+| 後端實作 | `backend/app/services/kill_chain_enforcer.py` | KillChainEnforcer 模組（新增） | 2026-03-26 |
+| 後端實作 | `backend/app/services/attack_graph_engine.py` | _RULE_BY_TECHNIQUE 供 _resolve_tactic_id() 查詢 | 2026-03-26 |
+| 後端實作 | `backend/app/ws_manager.py` | broadcast() 介面供 execution.fallback 事件 | 2026-03-26 |
+| 後端測試 | `backend/tests/test_composite_confidence.py` | 複合信心單元測試（8 個測試案例） | 2026-03-26 |
+| 後端測試 | `backend/tests/test_engine_fallback.py` | 引擎回退鏈單元測試（8 個測試案例） | 2026-03-26 |
+| 後端測試 | `backend/tests/test_kill_chain_enforcer.py` | Kill Chain 強制器單元測試（8 個測試案例） | 2026-03-26 |
+| E2E 測試 | `frontend/e2e/sit-ooda-lifecycle.spec.ts` | OODA 生命週期 SIT 測試 | 2026-03-26 |
+| E2E 測試 | `frontend/e2e/sit-websocket-events.spec.ts` | WebSocket 事件 SIT 測試 | 2026-03-26 |
+
+---
+
+## 📊 可觀測性（Observability）
+
+| 層級 | 項目 | 說明 |
+|------|------|------|
+| 後端 Metrics | `composite_confidence_value` | 每次 evaluate() 的複合信心值分佈 |
+| 後端 Metrics | `confidence_breakdown_*` | llm/historical/graph/target_state/kc_penalty 各分項值 |
+| 後端 Metrics | `engine_fallback_total` | 引擎回退觸發次數（per engine pair） |
+| 後端 Metrics | `engine_fallback_success_rate` | 回退成功率 |
+| 後端 Metrics | `kill_chain_penalty_value` | KC 懲罰值分佈 |
+| 後端 Logs | `INFO: Composite confidence: {value} (llm={}, hist={}, graph={}, target={}, kc={})` | 每次 evaluate() 的信心分解 |
+| 後端 Logs | `INFO: Fallback attempt N/M: engine_a -> engine_b` | 回退嘗試 log |
+| 後端 Logs | `WARNING: Kill Chain skip warning: ...` | 跳階懲罰 warning |
+| 後端 Alerts | 連續 5+ 次回退觸發 | 可能的主引擎系統性故障 |
+| 後端故障偵測 | _compute_composite_confidence() 拋出未預期 exception | 監控 error log，fallback 至 raw LLM confidence |
+| 前端 | N/A | 本 SPEC 無前端變更（execution.fallback 事件處理為獨立 SPEC） |
 
 ---
 
@@ -952,5 +1049,3 @@ def test_is_terminal_error():
   - `backend/app/ws_manager.py` — `WebSocketManager.broadcast()` 介面
   - `backend/app/database.py` — `technique_executions` 表 schema（第 111 行）、`attack_graph_nodes` 表
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

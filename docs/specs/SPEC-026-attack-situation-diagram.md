@@ -98,6 +98,101 @@ const MONITOR_TABS = [
 
 ---
 
+## 🔗 副作用與連動（Side Effects）
+
+| 副作用 | 觸發條件 | 影響模組 | 驗證方式 |
+|--------|---------|---------|---------|
+| Monitor 頁面新增 SITUATION tab | 使用者切換至 SITUATION tab | Monitor 頁面（Tab 切換邏輯） | 手動確認 3 個 Tab 正確切換，無 console error |
+| C5ISR WebSocket 訂閱新增 | SITUATION tab 載入時 | `c5isr.update` WS handler | 開啟 SITUATION tab 後觸發 C5ISR 更新，確認 MiniBar 即時刷新 |
+| SVG viewBox 佔用 Monitor 頁面空間 | SITUATION tab 被選中 | Monitor 頁面整體 layout | 在不同視窗尺寸下確認 SVG 不溢出容器 |
+| useSituationData hook 消費 techniques state | Monitor 頁面已 fetch techniques | Monitor 頁面 state 管理 | 確認 hook 正確接收 techniques 並分組為 7 個 Kill Chain stage |
+
+---
+
+## ⏪ Rollback Plan
+
+| 回滾步驟 | 資料影響 | 回滾驗證 | 回滾已測試 |
+|---------|---------|---------|----------|
+| `git revert` 對應 commit | 無 — 純前端 UI 元件，無資料庫變更 | Monitor 頁面僅顯示 OVERVIEW / TOPOLOGY 兩個 Tab | 是 |
+| 若需保留 C5ISR fetch 邏輯，可選擇性 revert situation 元件 | 無 | C5ISR 資料仍可由其他元件消費 | 否（需手動驗證） |
+
+---
+
+## 🧪 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 預期結果 | 場景參照 |
+|----|------|------|---------|---------|
+| P1 | 正向 | Monitor 頁面載入後切換至 SITUATION tab | 渲染 7 個 Kill Chain 節點 + 6 條連接箭頭 + OODA Ring + C5ISR MiniBar | Scenario: 正常載入 Situation Diagram |
+| P2 | 正向 | 技術執行觸發 `execution.update` WS 事件 | 對應 stage 節點狀態即時更新（pending → active → completed） | Scenario: 即時更新 Kill Chain 進度 |
+| P3 | 正向 | OODA phase 變更觸發 `ooda.phase` WS 事件 | OODA Ring 高亮對應 phase 弧形 | Scenario: 即時更新 Kill Chain 進度 |
+| N1 | 負向 | techniques 清單為空（無任何技術資料） | 7 個節點全部顯示 pending 狀態（0/0），無 JS error | Scenario: 空資料狀態下顯示預設圖表 |
+| N2 | 負向 | C5ISR API 回傳 500 | C5ISR MiniBar 顯示 N/A 或 0%，不阻塞 Kill Chain 渲染 | Scenario: 空資料狀態下顯示預設圖表 |
+| B1 | 邊界 | 視窗 resize 至 768px 寬 | SVG preserveAspectRatio 正確縮放，節點不重疊 | Scenario: 正常載入 Situation Diagram |
+| B2 | 邊界 | 所有 7 個 stage 同時為 active 狀態 | 所有節點同時 pulsing，動畫不衝突 | Scenario: 即時更新 Kill Chain 進度 |
+
+---
+
+## 🎭 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: Attack Situation Diagram 即時視覺化
+  Background:
+    Given 使用者已登入並進入 Monitor 頁面
+    And 至少一個 operation 處於 active 狀態
+
+  Scenario: 正常載入 Situation Diagram
+    When 使用者點擊 SITUATION tab
+    Then 頁面渲染 7 個 Kill Chain 階段節點
+    And 節點之間顯示 6 條連接箭頭
+    And OODA Ring 顯示在當前活躍 stage 上方
+    And C5ISR MiniBar 顯示 6 個域的健康百分比
+    And SVG viewBox 在 1200x300 範圍內正確縮放
+
+  Scenario: 即時更新 Kill Chain 進度
+    Given 使用者已在 SITUATION tab
+    When 後端廣播 execution.update 事件（technique 狀態變為 running）
+    Then 對應 Kill Chain 階段節點從 pending 變為 active（pulsing 動畫）
+    And 連接箭頭從灰色虛線變為虛線流動動畫
+    When 後端廣播 ooda.phase 事件（phase 變為 ORIENT）
+    Then OODA Ring 的 ORIENT 弧形高亮 cyan
+
+  Scenario: 空資料狀態下顯示預設圖表
+    Given operation 尚未執行任何技術
+    When 使用者點擊 SITUATION tab
+    Then 7 個節點全部顯示 pending 狀態
+    And 節點計數顯示 0/0
+    And OODA Ring 不高亮任何 phase
+    And 頁面無 JavaScript console error
+```
+
+---
+
+## 🔗 追溯性（Traceability）
+
+| 追溯項目 | 檔案路徑 | 狀態 |
+|---------|---------|------|
+| 資料 Hook | `frontend/src/hooks/useSituationData.ts` | 已實作 |
+| 主 SVG 容器 | `frontend/src/components/situation/AttackSituationDiagram.tsx` | （待確認檔案位置） |
+| Kill Chain 節點 | `frontend/src/components/situation/SituationNode.tsx` | （待確認檔案位置） |
+| 連接箭頭 | `frontend/src/components/situation/SituationEdge.tsx` | （待確認檔案位置） |
+| OODA 環形指示器 | `frontend/src/components/situation/OODARing.tsx` | （待確認檔案位置） |
+| C5ISR 健康條 | `frontend/src/components/situation/C5ISRMiniBar.tsx` | （待確認檔案位置） |
+| 單元測試 | （待實作） | （待實作） |
+| E2E 測試 | （待實作） | （待實作） |
+
+> 追溯日期：2026-03-26
+
+---
+
+## 📊 可觀測性（Observability）
+
+| 面向 | 內容 |
+|------|------|
+| **後端** | N/A — 本功能為純前端 SVG 視覺化元件，不涉及後端變更。WebSocket 事件消費使用既有 `execution.update`、`ooda.phase`、`c5isr.update`，無新增後端 endpoint 或日誌。 |
+| **前端** | N/A |
+
+---
+
 ## ✅ Done When
 
 - [x] Monitor 頁面顯示 OVERVIEW / TOPOLOGY / SITUATION 三個 Tab
@@ -192,5 +287,3 @@ Monitor 頁面新增：
 
 _SPEC 由 Claude Opus 4.6 於 2026-03-04 補建，對應 Attack Situation Diagram 實作。_
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

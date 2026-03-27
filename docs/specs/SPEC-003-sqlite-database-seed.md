@@ -136,6 +136,106 @@ settings = Settings()
 
 ---
 
+## 🔗 副作用與連動（Side Effects）
+
+| 副作用 | 觸發條件 | 影響的系統/模組 | 驗證方式 |
+|--------|---------|----------------|----------|
+| Schema 變更導致種子資料失敗 | CREATE TABLE 欄位或約束修改時 | `demo_scenario.py` INSERT 語句、所有 router 的 SQL 查詢 | `python -m app.seed.demo_scenario` 無錯誤 |
+| `init_db()` 在 FastAPI startup 執行 | 每次 backend 啟動時 | `main.py` lifespan、所有 API 端點的 DB 可用性 | `curl http://localhost:8000/api/health` 回傳 ok |
+| 外鍵 CASCADE 影響資料刪除行為 | 刪除 operations 或 targets 記錄時 | 所有關聯表（agents、facts、ooda_iterations 等）的資料完整性 | 刪除 operation 後確認關聯記錄一併刪除 |
+| `config.py` 環境變數影響全後端 | `.env` 檔案或環境變數變更時 | 資料庫路徑、Caldera/Shannon URL、LLM 設定 | `python -c "from app.config import settings; print(settings.DATABASE_URL)"` |
+
+### 🔄 Rollback Plan
+
+| 項目 | 說明 |
+|------|------|
+| **回滾步驟** | 1. 刪除 `backend/data/athena.db` 2. `git revert <commit>` 還原 database.py/config.py/seed 3. 重新執行 `init_db()` |
+| **資料影響** | SQLite 資料庫檔案需刪除重建——種子資料為 Demo 資料，可完全重建 |
+| **回滾驗證** | `sqlite3 backend/data/athena.db ".tables"` 顯示正確表數；seed 重新執行成功 |
+| **回滾已測試** | ☑ 否（刪除 .db 檔案後重建為標準流程） |
+
+## 🧪 測試矩陣（Test Matrix）
+
+| # | 類型 | 輸入條件 | 預期結果 | 對應場景 |
+|---|------|---------|---------|---------|
+| P1 | ✅ 正向 | 執行 `init_db()` 於空資料庫 | 12 張表全部建立，PRAGMA foreign_keys = ON | S1 |
+| P2 | ✅ 正向 | 執行 `demo_scenario.py` 載入種子資料 | 1 operation、5 targets、4 agents、6 C5ISR 狀態等完整寫入 | S1 |
+| P3 | ✅ 正向 | `settings.DATABASE_URL` 從 `.env` 讀取 | 正確解析路徑並建立連線 | S1 |
+| N1 | ❌ 負向 | 外鍵參照不存在的 operation_id | INSERT 失敗，拋出 IntegrityError | S2 |
+| N2 | ❌ 負向 | `backend/data/` 目錄不存在 | `database.py` 自動建立目錄後正常連線 | S2 |
+| B1 | 🔶 邊界 | 資料庫已存在且表已建立 | `CREATE TABLE IF NOT EXISTS` 冪等通過 | S3 |
+| B2 | 🔶 邊界 | 種子資料已存在（重複執行 seed） | `INSERT OR IGNORE` 不產生重複資料 | S3 |
+| B3 | 🔶 邊界 | `recommendations.options` 為 JSON TEXT 格式 | `json.dumps(list_of_dicts)` 正確序列化並可反序列化 | S3 |
+
+## 🎭 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: SPEC-003 SQLite 資料庫層與種子資料
+  作為 Athena 平台開發者
+  我想要 自動化的資料庫初始化與 Demo 種子資料載入
+  以便 後端啟動時自動建表並預填示範資料供開發與展示使用
+
+  Background:
+    Given backend/app/models/ 已實作（SPEC-002）
+    And .env 或環境變數已設定 DATABASE_URL
+
+  # --- 正向場景 ---
+
+  Scenario: S1 - 資料庫初始化建立 12 張表並載入種子資料
+    Given 資料庫檔案不存在
+    When 執行 init_db() 後執行 demo_scenario
+    Then sqlite3 .tables 顯示 12 張表
+    And operations 表有 1 筆記錄（OP-2024-017 PHANTOM-EYE）
+    And targets 表有 5 筆記錄（DC-01, WS-PC01, WS-PC02, DB-01, FS-01）
+    And agents 表有 4 筆記錄，其中 3 筆 status=alive
+    And c5isr_statuses 表有 6 筆記錄（六域各一）
+    And PRAGMA foreign_keys 為 ON
+
+  Scenario: S1b - Config 正確讀取環境變數
+    Given .env 檔案包含 DATABASE_URL 與 CALDERA_URL
+    When 匯入 settings
+    Then settings.DATABASE_URL 回傳正確路徑
+    And settings.MOCK_LLM 預設為 True
+
+  # --- 負向場景 ---
+
+  Scenario: S2 - 外鍵違反時插入失敗
+    Given 資料庫已初始化
+    When 插入 target 記錄且 operation_id 不存在於 operations 表
+    Then 拋出外鍵約束錯誤
+    And 資料未寫入 targets 表
+
+  # --- 邊界場景 ---
+
+  Scenario: S3 - 重複執行資料庫初始化與種子載入（冪等性）
+    Given 資料庫已初始化且種子資料已載入
+    When 再次執行 init_db() 與 demo_scenario
+    Then 表結構不變（CREATE TABLE IF NOT EXISTS）
+    And 種子資料不重複（INSERT OR IGNORE）
+    And 查詢 operations 表仍為 1 筆記錄
+```
+
+## 🔗 追溯性（Traceability）
+
+| 實作檔案 | 測試檔案 | 最後驗證日期 |
+|----------|----------|-------------|
+| `backend/app/config.py` | `backend/tests/conftest.py`（間接使用 settings） | 2026-03-26 |
+| `backend/app/database/manager.py` | `backend/tests/conftest.py`（init_db 呼叫） | 2026-03-26 |
+| `backend/app/database/seed.py` | `backend/tests/conftest.py`（seed 載入） | 2026-03-26 |
+| `backend/app/seed/demo_scenario.py` | `backend/tests/test_spec_004_api.py`（依賴 seed 資料） | 2026-03-26 |
+| `backend/app/seed/demo_runner.py` | `backend/tests/test_spec_004_api.py`（間接） | 2026-03-26 |
+
+## 📊 可觀測性（Observability）
+
+| 面向 | 說明 |
+|------|------|
+| **關鍵指標** | DB 連線池使用率、init_db 執行時間、seed 載入筆數 |
+| **日誌** | `init_db()` 完成時 INFO 級別記錄表數量；seed 載入時 INFO 記錄各實體筆數；外鍵違反時 ERROR 記錄 |
+| **告警** | `init_db()` 失敗時（DB 檔案無法建立）觸發 CRITICAL 告警 |
+| **如何偵測故障** | `GET /api/health` 回傳 database 狀態；`sqlite3 athena.db "SELECT count(*) FROM operations"` 確認資料完整性 |
+
+---
+
 ## ✅ 驗收標準（Done When）
 
 - [x] `cd backend && python -c "from app.config import settings; print(settings.DATABASE_URL)"` — 成功
@@ -168,5 +268,3 @@ settings = Settings()
 - ADR-011：[POC 不實作身份驗證](../adr/ADR-011-no-auth-for-poc.md)（User stub）
 - SPEC-002：Pydantic Models + Enums（依賴——Model 結構定義）
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

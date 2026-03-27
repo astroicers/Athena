@@ -842,15 +842,15 @@ export interface AttackGraphResponse {
 
 ## 🔗 副作用與連動（Side Effects）
 
-| 本功能的狀態變動 | 受影響的既有功能 | 預期行為 |
-|-----------------|----------------|---------|
-| `attack_graph_nodes` / `attack_graph_edges` 表寫入 | 無既有功能直接依賴（新表） | 新表不影響既有 query |
-| OODAController 在 Observe 後觸發 rebuild | OODA 循環延遲 | 增加 10-50ms（100 nodes 規模），不影響 user-facing latency |
-| OrientEngine prompt 新增 Section 10 | LLM token 消耗 | 增加 ~200-400 tokens（圖摘要），對 Opus context window 無壓力 |
-| WebSocket `graph.updated` event | 前端需新增 listener | 前端不處理此 event 時，不會有副作用（fire-and-forget） |
-| `api_schemas.py` 新增 4 個 Pydantic model | 無既有 model 衝突 | 新增 class 不影響既有 import |
-| `database.py` 新增 2 張 CREATE TABLE | init_db() 執行時間 | 增加 ~5ms（CREATE TABLE IF NOT EXISTS 為 idempotent） |
-| 前端 AttackPathTimeline 新增摘要面板 | Navigator 頁面 layout | 摘要面板加在 timeline 上方，不改變既有 timeline 行為 |
+| 副作用 | 觸發條件 | 影響模組 | 驗證方式 |
+|--------|---------|---------|---------|
+| `attack_graph_nodes` / `attack_graph_edges` 表寫入 | `rebuild()` 呼叫 | 無既有功能直接依賴（新表） | `SELECT COUNT(*) FROM attack_graph_nodes` 確認資料寫入 |
+| OODAController 在 Observe 後觸發 rebuild，增加 10-50ms 延遲 | 每次 OODA cycle Observe 完成 | `ooda_controller.py` | 效能測試：100 nodes rebuild < 100ms |
+| OrientEngine prompt 新增 Section 10，增加 ~200-400 tokens | `_build_prompt()` 含 `attack_graph_summary` | `orient_engine.py` — LLM token 消耗 | 檢查 prompt 長度未超 context window |
+| WebSocket `graph.updated` event 廣播 | rebuild 完成時 | 前端 WebSocket handler（fire-and-forget） | WS 訊息驗證含 `stats` + `updated_at` |
+| `api_schemas.py` 新增 4 個 Pydantic model | import 時 | 無既有 model 衝突 | `make lint` + `make test` |
+| `database.py` 新增 2 張 CREATE TABLE，增加 ~5ms init | `init_db()` 執行 | DB 初始化流程 | `CREATE TABLE IF NOT EXISTS` 為 idempotent |
+| 前端 AttackPathTimeline 新增摘要面板 | 頁面渲染 | Navigator 頁面 layout | 視覺回歸測試：timeline 行為不變 |
 
 ---
 
@@ -898,9 +898,103 @@ export interface AttackGraphResponse {
 
 ### 回退方案（Rollback Plan）
 
-- **回退方式**：`git revert` 該 commit。新建的 `attack_graph_nodes` 和 `attack_graph_edges` 表使用 `CREATE TABLE IF NOT EXISTS`，回退後不需 DROP（表會被忽略）。OODAController 中的 rebuild 呼叫被移除後，OODA 循環恢復原有行為
-- **不可逆評估**：此變更為純新增（新表 + 新檔案 + 既有檔案的新增程式碼）。無 column DROP、無 data migration。完全可逆
-- **資料影響**：回退後 `attack_graph_nodes` 和 `attack_graph_edges` 表資料變為孤立（不被任何程式碼讀取），無副作用。清理方式：`DROP TABLE IF EXISTS attack_graph_nodes; DROP TABLE IF EXISTS attack_graph_edges;`
+| 回滾步驟 | 資料影響 | 回滾驗證 | 回滾已測試 |
+|----------|---------|---------|-----------|
+| `git revert` 該 commit | `attack_graph_nodes`/`attack_graph_edges` 表資料變為孤立（不被讀取），無副作用 | OODA 循環恢復原有行為；`make test` 通過 | Yes — 純新增變更（新表 + 新檔案），無 column DROP、無 data migration |
+| （可選）清理孤立表：`DROP TABLE IF EXISTS attack_graph_nodes; DROP TABLE IF EXISTS attack_graph_edges;` | 移除孤立資料 | 確認表已刪除 | Yes |
+
+---
+
+## 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 輸入 | 預期結果 | 場景參考 |
+|----|------|------|------|---------|---------|
+| P1 | 正向 | 完整 OODA 循環後圖重建 | operation 含 2 targets、10+ facts | 回傳 DAG 含 nodes/edges、recommended_path 非空、coverage_score > 0 | Scenario: AttackGraph rebuild with facts |
+| P2 | 正向 | Dijkstra 最優路徑計算 | 5 節點手工圖、已知權重 | recommended_path 與手算結果一致（精度 ±0.01） | Scenario: Recommended path calculation |
+| P3 | 正向 | Dead branch pruning | technique 執行失敗 | sibling + downstream 正確標記為 PRUNED | Scenario: Dead branch pruning |
+| N1 | 負向 | 空圖（無 targets） | operation 無 targets | 回傳空圖（nodes=[], edges=[]），不拋 exception | Scenario: Empty graph returns valid response |
+| N2 | 負向 | Operation 不存在 | 無效 operation_id | HTTP 404 `{"detail": "Operation not found"}` | Scenario: Non-existent operation |
+| N3 | 負向 | 並發 rebuild | 同時觸發 2 次 rebuild | 序列化完成，last-write-wins，無 DB 死鎖 | Scenario: Concurrent rebuild safety |
+| B1 | 邊界 | Cycle detection | lateral movement 造成環路 | 偵測到環、移除最低 weight 邊、回傳 DAG | Scenario: Cycle detection and resolution |
+| B2 | 邊界 | 大量 targets（>10 x 28 rules） | 280+ nodes | rebuild < 200ms、JSON < 500KB | Scenario: Large graph performance |
+| B3 | 邊界 | 所有路徑已探索 | 全部 EXPLORED/FAILED | recommended_path=[]、coverage_score ≈ 1.0 | Scenario: Fully explored graph |
+
+---
+
+## 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: AttackGraph 攻擊路徑圖引擎
+  作為紅隊指揮官，我需要攻擊路徑圖以規劃多步攻擊策略。
+
+  Background:
+    Given 一個已建立的 operation "op-test"
+    And operation 包含 target "192.168.1.10"
+
+  Scenario: AttackGraph rebuild with facts
+    Given target 已完成 nmap 掃描（facts: network.host.ip, service.open_port）
+    When 系統觸發 AttackGraphEngine.rebuild()
+    Then 回傳的 AttackGraph 包含 nodes 數量 > 0
+    And 每個 node 含 technique_id、status、confidence
+    And recommended_path 非空
+    And coverage_score > 0.0
+
+  Scenario: Empty graph returns valid response
+    Given operation 無任何 targets
+    When GET /api/operations/{op_id}/attack-graph
+    Then HTTP 200
+    And response.nodes 為空 list
+    And response.edges 為空 list
+    And response.coverage_score == 0.0
+
+  Scenario: Cycle detection and resolution
+    Given 圖中存在 lateral movement 造成的環路（A → B → A）
+    When rebuild() 執行 detect_cycles()
+    Then 環中 weight 最低的邊被移除
+    And 最終圖為 DAG（無環）
+    And WARNING log 記錄被移除的邊
+
+  Scenario: WebSocket graph.updated event
+    Given 前端已連線 WebSocket
+    When rebuild() 完成
+    Then WebSocket 收到 "graph.updated" event
+    And event payload 含 operation_id、graph_id、stats、updated_at
+```
+
+---
+
+## 追溯性（Traceability）
+
+| 產出物 | 檔案路徑 | 狀態 | 追溯日期 |
+|--------|---------|------|---------|
+| 資料模型 | `backend/app/models/attack_graph.py` | 已實作 | 2026-03-26 |
+| 引擎服務 | `backend/app/services/attack_graph_engine.py` | 已實作 | 2026-03-26 |
+| API Router | `backend/app/routers/attack_graph.py` | 已實作 | 2026-03-26 |
+| Pydantic Schemas | `backend/app/models/api_schemas.py` | 已實作（AttackGraph 相關 schemas） | 2026-03-26 |
+| DB Schema 擴展 | `backend/app/database.py`（或 `backend/app/database/`） | 已實作 | 2026-03-26 |
+| OODA 整合 | `backend/app/services/ooda_controller.py` | 已實作（rebuild 呼叫） | 2026-03-26 |
+| Orient 整合 | `backend/app/services/orient_engine.py` | 已實作（Section 10 注入） | 2026-03-26 |
+| 前端型別 | `frontend/src/types/attackGraph.ts` | （待確認） | 2026-03-26 |
+| 前端面板 | `frontend/src/components/mitre/AttackPathTimeline.tsx` | 已實作 | 2026-03-26 |
+| 單元測試 | `backend/tests/test_attack_graph.py` | 已實作 | 2026-03-26 |
+| Router 測試 | `backend/tests/test_attack_graph_router.py` | 已實作 | 2026-03-26 |
+| YAML 測試 | `backend/tests/test_attack_graph_yaml.py` | 已實作 | 2026-03-26 |
+
+---
+
+## 可觀測性（Observability）
+
+| 指標名稱 | 類型 | 標籤 | 告警條件 |
+|----------|------|------|---------|
+| `attack_graph.rebuild.duration_ms` | Histogram | `operation_id` | > 200ms (P99) |
+| `attack_graph.rebuild.node_count` | Gauge | `operation_id` | — |
+| `attack_graph.rebuild.edge_count` | Gauge | `operation_id` | — |
+| `attack_graph.rebuild.coverage_score` | Gauge | `operation_id` | — |
+| `attack_graph.cycle_detected` | Counter | `operation_id` | > 0 per rebuild |
+| `attack_graph.prune_count` | Counter | `operation_id` | — |
+| Log: `graph.rebuilt` | Structured log | operation_id, node_count, edge_count, duration_ms | — |
+| Log: `graph.cycle_removed` | WARNING log | operation_id, removed_edge_id, weight | — |
+| WebSocket event: `graph.updated` | Event | operation_id, stats | — |
 
 ---
 
@@ -998,5 +1092,3 @@ export interface AttackGraphResponse {
   - XBOW Attack Path Discovery — deep multi-step attack chain exploration
   - MITRE ATT&CK Enterprise Matrix v15 — technique prerequisites 和 tactic 順序
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

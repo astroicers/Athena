@@ -299,6 +299,90 @@ make token-drift
 
 ---
 
+## 🔗 副作用與連動（Side Effects）
+
+| 本功能的狀態變動 | 受影響的既有功能 | 預期行為 | 驗證方式 |
+|-----------------|----------------|---------|----------|
+| tokens.yaml 色票變更 | globals.css CSS 變數 | CSS 變數值同步更新 | make token-validate |
+| globals.css 變數變更 | 所有使用 var(--color-*) 的元件 | 元件色彩即時反映新值 | make token-drift 零新增 |
+| tailwind.config.ts 映射變更 | Tailwind utility classes | 新 class 可用，舊 class 不受影響 | make lint 通過 |
+| designTokens.ts 常數變更 | 程式邏輯中引用 token 的模組 | JS 常數值同步更新 | 單元測試驗證 token 值 |
+
+---
+
+### 回退方案（Rollback Plan）
+
+| 項目 | 內容 |
+|------|------|
+| **回退方式** | Revert commit（純前端 + config 變更，無 DB migration） |
+| **不可逆評估** | 完全可逆，無 DB schema 變更，無外部通知 |
+| **資料影響** | 無。後端不受 design token 回退影響 |
+| **依賴回退** | 恢復 tokens.yaml / globals.css / tailwind.config.ts / designTokens.ts 至先前版本 |
+
+---
+
+## 🧪 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 輸入 | 預期結果 |
+|----|------|------|------|----------|
+| P1 | 正向 | tokens.yaml 與 globals.css hex 值匹配 | make token-validate | "All tokens in sync" |
+| P2 | 正向 | 無 hardcoded hex 新增 | make token-drift | 零新增違規 |
+| P3 | 正向 | border-athena-* 完全禁止 | grep border-athena frontend/src/ | 零匹配 |
+| N1 | 負向 | tokens.yaml 與 globals.css 不匹配 | 修改 globals.css 中一個 hex 值 | token-validate 報告 MISMATCH |
+| N2 | 負向 | 使用 border-athena-* class | 新增 border-athena-accent | lint/grep 偵測到違規 |
+| B1 | 邊界 | 新增 token 未同步全鏈 | 僅更新 tokens.yaml 未更新 globals.css | token-validate 報告缺失 |
+| B2 | 邊界 | Tailwind v4 border 相容性 | 使用 border-[var(--color-accent)] | 正確套用邊框色彩 |
+
+---
+
+## 🎬 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: Design Token 信任鏈同步與防漂移
+
+  Scenario: 信任鏈五層完全同步
+    Given pen 設計稿定義 accent 色為 "#1E6091"
+    And tokens.yaml 中 colors.accent.value 為 "#1E6091"
+    When 執行 make token-validate
+    Then 輸出 "All tokens in sync"
+    And globals.css 中 --color-accent 為 #1E6091
+    And designTokens.ts 中匯出值為 "#1E6091"
+
+  Scenario: 偵測到 hardcoded hex 時報告違規
+    Given 前端元件中存在 className="bg-[#18181B]"
+    When 執行 make token-drift
+    Then 輸出包含該檔案路徑與行號
+    And 建議使用 bg-[var(--color-bg-card)] 替代
+
+  Scenario: Tailwind v4 border workaround 驗證
+    Given 元件使用 className="border border-[var(--color-accent)]"
+    When 瀏覽器渲染該元件
+    Then 邊框正確顯示 accent 色（#1E6091）
+    And 未退化為瀏覽器預設灰色
+```
+
+---
+
+## 🔗 追溯性（Traceability）
+
+| 實作檔案 | 測試檔案 | 最後驗證日期 |
+|----------|----------|-------------|
+| `design-system/tokens.yaml` | — | 2026-03-26 |
+| `frontend/src/styles/globals.css` | — | 2026-03-26 |
+| `frontend/tailwind.config.ts` | — | 2026-03-26 |
+| `frontend/src/lib/designTokens.ts` | — | 2026-03-26 |
+| `frontend/src/components/planner/AttackGraphTab.tsx` | — | 2026-03-26 |
+
+---
+
+## 📊 可觀測性（Observability）
+
+> 純前端 config 與設計同步協議，無後端 metrics。
+
+N/A — frontend config / design sync protocol
+
+---
+
 ## 驗收標準（Done When）
 
 - [ ] 所有前端組件的 border/bg/text 色彩使用 CSS 變數引用（`var(--color-*)`）
@@ -347,5 +431,3 @@ make token-drift
 - `frontend/tailwind.config.ts`：Tailwind 擴展配置
 - `frontend/src/lib/designTokens.ts`：JS token 常數
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

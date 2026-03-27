@@ -100,6 +100,98 @@ Mock 模式：
 
 ---
 
+## 副作用與連動（Side Effects）
+
+| 變更項目 | 影響範圍 | 說明 |
+|----------|----------|------|
+| `config.py` 環境變數新增 | 全後端 | `CALDERA_URL`, `MOCK_CALDERA` 等新增 env vars，影響所有讀取 config 的模組 |
+| Health endpoint 回應結構 | 前端 Dashboard | `GET /api/health` 新增 `caldera` 與 `llm` 欄位，前端需對應顯示 |
+| Agent sync endpoint | OODA Controller | `POST /operations/{id}/agents/sync` 新增路由，OODAController 可能呼叫 |
+| Makefile targets 新增 | 開發者工作流 | `vendor-init`, `caldera-up`, `caldera-status` 新增指令 |
+
+---
+
+## Rollback Plan
+
+| 步驟 | 指令 | 驗證 |
+|------|------|------|
+| 1. 還原程式碼 | `git revert <commit>` | `git log` 確認 revert commit |
+| 2. 移除 vendor 目錄 | `rm -rf ~/vendor/caldera ~/vendor/pentestgpt` | 目錄不存在 |
+| 3. 恢復 .env | 移除 `CALDERA_URL`, `MOCK_CALDERA` 等新增變數 | `make test-backend` 通過 |
+| 4. 驗證 health | `curl :8500/api/health` | 回應不含 `caldera` 欄位（或 mock 預設值） |
+
+---
+
+## 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 輸入 | 預期結果 |
+|----|------|------|------|----------|
+| P1 | Positive | Mock 模式健康檢查 | `MOCK_CALDERA=true`, `GET /api/health` | `caldera: "mock"`, HTTP 200 |
+| P2 | Positive | 真實模式 Agent 同步 | `MOCK_CALDERA=false`, Caldera 運行中, `POST /operations/{id}/agents/sync` | `synced: N` (N>0) |
+| N1 | Negative | Caldera 不可達時健康檢查 | `MOCK_CALDERA=false`, Caldera 停止, `GET /api/health` | `caldera: "unreachable"`, HTTP 200（不 crash） |
+| N2 | Negative | CalderaClient 重試耗盡 | Caldera 持續無回應 | `ExecutionResult(success=False)`, 3 次重試後放棄 |
+| B1 | Boundary | Mock 模式 Agent 同步 | `MOCK_CALDERA=true`, `POST /operations/{id}/agents/sync` | `synced: 0`, HTTP 200 |
+| B2 | Boundary | vendor 目錄不存在 | `make caldera-up` 未執行 `vendor-init` | 提示執行 `make vendor-init` |
+
+---
+
+## 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: 外部專案整合 — Caldera Mock/Real 切換
+
+  Scenario: S1 — Mock 模式下健康檢查回報 caldera mock 狀態
+    Given 環境變數 MOCK_CALDERA=true
+    And 後端服務已啟動
+    When 發送 GET /api/health
+    Then 回應狀態碼為 200
+    And 回應 JSON 中 services.caldera 等於 "mock"
+    And 回應 JSON 中 services.llm 等於 "mock"
+
+  Scenario: S2 — Caldera 不可達時健康檢查不中斷服務
+    Given 環境變數 MOCK_CALDERA=false
+    And Caldera 服務未啟動
+    When 發送 GET /api/health
+    Then 回應狀態碼為 200
+    And 回應 JSON 中 services.caldera 等於 "unreachable"
+
+  Scenario: S3 — Mock 模式 Agent 同步回傳零同步數
+    Given 環境變數 MOCK_CALDERA=true
+    And 存在 operation ID "op-001"
+    When 發送 POST /operations/op-001/agents/sync
+    Then 回應狀態碼為 200
+    And 回應 JSON 中 synced 等於 0
+```
+
+---
+
+## 追溯性（Traceability）
+
+| 類型 | 路徑 |
+|------|------|
+| Caldera Client | `backend/app/clients/c2_client.py` |
+| Mock Client | `backend/app/clients/mock_c2_client.py` |
+| 配置 | `backend/app/config.py` |
+| Health Router | `backend/app/routers/health.py` |
+| Agents Router | `backend/app/routers/agents.py` |
+| 整合測試 | `backend/tests/test_integration_real_mode.py` |
+| Health 測試 | `backend/tests/test_health_router.py` |
+| Client 測試 | `backend/tests/test_spec_008_clients.py` |
+| Makefile | `Makefile`（vendor-init, caldera-up, caldera-status targets） |
+
+---
+
+## 可觀測性（Observability）
+
+| 項目 | 內容 |
+|------|------|
+| Health Endpoint | `GET /api/health` — 回報 caldera 連線狀態（mock / connected / unreachable） |
+| 結構化 Log | CalderaClient 連線失敗時記錄 `WARNING` level log，含 URL 與重試次數 |
+| 重試指標 | CalderaClient 重試 3 次，每次失敗記錄 log |
+| 啟動檢查 | 啟動時 `check_version()` 記錄 Caldera 版本或 warning |
+
+---
+
 ## ✅ 驗收標準（Done When）
 
 - [x] `make vendor-init` 可成功 clone 兩個外部專案到 `~/vendor/`
@@ -138,5 +230,3 @@ Mock 模式：
 - Caldera API 文件：https://caldera.readthedocs.io/
 - PentestGPT 論文：USENIX Security 2024
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

@@ -138,6 +138,105 @@ Legend 區段：
 
 ---
 
+## 🔗 副作用與連動（Side Effects）
+
+| 副作用 | 觸發條件 | 影響模組 | 驗證方式 |
+|--------|---------|---------|---------|
+| 後端 topology API 回傳新增 `persistenceCount` 欄位 | per-node stats 查詢 | `backend/app/routers/targets.py` | API response 含 `persistenceCount` 欄位 |
+| 前端 graphData node 新增 4 個狀態欄位 | topology 資料 mapping | `NetworkTopology.tsx`（或對應拓撲元件） | node object 含 scanCount/credentialCount/privilegeLevel/persistenceCount |
+| Arc bars 移除，替換為 status badges | Canvas 繪製邏輯變更 | `NetworkTopology.tsx` — handleNodeCanvasObject | 視覺驗證：節點周圍無 arc bars，四角有 badges |
+| TopologyLegend 圖例更新 | Legend 區段替換 | `TopologyLegend.tsx`（或對應 Legend 元件） | Legend 顯示 4 種 badge 而非 Node Stats |
+| i18n key 變更（移除舊 key、新增新 key） | 語言檔案修改 | `frontend/messages/en.json`、`frontend/messages/zh-TW.json` | `make i18n-check` 通過 |
+
+---
+
+### 回退方案（Rollback Plan）
+
+| 回滾步驟 | 資料影響 | 回滾驗證 | 回滾已測試 |
+|----------|---------|---------|-----------|
+| `git revert` commit | 無 DB schema 變更，`persistenceCount` 為查詢時計算 | Arc bars 恢復；badges 移除；`make build` 通過 | Yes — 純新增/替換 Canvas 繪製邏輯 |
+| 確認 i18n key 還原 | i18n key 還原至舊版 | `make i18n-check` 通過 | Yes |
+
+---
+
+## 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 輸入 | 預期結果 | 場景參考 |
+|----|------|------|------|---------|---------|
+| P1 | 正向 | 掃描後顯示 Recon badge | target 已執行 nmap scan（scanCount > 0） | 左上出現藍色放大鏡 badge | Scenario: Recon badge after scan |
+| P2 | 正向 | Compromised badge | target is_compromised=true | 右上出現紅色骷髏頭 badge | Scenario: Compromised badge display |
+| P3 | 正向 | Privilege badge（root） | privilege_level="root" | 左下出現金色盾牌 badge | Scenario: Privilege badge by level |
+| P4 | 正向 | Persistence badge | persistenceCount > 0 | 右下出現金色鏈結 badge | Scenario: Persistence badge display |
+| N1 | 負向 | 未掃描節點無 badge | scanCount=0, isCompromised=false, privilegeLevel=null, persistenceCount=0 | 四角無任何標記 | Scenario: Clean node has no badges |
+| N2 | 負向 | Zoom 過遠隱藏 badges | globalScale < 0.4 | badges 不繪製 | Scenario: Badges hidden at low zoom |
+| B1 | 邊界 | 所有狀態同時存在 | scanCount>0, isCompromised=true, privilegeLevel="SYSTEM", persistenceCount>0 | 四角都有對應標記 | Scenario: All four badges simultaneously |
+| B2 | 邊界 | SYSTEM 級別用紅色盾牌 | privilegeLevel="SYSTEM" | 左下盾牌顏色為 #ff4444（紅色） | Scenario: SYSTEM privilege red shield |
+| B3 | 邊界 | Arc bars 完全移除 | 任何節點 | 節點周圍無 arc bars 殘留 | Scenario: Arc bars fully removed |
+
+---
+
+## 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: Node Status Badge System
+  作為紅隊指揮官，我需要一眼掌握每個拓撲節點的攻擊進展。
+
+  Background:
+    Given 一個已建立的 operation 含 target "192.168.1.10"
+    And 拓撲圖已渲染
+
+  Scenario: Recon badge after scan
+    Given target 已完成 nmap 掃描（scanCount > 0）
+    When 拓撲圖渲染該節點
+    Then 左上角（↖）出現藍色（#4488ff）放大鏡 badge
+    And badge 隨 zoom 縮放（badgeRadius = max(size * 0.35, 3)）
+
+  Scenario: Compromised badge display
+    Given target is_compromised = true
+    When 拓撲圖渲染該節點
+    Then 右上角（↗）出現紅色（#ff4444）骷髏頭 badge
+
+  Scenario: Privilege badge by level
+    Given target privilege_level = "root"
+    When 拓撲圖渲染該節點
+    Then 左下角（↙）出現金色（#eab308）盾牌 badge
+
+  Scenario: All four badges simultaneously
+    Given target scanCount=5, isCompromised=true, privilegeLevel="SYSTEM", persistenceCount=2
+    When 拓撲圖渲染該節點
+    Then 四角同時顯示：左上放大鏡、右上骷髏頭、左下紅色盾牌、右下金色鏈結
+
+  Scenario: Badges hidden at low zoom
+    Given globalScale < 0.4
+    When 拓撲圖渲染任何節點
+    Then 所有 status badges 不繪製
+```
+
+---
+
+## 追溯性（Traceability）
+
+| 產出物 | 檔案路徑 | 狀態 | 追溯日期 |
+|--------|---------|------|---------|
+| 後端 persistenceCount 查詢 | `backend/app/routers/targets.py`（line ~425） | 已實作 | 2026-03-26 |
+| 前端拓撲元件 | `frontend/src/components/topology/NetworkTopology.tsx`（或同等路徑） | （待確認 — 目前未找到 topology/ 子目錄） | 2026-03-26 |
+| 前端圖例元件 | `frontend/src/components/topology/TopologyLegend.tsx`（或同等路徑） | （待實作） | 2026-03-26 |
+| Badge 繪製函數 | drawStatusBadges / drawReconBadge / drawSkullBadge / drawShieldBadge / drawChainBadge | （待實作） | 2026-03-26 |
+| i18n — English | `frontend/messages/en.json`（statusBadges 相關 key） | （待實作） | 2026-03-26 |
+| i18n — 繁體中文 | `frontend/messages/zh-TW.json`（statusBadges 相關 key） | （待實作） | 2026-03-26 |
+| 後端測試 | `backend/tests/`（persistenceCount 查詢測試） | （待實作） | 2026-03-26 |
+| 前端 e2e 測試 | `frontend/e2e/`（badge 視覺測試） | （待實作） | 2026-03-26 |
+
+---
+
+## 可觀測性（Observability）
+
+本 SPEC 為前端 Canvas 繪製變更 + 後端查詢欄位新增，不涉及新的 API endpoint 或 MCP 工具。可觀測性 N/A。
+
+後端 `persistenceCount` 為既有 per-node stats 查詢的擴展，效能影響包含在現有 topology API 的 response time monitoring 中。
+
+---
+
 ## 驗收標準
 
 | # | 場景 | 預期結果 |
@@ -155,5 +254,3 @@ Legend 區段：
 | 11 | `make build` | 編譯通過 |
 | 12 | `pytest` | 後端測試通過 |
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

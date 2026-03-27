@@ -149,5 +149,120 @@
 
 _SPEC 由 Claude Opus 4.6 於 2026-03-04 補建，對應 Tool Registry 實作。_
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->
+---
+
+## 🔗 副作用與連動（Side Effects）
+
+| 副作用 | 觸發條件 | 影響模組 | 驗證方式 |
+|--------|----------|----------|----------|
+| `tool_registry` DDL 新增至 `init_db()` | 首次啟動 / DB 初始化 | `backend/app/database.py`（`backend/app/database/seed.py`） | pytest 驗證 seed 資料 ≥10 筆 |
+| 10 筆 seed 工具自動寫入 | 首次啟動且 `tool_registry` 為空 | `backend/app/database/seed.py` | `test_list_tools` 驗證 ≥10 筆 |
+| main.py include tools router | 應用啟動 | `backend/app/main.py` | `GET /api/tools` 正常回傳 |
+| NAV_ITEMS 新增 Tool Registry | 前端頁面載入 | `frontend/src/lib/constants.ts` | 導航欄顯示 Tool Registry 連結 |
+| enums 新增 ToolKind / ToolCategory | 後端 model validation | `backend/app/models/enums.py` | pytest 驗證 enum 值 |
+
+---
+
+## ⏪ Rollback Plan
+
+| 回滾步驟 | 資料影響 | 回滾驗證 | 回滾已測試 |
+|----------|----------|----------|-----------|
+| 1. Revert tools router + main.py include | 無影響（API endpoint 移除） | `GET /api/tools` 回傳 404 | ✅ |
+| 2. Revert database DDL + seed | `tool_registry` 表仍存在於 SQLite 但不再使用；可手動 `DROP TABLE tool_registry` | 確認 init_db 不建立 tool_registry | ✅ |
+| 3. Revert 前端 tools 頁面及元件 | 無持久化資料影響 | `/tools` 頁面回傳 404 | ✅ |
+| 4. Revert NAV_ITEMS 變更 | 無影響 | 導航欄不顯示 Tool Registry | ✅ |
+
+---
+
+## 🧪 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 預期結果 | 場景參考 |
+|----|------|------|----------|----------|
+| P1 | 正向 | GET /api/tools 無 filter | 回傳 ≥10 筆 seed 工具列表 | Scenario: 列出所有工具 |
+| P2 | 正向 | POST /api/tools 新增 user 工具 | HTTP 201，回傳新工具 entry | Scenario: 新增 user 工具 |
+| P3 | 正向 | PATCH /api/tools/{tool_id} 更新 enabled=false | HTTP 200，updated_at 自動更新 | — |
+| N1 | 負向 | POST /api/tools 重複 tool_id | HTTP 409 Conflict | Scenario: 重複 tool_id 被拒 |
+| N2 | 負向 | DELETE /api/tools/{tool_id} seed 工具 | HTTP 403 Forbidden | Scenario: Seed 工具刪除保護 |
+| N3 | 負向 | GET /api/tools/{tool_id} 不存在 | HTTP 404 | — |
+| B1 | 邊界 | GET /api/tools?kind=engine&category=execution&enabled=true | 僅回傳符合所有 filter 條件的工具 | Scenario: 多重 filter 查詢 |
+| B2 | 邊界 | POST /api/tools/{tool_id}/check 健康檢查 | HTTP 200，回傳 `{available, detail}` | — |
+
+---
+
+## 🎬 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: Tool Registry 管理系統
+  Background:
+    Given 系統已啟動且 seed 資料已初始化
+
+  Scenario: 列出所有工具
+    When 呼叫 GET /api/tools
+    Then 回傳 HTTP 200
+    And 列表包含 ≥10 筆 seed 工具
+    And 每筆工具包含 tool_id、name、kind、category、enabled 欄位
+
+  Scenario: 新增 user 工具
+    When 呼叫 POST /api/tools 新增 tool_id="my-scanner"
+    Then 回傳 HTTP 201
+    And 回傳 entry 的 source 為 "user"
+    When 再次呼叫 GET /api/tools
+    Then 列表包含 "my-scanner"
+
+  Scenario: 重複 tool_id 被拒
+    Given 已存在 tool_id="nmap" 的 seed 工具
+    When 呼叫 POST /api/tools 新增 tool_id="nmap"
+    Then 回傳 HTTP 409 Conflict
+
+  Scenario: Seed 工具刪除保護
+    When 呼叫 DELETE /api/tools/nmap
+    Then 回傳 HTTP 403 Forbidden
+    And nmap 工具仍存在於列表中
+
+  Scenario: 多重 filter 查詢
+    When 呼叫 GET /api/tools?kind=engine&enabled=true
+    Then 回傳的所有工具 kind 均為 "engine"
+    And 回傳的所有工具 enabled 均為 true
+```
+
+---
+
+## 🔍 追溯性（Traceability）
+
+| 類型 | 檔案路徑 | 說明 |
+|------|----------|------|
+| 後端 Model | `backend/app/models/tool_registry.py` | Pydantic CRUD models |
+| 後端 Enum | `backend/app/models/enums.py` | `ToolKind`, `ToolCategory` |
+| 後端 Router | `backend/app/routers/tools.py` | REST CRUD router（6 endpoints） |
+| 後端 DB | `backend/app/database/seed.py` | DDL + seed 資料 |
+| 後端 Main | `backend/app/main.py` | include tools router |
+| 前端 Types | `frontend/src/types/tool.ts` | TypeScript 型別定義 |
+| 前端 Hook | `frontend/src/hooks/useTools.ts` | 工具資料 fetch hook |
+| 前端 元件 | `frontend/src/components/tools/ToolRegistryTable.tsx` | 工具列表元件 |
+| 前端 元件 | `frontend/src/components/tools/AddToolModal.tsx` | 新增工具 modal |
+| 前端 頁面 | `frontend/src/app/tools/page.tsx` | Tools 管理頁面 |
+| 後端 測試 | `backend/tests/test_tools_router.py` | 13 test cases |
+| 前端 測試 | `frontend/src/app/tools/__tests__/tools.test.tsx` | Tools 頁面測試 |
+| 前端 測試 | `frontend/src/components/tools/__tests__/ToolRegistryTable.test.tsx` | 列表元件測試 |
+| 前端 測試 | `frontend/src/components/tools/__tests__/ToolExecuteModal.test.tsx` | 執行 modal 測試 |
+| E2E 測試 | `frontend/e2e/tools.spec.ts` | Tools 頁面 E2E 測試 |
+| E2E 測試 | `frontend/e2e/sit-tools-c5isr.spec.ts` | Tools + C5ISR SIT 測試 |
+
+> 追溯日期：2026-03-26
+
+---
+
+## 📊 可觀測性（Observability）
+
+### 後端
+
+| 指標名稱 | 類型 | 標籤 | 告警閾值 |
+|----------|------|------|----------|
+| `athena_tool_registry_crud_total` | Counter | `method` (`list`, `get`, `create`, `update`, `delete`), `status` (`success`, `error`) | `error` > 10/min |
+| `athena_tool_registry_crud_duration_seconds` | Histogram | `method` | P95 > 1s |
+| `athena_tool_registry_count` | Gauge | `kind` (`tool`, `engine`), `enabled` (`true`, `false`) | — |
+| `athena_tool_check_result` | Counter | `tool_id`, `available` (`true`, `false`) | `available=false` > 3/check |
+
+### 前端
+
+N/A

@@ -115,12 +115,12 @@ LLM call: task_type=None, model=claude-opus-4-6  (fallback)
 
 ## 🔗 副作用與連動（Side Effects）
 
-| 本功能的狀態變動 | 受影響的既有功能 | 預期行為 |
-|-----------------|----------------|---------|
-| `node_summarizer.py` 改用 `task_type="node_summary"` | 節點摘要 API（`GET /api/targets/{id}/summary`） | 模型從 `NODE_SUMMARY_MODEL`（Sonnet）切換至 `TASK_MODEL_MAP["node_summary"]`（Haiku）。摘要品質可能略有變化，需驗證 |
-| `orient_engine.py` 明確指定 `task_type="orient_analysis"` | OODA Orient 分析 | 行為不變（仍使用 Opus），但日誌新增 `task_type` 欄位 |
-| `settings.NODE_SUMMARY_MODEL` 標記為 deprecated | `config.py` | 保留設定項但不再被 `node_summarizer.py` 直接使用；透過 `TASK_MODEL_MAP` 統一管理。加註 `# DEPRECATED: use TASK_MODEL_MAP["node_summary"]` |
-| WebSocket `orient.thinking` 事件 | 前端戰情室 | 無變更 — 事件已包含 `backend` 欄位，模型資訊可透過日誌追蹤 |
+| 副作用 | 觸發條件 | 影響模組 | 驗證方式 |
+|--------|---------|---------|---------|
+| node_summarizer 模型切換至 Haiku | `task_type="node_summary"` 呼叫 LLMClient.call() | 節點摘要 API（`GET /api/targets/{id}/summary`） | 日誌確認 `model=claude-haiku-35-20241022`；摘要品質人工審查 |
+| orient_engine 明確指定 task_type | `task_type="orient_analysis"` 呼叫 LLMClient.call() | OODA Orient 分析 | 日誌確認 `task_type=orient_analysis, model=claude-opus-4-6`（行為不變） |
+| NODE_SUMMARY_MODEL 標記 deprecated | config.py 載入時 | `config.py` 設定管理 | 確認 NODE_SUMMARY_MODEL 仍存在但加註 `# DEPRECATED` |
+| LLM 呼叫日誌新增 task_type 欄位 | 任何 LLMClient.call() 呼叫 | 日誌系統 | INFO 日誌格式為 `LLM call: task_type={type}, model={model}` |
 
 ---
 
@@ -164,12 +164,87 @@ CLAUDE_MODEL_HAIKU=claude-haiku-35-20250415  # 升級至新版 Haiku
 
 **預期行為**：`settings.CLAUDE_MODEL_HAIKU` 被覆蓋，`TASK_MODEL_MAP` 中所有引用 Haiku 的任務自動使用新模型 ID。無需修改映射表。
 
-### 回退方案（Rollback Plan）
+### ⏪ Rollback Plan
 
-- **回退方式**：`git revert` 對應 commit。本變更僅涉及 Python 程式碼修改，無 DB migration、無不可逆操作。
-- **不可逆評估**：無不可逆部分。所有變更為程式碼層級，revert 後系統恢復至單一模型行為。
-- **資料影響**：無。本功能不修改任何資料庫 schema 或持久化資料。日誌中新增的 `task_type` 欄位為純資訊性記錄。
-- **快速降級**：若特定模型品質不足，可透過環境變數將對應任務升級。例如 `CLAUDE_MODEL_HAIKU=claude-sonnet-4-20250514` 可將所有 Haiku 任務升級至 Sonnet，無需程式碼變更或重新部署。
+| 回滾步驟 | 資料影響 | 回滾驗證 | 回滾已測試 |
+|---------|---------|---------|----------|
+| `git revert` 對應 commit | 無 — 不修改任何資料庫 schema 或持久化資料 | `make test` 全數通過；所有 LLM 呼叫恢復至 `settings.CLAUDE_MODEL`（Opus） | 否（需手動驗證） |
+| 快速降級（不 revert）：設定 `CLAUDE_MODEL_HAIKU=claude-sonnet-4-20250514` | 無 | Haiku 任務自動升級至 Sonnet，無需程式碼變更或重新部署 | 是（環境變數覆蓋已驗證） |
+
+---
+
+## 🧪 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 預期結果 | 場景參照 |
+|----|------|------|---------|---------|
+| P1 | 正向 | `task_type="orient_analysis"` 呼叫 LLMClient.call() | effective_model 為 Opus（`claude-opus-4-6`） | Scenario: 任務類型正確路由至對應模型 |
+| P2 | 正向 | `task_type="node_summary"` 呼叫 LLMClient.call() | effective_model 為 Haiku（`claude-haiku-35-20241022`） | Scenario: 任務類型正確路由至對應模型 |
+| P3 | 正向 | `task_type="fact_summary"` 呼叫 LLMClient.call() | effective_model 為 Sonnet（`claude-sonnet-4-20250514`） | Scenario: 任務類型正確路由至對應模型 |
+| N1 | 負向 | `task_type="unknown_task"` | fallback 至 `settings.CLAUDE_MODEL`（Opus），記錄 WARNING 日誌 | Scenario: 未知 task_type 安全降級 |
+| N2 | 負向 | `task_type=None` | fallback 至 `settings.CLAUDE_MODEL`（Opus） | Scenario: 未知 task_type 安全降級 |
+| B1 | 邊界 | 同時傳入 `model="claude-sonnet-4-20250514"` + `task_type="orient_analysis"` | `model=` 優先，effective_model 為 Sonnet | Scenario: 顯式 model 參數覆蓋 task_type |
+| B2 | 邊界 | 環境變數覆蓋 `CLAUDE_MODEL_HAIKU=claude-haiku-35-20250415` | TASK_MODEL_MAP 中所有 Haiku 任務自動使用新模型 ID | Scenario: 任務類型正確路由至對應模型 |
+
+---
+
+## 🎭 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: LLM 多模型動態路由器 (Model Alloys)
+  Background:
+    Given LLMClient 服務已初始化
+    And TASK_MODEL_MAP 包含 5 個任務類型映射
+    And MOCK_LLM 為 False
+
+  Scenario: 任務類型正確路由至對應模型
+    When orient_engine 呼叫 LLMClient.call(task_type="orient_analysis")
+    Then LLMClient 使用 claude-opus-4-6 模型
+    And INFO 日誌記錄 "task_type=orient_analysis, model=claude-opus-4-6"
+    When node_summarizer 呼叫 LLMClient.call(task_type="node_summary")
+    Then LLMClient 使用 claude-haiku-35-20241022 模型
+    And INFO 日誌記錄 "task_type=node_summary, model=claude-haiku-35-20241022"
+
+  Scenario: 未知 task_type 安全降級
+    When 呼叫 LLMClient.call(task_type="nonexistent_task")
+    Then LLMClient fallback 至 settings.CLAUDE_MODEL（Opus）
+    And WARNING 日誌記錄 "Unknown task_type 'nonexistent_task'"
+    When 呼叫 LLMClient.call(task_type=None)
+    Then LLMClient fallback 至 settings.CLAUDE_MODEL（Opus）
+
+  Scenario: 顯式 model 參數覆蓋 task_type
+    When 呼叫 LLMClient.call(model="claude-sonnet-4-20250514", task_type="orient_analysis")
+    Then LLMClient 使用 claude-sonnet-4-20250514（忽略 task_type 映射）
+    And 不記錄 WARNING 日誌
+```
+
+---
+
+## 🔗 追溯性（Traceability）
+
+| 追溯項目 | 檔案路徑 | 狀態 |
+|---------|---------|------|
+| Config 模型設定 + TASK_MODEL_MAP | `backend/app/config.py` | 已實作 |
+| LLMClient.call() task_type 參數 | `backend/app/services/llm_client.py` | 已實作 |
+| OrientEngine task_type 傳入 | `backend/app/services/orient_engine.py` | 已實作 |
+| NodeSummarizer task_type 遷移 | `backend/app/services/node_summarizer.py` | 已實作 |
+| main.py 整合 | `backend/app/main.py` | 已實作 |
+| 單元測試 — 模型路由 | `backend/tests/test_llm_model_routing.py` | 已實作 |
+| E2E 測試 | （待實作） | （待實作） |
+
+> 追溯日期：2026-03-26
+
+---
+
+## 📊 可觀測性（Observability）
+
+| 面向 | 指標/日誌 | 說明 |
+|------|----------|------|
+| **Logging** | `INFO: LLM call: task_type={task_type}, model={effective_model}` | 每次 LLM 呼叫記錄任務類型與實際使用模型 |
+| **Logging** | `WARNING: Unknown task_type '{task_type}', falling back to default model {model}` | 未知 task_type 降級日誌 |
+| **Metrics** | `llm_calls_total{task_type, model}` | 各任務類型 + 模型組合的呼叫次數（counter） |
+| **Metrics** | `llm_call_duration_seconds{task_type, model}` | 各任務類型的 LLM 呼叫耗時（histogram） |
+| **Metrics** | `llm_fallback_total{reason}` | 降級次數（counter，label: unknown_task_type / model_unavailable） |
+| **Health** | `CLAUDE_MODEL_OPUS/SONNET/HAIKU` 環境變數 | 可透過環境變數即時調整模型路由，無需重新部署 |
 
 ---
 
@@ -347,5 +422,3 @@ model_name = TASK_MODEL_MAP.get("node_summary", settings.CLAUDE_MODEL)
 | `test_explicit_model_overrides_task_type` | `model="X", task_type="orient_analysis"` | `effective_model == "X"` |
 | `test_task_model_map_uses_settings_values` | 驗證 `TASK_MODEL_MAP` 引用 `settings.*` | 環境變數覆蓋生效 |
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

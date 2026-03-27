@@ -956,5 +956,101 @@ docker run --rm \
 | 13 | 不產出 artifact 的工具可正常運行（無 `/output/manifest.json`） | 整合測試 |
 | 14 | 前步工具的 `/output/` 產物可掛載為後步工具的 `/input/previous/` | 整合測試 |
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->
+---
+
+## 副作用與連動（Side Effects）
+
+| 副作用 | 觸發條件 | 影響模組 | 驗證方式 |
+|--------|----------|----------|----------|
+| `_category_from_trait()` 擴充 | 新增 `vulnerability.*`/`file.*` trait 前綴 | `backend/app/services/fact_collector.py` | 單元測試驗證新 trait 正確分類 |
+| `ExecutionResult` 結構變更 | 加入 `artifacts` 欄位 | `backend/app/clients/__init__.py`、`EngineRouter`、`FactCollector` | 既有 `ExecutionResult` 消費方迴歸測試 |
+| DB schema 新增 `artifacts` 表 | ContainerEngineClient 上線 | `backend/app/database/` migration | `make test` 迴歸；schema 測試 |
+| `/output/` 臨時目錄磁碟佔用 | 每次容器執行產生產物 | 主機磁碟空間 | 監控清理腳本 + 定期 df 檢查 |
+
+---
+
+## Rollback Plan
+
+| 回滾步驟 | 資料影響 | 回滾驗證 | 回滾已測試 |
+|----------|----------|----------|------------|
+| 1. 停用 ContainerEngineClient，EngineRouter 選擇 fallback 引擎 | 無資料遺失，facts 停止新增 | `make test` 全通過；既有 Caldera/Mock 引擎正常 | 否（Planned 狀態，待實作時驗證） |
+| 2. 還原 `_category_from_trait()` 至原版 | 新 trait 前綴分類失效，歸入 HOST 預設 | 單元測試驗證舊行為 | 否 |
+| 3. DROP TABLE `artifacts` | 已儲存的 artifact 記錄遺失 | DB migration rollback 腳本 | 否 |
+
+---
+
+## 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 輸入 | 預期結果 | 場景參照 |
+|----|------|------|------|----------|----------|
+| P1 | 正向 | 容器正常執行輸出有效 JSON + facts | subfinder 容器 + `TOOL_INPUT_TARGET=example.com` | `success=true`, facts 含 `network.host.hostname` | S1 |
+| P2 | 正向 | 擴展層 manifest.json 正確解析 | nmap 容器 + `/output/manifest.json` 存在 | artifacts 列表含 `scan-report.xml` | S2 |
+| N1 | 負向 | 缺少必要環境變數 | 容器無 `TOOL_INPUT_TARGET` | exit code 2 + `success=false` + error 訊息 | S1 |
+| N2 | 負向 | 容器 stdout 非有效 JSON | 工具寫入純文字至 stdout | `ContainerEngineClient` 生成 error `ExecutionResult` | S2 |
+| B1 | 邊界 | 容器超時 | `TOOL_TIMEOUT=1` + 長時間掃描 | exit code 3 + timeout error | S3 |
+| B2 | 邊界 | facts value 超過 500 字元 | trait value = 600 字元字串 | 自動截斷至 500 字元 | S3 |
+
+---
+
+## 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: 工具容器標準化 I/O
+
+  Background:
+    Given ContainerEngineClient 已初始化
+    And 工具 registry.yaml 已載入
+
+  Scenario: S1 — subfinder 容器正常執行並回傳結構化 facts
+    Given 容器映像 "athena-tools/subfinder:1.0" 已可用
+    And 環境變數 TOOL_INPUT_TARGET 設為 "example.com"
+    When ContainerEngineClient 執行 subfinder 容器
+    Then 容器 exit code 為 0
+    And stdout JSON 的 success 為 true
+    And facts 陣列包含至少 1 筆 trait 為 "network.host.hostname" 的記錄
+    And FactCollector 將 facts 正確寫入 facts 表
+
+  Scenario: S2 — nmap 容器產出基礎層 facts 與擴展層 artifact
+    Given 容器映像 "athena-tools/nmap:1.0" 已可用
+    And 環境變數 TOOL_INPUT_TARGET 設為 "10.0.1.5"
+    When ContainerEngineClient 執行 nmap 容器
+    Then stdout JSON 的 facts 包含 "service.port" trait
+    And /output/manifest.json 存在且可被 json.loads() 解析
+    And manifest 中 scan-report.xml 的 size_bytes 與實際檔案大小一致
+
+  Scenario: S3 — 容器超時時回傳 timeout error
+    Given 容器映像 "athena-tools/slow-tool:1.0" 已可用
+    And TOOL_TIMEOUT 設為 1 秒
+    When ContainerEngineClient 執行容器且超過 timeout
+    Then ExecutionResult.success 為 false
+    And ExecutionResult.error 包含 "timeout"
+```
+
+---
+
+## 追溯性（Traceability）
+
+| 項目 | 路徑 / 識別碼 | 狀態 |
+|------|---------------|------|
+| 規格文件 | `docs/specs/SPEC-016-tool-container-io-standard.md` | Planned |
+| 關聯 ADR | `docs/adr/ADR-006` | Accepted |
+| 關聯 SPEC | `docs/specs/SPEC-008` | Accepted |
+| ContainerEngineClient 實作 | `backend/app/clients/container_engine_client.py` | （待實作） |
+| FactCollector trait 擴充 | `backend/app/services/fact_collector.py` | （待實作） |
+| Registry YAML | `backend/app/tools/registry.yaml` | （待實作） |
+| 單元測試 | `backend/tests/test_container_engine_client.py` | （待實作） |
+| 整合測試 | `backend/tests/test_container_io_integration.py` | （待實作） |
+| 更新日期 | 2026-03-26 | — |
+
+---
+
+## 可觀測性（Observability）
+
+> 本 SPEC 為 Planned 狀態（未實作），可觀測性指標待實作時定義。以下為規劃：
+
+| 面向 | 內容 |
+|------|------|
+| **指標（Metrics）** | `container.execution.duration_seconds`（histogram）、`container.execution.success_total` / `container.execution.error_total`（counter）、`container.facts.collected_total`（counter） |
+| **日誌（Logs）** | 容器啟動/結束事件（含 exit code）、JSON 解析失敗警告、artifact manifest 解析結果 |
+| **告警（Alerts）** | 容器連續失敗 ≥ 3 次、單次執行超過 `TOOL_TIMEOUT`、磁碟空間 `/output/` 臨時目錄超過閾值 |
+| **故障偵測（Fault Detection）** | exit code 2/3 自動標記為 infra 問題（非工具邏輯）；stdout 非 JSON 時記錄 raw output 至 stderr log |

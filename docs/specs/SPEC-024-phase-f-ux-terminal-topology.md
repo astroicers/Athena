@@ -160,5 +160,120 @@ const graphHeightPx = Math.max(300, window.innerHeight - PAGE_CHROME - kcHeight 
 
 _SPEC 由 Claude Sonnet 4.6 於 2026-03-04 補建，對應 Phase F 實作。_
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->
+---
+
+## 🔗 副作用與連動（Side Effects）
+
+| 副作用 | 觸發條件 | 影響模組 | 驗證方式 |
+|--------|----------|----------|----------|
+| 新增 WebSocket terminal endpoint | 前端開啟 TerminalPanel modal | `backend/app/routers/terminal.py`, `backend/app/main.py` | pytest `test_terminal_router.py` + `test_terminal.py` |
+| orient_engine 廣播 `orient.thinking` WS 事件 | OODA ORIENT 階段 LLM 呼叫 | `backend/app/services/orient_engine.py`, `frontend/src/app/monitor/page.tsx`（待確認） | pytest `test_orient_engine.py` 驗證 mock ws 廣播 |
+| recommendations endpoint 新增 | Monitor 頁面載入歷史列表 | `backend/app/routers/recommendations.py` | pytest `test_recommendations_router.py` |
+| Modal overlay 改為純黑背景 | 任何 Modal 開啟 | `AddTargetModal`, `ReconResultModal`, `HexConfirmModal` | 視覺驗證 |
+| OODA Timeline 元件全面重寫 | Monitor 頁面渲染 | `frontend/src/components/ooda/OODATimeline.tsx` | Unit test `OODATimeline.test.tsx` |
+
+---
+
+## ⏪ Rollback Plan
+
+| 回滾步驟 | 資料影響 | 回滾驗證 | 回滾已測試 |
+|----------|----------|----------|-----------|
+| 1. Revert terminal router + main.py include | 無 DB schema 變動 | `/ws/{op_id}/targets/{tid}/terminal` 回傳 404 | ✅ |
+| 2. Revert orient_engine `orient.thinking` 廣播 | 無資料影響 | Monitor 頁面不顯示 LLM 分析狀態 | ✅ |
+| 3. Revert recommendations list endpoint | 無資料影響 | `GET /recommendations` 回傳 404 | ✅ |
+| 4. Revert 前端元件（OODATimeline, TerminalPanel, TopologyView, NodeDetailPanel） | 無持久化資料影響 | 前端恢復舊版 UI | ✅ 可分別 revert |
+
+---
+
+## 🧪 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 預期結果 | 場景參考 |
+|----|------|------|----------|----------|
+| P1 | 正向 | Compromised target 開啟 terminal，執行 `whoami` | 回傳正確 username，exit_code=0 | Scenario: Terminal 執行合法指令 |
+| P2 | 正向 | Monitor 頁面 ORIENT 階段 LLM 呼叫 | AIDecisionPanel 顯示 `ANALYZING...` + latency | — |
+| P3 | 正向 | OODA Timeline 有 5 個 iteration | 最新 1 個展開，其餘摺疊，顯示 `[顯示全部 5 筆]` | — |
+| N1 | 負向 | Terminal 執行破壞性指令 `rm -rf /` | 回傳 error，指令被拒絕 | Scenario: Terminal 拒絕破壞性指令 |
+| N2 | 負向 | 連線到 `is_compromised=0` 的 target | 回傳 `{"error": "Target is not compromised"}` | — |
+| N3 | 負向 | 連線到不存在的 target | 回傳 `{"error": "Target not found"}` | — |
+| B1 | 邊界 | ORIENT 文字恰好 150 字元 | 完整顯示，不截斷，無 `[展開]` 按鈕 | Scenario: ORIENT 截斷邊界 |
+| B2 | 邊界 | ORIENT 文字 151 字元 | 截斷顯示 + `[展開]` 按鈕 | Scenario: ORIENT 截斷邊界 |
+
+---
+
+## 🎬 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: Phase F — UX 精修 + Terminal + Topology
+  Background:
+    Given 已建立作戰 "OP-DELTA"
+    And 作戰包含 compromised target "10.0.0.15"（is_compromised=1）
+
+  Scenario: Terminal 執行合法指令
+    Given 使用者在 Planner 頁面點擊 target 旁的 TERMINAL 按鈕
+    When 在 TerminalPanel 輸入 "whoami"
+    Then 收到包含 username 的 output
+    And exit_code 為 0
+    And prompt 顯示 "user@host:~$"
+
+  Scenario: Terminal 拒絕破壞性指令
+    Given 使用者已開啟 TerminalPanel
+    When 輸入 "rm -rf /"
+    Then 收到 error response
+    And 指令未在遠端執行
+
+  Scenario: ORIENT 截斷邊界
+    Given OODA iteration 的 ORIENT 分析文字為 160 字元
+    When 使用者查看 OODA Timeline
+    Then ORIENT 文字截斷至 150 字元
+    And 顯示 "[展開]" 按鈕
+    When 使用者點擊 "[展開]"
+    Then 顯示完整 160 字元文字
+
+  Scenario: Topology Tab 節點詳情
+    Given 使用者在 Monitor 頁面切換到 TOPOLOGY Tab
+    When 點擊拓撲圖中的某節點
+    Then 右側 NodeDetailPanel 顯示 IP、OS、角色、狀態
+    And 顯示 Kill Chain 進度
+    And 顯示相關 Facts 列表
+```
+
+---
+
+## 🔍 追溯性（Traceability）
+
+| 類型 | 檔案路徑 | 說明 |
+|------|----------|------|
+| 後端 Router | `backend/app/routers/terminal.py` | WebSocket SSH terminal endpoint |
+| 後端 Router | `backend/app/routers/recommendations.py` | `GET /recommendations` endpoint |
+| 後端 Service | `backend/app/services/orient_engine.py` | `orient.thinking` WS 事件廣播 |
+| 前端 Hook | `frontend/src/hooks/useTerminal.ts` | Terminal WebSocket hook |
+| 前端 元件 | `frontend/src/components/terminal/TerminalPanel.tsx` | Terminal modal UI |
+| 前端 元件 | `frontend/src/components/ooda/OODATimeline.tsx` | OODA Timeline（摺疊/截斷/filter） |
+| 後端 測試 | `backend/tests/test_terminal_router.py` | Terminal router 測試 |
+| 後端 測試 | `backend/tests/test_terminal.py` | Terminal 功能測試 |
+| 後端 測試 | `backend/tests/test_orient_engine.py` | orient thinking 廣播測試 |
+| 後端 測試 | `backend/tests/test_recommendations_router.py` | Recommendations 列表測試 |
+| 前端 測試 | `frontend/src/components/terminal/__tests__/TerminalPanel.test.tsx` | TerminalPanel unit test |
+| 前端 測試 | `frontend/src/components/ooda/__tests__/OODATimeline.test.tsx` | OODATimeline unit test |
+| E2E 測試 | `frontend/e2e/sit-terminal.spec.ts` | Terminal SIT 測試 |
+| E2E 測試 | `frontend/e2e/sit-error-handling.spec.ts` | 錯誤處理 SIT 測試 |
+
+> 追溯日期：2026-03-26
+
+---
+
+## 📊 可觀測性（Observability）
+
+### 後端
+
+| 指標名稱 | 類型 | 標籤 | 告警閾值 |
+|----------|------|------|----------|
+| `athena_terminal_session_duration_seconds` | Histogram | `target_id` | P95 > 300s |
+| `athena_terminal_command_total` | Counter | `target_id`, `blocked` (`true`, `false`) | `blocked=true` > 10/min |
+| `athena_terminal_connection_errors_total` | Counter | `error_type` (`not_found`, `not_compromised`, `ssh_failed`) | > 5/min |
+| `athena_orient_thinking_latency_ms` | Histogram | `operation_id`, `backend` | P95 > 10000ms |
+| `athena_recommendations_query_total` | Counter | `operation_id` | — |
+
+### 前端
+
+N/A

@@ -82,6 +82,95 @@
 
 ---
 
+## 副作用與連動（Side Effects）
+
+| 變更項目 | 影響範圍 | 說明 |
+|----------|----------|------|
+| `conftest.py` fixtures | 全後端測試 | `tmp_db`, `seeded_db`, `client`, `mock_ws_manager` 為全域 fixtures，新測試檔可直接引用 |
+| `Makefile` targets | CI/CD | `test-backend`, `test-filter`, `coverage` 新增或更新，影響 CI pipeline |
+| `requirements-dev.txt` | 開發環境 | 新增 `pytest-asyncio`, `pytest-cov`, `httpx` 等測試依賴 |
+
+---
+
+## Rollback Plan
+
+| 步驟 | 指令 | 驗證 |
+|------|------|------|
+| 1. 還原程式碼 | `git revert <commit>` | `git log` 確認 revert commit |
+| 2. 確認生產碼不受影響 | `make lint` | lint 通過（測試碼獨立於 production） |
+| 3. 驗證 CI | CI pipeline 仍可執行（test target 退化為空或跳過） | 不阻擋 deploy |
+
+---
+
+## 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 輸入 | 預期結果 |
+|----|------|------|------|----------|
+| P1 | Positive | API Smoke — Health endpoint | `GET /api/health` via httpx.AsyncClient | HTTP 200, `status: "ok"` |
+| P2 | Positive | OODA Service — DecisionEngine 風險閾值 | risk_score=0.8, threshold=0.7 | 回傳 `requires_approval=True` |
+| P3 | Positive | Client Mock — MockCalderaClient execute | mock 模式呼叫 `execute()` | 回傳 `ExecutionResult(success=True)` |
+| N1 | Negative | API — 不存在的 operation ID | `GET /api/operations/nonexistent` | HTTP 404 |
+| N2 | Negative | OODA Service — 空 observe summary | `orient_engine.analyze(op_id, "")` | 回傳 fallback mock recommendation |
+| B1 | Boundary | DB fixture — 空資料庫查詢 | `GET /api/operations` on empty tmp_db | HTTP 200, 空陣列 `[]` |
+| B2 | Boundary | OODAController singleton 重置 | 連續兩個 test 使用不同 DB | 各 test 隔離，無 state 洩漏 |
+
+---
+
+## 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: Backend Test Suite 測試基礎設施與覆蓋率
+
+  Scenario: S1 — pytest 測試套件全數通過
+    Given backend/tests/ 目錄包含 test_spec_004, test_spec_007, test_spec_008 測試檔
+    And conftest.py 定義 tmp_db, client, mock_ws_manager fixtures
+    When 執行 make test-backend
+    Then 所有測試通過（0 failures）
+    And 測試數量 >= 40
+
+  Scenario: S2 — 測試過濾器可定位特定 SPEC 測試
+    Given test_spec_007_ooda_services.py 存在
+    When 執行 make test-filter FILTER=spec_007
+    Then 僅執行 spec_007 相關測試
+    And 測試全數通過
+
+  Scenario: S3 — 測試間資料庫隔離
+    Given 兩個連續測試使用 tmp_db fixture
+    When 第一個測試寫入 operation 資料
+    And 第二個測試查詢 operations
+    Then 第二個測試查詢結果為空（per-test 隔離）
+```
+
+---
+
+## 追溯性（Traceability）
+
+| 類型 | 路徑 |
+|------|------|
+| Test Fixtures | `backend/tests/conftest.py` |
+| API Smoke Tests | `backend/tests/test_spec_004_api.py` |
+| OODA Service Tests | `backend/tests/test_spec_007_ooda_services.py` |
+| Client Mock Tests | `backend/tests/test_spec_008_clients.py` |
+| Orient Engine Tests | `backend/tests/test_orient_engine.py` |
+| E2E OODA Tests | `backend/tests/test_e2e_ooda_loop.py` |
+| 被測對象 — Routers | `backend/app/routers/*.py`（health, operations, techniques, targets, agents, facts, c5isr, logs, recommendations） |
+| 被測對象 — Services | `backend/app/services/decision_engine.py`, `orient_engine.py`, `fact_collector.py`, `c5isr_mapper.py`, `ooda_controller.py` |
+| 被測對象 — Clients | `backend/app/clients/c2_client.py`, `mock_c2_client.py` |
+| Makefile | `Makefile`（test-backend, test-filter, coverage targets） |
+
+---
+
+## 可觀測性（Observability）
+
+| 項目 | 內容 |
+|------|------|
+| CI 報告 | `make test-backend` 輸出 pytest summary，含 pass/fail/skip 計數 |
+| 覆蓋率報告 | `make coverage` 輸出 HTML + terminal 覆蓋率報告，目標 > 60% |
+| 測試篩選 | `make test-filter FILTER=spec_NNN` 輸出僅匹配測試結果 |
+| 失敗診斷 | pytest `-v --tb=short` 預設輸出失敗測試的 traceback |
+
+---
+
 ## ✅ 驗收標準（Done When）
 
 - [x] `make test-backend` 全數通過（40+ tests, 0 failures）
@@ -114,5 +203,3 @@
 - ADR-004：半自動化模式（風險閾值規則）
 - Makefile：`test-backend`、`test-filter`、`coverage` targets
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

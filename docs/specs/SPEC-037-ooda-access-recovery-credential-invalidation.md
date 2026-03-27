@@ -74,14 +74,14 @@ _AUTH_FAILURE_KEYWORDS = [
 
 ## 🔗 副作用與連動（Side Effects）
 
-| 本功能的狀態變動 | 受影響的既有功能 | 預期行為 |
-|-----------------|----------------|---------|
-| targets.is_compromised → 0 | DecisionEngine target 選擇 | 不再優先選擇已失去存取的 target |
-| targets.access_status → 'lost' | Orient prompt targets 區塊 | 顯示 ACCESS_LOST 狀態 + 警告 |
-| credential trait → invalidated | engine_router 憑證查詢 | 排除已失效憑證，避免重複使用 |
-| credential trait → invalidated | Attack Graph fact_traits | 依賴該 credential 的節點回退為 UNREACHABLE |
-| credential trait → invalidated | Orient categorized facts | 已失效的 credential 不再出現在 CREDENTIAL INTELLIGENCE |
-| access.lost fact 插入 | Orient observe_summary | 提供 access lost 事件給 LLM 分析 |
+| 說明 | 觸發條件 | 受影響模組 | 驗證方式 |
+|------|---------|-----------|---------|
+| targets.is_compromised 重設為 0 | SSH 認證失敗觸發 `_handle_access_lost()` | DecisionEngine target 選擇 | 確認 DecisionEngine 不再優先選擇 access_lost target |
+| targets.access_status 設為 'lost' | SSH 認證失敗觸發 `_handle_access_lost()` | Orient prompt targets 區塊 | Orient prompt 顯示 ACCESS_LOST + 警告 |
+| credential trait 改為 invalidated | SSH 認證失敗觸發 `_handle_access_lost()` | engine_router 憑證查詢、Attack Graph fact_traits | 確認 invalidated credential 被排除、依賴節點回退 UNREACHABLE |
+| credential trait 改為 invalidated | SSH 認證失敗觸發 `_handle_access_lost()` | Orient categorized facts | 已失效 credential 不出現在 CREDENTIAL INTELLIGENCE |
+| access.lost fact 插入 facts 表 | SSH 認證失敗觸發 `_handle_access_lost()` | Orient observe_summary | 確認 LLM 收到 access lost 事件 |
+| access_status 恢復為 'active' | 重新取得存取（如 Metasploit exploit） | ooda_controller swarm/single 成功路徑 | 確認 `_mark_target_compromised` 正確恢復狀態 |
 
 ---
 
@@ -92,11 +92,103 @@ _AUTH_FAILURE_KEYWORDS = [
 - **Case 3**：Swarm 並行執行中多個 task 同時認證失敗 — `_handle_access_lost` 需要冪等（多次呼叫結果相同）
 - **Case 4**：target 重新取得存取（例如透過 vsftpd backdoor 拿到 root shell）— 現有 `_mark_target_compromised()` 會設回 `is_compromised=1`，需同時更新 `access_status='active'`
 
-### 回退方案（Rollback Plan）
+### Rollback Plan
 
-- **回退方式**：revert commit
-- **不可逆評估**：此變更完全可逆。`access_status` 欄位有 DEFAULT 值，DROP 後不影響既有資料
-- **資料影響**：回退後已 invalidated 的 credential trait 不會自動恢復，但可透過手動 SQL 修正
+| 項目 | 內容 |
+|------|------|
+| **回退步驟** | 1. Revert commit(s) 2. `access_status` 欄位有 DEFAULT 值，DROP 後不影響既有資料 |
+| **資料影響** | 回退後已 invalidated 的 credential trait 不會自動恢復；可透過 `UPDATE facts SET trait = REPLACE(trait, '.invalidated', '') WHERE trait LIKE '%.invalidated'` 手動修正 |
+| **驗證方式** | `make test` 通過 + OODA 迭代不觸發 access recovery 邏輯 |
+| **已測試** | 是（26/26 access recovery 測試通過 + 實機 Metasploitable2 驗證） |
+
+---
+
+## 🧪 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 預期結果 | 參考場景 |
+|----|------|------|---------|---------|
+| P1 | 正向 | SSH 認證失敗觸發 access recovery | targets.is_compromised=0, access_status='lost', credential invalidated | S1 |
+| P2 | 正向 | Metasploit fallback 成功取回 root shell | access_status 恢復為 'active', privilege_level='Root' | S2 |
+| P3 | 正向 | Terminal 透過 Metasploit session 下指令 | WebSocket 回傳正確 shell 輸出 | S2 |
+| N1 | 負向 | 非認證失敗的錯誤（如語法錯誤） | 不觸發 access recovery | S1 |
+| N2 | 負向 | invalidated credential 被 engine_router 排除 | _execute_via_mcp_executor 跳過 invalidated credential | S1 |
+| B1 | 邊界 | 同一 target 多組 credential（SSH + WinRM） | 只 invalidate 失敗的 trait 類型 | S1 |
+| B2 | 邊界 | Swarm 並行多 task 同時認證失敗 | `_handle_access_lost` 冪等執行，結果一致 | S1 |
+| B3 | 邊界 | 所有 facts INSERT 為 INSERT OR IGNORE | 重複插入不拋 IntegrityError | S1, S2 |
+
+---
+
+## 🎬 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: OODA Access Recovery 與 Credential Invalidation
+  Background:
+    Given 存在一個活躍的 operation
+    And 目標 192.168.0.23 已標記為 compromised（access_status='active'）
+    And 存在有效的 SSH credential fact（trait='credential.ssh'）
+
+  Scenario: SSH 認證失敗觸發 access lost 並 invalidate credential
+    When OODA Act 階段的 SSH 執行回傳 "authentication failed"
+    Then _handle_access_lost() 被觸發
+    And targets.is_compromised 設為 0
+    And targets.access_status 設為 'lost'
+    And credential fact trait 改為 'credential.ssh.invalidated'
+    And facts 表新增 trait='access.lost' 記錄
+    And Orient prompt 顯示 ACCESS_LOST 狀態與警告訊息
+
+  Scenario: Metasploit fallback 成功恢復存取
+    Given 目標 access_status 為 'lost' 且 SSH credential 已 invalidated
+    And 目標有 vsftpd 服務可被 Metasploit exploit
+    When OODA 迭代透過 Metasploit engine 執行 vsftpd exploit
+    Then exploit 成功取得 root shell
+    And targets.is_compromised 設為 1
+    And targets.access_status 恢復為 'active'
+    And targets.privilege_level 設為 'Root'
+    And facts 表新增 credential.root_shell fact
+
+  Scenario: Terminal WebSocket 支援 Metasploit session fallback
+    Given 目標透過 Metasploit 取得 shell session
+    When 使用者透過 Terminal WebSocket 送出指令 "id"
+    Then 回傳包含 "uid=0(root)" 的輸出
+```
+
+---
+
+## 📎 追溯性（Traceability）
+
+| 類型 | 路徑 | 說明 | 日期 |
+|------|------|------|------|
+| 後端實作 | `backend/app/services/engine_router.py` | 路由邏輯、`_handle_access_lost()`、Metasploit fallback、banner inference | 2026-03-26 |
+| 後端實作 | `backend/app/services/orient_engine.py` | ACCESS_LOST prompt 修改、engine 選項 | 2026-03-26 |
+| 後端實作 | `backend/app/services/attack_graph_engine.py` | invalidated fact 排除 | 2026-03-26 |
+| 後端實作 | `backend/app/services/ooda_controller.py` | swarm 成功路徑 access_status / privilege_level 同步 | 2026-03-26 |
+| 後端實作 | `backend/app/services/fact_collector.py` | INSERT OR IGNORE 修正 | 2026-03-26 |
+| 後端實作 | `backend/app/clients/metasploit_client.py` | exploit 執行、session reuse | 2026-03-26 |
+| 後端實作 | `backend/app/routers/terminal.py` | Terminal WebSocket Metasploit fallback | 2026-03-26 |
+| 後端實作 | `backend/app/database/manager.py` | DB migration（access_status 欄位） | 2026-03-26 |
+| 基礎設施 | `docker-compose.yml` | msfrpcd flag 修正 | 2026-03-26 |
+| 後端測試 | `backend/tests/test_access_recovery.py` | 26 個 access recovery 測試 | 2026-03-26 |
+| 後端測試 | `backend/tests/test_access_recovery_phases.py` | 多階段 recovery 測試 | 2026-03-26 |
+| 後端測試 | `backend/tests/test_terminal.py` | Terminal Metasploit fallback 測試 | 2026-03-26 |
+| 後端測試 | `backend/tests/test_metasploit_shell.py` | Metasploit shell session 測試 | 2026-03-26 |
+| E2E 測試 | `frontend/e2e/full-workflow.spec.ts` | 完整紅隊工作流 | 2026-03-26 |
+| E2E 測試 | `frontend/e2e/sit-ooda-lifecycle.spec.ts` | OODA 生命週期 SIT 測試 | 2026-03-26 |
+
+---
+
+## 📊 可觀測性（Observability）
+
+| 層級 | 項目 | 說明 |
+|------|------|------|
+| 後端 Metrics | `access_lost_events_total` | access lost 事件累計次數（per operation） |
+| 後端 Metrics | `credential_invalidation_total` | credential invalidation 累計次數 |
+| 後端 Metrics | `metasploit_fallback_success_rate` | Metasploit fallback 成功率 |
+| 後端 Logs | `WARNING: Access lost for target {target_id}` | access lost 觸發 log |
+| 後端 Logs | `INFO: Credential invalidated: {trait}` | credential invalidation log |
+| 後端 Logs | `INFO: Metasploit fallback succeeded for {target_id}` | fallback 成功 log |
+| 後端 Alerts | 同一 operation 連續 3+ 次 access lost | 可能的系統性認證問題 |
+| 後端故障偵測 | `_handle_access_lost()` 拋出未預期 exception | 監控 error log，確保冪等性 |
+| 前端 | N/A | 前端透過 Orient prompt 被動接收狀態變更 |
 
 ---
 
@@ -165,5 +257,3 @@ _AUTH_FAILURE_KEYWORDS = [
   - `docker-compose.yml` — msfrpcd flag 修正
   - `backend/tests/test_access_recovery.py` — 26 個測試
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

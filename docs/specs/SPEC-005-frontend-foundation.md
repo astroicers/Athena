@@ -204,6 +204,126 @@ export const RISK_COLORS = { low: "green", medium: "yellow", high: "orange", cri
 
 ---
 
+## 🔗 副作用與連動（Side Effects）
+
+| 副作用 | 觸發條件 | 影響的系統/模組 | 驗證方式 |
+|--------|---------|----------------|----------|
+| TypeScript 型別變更影響全前端 | `types/*.ts` 中的 interface/enum 修改時 | 所有引用該型別的元件、hooks、pages | `npm run build` 無 TypeScript 錯誤 |
+| App Shell 佈局變更影響所有頁面 | `layout.tsx`、`Sidebar.tsx`、`PageHeader.tsx` 修改時 | SPEC-006 的 4 個畫面（C5ISR、Navigator、Planner、Monitor） | 所有頁面在 Sidebar + Header 框架內正常渲染 |
+| `useWebSocket` hook 變更影響即時功能 | WebSocket 連線邏輯或事件格式修改時 | `useOODA`、`useLiveLog`、所有訂閱 WS 事件的元件 | WebSocket 連線成功且事件正確分發 |
+| CSS 變數（Design Token）變更影響全域主題 | `globals.css` 中的 `--color-*` 修改時 | 所有使用 Tailwind athena-* 色彩的元件 | 頁面背景色為深色軍事主題 |
+| `lib/api.ts` snake_case/camelCase 轉換 | API 回應結構或轉換邏輯變更時 | 所有呼叫 API 的 hooks 與元件 | 前端資料物件欄位為 camelCase |
+
+### 🔄 Rollback Plan
+
+| 項目 | 說明 |
+|------|------|
+| **回滾步驟** | 1. `git revert <commit>` 還原前端基礎變更 2. 確認 SPEC-006 畫面元件尚未依賴（若已依賴需一併還原） 3. `npm run build` 確認編譯通過 |
+| **資料影響** | 無資料影響——前端為純呈現層，不持久化任何資料 |
+| **回滾驗證** | `npm run dev` 啟動成功；`localhost:3000` 渲染正常（或回退至空白頁） |
+| **回滾已測試** | ☑ 否（前端基礎層，回滾等同重建 UI 框架） |
+
+## 🧪 測試矩陣（Test Matrix）
+
+| # | 類型 | 輸入條件 | 預期結果 | 對應場景 |
+|---|------|---------|---------|---------|
+| P1 | ✅ 正向 | `npm run dev` 啟動前端 | 編譯成功，localhost:3000 可存取 | S1 |
+| P2 | ✅ 正向 | 存取 `localhost:3000` | 渲染含 Sidebar 的 App Shell，自動 redirect 至 `/c5isr` | S1 |
+| P3 | ✅ 正向 | `import { Operation, OODAPhase } from '@/types'` | TypeScript 編譯通過，型別定義完整 | S1 |
+| P4 | ✅ 正向 | 渲染 Button、Badge、StatusDot 原子元件 | 元件正常顯示，variant props 切換樣式 | S1 |
+| P5 | ✅ 正向 | `useWebSocket` 連線至 `ws://localhost:8000/ws/{id}` | `isConnected: true`，可接收事件 | S1 |
+| N1 | ❌ 負向 | 後端 API 不可用時載入頁面 | `useOperation` 回傳 loading 狀態，頁面不崩潰 | S2 |
+| N2 | ❌ 負向 | WebSocket 伺服器斷線 | `useWebSocket` 自動重連（指數退避），`isConnected: false` | S2 |
+| N3 | ❌ 負向 | 未知 WebSocket 事件類型 | `console.warn` 記錄警告，不拋出錯誤 | S2 |
+| B1 | 🔶 邊界 | SSR 環境下 `useWebSocket` | 不建立連線（`typeof window !== 'undefined'` 守衛） | S3 |
+| B2 | 🔶 邊界 | `HexConfirmModal` riskLevel=CRITICAL | 確認按鈕為紅色 + 雙重確認流程 | S3 |
+| B3 | 🔶 邊界 | WebSocket 重連策略達到最大退避 | 退避時間 cap 在 30s，持續嘗試重連 | S3 |
+
+## 🎭 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: SPEC-005 前端基礎（型別 + 佈局 + Hooks）
+  作為 Athena 平台開發者
+  我想要 完整的 TypeScript 型別、App Shell 佈局與 API/WebSocket Hooks
+  以便 Phase 4 的 4 個畫面可直接使用基礎設施開發
+
+  Background:
+    Given frontend/ 目錄結構已建立（SPEC-001）
+    And 後端 API 已啟動（SPEC-004）
+
+  # --- 正向場景 ---
+
+  Scenario: S1 - App Shell 佈局正確渲染
+    Given 前端開發伺服器已啟動
+    When 存取 localhost:3000
+    Then 頁面自動 redirect 至 /c5isr
+    And 左側顯示 Sidebar 含 4 個導航項目
+    And 當前頁面的 NavItem 高亮顯示
+    And 頁面背景色為 --color-bg-primary（深色軍事主題）
+    And PageHeader 顯示頁面標題
+
+  Scenario: S1b - TypeScript 型別完整對映後端
+    Given types/ 目錄包含 13 個型別檔案
+    When 從 index.ts 匯出所有型別
+    Then 13 個 enum 與 12 個 interface 全部可用
+    And enum 值使用 UPPER_SNAKE_CASE
+    And interface 欄位使用 camelCase
+
+  Scenario: S1c - 原子元件可正常渲染
+    Given atoms/ 目錄包含 Button、Badge、StatusDot、Toggle、ProgressBar、HexIcon
+    When 在頁面中渲染各元件
+    Then 每個元件依照 variant props 顯示正確樣式
+    And 符合 Deep Gemstone 設計系統規範
+
+  # --- 負向場景 ---
+
+  Scenario: S2 - 後端不可用時前端優雅降級
+    Given 後端 API 未啟動
+    When 存取 localhost:3000
+    Then App Shell 佈局正常渲染
+    And useOperation 回傳 loading 狀態
+    And 頁面不顯示 JavaScript 錯誤
+
+  # --- 邊界場景 ---
+
+  Scenario: S3 - WebSocket SSR 守衛與自動重連
+    Given 前端使用 Next.js SSR
+    When 伺服端渲染 useWebSocket hook
+    Then 不建立 WebSocket 連線
+    And 客戶端 hydration 後自動建立連線
+    And 斷線後以指數退避策略重連（max 30s）
+```
+
+## 🔗 追溯性（Traceability）
+
+| 實作檔案 | 測試檔案 | 最後驗證日期 |
+|----------|----------|-------------|
+| `frontend/src/types/enums.ts` | （TypeScript 編譯驗證） | 2026-03-26 |
+| `frontend/src/types/operation.ts` | `frontend/src/hooks/__tests__/useOperation.test.ts` | 2026-03-26 |
+| `frontend/src/types/ooda.ts` | `frontend/src/hooks/__tests__/useOODA.test.ts` | 2026-03-26 |
+| `frontend/src/types/index.ts` | （TypeScript 編譯驗證） | 2026-03-26 |
+| `frontend/src/components/layout/Sidebar.tsx` | `frontend/src/components/layout/__tests__/Sidebar.test.tsx` | 2026-03-26 |
+| `frontend/src/components/layout/PageHeader.tsx` | `frontend/src/components/layout/__tests__/PageHeader.test.tsx` | 2026-03-26 |
+| `frontend/src/components/atoms/Toggle.tsx` | `frontend/src/components/atoms/__tests__/Toggle.test.tsx` | 2026-03-26 |
+| `frontend/src/components/atoms/StatusDot.tsx` | `frontend/src/components/atoms/__tests__/StatusDot.test.tsx` | 2026-03-26 |
+| `frontend/src/components/atoms/ProgressBar.tsx` | `frontend/src/components/atoms/__tests__/ProgressBar.test.tsx` | 2026-03-26 |
+| `frontend/src/components/nav/NavItem.tsx` | `frontend/src/components/nav/__tests__/TabBar.test.tsx` | 2026-03-26 |
+| `frontend/src/components/modal/HexConfirmModal.tsx` | `frontend/src/components/modal/__tests__/HexConfirmModal.test.tsx`（待確認路徑） | 2026-03-26 |
+| `frontend/src/lib/api.ts` | `frontend/src/lib/__tests__/api.test.ts` | 2026-03-26 |
+| `frontend/src/hooks/useWebSocket.ts` | `frontend/e2e/full-workflow.spec.ts`（間接 E2E 驗證） | 2026-03-26 |
+| `frontend/src/hooks/useOperation.ts` | `frontend/src/hooks/__tests__/useOperation.test.ts` | 2026-03-26 |
+| `frontend/src/hooks/useOODA.ts` | `frontend/src/hooks/__tests__/useOODA.test.ts` | 2026-03-26 |
+| `frontend/src/hooks/useLiveLog.ts` | `frontend/src/hooks/__tests__/useLiveLog.test.ts` | 2026-03-26 |
+| `frontend/src/lib/constants.ts` | （TypeScript 編譯驗證） | 2026-03-26 |
+| `frontend/src/app/layout.tsx` | `frontend/e2e/navigation.spec.ts` | 2026-03-26 |
+| `frontend/src/lib/designTokens.ts` | （TypeScript 編譯驗證） | 2026-03-26 |
+
+## 📊 可觀測性（Observability）
+
+N/A（純前端 UI 變更）
+
+---
+
 ## ✅ 驗收標準（Done When）
 
 - [x] `cd frontend && npm test` — 前端基礎元件測試全數通過
@@ -238,5 +358,3 @@ export const RISK_COLORS = { low: "green", medium: "yellow", high: "orange", cri
 - 設計稿：`athena-shell.pen`、`athena-design-system.pen`
 - SPEC-004：REST API Routes（依賴——API 端點定義）
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

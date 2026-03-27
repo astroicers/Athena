@@ -187,5 +187,102 @@ CREATE TABLE IF NOT EXISTS recon_scans (
 - 評估文件：`docs/analysis/recon-pocket-integration-assessment.md`
 - 現有類似實作：`backend/app/services/caldera_client.py`（ExecutionEngineClient 範例）
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->
+---
+
+## 副作用與連動（Side Effects）
+
+| 副作用 | 觸發條件 | 影響模組 | 驗證方式 |
+|--------|----------|----------|----------|
+| DB `recon_scans` 表新增記錄 | `POST /recon/scan` 執行 | `backend/app/database/` schema | `test_recon_engine.py` + `test_recon_router.py` |
+| Facts 表寫入 `service.open_port` / `network.host.ip` / `host.os` | nmap 掃描完成後 | `backend/app/services/recon_engine.py` → FactCollector | `test_recon_engine.py` 驗證 fact 寫入 |
+| `targets.os` 欄位更新 | 偵測到 OS 時 | `backend/app/routers/targets.py`（DB targets 表） | `test_recon_engine.py` 驗證 OS 更新 |
+| Credential fact 寫入 | SSH 登入成功 | `backend/app/services/initial_access_engine.py` → facts 表 | `test_initial_access_engine.py` |
+| WebSocket `fact.new` 事件廣播 | 每筆 fact 寫入時 | 前端即時更新 | E2E 驗證（`frontend/e2e/full-workflow.spec.ts`） |
+| Seed 新增 4 筆技術 | `demo_scenario.py` 執行 | `backend/app/seed/demo_scenario.py` | `make test` 迴歸 |
+
+---
+
+## Rollback Plan
+
+| 回滾步驟 | 資料影響 | 回滾驗證 | 回滾已測試 |
+|----------|----------|----------|------------|
+| 1. `git revert` Phase 12 commit，移除 recon/initial_access 模組 | `recon_scans` 表資料遺失（可重建） | `make test` 全通過；既有 OODA 流程不受影響 | 是 |
+| 2. DROP TABLE `recon_scans` | 掃描歷史遺失 | DB migration rollback | 是 |
+| 3. 移除 `python-nmap` / `asyncssh` 依賴 | 無 | `pip install -e .` 成功 | 是 |
+| 4. 還原 `demo_scenario.py` 移除新增 techniques | 4 筆 seed 技術消失 | seed 重跑後 techniques 表正常 | 是 |
+
+---
+
+## 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 輸入 | 預期結果 | 場景參照 |
+|----|------|------|------|----------|----------|
+| P1 | 正向 | Mock 模式 recon scan 回傳 3 個服務 | `POST /recon/scan` + `MOCK_CALDERA=true` | `services_found=3`, facts 含 `service.open_port` | S1 |
+| P2 | 正向 | Mock SSH 登入成功寫入 credential fact | `enable_initial_access=true` + mock | `initial_access.success=true`, credential fact 已寫入 | S1 |
+| N1 | 負向 | Operation 不存在 | `POST /recon/scan` + 無效 op_id | 404 + `"Operation not found"` | S2 |
+| N2 | 負向 | SSH port 未開放 | target 無 port 22 | `initial_access.success=false`, `method="none"` | S2 |
+| B1 | 邊界 | nmap 超時 5 分鐘 | 極慢目標 | 中斷並回傳已收集結果（partial） | S3 |
+| B2 | 邊界 | 同一 target 重複掃描 | 連續兩次 POST /recon/scan | 新增第二筆 recon_scans；facts 不重複（INSERT OR IGNORE） | S3 |
+
+---
+
+## 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: Phase 12 Recon 與 Initial Access Kill Chain
+
+  Background:
+    Given 後端服務已啟動（MOCK_CALDERA=true）
+    And 作戰 "op-0001" 已建立
+    And target "target-001" 已加入作戰且 IP 為 "192.168.1.100"
+
+  Scenario: S1 — Mock 模式下完整 recon + initial access 流程
+    When 發送 POST /api/operations/op-0001/recon/scan with target_id="target-001"
+    Then 回傳 200 且 status 為 "completed"
+    And services_found 為 3
+    And facts_written 大於 0
+    And initial_access.success 為 true
+    And initial_access.credential 為 "msfadmin:msfadmin"
+    And GET /api/operations/op-0001/facts 包含 "service.open_port" trait
+
+  Scenario: S2 — Target 不存在時回傳 404
+    When 發送 POST /api/operations/op-0001/recon/scan with target_id="nonexistent"
+    Then 回傳 404
+    And response body 包含 "Target not found"
+
+  Scenario: S3 — 重複掃描同一 target 不產生重複 facts
+    Given target "target-001" 已執行過一次 recon scan
+    When 再次發送 POST /api/operations/op-0001/recon/scan with target_id="target-001"
+    Then 回傳 200 且新增一筆 recon_scans 記錄
+    And facts 表中 service.open_port 的 target-001 記錄無重複
+```
+
+---
+
+## 追溯性（Traceability）
+
+| 項目 | 路徑 / 識別碼 | 狀態 |
+|------|---------------|------|
+| 規格文件 | `docs/specs/SPEC-019-phase-12-recon--initial-access--kill-chain-.md` | Done |
+| 關聯 ADR | `docs/adr/ADR-015` | Accepted |
+| ReconEngine | `backend/app/services/recon_engine.py` | 已實作 |
+| InitialAccessEngine | `backend/app/services/initial_access_engine.py` | 已實作 |
+| Recon Router | `backend/app/routers/recon.py` | 已實作 |
+| Recon Models | `backend/app/models/recon.py` | 已實作 |
+| Demo Scenario Seed | `backend/app/seed/demo_scenario.py` | 已更新 |
+| 單元測試 — Recon | `backend/tests/test_recon_engine.py` | 通過 |
+| 單元測試 — Initial Access | `backend/tests/test_initial_access_engine.py` | 通過 |
+| Router 測試 | `backend/tests/test_recon_router.py` | 通過 |
+| MCP 整合測試 | `backend/tests/test_recon_mcp_integration.py` | 通過 |
+| 更新日期 | 2026-03-26 | — |
+
+---
+
+## 可觀測性（Observability）
+
+| 面向 | 內容 |
+|------|------|
+| **指標（Metrics）** | `recon.scan.duration_seconds`（histogram）、`recon.scan.services_found`（histogram）、`recon.scan.success_total` / `recon.scan.error_total`（counter）、`initial_access.attempt_total`（counter, label: method=ssh/none）、`initial_access.success_total`（counter） |
+| **日誌（Logs）** | Recon scan 開始/完成（含 target IP、duration）、nmap 命令與參數、SSH 登入嘗試（含 credential pair，密碼遮罩）、Caldera agent 部署結果、fact 寫入筆數 |
+| **告警（Alerts）** | nmap scan 超過 5 分鐘（timeout）、SSH 登入全部失敗（所有 credential pair 耗盡）、recon_scans 狀態停留 pending 超過 10 分鐘 |
+| **故障偵測（Fault Detection）** | `nmap.PortScannerError` 偵測（nmap 未安裝或權限不足）、asyncssh 連線異常（網路不可達 vs 認證失敗 分類）、fact 寫入失敗（DB constraint error） |

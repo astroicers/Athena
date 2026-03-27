@@ -234,6 +234,101 @@ docker-clean:
 
 ---
 
+## 🔗 副作用與連動（Side Effects）
+
+| 副作用 | 觸發條件 | 影響的系統/模組 | 驗證方式 |
+|--------|---------|----------------|----------|
+| SQLite DB 持久化 | `docker-compose up` 建立 named volume | `backend-data` Docker volume → `athena.db` | `docker-compose down && docker-compose up` 後資料仍存在 |
+| Port 綁定 127.0.0.1 | docker-compose 啟動 | 主機 8000（backend）、3000（frontend）port | `curl http://localhost:8000/api/health` 成功；外部 IP 不可存取 |
+| Next.js standalone 輸出 | `next.config.js` 設定 `output: "standalone"` | frontend build 產出結構、Docker image 大小 | `docker images | grep athena` frontend < 200MB |
+| 自動初始化 DB + 種子資料 | backend 首次啟動 lifespan | `init_db()` + seed data 載入 | `curl http://localhost:8000/api/operations` 回傳種子資料 |
+
+### 🔄 Rollback Plan
+
+| 項目 | 說明 |
+|------|------|
+| **回滾步驟** | `git revert` 移除 `backend/Dockerfile`、`frontend/Dockerfile`、`backend/.dockerignore`、`frontend/.dockerignore`；還原 `docker-compose.yml` 至 SPEC-001 版本；還原 `next.config.js` 移除 `output: "standalone"` |
+| **資料影響** | `docker-compose down -v` 清除 named volume 中的 SQLite 資料庫；開發環境資料不受影響 |
+| **回滾驗證** | `docker-compose up` 使用舊配置正常啟動（或回到本地開發模式）；`make up` / `make down` 指令移除 |
+| **回滾已測試** | ☐ 是 / ☑ 否（Docker 配置為獨立基礎設施層，回滾不影響應用程式碼） |
+
+## 🧪 測試矩陣（Test Matrix）
+
+| # | 類型 | 輸入條件 | 預期結果 | 對應場景 |
+|---|------|---------|---------|---------|
+| P1 | ✅ 正向 | `docker-compose up --build` | 30 秒內啟動，backend healthy、frontend running | S1 |
+| P2 | ✅ 正向 | `curl http://localhost:8000/api/health` | `{"status":"ok"}` 含所有服務狀態 | S1 |
+| P3 | ✅ 正向 | 瀏覽器開啟 `http://localhost:3000` | 顯示 Athena C5ISR Board，種子資料渲染 | S1 |
+| N1 | ❌ 負向 | Port 8000 或 3000 已被佔用 | docker-compose 報錯明確指出 port conflict | S2 |
+| N2 | ❌ 負向 | `.env` 不存在 | backend 使用預設值啟動（SQLite 預設路徑），不 crash | S2 |
+| N3 | ❌ 負向 | frontend build 失敗（npm error） | Docker build 中止，輸出清晰的 npm 錯誤訊息 | S2 |
+| B1 | 🔶 邊界 | `docker-compose down && docker-compose up`（無 -v） | 資料持久化，種子資料不重複載入 | S3 |
+| B2 | 🔶 邊界 | `docker-compose down -v && docker-compose up --build` | Volume 清除後重新初始化 DB + 種子資料 | S3 |
+
+## 🎬 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: SPEC-010 Docker 部署與一行啟動
+  作為 Athena 平台開發者
+  我想要 docker-compose up --build 一行啟動完整 Demo
+  以便 30 秒內在 localhost:3000 存取 Athena
+
+  Background:
+    Given Docker 和 docker-compose 已安裝
+    And Port 8000 和 3000 未被佔用
+
+  Scenario: S1 - 一行啟動完整環境
+    Given .env 檔案已設定（或使用預設值）
+    When docker-compose up --build
+    Then backend 服務在 30 秒內啟動且 healthcheck 通過
+    And frontend 服務啟動且依賴 backend healthy
+    And curl http://localhost:8000/api/health 回傳 {"status":"ok"}
+    And 瀏覽器開啟 http://localhost:3000 顯示 C5ISR Board
+
+  Scenario: S2 - Port 衝突明確報錯
+    Given Port 8000 已被其他程序佔用
+    When docker-compose up --build
+    Then docker-compose 輸出 port binding 錯誤訊息
+    And 不產生 silent failure
+
+  Scenario: S3 - 資料持久化跨容器重建
+    Given docker-compose up 已執行且 Demo 產生了 OODA 記錄
+    When docker-compose down（不加 -v）
+    And docker-compose up
+    Then 先前的 OODA 記錄仍存在（named volume 持久化）
+    And 種子資料不重複載入
+
+  Scenario: S4 - 127.0.0.1 安全綁定
+    Given docker-compose up 已執行
+    When 從外部 IP 嘗試存取 8000/3000 port
+    Then 連線被拒絕（僅 localhost 可存取）
+```
+
+## 🔍 追溯性（Traceability）
+
+| 類型 | 檔案路徑 |
+|------|---------|
+| 實作 — Backend Dockerfile | `backend/Dockerfile` |
+| 實作 — Frontend Dockerfile | `frontend/Dockerfile` |
+| 實作 — Docker Compose | `docker-compose.yml` |
+| 實作 — Docker Compose Override | `docker-compose.override.yml` |
+| 實作 — Backend .dockerignore | `backend/.dockerignore` |
+| 實作 — Frontend .dockerignore | `frontend/.dockerignore` |
+| 實作 — Health 端點 | `backend/app/routers/health.py` |
+| 實作 — Main lifespan（init_db） | `backend/app/main.py` |
+| 參考 — C2 Engine Compose | `infra/c2-engine/docker-compose.c2-engine.yml` |
+
+## 👁️ 可觀測性（Observability）
+
+| 項目 | 說明 |
+|------|------|
+| **關鍵指標** | 容器啟動時間、image 大小（backend < 500MB、frontend < 200MB）、healthcheck 間隔 30s |
+| **日誌** | `docker-compose logs -f` 查看 backend uvicorn 日誌 + frontend Node.js 日誌 |
+| **錯誤追蹤** | healthcheck 失敗 → container restart（`restart: unless-stopped`）；frontend depends_on 確保 backend 先就緒 |
+| **健康檢查** | backend: `GET /api/health` 每 30s（timeout 5s, retries 3）；frontend: depends_on service_healthy |
+
+---
+
 ## ✅ 驗收標準（Done When）
 
 - [x] `docker-compose up --build` — 30 秒內啟動成功
@@ -265,5 +360,3 @@ docker-clean:
 - SPEC-001：專案骨架（依賴——docker-compose.yml 基礎結構）
 - SPEC-004：REST API（依賴——`/api/health` 端點）
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

@@ -467,13 +467,13 @@ docker:
 
 ## 🔗 副作用與連動（Side Effects）
 
-| 本功能的狀態變動 | 受影響的既有功能 | 預期行為 |
-|-----------------|----------------|---------|
-| `mcp_servers.json` 新增 entry | `MCPClientManager.startup()` | 下次啟動時自動連線新工具伺服器、發現並同步工具至 `tool_registry` |
-| `docker-compose.yml` 新增 service | `docker compose --profile mcp up` | 新工具容器隨 MCP profile 啟動 |
-| `tools/_template/server.py` 變更 | 已存在的 5 個工具 | **無影響** — template 變更只影響新建工具，現有工具各自有獨立 `server.py` |
-| 現有工具新增 `tool.yaml` | 無 | `tool.yaml` 為純 metadata 檔案，不被任何運行時組件讀取（僅供 scaffold 腳本使用） |
-| `Makefile` `new-tool` target 變更 | 已使用 `make new-tool` 的開發者 | 行為增強（自動註冊），不破壞現有用法 |
+| 副作用 | 觸發條件 | 影響模組 | 驗證方式 |
+|--------|---------|---------|---------|
+| `mcp_servers.json` 新增 entry | `make new-tool NAME=xxx` 執行 | `MCPClientManager.startup()` — 下次啟動自動連線 | 重啟後 `list_tools()` 含新工具 |
+| `docker-compose.yml` 新增 service | `make new-tool NAME=xxx` 執行 | `docker compose --profile mcp up` | `docker compose ps` 含新服務 |
+| `tools/_template/server.py` 變更 | template 檔案修改 | 已存在的 5 個工具 — **無影響**（各有獨立 server.py） | `make test` 通過 |
+| 現有工具新增 `tool.yaml` | 回填 metadata | 無運行時影響（僅供 scaffold 腳本使用） | `cat tools/nmap-scanner/tool.yaml` 存在 |
+| `Makefile` `new-tool` target 變更 | 開發者呼叫 `make new-tool` | 已使用 `make new-tool` 的開發者 — 行為增強不破壞 | `make new-tool NAME=test-dummy` 成功 |
 
 ---
 
@@ -489,9 +489,95 @@ docker:
 
 ### 回退方案（Rollback Plan）
 
-- **回退方式**：`git revert` commit 即可完整回退。所有變更為新增檔案或追加內容，不修改現有運行時邏輯
-- **不可逆評估**：無不可逆操作。template 變更不影響已建立的工具目錄
-- **資料影響**：無。`tool.yaml` 為純 metadata，不影響 DB 或運行時狀態
+| 回滾步驟 | 資料影響 | 回滾驗證 | 回滾已測試 |
+|----------|---------|---------|-----------|
+| `git revert` commit | 無 — 所有變更為新增檔案或追加內容，不修改現有運行時邏輯 | `make test` 通過；現有 5 個工具正常運作 | Yes — 無不可逆操作 |
+| （可選）清理已建立的測試工具目錄 | template 變更不影響已建立的工具目錄 | `ls tools/` 無測試殘留 | Yes |
+
+---
+
+## 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 輸入 | 預期結果 | 場景參考 |
+|----|------|------|------|---------|---------|
+| P1 | 正向 | 一鍵建立新工具 | `make new-tool NAME=dns-enum` | 建立 `tools/dns-enum/` 含 server.py、Dockerfile、pyproject.toml、tool.yaml、README.md；mcp_servers.json + docker-compose.yml 自動更新 | Scenario: Scaffold new tool successfully |
+| P2 | 正向 | 本地 stdio 開發 | `make dev-tool NAME=dns-enum` | MCP server 在 stdio 模式啟動 | Scenario: Local stdio development |
+| P3 | 正向 | 本地 HTTP 開發 | `make dev-tool-http NAME=dns-enum PORT=8090` | MCP server 在 HTTP 模式 port 8090 啟動 | Scenario: Local HTTP development |
+| N1 | 負向 | 重複建立（冪等保護） | `make new-tool NAME=nmap-scanner` | 報錯 "already exists"，不覆蓋 | Scenario: Duplicate tool rejected |
+| N2 | 負向 | 工具目錄不存在 | `make dev-tool NAME=nonexistent` | 報錯 "not found"，exit 1 | Scenario: Dev-tool missing directory |
+| N3 | 負向 | NAME 參數缺失 | `make new-tool` | 報錯 "Usage: make new-tool NAME=..." | Scenario: Missing NAME parameter |
+| B1 | 邊界 | Port 自動分配（5809x 用完） | 已有 58091-58099 | 分配 58100 | Scenario: Port auto-assignment overflow |
+| B2 | 邊界 | mcp_servers.json 已有同名 entry | 手動殘留 entry | 跳過 JSON 注入，仍建立目錄 | Scenario: JSON entry already exists |
+| B3 | 邊界 | PyYAML 未安裝 | import 失敗 | 腳本報錯提示 `pip install pyyaml` | Scenario: Missing PyYAML dependency |
+
+---
+
+## 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: Standardized Tool Onboarding Pipeline
+  作為 Athena 開發者，我需要一鍵建立新 MCP 工具以減少手動操作。
+
+  Background:
+    Given Athena 專案根目錄存在 mcp_servers.json 和 docker-compose.yml
+    And tools/_template/ 目錄存在完整模板
+
+  Scenario: Scaffold new tool successfully
+    When 執行 make new-tool NAME=dns-enum
+    Then tools/dns-enum/ 目錄已建立
+    And tools/dns-enum/server.py 含 TransportSecuritySettings 和 argparse
+    And tools/dns-enum/tool.yaml 中 tool_id == "dns-enum"
+    And mcp_servers.json 包含 "dns-enum" entry
+    And docker-compose.yml 包含 "mcp-dns-enum" service
+    And 輸出含 "MCP tool scaffold created"
+
+  Scenario: Duplicate tool rejected
+    Given tools/nmap-scanner/ 已存在
+    When 執行 make new-tool NAME=nmap-scanner
+    Then exit code 為 1
+    And 輸出含 "already exists"
+    And 無任何檔案被修改
+
+  Scenario: Port auto-assignment overflow
+    Given docker-compose.yml 中已使用 58091-58099
+    When 執行 make new-tool NAME=new-scanner
+    Then docker-compose.yml 中新 service 的 port 為 58100
+
+  Scenario: Existing tools have tool.yaml
+    Then tools/nmap-scanner/tool.yaml 存在且 tool_id == "nmap-scanner"
+    And tools/osint-recon/tool.yaml 存在且 tool_id == "osint-recon"
+    And tools/vuln-lookup/tool.yaml 存在且 tool_id == "vuln-lookup"
+    And tools/credential-checker/tool.yaml 存在且 tool_id == "credential-checker"
+    And tools/attack-executor/tool.yaml 存在且 tool_id == "attack-executor"
+```
+
+---
+
+## 追溯性（Traceability）
+
+| 產出物 | 檔案路徑 | 狀態 | 追溯日期 |
+|--------|---------|------|---------|
+| Scaffold 腳本 | `scripts/scaffold_tool.py` | 已實作 | 2026-03-26 |
+| 工具模板 — server.py | `tools/_template/server.py` | 已實作 | 2026-03-26 |
+| 工具模板 — tool.yaml | `tools/_template/tool.yaml` | 已實作 | 2026-03-26 |
+| 工具模板 — Dockerfile | `tools/_template/Dockerfile` | 已實作 | 2026-03-26 |
+| 工具模板 — pyproject.toml | `tools/_template/pyproject.toml` | 已實作 | 2026-03-26 |
+| 工具模板 — README.md | `tools/_template/README.md` | 已實作 | 2026-03-26 |
+| Makefile targets | `Makefile`（new-tool, dev-tool, dev-tool-http） | （待實作） | 2026-03-26 |
+| nmap-scanner tool.yaml | `tools/nmap-scanner/tool.yaml` | （待確認） | 2026-03-26 |
+| osint-recon tool.yaml | `tools/osint-recon/tool.yaml` | （待確認） | 2026-03-26 |
+| vuln-lookup tool.yaml | `tools/vuln-lookup/tool.yaml` | （待確認） | 2026-03-26 |
+| credential-checker tool.yaml | `tools/credential-checker/tool.yaml` | （待確認） | 2026-03-26 |
+| attack-executor tool.yaml | `tools/attack-executor/tool.yaml` | （待確認） | 2026-03-26 |
+| 單元測試 | （待實作） | — | 2026-03-26 |
+
+---
+
+## 可觀測性（Observability）
+
+本 SPEC 為開發者工具（scaffold 腳本 + Makefile targets），不涉及運行時服務。可觀測性不適用（N/A）。
+
+Scaffold 腳本的錯誤處理透過 exit code 和 stdout/stderr 輸出覆蓋，不需額外 metrics 或 logging infrastructure。
 
 ---
 
@@ -564,5 +650,3 @@ docker:
 - 現有 template：`tools/_template/`
 - Production 參考：`tools/nmap-scanner/server.py`（含 argparse + TransportSecuritySettings 的完整範例）
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

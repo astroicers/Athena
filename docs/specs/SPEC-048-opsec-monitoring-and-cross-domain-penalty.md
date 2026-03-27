@@ -48,12 +48,12 @@
 
 ## 🔗 副作用與連動（Side Effects）
 
-> 列出本功能的狀態變動對系統其他部分的影響。
-> 若無跨模組影響，填「無」並說明理由。
-
-| 本功能的狀態變動 | 受影響的既有功能 | 預期行為 |
-|-----------------|----------------|---------|
-| （例：用戶餘額扣減） | （例：帳戶總覽頁面）| （例：餘額即時更新，無需重新載入） |
+| 本功能的狀態變動 | 受影響的既有功能 | 預期行為 | 驗證方式 |
+|-----------------|----------------|---------|----------|
+| OPSEC score 即時更新 | Constraint Engine 約束計算 | OPSEC 分數低於閾值時觸發 hard_limit | test_constraint_engine 驗證閾值觸發 |
+| Cross-domain penalty 寫入 | C5ISR domain health | 跨域懲罰降低相關 domain healthPct | test_opsec_monitor 驗證 penalty 傳播 |
+| OPSEC event 記錄 | Dashboard time-series API | 事件可在時間軸查詢 | test_dashboard_api 驗證歷史查詢 |
+| threat_level 變動 | War Room ConstraintBanner | 即時顯示威脅等級變化 | E2E sit-vuln-opsec 驗證 UI 更新 |
 
 ---
 
@@ -65,12 +65,78 @@
 
 ### 回退方案（Rollback Plan）
 
-> 若此功能部署後出現問題，如何安全回退？
+| 項目 | 內容 |
+|------|------|
+| **回退方式** | Alembic migration DOWN + revert commit |
+| **不可逆評估** | 無不可逆部分；OPSEC event 歷史記錄可安全刪除 |
+| **資料影響** | 回退後 OPSEC 分數欄位消失，Constraint Engine 恢復不含 OPSEC 約束的行為 |
+| **依賴回退** | opsec_monitor service 停用；threat_level service 恢復預設值 |
 
-- **回退方式**：（revert commit / feature flag / migration DOWN / 手動步驟）
-- **不可逆評估**：此變更是否有不可逆部分？（如：DB column DROP、外部通知已發送）
-  - 若有不可逆部分，說明替代的風險緩解措施
-- **資料影響**：回退後使用者資料是否受影響？
+---
+
+## 🧪 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 輸入 | 預期結果 |
+|----|------|------|------|----------|
+| P1 | 正向 | OPSEC monitor 偵測高噪音行動 | action with noise_level=high 完成 | OPSEC score 下降，event 記錄寫入 |
+| P2 | 正向 | Cross-domain penalty 傳播 | CYBER domain OPSEC violation | COMMS domain healthPct 受 penalty 降低 |
+| P3 | 正向 | threat_level 計算正確 | 多個 domain degraded | threat_level 反映最嚴重域狀態 |
+| N1 | 負向 | 無效 domain 名稱 | penalty target='INVALID' | 400 Bad Request 或靜默忽略 |
+| N2 | 負向 | OPSEC score 不能低於 0 | 大量 penalty 累積 | score clamp 至 0，不產生負值 |
+| B1 | 邊界 | 無行動時 OPSEC 不變 | 空 OODA cycle | OPSEC score 維持初始值 |
+| B2 | 邊界 | 所有 domain 同時 critical | 六域 healthPct < 50 | Constraint Engine 產生所有 hard_limits |
+
+---
+
+## 🎬 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: OPSEC Monitoring 與 Cross-Domain Penalty
+
+  Scenario: 高噪音行動觸發 OPSEC 分數下降與跨域懲罰
+    Given operation 處於 OODA Act 階段
+    And 當前 OPSEC score 為 85
+    When 執行 noise_level="high" 的 technique
+    Then OPSEC score 下降至少 10 點
+    And 相關 domain 的 healthPct 受 cross-domain penalty 降低
+    And opsec event 記錄寫入 event store
+
+  Scenario: OPSEC 分數低於閾值觸發 Constraint Engine hard_limit
+    Given OPSEC score 為 25（低於 CRITICAL 閾值）
+    When Constraint Engine 執行 evaluate()
+    Then hard_limits 包含 OPSEC 相關約束
+    And War Room 顯示 ConstraintBanner 警告
+
+  Scenario: 低噪音行動不影響 OPSEC 分數
+    Given operation 處於 OODA Act 階段
+    And 當前 OPSEC score 為 90
+    When 執行 noise_level="low" 的 technique
+    Then OPSEC score 不變或僅微幅下降（≤2 點）
+```
+
+---
+
+## 🔗 追溯性（Traceability）
+
+| 實作檔案 | 測試檔案 | 最後驗證日期 |
+|----------|----------|-------------|
+| `backend/app/services/opsec_monitor.py` | `backend/tests/test_opsec_monitor.py` | 2026-03-26 |
+| `backend/app/models/opsec.py` | `backend/tests/test_opsec_api.py` | 2026-03-26 |
+| `backend/app/routers/opsec.py` | `backend/tests/test_opsec_router.py` | 2026-03-26 |
+| `backend/app/services/threat_level.py` | `backend/tests/test_opsec_monitor.py` | 2026-03-26 |
+| `backend/app/services/constraint_engine.py` | `backend/tests/test_constraint_engine.py` | 2026-03-26 |
+| `frontend/e2e/sit-vuln-opsec.spec.ts` | — (E2E) | 2026-03-26 |
+
+---
+
+## 📊 可觀測性（Observability）
+
+| 指標名稱 | 類型 | 觸發條件 | 用途 |
+|----------|------|----------|------|
+| `opsec.score.updated` | Gauge | OPSEC score 變動時 | 即時監控 OPSEC 健康度 |
+| `opsec.penalty.applied` | Counter | cross-domain penalty 觸發 | 追蹤跨域懲罰頻率 |
+| `opsec.violation.detected` | Counter | 高噪音行動完成時 | 監控 OPSEC 違規次數 |
+| `threat_level.changed` | Counter | threat_level 等級變更 | 追蹤威脅等級升降趨勢 |
 
 ---
 
@@ -101,5 +167,3 @@
 - 現有類似實作：
 - 外部文件：
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

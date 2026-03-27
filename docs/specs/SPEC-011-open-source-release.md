@@ -53,6 +53,50 @@
 
 ---
 
+## 副作用與連動（Side Effects）
+
+無跨模組副作用（純文件與配置變更）。
+
+---
+
+## Rollback Plan
+
+`git revert` 即可回滾。
+
+---
+
+## 測試矩陣（Test Matrix）
+
+N/A — config/文件 SPEC，豁免測試矩陣。
+
+---
+
+## 驗收場景（Acceptance Scenarios）
+
+N/A — trivial config SPEC，豁免 Gherkin 場景。
+
+---
+
+## 追溯性（Traceability）
+
+| 類型 | 路徑 |
+|------|------|
+| 授權檔 | `LICENSE` |
+| 安全政策 | `SECURITY.md` |
+| 貢獻指南 | `CONTRIBUTING.md` |
+| 變更日誌 | `CHANGELOG.md` |
+| CI 管線 | `.github/workflows/ci.yml` |
+| PR 模板 | `.github/PULL_REQUEST_TEMPLATE.md` |
+| Issue 模板 | `.github/ISSUE_TEMPLATE/` |
+
+---
+
+## 可觀測性（Observability）
+
+N/A（純配置變更）
+
+---
+
 ## ✅ 驗收標準（Done When）
 
 - [x] `LICENSE` 檔存在且為 Apache 2.0
@@ -81,5 +125,3 @@
 - docs/ROADMAP.md Phase 7.2~7.4
 - CLAUDE.md 授權邊界段落
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

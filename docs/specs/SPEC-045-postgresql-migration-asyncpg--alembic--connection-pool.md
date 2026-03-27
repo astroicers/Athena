@@ -78,15 +78,16 @@ backend/alembic/
 
 ---
 
-## Side Effects
+## 副作用與連動（Side Effects）
 
-| 狀態變動 | 受影響功能 | 預期行為 |
-|---------|-----------|---------|
-| DB driver 從 aiosqlite → asyncpg | 所有 service/router | SQL 語法全部適配 PG |
-| Connection model 從 per-request → pool | FastAPI DI (get_db) | 改為從 pool 取連線 |
-| Row 物件從 aiosqlite.Row → asyncpg.Record | 所有 dict(row) 用法 | Record 支援 dict-like access |
-| Schema 管理從 CREATE IF NOT EXISTS → Alembic | init_db() | 改為 alembic upgrade head |
-| UUID type 從 TEXT → UUID | 所有 INSERT 語句 | 使用 uuid.uuid4() 或 gen_random_uuid() |
+| 副作用 | 觸發條件 | 影響模組 | 驗證方式 |
+|--------|----------|----------|----------|
+| DB driver 從 aiosqlite → asyncpg | 系統啟動 `DatabaseManager.startup()` | 所有 service/router（46 檔案、344+ 查詢） | `make test` 全數通過（PG 環境） |
+| Connection model 從 per-request → pool (min=5, max=20) | FastAPI DI `get_db()` 呼叫時 | `backend/app/database/manager.py` → FastAPI 所有路由 | 壓力測試：並行 20 請求不 deadlock |
+| Row 物件從 aiosqlite.Row → asyncpg.Record | 所有 `dict(row)` / `row["col"]` 存取時 | 所有 services/routers 中的 row 存取 | grep 確認無殘留 `aiosqlite.Row` 引用 |
+| Schema 管理從 CREATE IF NOT EXISTS → Alembic migration | `startup()` 呼叫 `alembic upgrade head` | `backend/alembic/versions/*.py` | `alembic upgrade head` 成功建立 22 表 |
+| UUID type 從 TEXT → native UUID | 所有 INSERT 語句 | 所有表 PK/FK | 查詢驗證 `pg_typeof(id)` 回傳 `uuid` |
+| SQL placeholder 從 `?` → `$1, $2, ...` | 所有 SQL 查詢執行時 | 344+ 處查詢 | grep 確認無殘留 `?` placeholder |
 
 ---
 
@@ -96,11 +97,104 @@ backend/alembic/
 - Case 2: Migration 失敗 → Alembic DOWN 回退
 - Case 3: Seed data 重複執行 → ON CONFLICT DO NOTHING 確保冪等
 
-### Rollback Plan
+## Rollback Plan
 
-- **回退方式**：git revert + 恢復 database.py + 移除 docker-compose postgres service
-- **不可逆評估**：無不可逆部分（SQLite 檔案保留）
-- **資料影響**：開發環境需重新 seed，無生產資料
+| 回滾步驟 | 資料影響 | 回滾驗證 | 回滾已測試 |
+|----------|----------|----------|-----------|
+| `git revert <commit>` — 恢復 `database.py` 單檔結構 | 開發環境需重新 seed（無生產資料） | `make test` 全數通過（SQLite 環境） | 否（待實作後驗證） |
+| 移除 docker-compose postgres service | PG 容器資料遺失（開發環境無影響） | `docker-compose up` 正常啟動（不含 PG） | 否 |
+| 還原 `pyproject.toml` 移除 asyncpg/alembic 依賴 | 無 | `pip install -e .` 成功 | 否 |
+
+> **不可逆評估**：無不可逆部分。SQLite 檔案保留在 repo 中，revert 後可直接恢復使用。
+
+---
+
+## 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景描述 | 輸入 | 預期結果 | 對應驗收場景 |
+|----|------|----------|------|----------|-------------|
+| P1 | 正向 | Alembic migration — 建立所有表 | `alembic upgrade head` | 22 表全部建立成功 | Scenario: PostgreSQL migration and startup |
+| P2 | 正向 | Connection pool 正常取得連線 | `get_db()` DI 注入 | 回傳 asyncpg connection 物件 | Scenario: PostgreSQL migration and startup |
+| P3 | 正向 | Seed data 載入 | `make dev` 啟動 | techniques, playbooks 等 seed 資料正確載入 | Scenario: PostgreSQL migration and startup |
+| P4 | 正向 | SQL placeholder 替換 — $1/$2 | 所有 service/router 查詢 | 查詢正確執行無 syntax error | Scenario: PostgreSQL migration and startup |
+| P5 | 正向 | JSONB 欄位查詢 | `SELECT data->>'key' FROM ...` | 正確回傳 JSON 欄位值 | Scenario: PostgreSQL migration and startup |
+| N1 | 負向 | Pool exhaustion — 超過 max_size | 21 個並行連線請求 | 第 21 個請求 30s 超時後 raise | Scenario: PostgreSQL error handling |
+| N2 | 負向 | Migration 失敗 — 語法錯誤 | 損壞的 migration 檔案 | Alembic 報錯，不破壞現有表 | Scenario: PostgreSQL error handling |
+| N3 | 負向 | PG 未啟動 | DATABASE_URL 指向未運行的 PG | 啟動時明確報錯，不 hang | Scenario: PostgreSQL error handling |
+| B1 | 邊界 | Seed data 重複執行 — 冪等 | 連續 2 次 seed | `ON CONFLICT DO NOTHING` 確保不重複 | Scenario: PostgreSQL migration and startup |
+| B2 | 邊界 | INSERT OR IGNORE → ON CONFLICT DO NOTHING | 所有 35 處替換 | 語義等價，冪等行為不變 | Scenario: PostgreSQL migration and startup |
+| B3 | 邊界 | aiosqlite import 清理 | grep `aiosqlite` | 無殘留 import（除 pyproject.toml optional） | Scenario: PostgreSQL migration and startup |
+
+---
+
+## 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: PostgreSQL Migration with asyncpg, Alembic, and Connection Pool
+  SPEC-045 — 從 SQLite 一刀切遷移至 PostgreSQL。
+
+  Background:
+    Given docker-compose 中 postgres service 已啟動（postgres:16-alpine）
+    And DATABASE_URL 指向本地 PG 實例
+
+  Scenario: PostgreSQL migration and startup
+    When 執行 alembic upgrade head
+    Then 22 表全部建立成功（operations, targets, facts, techniques 等）
+    And 所有 index 已建立
+    When 執行 make dev
+    Then FastAPI 成功啟動
+    And seed data 正確載入（techniques, playbooks 等）
+    When 再次執行 seed
+    Then 不產生重複資料（ON CONFLICT DO NOTHING）
+    When 執行 make test
+    Then 所有現有測試通過（PG 環境）
+    And 無 aiosqlite import 殘留（除 pyproject.toml optional）
+    And 所有 SQL 使用 $1/$2 placeholder
+    And JSONB 欄位可在 DB 層查詢
+
+  Scenario: PostgreSQL error handling
+    Given PG service 未啟動
+    When 嘗試啟動 FastAPI
+    Then 明確報錯（connection refused），不 hang
+    Given PG service 已啟動且 pool max_size=20
+    When 21 個並行連線請求發送
+    Then 第 21 個請求在 30s 內超時報錯
+    And 前 20 個請求正常完成
+```
+
+---
+
+## 追溯性（Traceability）
+
+| 項目 | 檔案路徑 | 狀態 | 備註 |
+|------|----------|------|------|
+| SPEC 文件 | `docs/specs/SPEC-045-postgresql-migration-asyncpg--alembic--connection-pool.md` | 已建立 | 本文件 |
+| 後端實作 — DatabaseManager | `backend/app/database/manager.py` | 已存在 | asyncpg pool 管理 |
+| 後端實作 — Database init | `backend/app/database/__init__.py` | （待確認） | export get_db, db_manager, init_db |
+| 後端實作 — Seed | `backend/app/database/seed.py` | 已存在 | PG 語法 seed data |
+| Alembic — env.py | `backend/alembic/env.py` | 已存在 | async migration runner |
+| Alembic — initial schema | `backend/alembic/versions/001_initial_schema.py` | 已存在 | 現有 22 表 migration |
+| Alembic — opsec/mission | `backend/alembic/versions/002_opsec_mission_tables.py` | 已存在 | OpSec/Mission 表 migration |
+| Alembic — config | `backend/alembic/alembic.ini` | 已存在 | Alembic 設定檔 |
+| 後端測試 — conftest | `backend/tests/conftest.py` | 已存在 | testcontainers PostgresContainer fixture |
+| ADR | ADR-038 | 已接受 | PostgreSQL Migration and Alembic Schema Management |
+| 前端實作 | — | N/A | 本 SPEC 不修改前端 |
+
+> 追溯日期：2026-03-26
+
+---
+
+## 可觀測性（Observability）
+
+| 項目 | 類型 | 名稱/格式 | 觸發條件 | 說明 |
+|------|------|-----------|----------|------|
+| Pool 建立 | log (INFO) | `DatabaseManager: pool created (min=%d, max=%d)` | `startup()` 完成 | 記錄 pool 大小 |
+| Pool 關閉 | log (INFO) | `DatabaseManager: pool closed` | `shutdown()` 完成 | 記錄 pool 關閉 |
+| Migration 執行 | log (INFO) | `Alembic: upgraded to %s` | `alembic upgrade head` 成功 | 記錄目標 revision |
+| Migration 失敗 | log (ERROR) | `Alembic: migration failed: %s` | migration 執行異常 | 含 exception 詳情 |
+| Connection 取得超時 | log (WARNING) | `Pool connection timeout after %ds` | pool 耗盡等待超時 | 記錄等待秒數 |
+| Seed 完成 | log (INFO) | `Seed data loaded: %d tables` | seed 執行完成 | 記錄 seed 的表數量 |
+| 前端 | N/A | — | — | 本 SPEC 不修改前端 |
 
 ---
 
@@ -129,5 +223,4 @@ backend/alembic/
 - ADR-038: PostgreSQL Migration and Alembic Schema Management
 - Plan: `/home/ubuntu/.claude/plans/logical-munching-finch.md` Phase 0
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->
+

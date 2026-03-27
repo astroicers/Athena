@@ -197,6 +197,96 @@ dev = [
 
 ---
 
+## 🔗 副作用與連動（Side Effects）
+
+| 副作用 | 觸發條件 | 影響的系統/模組 | 驗證方式 |
+|--------|---------|----------------|----------|
+| 後續 SPEC 全部依賴此骨架結構 | 目錄或設定檔路徑變更時 | SPEC-002～SPEC-005（import 路徑）、docker-compose.yml（build context）、Makefile（路徑參照） | `docker-compose config` 無錯誤；所有 `__init__.py` 存在且可 import |
+| `.pen` 設計檔搬移影響 Pencil MCP | 設計檔路徑或檔名變更時 | Pencil MCP `open_document` 呼叫、CLAUDE.md 中的參照 | `ls design/athena-*.pen` 確認 6 個檔案存在 |
+| Tailwind v4 設定影響前端所有元件 | `tailwind.config.ts` 或 `globals.css` 變更時 | 前端所有 `.tsx` 元件的樣式渲染 | `npm run build` 無 CSS 錯誤 |
+
+### 🔄 Rollback Plan
+
+| 項目 | 說明 |
+|------|------|
+| **回滾步驟** | 1. `git revert <commit>` 還原骨架 commit 2. 確認後續 SPEC 尚未依賴新結構（若已依賴需一併還原） |
+| **資料影響** | 無資料影響——僅建立空目錄與設定檔，無持久化資料 |
+| **回滾驗證** | `ls backend/app/models` 不存在；`docker-compose config` 使用舊設定或不存在 |
+| **回滾已測試** | ☑ 否（骨架為基礎層，回滾等同重建專案） |
+
+## 🧪 測試矩陣（Test Matrix）
+
+| # | 類型 | 輸入條件 | 預期結果 | 對應場景 |
+|---|------|---------|---------|---------|
+| P1 | ✅ 正向 | 全新 clone 後執行骨架建立腳本 | 所有目錄與設定檔依照規格建立 | S1 |
+| P2 | ✅ 正向 | `docker-compose config` 驗證 | YAML 語法正確、backend/frontend service 定義完整 | S1 |
+| P3 | ✅ 正向 | `python -c "from app.main import app"` | 無 ImportError，模組結構正確 | S1 |
+| N1 | ❌ 負向 | `.pen` 設計檔不存在於來源目錄 | 跳過搬移並輸出警告，不中斷流程 | S2 |
+| N2 | ❌ 負向 | `pyproject.toml` 依賴版本格式錯誤 | pip 解析報錯，可定位錯誤行 | S2 |
+| B1 | 🔶 邊界 | 目錄已存在（重複執行） | 冪等處理——跳過已存在目錄，不覆蓋檔案 | S3 |
+| B2 | 🔶 邊界 | `.pen` 檔案已在 `design/` 中 | 跳過搬移（冪等） | S3 |
+
+## 🎭 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: SPEC-001 專案骨架與設定檔
+  作為 Athena 平台開發者
+  我想要 完整的 Monorepo 目錄結構與根設定檔
+  以便 後續 Phase 2-6 可直接在正確結構下開發
+
+  Background:
+    Given Athena Git 倉庫已 clone 至本機
+
+  # --- 正向場景 ---
+
+  Scenario: S1 - 骨架建立後所有子目錄與設定檔存在
+    Given 專案根目錄為空（僅有 docs/ 與 .env.example）
+    When 執行 SPEC-001 骨架建立
+    Then backend/app/models、routers、services、clients、seed 目錄全部存在
+    And frontend/src/app、components、types、hooks、lib、styles 目錄全部存在
+    And docker-compose.yml 可通過 `docker-compose config` 驗證
+    And backend/pyproject.toml 包含 fastapi、pydantic 等依賴宣告
+    And frontend/package.json 包含 next、react、tailwindcss 依賴宣告
+
+  Scenario: S1b - 設計資產搬入 design 目錄
+    Given 6 個 .pen 設計檔存在於來源位置
+    When 執行 SPEC-001 骨架建立
+    Then design/ 目錄包含 6 個 athena-*.pen 檔案
+    And 每個 .pen 檔案可被 Pencil MCP open_document 讀取
+
+  # --- 負向場景 ---
+
+  Scenario: S2 - 設計檔缺失時優雅降級
+    Given 某個 .pen 設計檔不存在於來源目錄
+    When 執行 SPEC-001 骨架建立
+    Then 缺失的 .pen 檔案被跳過並輸出警告訊息
+    And 其餘目錄與設定檔仍正常建立
+
+  # --- 邊界場景 ---
+
+  Scenario: S3 - 重複執行骨架建立（冪等性）
+    Given SPEC-001 骨架已建立完成
+    When 再次執行 SPEC-001 骨架建立
+    Then 所有目錄維持不變，不產生錯誤
+    And 已存在的設定檔不被覆蓋
+```
+
+## 🔗 追溯性（Traceability）
+
+| 實作檔案 | 測試檔案 | 最後驗證日期 |
+|----------|----------|-------------|
+| `docker-compose.yml` | （驗收標準中的 CLI 驗證） | 2026-03-26 |
+| `backend/pyproject.toml` | （驗收標準中的 CLI 驗證） | 2026-03-26 |
+| `frontend/package.json` | （驗收標準中的 CLI 驗證） | 2026-03-26 |
+| `backend/app/__init__.py` | （驗收標準中的 import 驗證） | 2026-03-26 |
+| `frontend/src/styles/globals.css` | （驗收標準中的 UI 驗證） | 2026-03-26 |
+
+## 📊 可觀測性（Observability）
+
+N/A（專案骨架為靜態目錄結構與設定檔，無執行時行為需監控）
+
+---
+
 ## ✅ 驗收標準（Done When）
 
 - [x] `ls backend/app/models backend/app/routers backend/app/services backend/app/clients backend/app/seed` — 全部存在
@@ -227,5 +317,3 @@ dev = [
 - ADR-011：[POC 不實作身份驗證](../adr/ADR-011-no-auth-for-poc.md)（127.0.0.1 綁定）
 - 專案結構：[project-structure.md](../architecture/project-structure.md)
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

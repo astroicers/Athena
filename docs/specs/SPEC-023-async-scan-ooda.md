@@ -202,5 +202,112 @@ queued → running → completed
   - `frontend/src/lib/api.ts` — AbortController timeout guard
   - `frontend/src/app/planner/page.tsx` — WebSocket event subscriptions
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->
+---
+
+## 🔗 副作用與連動（Side Effects）
+
+| 副作用 | 觸發條件 | 影響模組 | 驗證方式 |
+|--------|----------|----------|----------|
+| 所有長時間 endpoint 回傳 202 而非阻塞 | 呼叫 recon/scan、ooda/trigger、osint/discover、agents/sync、techniques/sync-caldera | 所有前端頁面的 API 呼叫（planner、monitor） | pytest 驗證 HTTP 202 回傳 + `test_async_sync_endpoints.py` |
+| 背景工作使用獨立 DB 連線 | `asyncio.create_task()` 啟動背景工作 | `aiosqlite` 連線池 | 確認背景工作不共享 request scope 連線 |
+| WebSocket 廣播 started/completed/failed 事件 | 背景工作狀態轉換 | `frontend/src/app/planner/page.tsx` 訂閱處理 | E2E `sit-ooda-lifecycle.spec.ts` 驗證事件流 |
+| 前端 AbortController 30s 超時保護 | 所有 API 呼叫 | `frontend/src/lib/api.ts` | Unit test 驗證 timeout 觸發 |
+
+---
+
+## ⏪ Rollback Plan
+
+| 回滾步驟 | 資料影響 | 回滾驗證 | 回滾已測試 |
+|----------|----------|----------|-----------|
+| 1. Revert 各 router 的 202-pattern 改寫（recon, ooda, osint, agents） | `recon_scans` 表 status 欄位語義不變 | Endpoint 恢復為同步阻塞回傳 | ✅ 可直接 revert |
+| 2. Revert 前端 WebSocket 訂閱邏輯 | 無持久化資料影響 | planner 頁面不再監聽 recon/ooda 事件 | ✅ |
+| 3. Revert AbortController timeout | 無資料影響 | `api.ts` 回到無 timeout 保護狀態 | ✅ |
+
+---
+
+## 🧪 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 預期結果 | 場景參考 |
+|----|------|------|----------|----------|
+| P1 | 正向 | POST /recon/scan 呼叫，target 存在 | 202 Accepted + `scan_id` + `status: queued`，<200ms 回傳 | Scenario: Recon scan 非同步啟動 |
+| P2 | 正向 | POST /ooda/trigger 呼叫 | 202 Accepted + `iteration_id`，背景工作開始執行 | Scenario: OODA trigger 非同步啟動 |
+| P3 | 正向 | 背景掃描完成後廣播 `recon.completed` | 前端收到事件並 refreshTargets() + success toast | — |
+| N1 | 負向 | 背景工作中途拋出未捕獲例外 | 廣播 `*.failed` 事件，DB status 更新為 `failed` | Scenario: 背景工作失敗廣播 |
+| N2 | 負向 | WebSocket 客戶端未連線時廣播 | 廣播忽略錯誤，背景工作繼續執行 | — |
+| B1 | 邊界 | 同一 operation 並發觸發 3 次 recon scan | 各自擁有獨立 scan_id，DB 各自記錄 | Scenario: 並發掃描獨立處理 |
+| B2 | 邊界 | 前端 AbortController 30s 超時觸發 | 請求中斷，顯示 timeout 錯誤 | — |
+
+---
+
+## 🎬 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: 非同步掃描與 OODA 操作
+  Background:
+    Given 已建立作戰 "OP-CHARLIE"
+    And 作戰包含 target "192.168.1.20"
+
+  Scenario: Recon scan 非同步啟動
+    When 呼叫 POST /operations/{op_id}/recon/scan
+    Then 在 200ms 內收到 HTTP 202 Accepted
+    And response body 包含 scan_id 和 status="queued"
+    And 背景工作已啟動（DB status 從 queued 轉為 running）
+
+  Scenario: OODA trigger 非同步啟動
+    When 呼叫 POST /operations/{op_id}/ooda/trigger
+    Then 在 200ms 內收到 HTTP 202 Accepted
+    And response body 包含 iteration_id 和 status="queued"
+
+  Scenario: 背景工作失敗廣播
+    Given recon scan 背景工作正在執行
+    When 背景工作拋出未捕獲例外
+    Then WebSocket 廣播 recon.failed 事件
+    And 事件 payload 包含 scan_id 和 error 訊息
+    And DB recon_scans.status 更新為 "failed"
+
+  Scenario: 並發掃描獨立處理
+    When 同時呼叫 3 次 POST /operations/{op_id}/recon/scan
+    Then 收到 3 個不同的 scan_id
+    And 每個 scan 在 DB 中有獨立記錄
+```
+
+---
+
+## 🔍 追溯性（Traceability）
+
+| 類型 | 檔案路徑 | 說明 |
+|------|----------|------|
+| 後端 Router | `backend/app/routers/recon.py` | `POST /recon/scan` 202 pattern |
+| 後端 Router | `backend/app/routers/ooda.py` | `POST /ooda/trigger` 202 pattern |
+| 後端 Router | `backend/app/routers/osint.py` | `POST /osint/discover` 202 pattern |
+| 後端 Router | `backend/app/routers/agents.py` | `POST /agents/sync` 202 pattern |
+| 前端 API | `frontend/src/lib/api.ts` | AbortController timeout guard |
+| 前端 整合 | `frontend/src/app/planner/page.tsx`（待確認） | WebSocket 事件訂閱 |
+| 後端 測試 | `backend/tests/test_recon_router.py` | recon scan 測試 |
+| 後端 測試 | `backend/tests/test_ooda_router.py` | ooda trigger 測試 |
+| 後端 測試 | `backend/tests/test_async_sync_endpoints.py` | 非同步 endpoint 整合測試 |
+| 後端 測試 | `backend/tests/test_osint_engine.py` | OSINT 引擎測試 |
+| 後端 測試 | `backend/tests/test_agents_router.py` | Agent sync 測試 |
+| E2E 測試 | `frontend/e2e/full-workflow.spec.ts` | 完整工作流含 scan + OODA |
+| E2E 測試 | `frontend/e2e/sit-ooda-lifecycle.spec.ts` | OODA 生命週期 SIT 測試 |
+| E2E 測試 | `frontend/e2e/sit-error-handling.spec.ts` | 錯誤處理 SIT 測試 |
+
+> 追溯日期：2026-03-26
+
+---
+
+## 📊 可觀測性（Observability）
+
+### 後端
+
+| 指標名稱 | 類型 | 標籤 | 告警閾值 |
+|----------|------|------|----------|
+| `athena_async_task_duration_seconds` | Histogram | `endpoint` (`recon_scan`, `ooda_trigger`, `osint_discover`, `agents_sync`) | P95 > 120s |
+| `athena_async_task_status_total` | Counter | `endpoint`, `status` (`queued`, `running`, `completed`, `failed`) | `failed` > 5/min |
+| `athena_async_202_response_time_seconds` | Histogram | `endpoint` | P95 > 200ms |
+| `athena_ws_broadcast_total` | Counter | `event_type` (`recon.started`, `recon.completed`, `recon.failed`, `ooda.failed`) | — |
+| `athena_ws_broadcast_errors_total` | Counter | `event_type` | > 10/min |
+
+### 前端
+
+N/A（前端僅訂閱 WebSocket 事件，無需獨立可觀測性指標）

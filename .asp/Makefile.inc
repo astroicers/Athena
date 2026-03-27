@@ -404,7 +404,7 @@ audit-baseline-init: ## 初始化審計基線
 	SPC=$$(ls docs/specs/SPEC-*.md 2>/dev/null | wc -l | tr -d ' '); \
 	ADR=$$(ls docs/adr/ADR-*.md 2>/dev/null | wc -l | tr -d ' '); \
 	TD=$$(grep -rn "TODO[^(]\|FIXME" --include="*.go" --include="*.ts" --include="*.py" --include="*.java" --include="*.js" . 2>/dev/null | grep -v node_modules | grep -v .git | wc -l | tr -d ' '); \
-	if [ $$SRC -gt 0 ]; then R=$$(echo "scale=2; $$TST / $$SRC" | bc 2>/dev/null || echo "0"); else R="0"; fi; \
+	if [ $$SRC -gt 0 ]; then R=$$(echo "scale=2; $$TST / $$SRC" | bc 2>/dev/null | sed 's/^\./0./' || echo "0"); else R="0"; fi; \
 	printf '{"last_audit":"%s","test_coverage_ratio":%s,"spec_count":%s,"adr_count":%s,"blockers":0,"warnings":0,"info":0,"lint_warning_count":0,"todo_fixme_count":%s,"side_effects_unverified":0,"rollback_untested_count":0}\n' \
 		"$$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$$R" "$$SPC" "$$ADR" "$$TD" | python3 -m json.tool > .asp-audit-baseline.json 2>/dev/null; \
 	echo "✅ .asp-audit-baseline.json 已建立"; \

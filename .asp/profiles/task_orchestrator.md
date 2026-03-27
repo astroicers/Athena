@@ -98,7 +98,7 @@ FUNCTION project_health_audit():
 
   // ─── 1c. E2E 測試審計（全端專案專用）───
   IF exists("frontend/") AND (exists("backend/") OR exists("api/") OR exists("server/")):
-    IF NOT exists("playwright.config.ts") AND NOT exists("playwright.config.js") AND NOT exists("frontend/playwright.config.ts") AND NOT exists("frontend/playwright.config.js"):
+    IF NOT exists("playwright.config.ts") AND NOT exists("playwright.config.js"):
       report.add(BLOCKER, "全端專案缺少 Playwright 設定（playwright.config.ts）")
     ELSE:
       e2e_dir = find_e2e_directory()  // e2e/, tests/e2e/, frontend/e2e/ 等

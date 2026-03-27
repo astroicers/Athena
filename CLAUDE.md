@@ -9,7 +9,7 @@
 <!-- ASP-AUTO-PROJECT-DESCRIPTION: START -->
 > **AI-SOP-Protocol (ASP)** — 軟體開發流程治理框架。
 > 把開發文化（ADR 先於實作、測試先於代碼、部署必須確認）寫成機器可讀的約束，讓 AI 自動遵守。
-> 20 個 Profile 分層載入、10 個 Claude Code 原生 Skill、7 維度健康審計、Autopilot 持續執行。
+> 20 個 Profile 分層載入、10 個 Claude Code 原生 Skill、9 維度健康審計（v3.3）、Autopilot 持續執行。
 > 詳見 README.md。
 <!-- ASP-AUTO-PROJECT-DESCRIPTION: END -->
 
@@ -186,6 +186,10 @@ name:         your-project-name
 | Agent 記憶 | `make agent-memory-show` |
 | Agent 記憶修剪 | `make agent-memory-prune AGE=90` |
 | Agent 團隊推薦 | `make agent-team-recommend TYPE=... COMPLEXITY=...` |
+| Agent 初始化（記憶） | `make agent-memory-init` |
+| Agent 初始化（Session） | `make agent-session-init` |
+| 審計基線初始化 | `make audit-baseline-init` |
+| Profile 驗證 | `make profile-validate` |
 
 > 以上為常用指令，完整列表請執行 `make help`
 

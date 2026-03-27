@@ -173,6 +173,103 @@ GET /api/health
 
 ---
 
+## 🔗 副作用與連動（Side Effects）
+
+| 副作用 | 觸發條件 | 影響的系統/模組 | 驗證方式 |
+|--------|---------|----------------|----------|
+| DB 狀態變更（累積） | Demo 流程每步驟執行 | `OODAIteration`、`TechniqueExecution`、`Fact`、`PentestGPTRecommendation`、`C5ISRStatus` 表 | 每步驟後 `GET /api/operations/{id}` 確認狀態一致 |
+| WebSocket 事件廣播 | 7 種事件各自觸發 | 所有已連線的前端 WebSocket client | browser console 觀察事件序列 |
+| 前端 UI 狀態更新 | WebSocket 事件接收 | 4 個畫面的 React 狀態（hooks） | 視覺確認各畫面即時更新 |
+| Mock LLM 回應快取 | MOCK_LLM=true 時 Orient 階段 | `orient_engine` 內部 mock 回應 | 確認每次 Orient 回傳固定的 T1003.001 推薦 |
+
+### 🔄 Rollback Plan
+
+| 項目 | 說明 |
+|------|------|
+| **回滾步驟** | `git revert` 移除 `backend/app/seed/demo_runner.py`、`demo_scenario.py`；`/api/health` 端點由 SPEC-004 獨立維護，不受影響 |
+| **資料影響** | Demo 執行產生的 DB 記錄可透過 `make clean` + 重新載入種子資料還原 |
+| **回滾驗證** | `docker-compose up` 正常啟動；4 個畫面靜態渲染正常（無 Demo 動態流程） |
+| **回滾已測試** | ☐ 是 / ☑ 否（Demo 為端對端整合，回滾影響有限） |
+
+## 🧪 測試矩陣（Test Matrix）
+
+| # | 類型 | 輸入條件 | 預期結果 | 對應場景 |
+|---|------|---------|---------|---------|
+| P1 | ✅ 正向 | `docker-compose up` + 種子資料載入 + `POST /ooda/trigger` | 完整 6 步 OODA Demo 流程執行，7 種 WebSocket 事件均觸發 | S1 |
+| P2 | ✅ 正向 | `GET /api/health` | 回傳 `{"status":"ok"}` 含所有服務狀態（database/caldera/shannon/websocket/llm） | S1 |
+| P3 | ✅ 正向 | MOCK_LLM=true + 無 Caldera | Demo 完整可執行，Orient 回傳 mock recommendation | S1 |
+| N1 | ❌ 負向 | WebSocket 斷線後 Demo 繼續 | 前端顯示 reconnecting 狀態，後端 OODA 循環不中斷 | S2 |
+| N2 | ❌ 負向 | 種子資料未載入即觸發 OODA | Demo runner 先檢查並自動載入種子資料，或回傳明確錯誤 | S2 |
+| B1 | 🔶 邊界 | Demo 第 3 步 risk_level=HIGH | HexConfirmModal 彈出，需手動操作（不自動關閉） | S3 |
+| B2 | 🔶 邊界 | 連續觸發兩輪 OODA（步驟 1-4 + 步驟 5-6） | 第二輪 Orient 基於第一輪 Fact 產生不同推薦，迭代計數 +1 | S3 |
+
+## 🎬 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: SPEC-009 整合與 Demo 場景
+  作為 Athena 平台操作員
+  我想要 端對端 Demo 流程驗證所有元件正確整合
+  以便 OP-2024-017 PHANTOM-EYE 場景在 UI 上可視化運行
+
+  Background:
+    Given docker-compose up 已啟動 backend + frontend
+    And 種子資料（OP-2024-017）已自動載入
+    And MOCK_LLM=true 環境變數已設定
+
+  Scenario: S1 - 完整 6 步 OODA Demo 流程
+    Given 瀏覽器開啟 localhost:3000 顯示 C5ISR Board
+    When POST /api/operations/{id}/ooda/trigger 觸發第一輪循環
+    Then /c5isr OODA 指示器依序切換 observe→orient→decide→act
+    And /c5isr RecommendCard 顯示 T1003.001 推薦（confidence=87%）
+    And /navigator 對應技術格高亮
+    And /monitor 日誌串流顯示執行紀錄
+
+  Scenario: S2 - WebSocket 斷線後前端降級
+    Given 前端已連線 WebSocket
+    When WebSocket 連線中斷
+    Then 前端顯示 reconnecting 狀態指示
+    And 後端 OODA 循環繼續執行不中斷
+
+  Scenario: S3 - 高風險操作需手動確認
+    Given OODA Decide 階段評估出 HIGH 風險技術
+    When 前端收到 needs_confirmation=True 決策
+    Then HexConfirmModal 彈出顯示風險警告
+    And 使用者手動確認後 Act 階段才執行
+
+  Scenario: S4 - 健康檢查端點回傳完整狀態
+    Given 所有服務已啟動
+    When GET /api/health
+    Then 回傳 HTTP 200
+    And response 含 database、caldera、shannon、websocket、llm 狀態
+```
+
+## 🔍 追溯性（Traceability）
+
+| 類型 | 檔案路徑 |
+|------|---------|
+| 實作 — Demo Runner | `backend/app/seed/demo_runner.py` |
+| 實作 — Demo Scenario | `backend/app/seed/demo_scenario.py` |
+| 實作 — Health 端點 | `backend/app/routers/health.py` |
+| 實作 — WebSocket Manager | `backend/app/ws_manager.py` |
+| 實作 — Main（lifespan） | `backend/app/main.py` |
+| 測試 — E2E OODA 迴圈 | `backend/tests/test_e2e_ooda_loop.py` |
+| 測試 — 整合真實模式 | `backend/tests/test_integration_real_mode.py` |
+| 測試 — 前端 E2E | `frontend/e2e/full-workflow.spec.ts` |
+| 測試 — 前端 OODA lifecycle | `frontend/e2e/sit-ooda-lifecycle.spec.ts` |
+| 測試 — 前端 War Room | `frontend/e2e/warroom.spec.ts` |
+
+## 👁️ 可觀測性（Observability）
+
+| 項目 | 說明 |
+|------|------|
+| **關鍵指標** | Demo 完整流程耗時、各步驟延遲、WebSocket 事件送達率 |
+| **日誌** | Demo runner 每步輸出 `INFO`：步驟名稱 + 預期結果 + 實際結果；API 呼叫記錄 request/response |
+| **錯誤追蹤** | API 非 200 回應 → `WARNING` + retry 一次後 skip；WebSocket 斷線 → `ERROR` + reconnect |
+| **健康檢查** | `GET /api/health` → 5 個服務狀態（database/caldera/shannon/websocket/llm） |
+| **WebSocket 事件** | 7 種事件：`log.new`、`agent.beacon`、`execution.update`、`ooda.phase`、`c5isr.update`、`fact.new`、`recommendation` |
+
+---
+
 ## ✅ 驗收標準（Done When）
 
 - [x] `docker-compose up` + 開啟 `localhost:3000` → 種子資料自動載入，4 畫面渲染正確
@@ -209,5 +306,3 @@ GET /api/health
 - SPEC-007：OODA 引擎（依賴）
 - SPEC-008：執行引擎客戶端（依賴）
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

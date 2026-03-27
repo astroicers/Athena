@@ -575,18 +575,18 @@ class TestOODAControllerSwarmIntegration:
 
 ## 🔗 副作用與連動（Side Effects）
 
-| 本功能的狀態變動 | 受影響的既有功能 | 預期行為 |
-|-----------------|----------------|---------|
-| `technique_executions` 表一次 OODA 迭代可能產生多筆記錄 | Attack Path Timeline（SPEC-021）| 時間軸上同一迭代顯示多個並行執行點，`started_at` 接近但 `completed_at` 各異 |
-| `facts` 表在並行寫入中可能同時插入多筆 | FactCollector.collect()（SPEC-007）| 下一次 Observe 收集到的 new_facts 數量可能明顯增加；dedup 邏輯（existing trait+value set）必須仍然生效 |
-| `operations.techniques_executed` 計數器在單次 Act 中可能增加 N | WarRoom Dashboard 顯示 | 計數器反映所有成功的並行執行（非僅 1 次） |
-| `targets.is_compromised` 可能同時多個 target 被標記 | Topology 視圖（SPEC-026）| 多個 target 在同一 OODA 迭代後同時變為 compromised，topology 一次刷新 |
-| `agents` 表可能多個 agent 同時被 activate | C5ISR Control 域 health | `alive_agents / total_agents` 比例可能在單次迭代後大幅跳升 |
-| `ooda_iterations.act_summary` 改為 swarm 格式字串 | OODA Timeline（前端）| 前端已使用純文字 `act_summary` 顯示，格式變更不影響渲染，但內容語義不同 |
-| 新 `swarm_tasks` table | Database migration | 新增 CREATE TABLE；不影響既有 table |
-| `execution.batch_update` WebSocket 新事件 | 前端 WebSocket handler | 前端需新增 handler 或忽略未知事件類型（既有 `execution.update` 仍由 EngineRouter 各 task 獨立發送） |
-| `DecisionEngine.evaluate()` 回傳結構新增 `parallel_tasks` | 任何讀取 decision dict 的程式碼 | 新欄位為 additive，`decision.get("parallel_tasks", [])` 向後相容 |
-| APScheduler 30s OODA cycle 觸發 | 排程衝突 | 若前一次 swarm 執行超過 30s，APScheduler 下一次觸發需等待（已有 `max_instances=1` 保護） |
+| 副作用 | 觸發條件 | 影響模組 | 驗證方式 |
+|--------|---------|---------|---------|
+| technique_executions 表一次迭代產生多筆記錄 | swarm 並行執行多個 task | Attack Path Timeline（SPEC-021） | 時間軸上同一迭代顯示多個並行執行點；`started_at` 接近但 `completed_at` 各異 |
+| facts 表並行插入多筆 | 多 task 同時收集 fact | FactCollector.collect()（SPEC-007） | dedup 邏輯（trait+value set）仍生效；無重複 fact |
+| techniques_executed 計數器單次增加 N | swarm 中 N 個 task 成功 | WarRoom Dashboard 顯示 | 計數器 = 成功 task 數量（非固定 +1） |
+| 多個 target 同時被標記 is_compromised | 多 target task 均成功 | Topology 視圖（SPEC-026） | topology 一次刷新多個 compromised 節點 |
+| 多個 agent 同時 activate | 成功 task 觸發 agent activate | C5ISR Control 域 health | `alive_agents / total_agents` 比例跳升 |
+| act_summary 改為 swarm 格式字串 | swarm path 執行 | OODA Timeline（前端） | 前端純文字顯示不影響渲染；內容格式 "Swarm: N/M succeeded..." |
+| 新 swarm_tasks table 建立 | 應用啟動時 CREATE TABLE | Database migration | `SELECT * FROM swarm_tasks` 可查詢 |
+| execution.batch_update WS 新事件 | swarm 開始/結束時 | 前端 WebSocket handler | 前端 graceful ignore 未知事件；或新增 handler 處理 |
+| decision dict 新增 parallel_tasks 欄位 | DecisionEngine.evaluate() 回傳 | 讀取 decision 的下游程式碼 | `.get("parallel_tasks", [])` 向後相容，無 KeyError |
+| OODA cycle 可能超過 30s interval | swarm 執行耗時 > 30s | APScheduler 排程 | `max_instances=1` 保護不重複觸發 |
 
 ---
 
@@ -652,19 +652,121 @@ class TestOODAControllerSwarmIntegration:
 - 若 swarm 耗時 120s，下一次 OODA 循環在上一次完成後才開始
 - 不需額外鎖機制
 
-### 回退方案（Rollback Plan）
+### ⏪ Rollback Plan
 
-- **回退方式**：revert commit + DROP TABLE swarm_tasks
-  1. `git revert <commit>` 回退所有程式碼變更
-  2. 手動或 migration script 執行 `DROP TABLE IF EXISTS swarm_tasks`
-  3. `config.py` 中 `MAX_PARALLEL_TASKS` 和 `PARALLEL_TASK_TIMEOUT_SEC` 欄位已移除，Settings 回到原狀
-  4. `DecisionEngine.evaluate()` 回到單一 decision 輸出，無 `parallel_tasks` 欄位
-  5. `OODAController.trigger_cycle()` Act 階段回到原始 single-execution path
-- **不可逆評估**：此變更為純 additive（新增 table + 新增欄位 + 新增檔案），無不可逆部分
-  - `swarm_tasks` table 為新建，DROP 不影響既有資料
-  - `technique_executions` 記錄由 EngineRouter 正常寫入，回退後保留
-  - `facts` 由各 task 獨立收集，回退後保留（與 single path 收集的結構相同）
-- **資料影響**：回退後 `swarm_tasks` table 被刪除，其記錄遺失，但所有 `technique_executions` 和 `facts` 資料保留完整，不影響歷史 OODA 迭代查詢
+| 回滾步驟 | 資料影響 | 回滾驗證 | 回滾已測試 |
+|---------|---------|---------|----------|
+| `git revert <commit>` 回退所有程式碼變更 | `technique_executions` 和 `facts` 保留完整（由 EngineRouter 正常寫入） | `make test` 全數通過；OODAController Act 階段回到 single-execution path | 否（需手動驗證） |
+| `DROP TABLE IF EXISTS swarm_tasks` | swarm_tasks 記錄遺失，但不影響歷史 OODA 迭代查詢 | DB 中無 swarm_tasks table | 否（需手動驗證） |
+| 確認 `DecisionEngine.evaluate()` 回傳結構不含 `parallel_tasks` | 無 — 新欄位為 additive，下游使用 `.get("parallel_tasks", [])` | 下游 code path 走 single/manual path | 是 |
+
+---
+
+## 🧪 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 預期結果 | 場景參照 |
+|----|------|------|---------|---------|
+| P1 | 正向 | 3 個 LOW risk task 送入 SwarmExecutor | 3 個 task 並行執行，SwarmResult.completed=3 | Scenario: 多任務並行執行成功 |
+| P2 | 正向 | DecisionEngine 回傳 3 個 auto-approved LOW risk option | parallel_tasks 含 3 筆，各有 technique_id/target_id/engine | Scenario: DecisionEngine 產出 parallel_tasks |
+| P3 | 正向 | OODAController Act 階段收到 parallel_tasks 長度 > 1 | 走 swarm path，act_summary 為 swarm 格式 | Scenario: 多任務並行執行成功 |
+| N1 | 負向 | parallel_tasks 為空 list | SwarmExecutor 回傳空 SwarmResult（total=0），走 single path | Scenario: 空任務與降級安全處理 |
+| N2 | 負向 | 所有 parallel_tasks 失敗 | SwarmResult.all_failed=True，log severity=error | Scenario: 任務失敗隔離與聚合 |
+| N3 | 負向 | DecisionEngine 在 MANUAL mode | parallel_tasks=[]，不產出並行任務 | Scenario: DecisionEngine 產出 parallel_tasks |
+| B1 | 邊界 | 單一 task 超時（PARALLEL_TASK_TIMEOUT_SEC 到期） | 該 task status=timeout，其餘 task 不受影響 | Scenario: 任務失敗隔離與聚合 |
+| B2 | 邊界 | MAX_PARALLEL_TASKS=2 且 5 個 task | 前 2 個立即執行，後 3 個排隊等待 semaphore | Scenario: 多任務並行執行成功 |
+| B3 | 邊界 | 同一 (technique_id, target_id) 重複 | DecisionEngine dedup 後僅保留 1 筆 | Scenario: DecisionEngine 產出 parallel_tasks |
+| B4 | 邊界 | 並行 5 個 task 同時寫入 DB | 無 OperationalError（WAL mode + busy_timeout） | Scenario: 多任務並行執行成功 |
+
+---
+
+## 🎭 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: AgentSwarm OODA 並行任務排程
+  Background:
+    Given 一個 active operation 存在
+    And OODAController 已初始化並注入 SwarmExecutor
+    And MAX_PARALLEL_TASKS 設為 5
+    And PARALLEL_TASK_TIMEOUT_SEC 設為 120
+
+  Scenario: 多任務並行執行成功
+    Given OrientEngine 回傳 3 個 LOW risk tactical options 對應不同 target
+    And DecisionEngine 產出 parallel_tasks 含 3 筆 auto-approved task
+    When OODAController 進入 Act 階段
+    Then SwarmExecutor 以 asyncio.TaskGroup 並行執行 3 個 task
+    And 所有 task 透過 EngineRouter.execute() 執行
+    And SwarmResult.completed 為 3，failed 為 0
+    And ooda_iterations.act_summary 為 "Swarm: 3/3 succeeded, 0 failed, 0 timed out"
+    And execution.batch_update WebSocket 事件在開始和結束時各廣播一次
+    And swarm_tasks 表包含 3 筆記錄且 status 均為 completed
+
+  Scenario: 任務失敗隔離與聚合
+    Given parallel_tasks 含 3 筆 task
+    And 其中 1 筆的 EngineRouter.execute() 將拋出 RuntimeError
+    And 其中 1 筆將超過 PARALLEL_TASK_TIMEOUT_SEC
+    When SwarmExecutor.execute_swarm() 執行完成
+    Then SwarmResult.completed 為 1，failed 為 1，timed_out 為 1
+    And 失敗的 task 不導致其他 task 被取消（ExceptionGroup 隔離）
+    And OODAController 記錄 severity=warning log
+    And 成功的 task 正確更新 targets.is_compromised 和 techniques_executed
+
+  Scenario: DecisionEngine 產出 parallel_tasks
+    Given recommendation.options 含 5 個 tactical option
+    And 3 個為 LOW risk，1 個為 HIGH risk，1 個為 CRITICAL risk
+    And automation_mode 非 MANUAL
+    When DecisionEngine.evaluate() 執行
+    Then parallel_tasks 僅含 3 筆 LOW risk option
+    And HIGH 和 CRITICAL risk option 不出現在 parallel_tasks 中
+    And 同一 (technique_id, target_id) 不重複
+
+  Scenario: 空任務與降級安全處理
+    Given decision 回傳不含 parallel_tasks 欄位
+    When OODAController 進入 Act 階段
+    Then decision.get("parallel_tasks", []) 回傳空 list
+    And OODAController 走既有 single-execution path
+    And 行為與未加入 AgentSwarm 前完全一致
+```
+
+---
+
+## 🔗 追溯性（Traceability）
+
+| 追溯項目 | 檔案路徑 | 狀態 |
+|---------|---------|------|
+| SwarmExecutor 主類別 | `backend/app/services/agent_swarm.py` | 已實作 |
+| Config 設定（MAX_PARALLEL_TASKS 等） | `backend/app/config.py` | 已實作 |
+| API Schema（SwarmTaskSchema 等） | `backend/app/models/schemas/attack.py` | 已實作 |
+| DecisionEngine parallel_tasks | `backend/app/services/decision_engine.py` | （待確認） |
+| OODAController Act 階段整合 | `backend/app/services/ooda_controller.py` | 已實作 |
+| EngineRouter 依賴 | `backend/app/services/engine_router.py` | 已實作（既有） |
+| Database swarm_tasks table | `backend/app/database.py` | （待確認） |
+| OODA 路由 | `backend/app/routers/ooda.py` | 已實作 |
+| OODA 排程 | `backend/app/services/ooda_scheduler.py` | 已實作 |
+| 單元測試 | `backend/tests/test_agent_swarm.py` | 已實作 |
+| 前端 OODA 時間軸 | `frontend/src/components/ooda/OODATimeline.tsx` | 已實作 |
+| 前端 WarRoom 頁面 | `frontend/src/app/warroom/page.tsx` | 已實作 |
+| E2E 測試 | （待實作） | （待實作） |
+
+> 追溯日期：2026-03-26
+
+---
+
+## 📊 可觀測性（Observability）
+
+| 面向 | 指標/日誌 | 說明 |
+|------|----------|------|
+| **Metrics** | `swarm_tasks_total{status}` | 各 task 最終狀態計數（counter，label: completed/failed/timeout） |
+| **Metrics** | `swarm_execution_duration_seconds` | 整個 swarm 執行耗時（histogram） |
+| **Metrics** | `swarm_task_duration_seconds{engine}` | 單一 task 執行耗時（histogram，label: ssh/mcp/...） |
+| **Metrics** | `swarm_semaphore_wait_seconds` | task 等待 semaphore 的時間（histogram） |
+| **Metrics** | `swarm_concurrency_gauge` | 當前並行執行中的 task 數量（gauge） |
+| **Logging** | `INFO: OODA[{id}] Act phase — swarm executing {N} parallel tasks` | swarm 啟動日誌 |
+| **Logging** | `WARNING: SwarmTask {id} timed out: {technique} on {target}` | 單一 task 超時日誌 |
+| **Logging** | `ERROR: SwarmTask {id} failed: {error}` | 單一 task 失敗日誌 |
+| **Logging** | `INFO: Swarm: {completed}/{total} succeeded, {failed} failed, {timed_out} timed out` | swarm 完成摘要日誌 |
+| **WebSocket** | `execution.batch_update` | swarm 開始/結束時推送所有 task 狀態至前端 |
+| **DB** | `swarm_tasks` table | 持久化每個 task 的狀態、啟動/完成時間、錯誤訊息 |
+| **Health** | `MAX_PARALLEL_TASKS` / `PARALLEL_TASK_TIMEOUT_SEC` config | 可透過環境變數調整並行度和超時，無需重新部署 |
 
 ---
 
@@ -750,5 +852,3 @@ class TestOODAControllerSwarmIntegration:
   - `backend/app/models/api_schemas.py` — API schema 定義
   - `backend/app/database.py` — CREATE TABLE statements
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

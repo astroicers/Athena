@@ -115,12 +115,12 @@ flowchart LR
 
 ## 🔗 副作用與連動（Side Effects）
 
-| 本功能的狀態變動 | 受影響的既有功能 | 預期行為 |
-|-----------------|----------------|---------|
-| Override 按鈕 → `POST /constraints/override` | Constraint Engine（後端） | 單輪 cycle 解除指定 domain constraint |
-| Override 成功 | useC5ISRData hook | 立即 refetch constraints + domains |
-| WebSocket `c5isr.update` | Mermaid diagram + Health Grid | 即時 re-render，無需手動刷新 |
-| WebSocket `constraint.active` | Mermaid diagram + Constraint Panel + Banner | 即時顯示/隱藏 constraint subgraph |
+| 本功能的狀態變動 | 受影響的既有功能 | 預期行為 | 驗證方式 |
+|-----------------|----------------|---------|----------|
+| Override 按鈕 → `POST /constraints/override` | Constraint Engine（後端） | 單輪 cycle 解除指定 domain constraint | E2E sit-tools-c5isr 驗證 override 流程 |
+| Override 成功 | useC5ISRData hook | 立即 refetch constraints + domains | buildFlowDefinition.test.ts 驗證重新渲染 |
+| WebSocket `c5isr.update` | Mermaid diagram + Health Grid | 即時 re-render，無需手動刷新 | E2E sit-warroom-tabs 驗證即時更新 |
+| WebSocket `constraint.active` | Mermaid diagram + Constraint Panel + Banner | 即時顯示/隱藏 constraint subgraph | buildFlowDefinition.test.ts 驗證 subgraph 切換 |
 
 ---
 
@@ -135,10 +135,66 @@ flowchart LR
 
 ### 回退方案（Rollback Plan）
 
-- **回退方式**：revert commit（純前端新增，無 DB migration）
-- **不可逆評估**：完全可逆，無 DB schema 變更，無外部通知
-- **資料影響**：無。後端 API 不受前端回退影響
-- **依賴回退**：移除 `mermaid` npm dependency（package.json restore）
+| 項目 | 內容 |
+|------|------|
+| **回退方式** | Revert commit（純前端新增，無 DB migration） |
+| **不可逆評估** | 完全可逆，無 DB schema 變更，無外部通知 |
+| **資料影響** | 無。後端 API 不受前端回退影響 |
+| **依賴回退** | 移除 `mermaid` npm dependency（package.json restore） |
+
+---
+
+## 🧪 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 輸入 | 預期結果 |
+|----|------|------|------|----------|
+| P1 | 正向 | buildFlowDefinition 產生正確 Mermaid 語法 | dashboard + domains + constraints | 有效 Mermaid flowchart LR 定義 |
+| P2 | 正向 | Critical domain 顯示紅色 constraint edge | COMMS healthPct=35 | 實線 edge 連接 COMMS → hard_limit → ACT |
+| P3 | 正向 | MermaidRenderer 渲染 Deep Gemstone v3 theme | 有效 Mermaid definition | node fill=#18181B, accent=#1E6091 |
+| N1 | 負向 | 無 OODA dashboard 資料 | dashboard=null | 顯示 "Waiting for OODA data..." placeholder |
+| N2 | 負向 | Mermaid parse error | 無效 definition string | 顯示紅色邊框 error UI + 錯誤訊息 |
+| B1 | 邊界 | 所有 domain healthy（無 constraint） | 六域 healthPct ≥ 80 | 隱藏 constraint subgraph |
+| B2 | 邊界 | 多個 domain 同時 critical | 3 domains healthPct < 50 | 多個 constraint nodes + edges，auto-layout |
+| B3 | 邊界 | domain healthPct = 0 | healthPct=0 | 分類為 critical，顯示 "CRIT" 符號 |
+
+---
+
+## 🎬 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: OODA↔C5ISR Mermaid Flow 即時視覺化
+
+  Scenario: War Room 顯示 OODA↔C5ISR 雙向 flow 含 constraint
+    Given operation 已執行 3 輪 OODA cycle
+    And COMMS domain healthPct 為 35（CRITICAL）
+    And Constraint Engine 產生 forced_mode=RECOVERY hard_limit
+    When 指揮官開啟 War Room 頁面
+    Then Mermaid 流程圖顯示 OODA cycle #3 四階段
+    And C5ISR subgraph 顯示六域健康度（COMMS 標示紅色 CRIT）
+    And Constraint subgraph 顯示 "forced: RECOVERY" 實線連接 ACT
+
+  Scenario: 所有 domain 健康時隱藏 constraint subgraph
+    Given operation 正在執行
+    And 六域 healthPct 皆 ≥ 80
+    When 指揮官查看 Mermaid flow diagram
+    Then 僅顯示 OODA 與 C5ISR 兩個 subgraph
+    And 無 Constraint subgraph 出現
+    And ACT → C5ISR feedback edge 為綠色
+
+  Scenario: WebSocket 即時更新觸發 diagram re-render
+    Given War Room 頁面已開啟並顯示 Mermaid diagram
+    When 後端推送 c5isr.update 事件（CYBER healthPct 從 80 降至 45）
+    Then Mermaid diagram 即時更新 CYBER node 為 CRIT 紅色
+    And Constraint subgraph 出現對應的新 constraint
+```
+
+---
+
+## 📊 可觀測性（Observability）
+
+> 純前端視覺化組件，無後端 metrics。前端效能由瀏覽器 DevTools 監控。
+
+N/A — frontend-only visualization component
 
 ---
 
@@ -196,5 +252,3 @@ flowchart LR
 - **SPEC-026**：Attack Situation Diagram（記錄 Mermaid vs SVG 架構選擇）
 - **Design mockup**：`design/pencil-new-v2.pen` → "War Room" frame（3-column + Mermaid flow）
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

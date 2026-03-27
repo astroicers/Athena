@@ -279,14 +279,14 @@ Parameter fuzzing for injection vulnerabilities。
 
 ## 🔗 副作用與連動（Side Effects）
 
-| 本功能的狀態變動 | 受影響的既有功能 | 預期行為 |
-|-----------------|----------------|---------|
-| 新增 `api.schema.*` / `api.endpoint.*` / `api.vuln.*` facts 至 `facts` 表 | **OrientEngine** — 讀取 facts 進行 cross-fact reasoning | OrientEngine 接收 api facts 後，可推薦 API 層面攻擊手法（需後續 ADR-029 Phase 5 擴展 prompt）。例如：`api.schema.openapi` fact 存在 -> 推薦 `api_endpoint_enum`；`api.endpoint.auth_required` -> 推薦 `api_auth_test` |
-| MCPClientManager 自動發現 4 個新工具，同步至 `tool_registry` | **Tool Registry UI** — `ToolRegistryTable.tsx` | 前端自動顯示 4 個新工具（api_schema_detect, api_endpoint_enum, api_auth_test, api_param_fuzz）及其連線狀態；無需前端程式碼修改 |
-| `mcp_servers.json` 新增 `api-fuzzer` 配置 | **MCPClientManager startup** | 啟動時自動連線 api-fuzzer，Circuit Breaker 保護啟用 |
-| `docker-compose.yml` 新增 `mcp-api-fuzzer` service | **Docker 部署流程** | `docker compose --profile mcp up` 自動啟動 api-fuzzer 容器 |
-| WebSocket 廣播 `fact.new` 事件（api.* traits） | **War Room 前端** — fact panel + topology | 即時顯示 API 偵察結果；現有 `fact.new` handler 自動處理新 trait |
-| 與 mcp-web-scanner 形成協作鏈 | **mcp-web-scanner (SPEC-032)** | web_http_probe 偵測到 API framework (Express/Django/Spring) -> OrientEngine 推薦 api_schema_detect -> api_endpoint_enum -> api_auth_test 的攻擊鏈 |
+| 副作用 | 觸發條件 | 影響模組 | 驗證方式 |
+|--------|---------|---------|---------|
+| 新增 `api.schema.*` / `api.endpoint.*` / `api.vuln.*` facts 至 `facts` 表 | MCP 工具呼叫完成 | **OrientEngine** — cross-fact reasoning（api facts 可觸發攻擊鏈推薦） | `SELECT * FROM facts WHERE trait LIKE 'api.%'` 確認寫入 |
+| MCPClientManager 自動發現 4 個新工具，同步至 `tool_registry` | MCP server 啟動 | **Tool Registry UI** — `ToolRegistryTable.tsx` | `list_tools()` 回傳 4 個工具 |
+| `mcp_servers.json` 新增 `api-fuzzer` 配置 | 部署時 | **MCPClientManager startup** — Circuit Breaker 保護啟用 | 啟動 log 確認連線成功 |
+| `docker-compose.yml` 新增 `mcp-api-fuzzer` service | `docker compose --profile mcp up` | **Docker 部署流程** | container 啟動 + log 確認 MCP server ready |
+| WebSocket 廣播 `fact.new` 事件（api.* traits） | api facts 寫入後 | **War Room 前端** — fact panel + topology | WS 訊息包含 `api.*` traits |
+| 與 mcp-web-scanner 形成協作鏈 | web_http_probe 偵測到 API framework | **mcp-web-scanner (SPEC-032)** | 測試：web probe → api_schema_detect → api_endpoint_enum 鏈路 |
 
 ---
 
@@ -322,9 +322,103 @@ Parameter fuzzing for injection vulnerabilities。
 
 ### 回退方案（Rollback Plan）
 
-- **回退方式**：revert commit + 移除 `docker-compose.yml` 中 `mcp-api-fuzzer` service + 移除 `mcp_servers.json` 中 `api-fuzzer` 配置。三步驟均為 git revert 即可完成。注意：此 SPEC 不修改 `recon_engine.py`（auto-trigger 為 SPEC-032 負責），故回退不涉及 ReconEngine。
-- **不可逆評估**：此變更無不可逆部分。新增的 `api.*` facts 會留在資料庫但不影響既有功能。若需清理，可執行 `DELETE FROM facts WHERE trait LIKE 'api.%'`。
-- **資料影響**：回退後已寫入的 api facts 不會自動刪除，但不影響系統正常運作。`tool_registry` 中的 mcp_discovery 記錄會在 MCPClientManager 偵測到 server 不可用後自動 soft-delete（現有機制）。
+| 回滾步驟 | 資料影響 | 回滾驗證 | 回滾已測試 |
+|----------|---------|---------|-----------|
+| `git revert` commit | 已寫入的 `api.*` facts 保留但不影響既有功能 | `make test` 通過 | Yes — 不修改 recon_engine.py，回退不涉及 ReconEngine |
+| 移除 `docker-compose.yml` 中 `mcp-api-fuzzer` service | 容器停止 | `docker compose ps` 無 api-fuzzer | Yes |
+| 移除 `mcp_servers.json` 中 `api-fuzzer` 配置 | `tool_registry` mcp_discovery 記錄自動 soft-delete | MCPClientManager 不再連線 api-fuzzer | Yes |
+| （可選）`DELETE FROM facts WHERE trait LIKE 'api.%'` | 清理 api facts | `SELECT COUNT(*) FROM facts WHERE trait LIKE 'api.%'` = 0 | Yes |
+
+---
+
+## 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 輸入 | 預期結果 | 場景參考 |
+|----|------|------|------|---------|---------|
+| P1 | 正向 | OpenAPI schema 偵測成功 | base_url 含 /openapi.json | facts 含 `api.schema.openapi` + endpoint count | Scenario: OpenAPI schema detected |
+| P2 | 正向 | BOLA 漏洞偵測 | endpoint 含數字 ID + auth_token | facts 含 `api.vuln.bola` | Scenario: BOLA vulnerability detected |
+| P3 | 正向 | SQL injection 偵測 | endpoint + params={id: "1"} | facts 含 `api.vuln.injection` value 含 "SQL Injection" | Scenario: Parameter fuzzing finds SQLi |
+| N1 | 負向 | 無 schema 發現 | 所有 schema endpoint 回傳 404 | facts=[], raw_output 描述無 schema | Scenario: No schema found |
+| N2 | 負向 | Target 不可達 | base_url 不可達 | facts=[], raw_output 含 CONNECTION_ERROR | Scenario: Unreachable target |
+| N3 | 負向 | 空 params dict | params={} | facts=[], raw_output 含 VALIDATION_ERROR | Scenario: Empty params rejected |
+| B1 | 邊界 | >500 endpoints（截斷） | OpenAPI spec 含 600 endpoints | 截斷至 500，raw_output 註明截斷 | Scenario: Endpoint truncation at MAX_ENDPOINTS |
+| B2 | 邊界 | WAF blocking injection payloads | 所有 fuzz 請求回傳 403 | 記錄 WAF_BLOCKING fact，跳至下一參數 | Scenario: WAF blocks fuzzing |
+| B3 | 邊界 | ffuf binary 缺失 | ffuf 不在 PATH | endpoint_enum fallback 至 Python httpx | Scenario: ffuf missing fallback |
+
+---
+
+## 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: mcp-api-fuzzer MCP 工具伺服器
+  作為紅隊操作員，我需要 API 安全測試能力以發現認證繞過與注入漏洞。
+
+  Background:
+    Given mcp-api-fuzzer 容器已啟動且 MCP server ready
+    And MCPClientManager 已連線 api-fuzzer
+    And target "192.168.1.5" 在 scope 內
+
+  Scenario: OpenAPI schema detected
+    Given target 上 /openapi.json 回傳有效 OpenAPI 3.0 spec
+    When 呼叫 api_schema_detect(base_url="http://192.168.1.5:8080")
+    Then facts 包含 trait="api.schema.openapi"
+    And fact value 含 endpoint 數量和 API title
+
+  Scenario: BOLA vulnerability detected
+    Given target API 允許使用 user_1 token 存取 /api/v1/users/2
+    When 呼叫 api_auth_test(endpoint="http://192.168.1.5:8080/api/v1/users/1", auth_token="user1_token")
+    Then facts 包含 trait="api.vuln.bola"
+    And fact value 含 "accessible with user_1 token"
+
+  Scenario: Parameter fuzzing finds SQLi
+    Given target API /api/v1/users?id=1 存在 SQL injection
+    When 呼叫 api_param_fuzz(endpoint="http://192.168.1.5:8080/api/v1/users", params={"id": "1"})
+    Then facts 包含 trait="api.vuln.injection"
+    And fact value 含 "SQL Injection" 和 SQL error evidence
+
+  Scenario: Unreachable target
+    Given target "10.99.99.99" 不可達
+    When 呼叫 api_schema_detect(base_url="http://10.99.99.99:8080")
+    Then facts 為空 list
+    And raw_output 含 "CONNECTION_ERROR"
+```
+
+---
+
+## 追溯性（Traceability）
+
+| 產出物 | 檔案路徑 | 狀態 | 追溯日期 |
+|--------|---------|------|---------|
+| MCP Server 實作 | `tools/api-fuzzer/server.py` | 已實作 | 2026-03-26 |
+| Schema 偵測模組 | `tools/api-fuzzer/schema_detector.py` | 已實作 | 2026-03-26 |
+| Auth 測試模組 | `tools/api-fuzzer/auth_tester.py` | 已實作 | 2026-03-26 |
+| Parameter Fuzzing 模組 | `tools/api-fuzzer/param_fuzzer.py` | 已實作 | 2026-03-26 |
+| Fuzz Payloads | `tools/api-fuzzer/payloads/` (sqli.txt, cmdi.txt, xss.txt, traversal.txt, overflow.txt) | 已實作 | 2026-03-26 |
+| Dockerfile | `tools/api-fuzzer/Dockerfile` | 已實作 | 2026-03-26 |
+| 套件定義 | `tools/api-fuzzer/pyproject.toml` | 已實作 | 2026-03-26 |
+| Tool metadata | `tools/api-fuzzer/tool.yaml` | 已實作 | 2026-03-26 |
+| MCP 配置 | `mcp_servers.json`（api-fuzzer entry） | 已實作 | 2026-03-26 |
+| MCP Client 整合 | `backend/app/services/mcp_client_manager.py` | 已實作（auto-discover） | 2026-03-26 |
+| DB Seed | `backend/app/database/seed.py`（api-fuzzer entry） | 已實作 | 2026-03-26 |
+| 單元測試 | `backend/tests/test_mcp_api_fuzzer.py` | 已實作 | 2026-03-26 |
+| 前端 e2e 測試 | （待實作） | — | 2026-03-26 |
+
+---
+
+## 可觀測性（Observability）
+
+| 指標名稱 | 類型 | 標籤 | 告警條件 |
+|----------|------|------|---------|
+| `mcp.api_fuzzer.tool_call.duration_ms` | Histogram | `tool_name`, `target` | > 180s (api_endpoint_enum) |
+| `mcp.api_fuzzer.tool_call.success` | Counter | `tool_name` | — |
+| `mcp.api_fuzzer.tool_call.error` | Counter | `tool_name`, `error_type` | > 5/min |
+| `mcp.api_fuzzer.facts_produced` | Counter | `trait_prefix` (api.schema/api.endpoint/api.vuln) | — |
+| `mcp.api_fuzzer.vulns_found` | Counter | `vuln_type` (bola/idor/injection/overflow) | — |
+| `mcp.api_fuzzer.rate_limit.throttled` | Counter | — | > 10/min |
+| `mcp.api_fuzzer.waf_blocking` | Counter | `tool_name` | > 0 |
+| Log: `api_fuzzer.scan_complete` | Structured log | tool_name, target, duration_ms, fact_count | — |
+| Log: `api_fuzzer.dependency_missing` | ERROR log | binary_name (ffuf) | 任何出現 |
+| Log: `api_fuzzer.scope_violation` | WARNING log | target | 任何出現 |
 
 ---
 
@@ -752,4 +846,3 @@ def parse_openapi_spec(spec_data: dict) -> dict:
     ...
 ```
 
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

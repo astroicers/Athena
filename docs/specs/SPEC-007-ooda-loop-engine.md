@@ -247,6 +247,116 @@ class C5ISRMapper:
 
 ---
 
+## 🔗 副作用與連動（Side Effects）
+
+| 副作用 | 觸發條件 | 影響的系統/模組 | 驗證方式 |
+|--------|---------|----------------|----------|
+| Operation 狀態更新 | `ooda_controller.trigger_cycle()` 每階段轉換 | `Operation.current_ooda_phase`（DB）、前端 `useOODA` hook | `GET /api/operations/{id}` 確認 `current_ooda_phase` 正確 |
+| WebSocket 事件推送 | 每個 OODA 階段完成 | `ws_manager` → 前端 C5ISR Board、Planner、Monitor | browser console 觀察 `ooda.phase`、`recommendation`、`execution.update` 事件 |
+| C5ISR 六域 health 更新 | `c5isr_mapper.update()` 在每次迭代 Observe 階段 | `C5ISRStatus[]`（DB）、前端 DomainCard | `GET /api/c5isr` 確認 6 域 health 值更新 |
+| TechniqueExecution 記錄建立 | `engine_router.execute()` 執行技術 | `technique_execution` 表、前端 Navigator 矩陣 | `GET /api/operations/{id}/executions` 確認新記錄 |
+| PentestGPTRecommendation 儲存 | `orient_engine.analyze()` 完成 | `recommendation` 表、前端 RecommendCard | `GET /api/operations/{id}/recommendations` 確認新推薦 |
+| Fact 記錄建立 | `fact_collector.collect()` 萃取情報 | `fact` 表、下次 Orient 的 prompt | DB 查詢確認新 Fact 記錄 |
+
+### 🔄 Rollback Plan
+
+| 項目 | 說明 |
+|------|------|
+| **回滾步驟** | `git revert` 移除 6 個 service 檔案（`ooda_controller.py`、`fact_collector.py`、`orient_engine.py`、`decision_engine.py`（現為 `ooda_trigger.py`）、`engine_router.py`、`c5isr_mapper.py`）；移除 `/ooda/trigger` 路由 |
+| **資料影響** | 已產生的 `OODAIteration`、`Fact`、`TechniqueExecution`、`PentestGPTRecommendation` 記錄仍存於 DB，不影響系統穩定性 |
+| **回滾驗證** | `POST /api/operations/{id}/ooda/trigger` 回傳 404；既有 API 端點（`/operations`、`/targets`）正常運作 |
+| **回滾已測試** | ☐ 是 / ☑ 否（OODA 服務為 backend 核心模組，回滾需整體驗證） |
+
+## 🧪 測試矩陣（Test Matrix）
+
+| # | 類型 | 輸入條件 | 預期結果 | 對應場景 |
+|---|------|---------|---------|---------|
+| P1 | ✅ 正向 | `POST /ooda/trigger` 觸發完整循環（MOCK_LLM=true） | 依序執行 Observe→Orient→Decide→Act，建立 OODAIteration（status=completed） | S1 |
+| P2 | ✅ 正向 | Orient 階段呼叫 PentestGPT（mock） | 回傳 `PentestGPTRecommendation` 含 3 個 TacticalOption、confidence=0.87 | S1 |
+| P3 | ✅ 正向 | Decide 階段評估 LOW 風險技術（automation_mode=semi_auto） | `auto_approved=True`，直接進入 Act 階段 | S1 |
+| N1 | ❌ 負向 | 作戰 ID 不存在 | 回傳 404 HTTPException | S2 |
+| N2 | ❌ 負向 | Caldera client 不可用 | `engine_router` 記錄 error，TechniqueExecution status=failed | S2 |
+| N3 | ❌ 負向 | LLM API 全部不可用（非 mock 模式） | `orient_engine` fallback 至 mock recommendation | S2 |
+| B1 | 🔶 邊界 | `automation_mode=manual` | 所有決策 `auto_approved=False`，不自動執行 Act | S3 |
+| B2 | 🔶 邊界 | `confidence < 0.5` 的 PentestGPT 回應 | 強制人工審核（`needs_confirmation=True`），無論 risk_level | S3 |
+| B3 | 🔶 邊界 | WebSocket 推送失敗 | OODA 循環不中斷（fire-and-forget），日誌記錄推送失敗 | S4 |
+
+## 🎬 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: SPEC-007 OODA 循環引擎
+  作為 Athena 平台開發者
+  我想要 OODA 循環引擎驅動 Observe→Orient→Decide→Act 完整迭代
+  以便 PentestGPT 情報分析自動化驅動戰術決策
+
+  Background:
+    Given 後端已啟動且種子資料（OP-2024-017）已載入
+    And MOCK_LLM=true 環境變數已設定
+    And 作戰 operation_id 存在且為 active 狀態
+
+  Scenario: S1 - 完整 OODA 循環成功執行
+    Given 作戰含 5 個 Target 和 4 個 Agent
+    When POST /api/operations/{id}/ooda/trigger
+    Then Observe 階段收集 Fact 列表
+    And Orient 階段回傳含 3 個 TacticalOption 的 PentestGPTRecommendation
+    And Decide 階段依風險閾值評估 auto_approved
+    And Act 階段透過 engine_router 執行技術
+    And OODAIteration 記錄建立且 status=completed
+
+  Scenario: S2 - 作戰不存在時回傳 404
+    Given operation_id 為不存在的 UUID
+    When POST /api/operations/{id}/ooda/trigger
+    Then 回傳 HTTP 404
+    And response body 含 "not found" 訊息
+
+  Scenario: S3 - Manual 模式阻止自動執行
+    Given 作戰 automation_mode=manual
+    When POST /api/operations/{id}/ooda/trigger
+    Then Decide 階段所有決策 auto_approved=False
+    And Act 階段不自動執行（等待人工批准）
+
+  Scenario: S4 - WebSocket 推送失敗不阻塞循環
+    Given WebSocket 連線不存在（無前端連線）
+    When POST /api/operations/{id}/ooda/trigger
+    Then OODA 循環完整執行不中斷
+    And 日誌記錄 WebSocket 推送失敗事件
+```
+
+## 🔍 追溯性（Traceability）
+
+| 類型 | 檔案路徑 |
+|------|---------|
+| 實作 — OODA 控制器 | `backend/app/services/ooda_controller.py` |
+| 實作 — Fact 收集器 | `backend/app/services/fact_collector.py` |
+| 實作 — Orient 引擎 | `backend/app/services/orient_engine.py` |
+| 實作 — OODA 觸發/決策 | `backend/app/services/ooda_trigger.py` |
+| 實作 — 引擎路由 | `backend/app/services/engine_router.py` |
+| 實作 — C5ISR 映射 | `backend/app/services/c5isr_mapper.py` |
+| 實作 — OODA 排程 | `backend/app/services/ooda_scheduler.py` |
+| 實作 — OODA 路由 | `backend/app/routers/ooda.py` |
+| 實作 — C5ISR 路由 | `backend/app/routers/c5isr.py` |
+| 實作 — WebSocket | `backend/app/ws_manager.py` |
+| 測試 — OODA 服務 | `backend/tests/test_spec_007_ooda_services.py` |
+| 測試 — OODA 路由 | `backend/tests/test_ooda_router.py` |
+| 測試 — Orient 引擎 | `backend/tests/test_orient_engine.py` |
+| 測試 — OODA 自動迴圈 | `backend/tests/test_ooda_auto_loop.py` |
+| 測試 — OODA 時間軸 | `backend/tests/test_ooda_timeline_detail.py` |
+| 測試 — E2E OODA | `backend/tests/test_e2e_ooda_loop.py` |
+| 測試 — C5ISR 報告 | `backend/tests/test_c5isr_reports.py`, `test_c5isr_domain_reports.py` |
+| 測試 — 前端 E2E | `frontend/e2e/sit-ooda-lifecycle.spec.ts` |
+
+## 👁️ 可觀測性（Observability）
+
+| 項目 | 說明 |
+|------|------|
+| **關鍵指標** | OODA 循環完成時間（ms）、各階段延遲、LLM API 呼叫成功率、引擎路由分佈 |
+| **日誌** | 每階段轉換記錄 `INFO`；LLM 呼叫記錄 request/response 摘要；引擎執行記錄 technique_id + status |
+| **錯誤追蹤** | LLM API 失敗 → `WARNING` + fallback 記錄；引擎不可用 → `ERROR` + execution failed 記錄 |
+| **健康檢查** | `GET /api/health` → `services.llm` 狀態（mock/claude/openai/unavailable） |
+| **WebSocket 事件** | `ooda.phase`、`recommendation`、`execution.update`、`c5isr.update`、`fact.new` |
+
+---
+
 ## ✅ 驗收標準（Done When）
 
 - [x] `make test-filter FILTER=spec_007` 全數通過
@@ -285,5 +395,3 @@ class C5ISRMapper:
 - SPEC-004：API 路由（依賴——`/ooda/trigger`）
 - SPEC-008：執行引擎客戶端（依賴——CalderaClient/ShannonClient）
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

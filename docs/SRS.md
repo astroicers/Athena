@@ -7,7 +7,7 @@
 | **專案名稱** | Athena — C5ISR + OODA AI 驅動網路攻擊指揮平台 |
 | **版本** | v0.1.0 |
 | **最後更新** | 2026-03-25 |
-| **狀態** | Draft |
+| **狀態** | Accepted |
 | **授權** | Business Source License 1.1 (BSL-1.1) |
 | **聯絡** | azz093093.830330@gmail.com |
 

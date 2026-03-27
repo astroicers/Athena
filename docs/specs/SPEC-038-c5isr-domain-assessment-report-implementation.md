@@ -493,18 +493,16 @@ export interface C5ISRStatus {
 
 ## 🔗 副作用與連動（Side Effects）
 
-| 本功能的狀態變動 | 受影響的既有功能 | 預期行為 |
-|-----------------|----------------|---------|
-| `detail` 欄位改存 JSON（`DomainReport.to_json()`） | `GET /api/operations/{id}/c5isr` 回傳 | 回傳 JSON 字串；前端 parse 後使用。DB 內仍為 TEXT，不影響 schema |
-| `health_pct` 計算公式全面改變 | 六角儀表顯示數值 | Command 域不再自動膨脹至 100%；Comms 域不再硬編碼 60%；所有域 health_pct 基於加權指標 |
-| `ws_manager` 新增 `active_connection_count()` | 無既有依賴 | 純新增方法，無副作用 |
-| `ws_manager` 新增 `_broadcast_total` / `_broadcast_success` | `broadcast()` 方法 | 極微量開銷（兩個 int 累加），可忽略 |
-| `numerator` / `denominator` / `metric_label` 語義改變 | 前端 DomainCard 摘要顯示 | 改為第一個 metric 的對應值，需更新前端顯示邏輯 |
-| `c5isr.update` WebSocket payload 新增 `report` 欄位 | 前端 WebSocket handler | 需更新 handler 以 parse `report` 欄位 |
-| Comms 域查詢 `tool_registry` | 無既有依賴 | 新增 1 次 DB 查詢 |
-| Cyber 域 LEFT JOIN `techniques` 表 | 無既有依賴 | 新增 JOIN 查詢；`technique_id` 可能為非標準 mitre_id（如 `T1021.004_priv`），LEFT JOIN 確保不遺漏 |
-| ISR 域查詢 `attack_graph_nodes` | 無既有依賴 | 新增 1 次 DB 查詢 |
-| 每次 OODA 迭代 DB 查詢數增加 | OODA 迭代效能 | 從 ~5 次增至 ~15 次查詢；SQLite WAL 模式下預計增加 < 50ms |
+| 說明 | 觸發條件 | 受影響模組 | 驗證方式 |
+|------|---------|-----------|---------|
+| `detail` 欄位改存 JSON（DomainReport.to_json()） | 每次 OODA 迭代觸發 C5ISRMapper.update() | `GET /api/operations/{id}/c5isr`、前端 DomainCard | API 回傳可 parse 的 JSON；前端正常渲染 |
+| `health_pct` 計算公式全面改變 | 每次 C5ISRMapper.update() | 六角儀表顯示數值 | Command 域不自動膨脹至 100%；Comms 域非硬編碼 60% |
+| ws_manager 新增 `active_connection_count()` | Comms 域報告建構 | 無既有依賴（純新增） | 單元測試驗證回傳值正確 |
+| ws_manager 新增廣播計數 | 每次 `broadcast()` 呼叫 | Comms 域 broadcast_success 指標 | 計數正確且開銷可忽略 |
+| numerator/denominator/metric_label 語義改變 | c5isr.update WS payload | 前端 DomainCard 摘要顯示 | 確認前端正確解讀新語義 |
+| c5isr.update payload 新增 report 欄位 | 每次 C5ISRMapper.update() | 前端 WebSocket handler | 舊前端忽略新欄位不報錯 |
+| OODA 迭代 DB 查詢數增加（~5→~15） | 每次 C5ISRMapper.update() | OODA 迭代效能 | SQLite WAL 模式下增加 < 50ms |
+| Cyber 域 LEFT JOIN techniques 表 | Cyber 域報告建構 | technique_executions 查詢 | 非標準 mitre_id 不遺漏 |
 
 ---
 
@@ -521,12 +519,95 @@ export interface C5ISRStatus {
 - **Case 9**：`recommendations` 表中 `accepted` 為 NULL（尚未決定）— 不計入 `accepted_count`，僅計入 `total_recommendations`
 - **Case 10**：`agents.last_beacon` 為 NULL — 該 agent 排除於 beacon 新鮮度計算之外
 
-### 回退方案（Rollback Plan）
+### Rollback Plan
 
-- **回退方式**：revert commit(s)
-- **不可逆評估**：此變更完全可逆。`detail` 欄位仍為 TEXT 型別，回退後重新寫入純文字即可。`health_pct` 回退後回到舊公式計算
-- **資料影響**：回退後 `detail` 欄位內的 JSON 會被舊版代碼當作純文字顯示，但下一次 OODA 迭代會覆蓋為舊格式。`ws_manager` 的廣播計數為記憶體變數，重啟即清除
-- **DB migration 需求**：無。不需要新增/移除欄位或索引
+| 項目 | 內容 |
+|------|------|
+| **回退步驟** | 1. Revert commit(s) 2. 下一次 OODA 迭代自動覆蓋 detail 為舊格式 3. 無 DB migration 需求 |
+| **資料影響** | detail 欄位內的 JSON 被舊版代碼當純文字顯示，下一次迭代自動覆蓋；ws_manager 廣播計數為記憶體變數，重啟即清除 |
+| **驗證方式** | `make test` 通過 + 六角儀表正常顯示舊格式 health_pct |
+| **已測試** | 否（Phase 4 測試覆蓋回退安全性） |
+
+---
+
+## 🧪 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 預期結果 | 參考場景 |
+|----|------|------|---------|---------|
+| P1 | 正向 | 完整 OODA 迭代後 6 域產出 DomainReport | 每個報告含 executive_summary、metrics、risk_vectors | S1 |
+| P2 | 正向 | DomainReport.to_json() / from_json() round-trip | 序列化後反序列化結果一致 | S1 |
+| P3 | 正向 | DomainCard 展開顯示完整報告 | 6 個區段皆有非空內容 | S1 |
+| N1 | 負向 | detail 欄位 JSON 格式損壞 | DomainReport.from_json() 回傳空報告，不 raise | S2 |
+| N2 | 負向 | 前端收到不含 report 欄位的事件 | DomainCard 不顯示展開指示器 | S2 |
+| B1 | 邊界 | Operation 剛建立、無 OODA 迭代 | 所有域使用基線值，executive_summary 為描述性文字 | S1 |
+| B2 | 邊界 | 無 agents、無 targets | Control/Computers 域指標為 0，status=CRITICAL | S2 |
+| B3 | 邊界 | 所有 targets 已 compromised 且 Root | Computers 域 health_pct=100，risk_vectors 含 INFO | S1 |
+| B4 | 邊界 | WebSocket 無連線（headless 模式） | Comms 域 ws_connections=0 但 health_pct > 0 | S2 |
+
+---
+
+## 🎬 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: C5ISR 域評估報告實作
+  Background:
+    Given 存在一個活躍的 operation 且至少完成 1 次 OODA 迭代
+    And C5ISRMapper.update() 已執行至少一次
+
+  Scenario: 六域產出結構化報告並透過 WebSocket 廣播
+    When C5ISRMapper.update() 完成計算
+    Then c5isr.update WebSocket 事件包含 6 個 domain
+    And 每個 domain 包含 report 欄位
+    And 每個 report 的 executive_summary 為非空字串
+    And 每個 report 的 health_pct 與 sum(metric.value * metric.weight) 誤差 <= 0.1
+    And detail 欄位值等於 DomainReport.executive_summary（向後相容）
+
+  Scenario: DomainCard 展開收合功能
+    Given 前端已收到包含 report 的 c5isr.update 事件
+    When 使用者點擊 DomainCard
+    Then 卡片展開顯示指標表格、資產清冊、戰術評估、風險向量、建議行動、跨域影響
+    And 風險向量依 severity 著色（CRIT=athena-error, WARN=athena-warning, INFO=athena-info）
+    When 使用者再次點擊 DomainCard
+    Then 卡片收合回原始狀態
+
+  Scenario: 向後相容 — 舊前端不含 report 欄位
+    Given 前端收到不含 report 欄位的 c5isr.update 事件
+    Then DomainCard 不顯示展開指示器
+    And 點擊卡片無效果
+    And detail 和 health_pct 正常顯示
+```
+
+---
+
+## 📎 追溯性（Traceability）
+
+| 類型 | 路徑 | 說明 | 日期 |
+|------|------|------|------|
+| 後端實作 | `backend/app/services/c5isr_mapper.py` | DomainReport dataclass + 6 個 _build_X_report() 方法 | 2026-03-26 |
+| 後端實作 | `backend/app/ws_manager.py` | active_connection_count() + 廣播計數 | 2026-03-26 |
+| 後端實作 | `backend/app/routers/c5isr.py` | C5ISR REST API | 2026-03-26 |
+| 後端實作 | `backend/app/database/manager.py` | c5isr_statuses 表定義（無 schema 變更） | 2026-03-26 |
+| 前端實作 | `frontend/src/types/c5isr.ts` | DomainMetric, RiskVector, DomainReport TypeScript 型別 | 2026-03-26 |
+| 前端實作 | `frontend/src/components/c5isr/C5ISRDomainCard.tsx` | 展開/收合 UI | 2026-03-26 |
+| 後端測試 | `backend/tests/test_c5isr_domain_reports.py` | 6 域報告單元測試 | 2026-03-26 |
+| 後端測試 | `backend/tests/test_c5isr_reports.py` | C5ISR 報告整合測試 | 2026-03-26 |
+| 後端測試 | `backend/tests/test_c5isr_router.py` | C5ISR API 路由測試 | 2026-03-26 |
+| E2E 測試 | `frontend/e2e/sit-tools-c5isr.spec.ts` | C5ISR SIT 測試 | 2026-03-26 |
+| E2E 測試 | `frontend/e2e/sit-websocket-events.spec.ts` | WebSocket 事件 SIT 測試 | 2026-03-26 |
+
+---
+
+## 📊 可觀測性（Observability）
+
+| 層級 | 項目 | 說明 |
+|------|------|------|
+| 後端 Metrics | `c5isr_update_duration_ms` | 每次 C5ISRMapper.update() 執行時間（含 ~15 次 DB 查詢） |
+| 後端 Metrics | `c5isr_domain_health_pct` | 每域 health_pct 數值（per domain, per operation） |
+| 後端 Logs | `INFO: C5ISR update completed for operation {op_id}` | 更新完成 log，含 6 域 health_pct 摘要 |
+| 後端 Logs | `WARNING: DomainReport.from_json() parse failed` | JSON 損壞時的 warning log |
+| 後端 Alerts | C5ISR update 耗時 > 200ms | 效能退化偵測（預期 < 50ms） |
+| 後端故障偵測 | 任一域 _build_X_report() 拋出未預期 exception | 監控 error log，確保單域失敗不影響其他域 |
+| 前端 | N/A | 前端為展示層，無額外可觀測性需求 |
 
 ---
 
@@ -614,5 +695,3 @@ export interface C5ISRStatus {
   - `frontend/src/components/c5isr/__tests__/DomainCard.test.tsx` — 現有測試（需擴充）
   - `frontend/messages/en.json` / `frontend/messages/zh-TW.json` — i18n 鍵值新增
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

@@ -534,17 +534,16 @@ async def reload_technique_rules():
 
 ## 🔗 副作用與連動（Side Effects）
 
-| 本功能的狀態變動 | 受影響的既有功能 | 預期行為 |
-|-----------------|----------------|---------|
-| `_PREREQUISITE_RULES` 從硬編碼改為 YAML 載入 | `_build_graph_in_memory()` 圖建構 | 行為不變，規則來源改為 YAML |
-| `_RULE_BY_TECHNIQUE` 改為動態載入 | `_build_edges()`、`prune_dead_branches()` | 行為不變，lookup 方式不變 |
-| `compute_edge_weight()` 改為 `compute_edge_cost()` | `compute_recommended_path()` Dijkstra | 移除 `cost = 1.0 - weight` 反轉，直接使用 weight 作為成本 |
-| `compute_edge_weight()` 改為 `compute_edge_cost()` | `build_orient_summary()` 中的 total_weight 加總 | 語意從「好處加總」變為「成本加總」，數值解讀方式改變 |
-| `compute_edge_weight()` 改為 `compute_edge_cost()` | `_break_cycles()` 中的 min weight 選擇 | 語意從「移除最低好處邊」變為「移除最低成本邊」-- 需確認此行為是否仍正確（移除最低成本邊 = 保留較高成本邊 = 保守策略）|
-| 規則數量從 13 增至 55 | 每個 target 產生的 AttackNode 數量增至 55 | 圖的記憶體使用量和建構時間增加（預估在可接受範圍） |
-| 修剪邏輯修正 | `prune_dead_branches()` | 替代技術不再被錯誤修剪，攻擊圖保留更多可行路徑 |
-| `TechniqueRule` 新增 `platforms` 欄位 | 目前 `_build_graph_in_memory()` 未依平台過濾 | Phase 1 不過濾，後續可依 target OS 過濾 |
-| `TechniqueRule` 新增 `description` 欄位 | 目前無使用方 | 僅供文件化和除錯使用 |
+| 說明 | 觸發條件 | 受影響模組 | 驗證方式 |
+|------|---------|-----------|---------|
+| `_PREREQUISITE_RULES` 從硬編碼改為 YAML 載入 | 應用啟動時 `_load_rules()` | `_build_graph_in_memory()`、`_build_edges()`、`prune_dead_branches()` | `len(_PREREQUISITE_RULES) >= 50` 斷言 |
+| `compute_edge_weight()` 改為 `compute_edge_cost()` | 任何邊權計算 | `compute_recommended_path()` Dijkstra、`build_orient_summary()`、`_break_cycles()` | 成本公式單元測試 + 路徑品質測試 |
+| Dijkstra 移除 `cost = 1.0 - weight` 反轉 | 路徑計算 | `compute_recommended_path()` | 高 confidence + 高 IG 路徑 cost < 低 confidence + 低 IG 路徑 |
+| `build_orient_summary()` total_weight 語意改變 | Orient 報告產出 | 數值解讀從「好處加總」變為「成本加總」 | Orient 測試驗證語意正確 |
+| 規則數量從 13 增至 55 | YAML 載入 | 每個 target 的 AttackNode 數量增至 55 | 記憶體和建構時間在可接受範圍 |
+| 修剪邏輯修正（alternatives 保護） | `prune_dead_branches()` 執行 | 替代技術的存活狀態 | T1110.001 失敗後 T1190 仍為 PENDING |
+| `TechniqueRule` 新增 `platforms`/`description` 欄位 | 規則載入 | Phase 1 不過濾平台 | 欄位存在且有預設值 |
+| Hot-reload API 端點 | POST /admin/rules/reload | `_PREREQUISITE_RULES` 原子性替換 | reload 後規則數量正確 |
 
 ---
 
@@ -559,11 +558,98 @@ async def reload_technique_rules():
 - **Case 7**：空的 `rules` 清單 — Pydantic `min_length=1` 驗證阻擋
 - **Case 8**：`_break_cycles()` 語意在新公式下的影響 — 新公式下 weight 直接為成本值，`min(cycle_edges, key=lambda e: e.weight)` 移除成本最低的邊。這表示移除「最容易」的路徑以打破循環。若需保留最容易路徑，應改為 `max()`。建議 Phase 1 保持 `min()` 不變，後續依實測結果調整
 
-### 回退方案（Rollback Plan）
+### Rollback Plan
 
-- **回退方式**：revert commit + 刪除 `backend/app/data/technique_rules.yaml`
-- **不可逆評估**：此變更完全可逆。`technique_rules.yaml` 為新檔案，`TechniqueRule` 的新欄位有 default 值，刪除後不影響既有程式碼
-- **資料影響**：若已有使用新規則產生的攻擊圖存於資料庫，回退後這些圖的節點 technique_id 可能無法對應到規則。需執行 `DELETE FROM attack_graph_nodes WHERE technique_id NOT IN (...)` 清理
+| 項目 | 內容 |
+|------|------|
+| **回退步驟** | 1. Revert commit(s) 2. 刪除 `backend/app/data/technique_rules.yaml` 3. 清理新規則產生的攻擊圖節點 |
+| **資料影響** | 已使用新規則產生的 attack_graph_nodes 需執行 `DELETE FROM attack_graph_nodes WHERE technique_id NOT IN (原 13 條 ID)`；`TechniqueRule` 新欄位有 default 值，刪除後不影響既有程式碼 |
+| **驗證方式** | `make test-filter FILTER=attack_graph` 通過 + `_PREREQUISITE_RULES` 恢復為 13 條硬編碼規則 |
+| **已測試** | 否（Phase 4 整合測試覆蓋） |
+
+---
+
+## 🧪 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 預期結果 | 參考場景 |
+|----|------|------|---------|---------|
+| P1 | 正向 | YAML 載入 55 條規則，覆蓋 13 個戰術 | `len(_PREREQUISITE_RULES) >= 50`，tactic 數 >= 8 | S1 |
+| P2 | 正向 | 成本公式：高 conf + 高 IG + low risk → low cost | cost 約 0.08 | S1 |
+| P3 | 正向 | 修剪正確性：T1110.001 失敗後 T1190 存活 | T1190 status = PENDING | S1 |
+| P4 | 正向 | Hot-reload 端點正確重載規則 | POST /admin/rules/reload 回傳 ok | S1 |
+| N1 | 負向 | YAML 檔案不存在 | `FileNotFoundError` + 應用啟動失敗 | S2 |
+| N2 | 負向 | Pydantic 驗證失敗（confidence > 1.0） | `ValidationError` 含欄位名稱 | S2 |
+| N3 | 負向 | 空 rules 清單 | Pydantic `min_length=1` 阻擋 | S2 |
+| B1 | 邊界 | YAML 語法錯誤 | `yaml.YAMLError` + 應用啟動失敗 | S2 |
+| B2 | 邊界 | enables 引用不存在的 technique_id | warning log 但不阻擋載入 | S1 |
+| B3 | 邊界 | 重複 technique_id | 後者覆蓋前者 + warning log | S1 |
+| B4 | 邊界 | 成本公式：低 conf + 低 IG + high risk + high effort | cost 約 0.53 | S2 |
+
+---
+
+## 🎬 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: Attack Graph YAML Externalization 與 50+ 規則
+  Background:
+    Given 應用已啟動
+    And backend/app/data/technique_rules.yaml 存在且包含 55 條規則
+
+  Scenario: YAML 規則載入與 Pydantic 驗證
+    When 應用啟動並執行 _load_rules()
+    Then _PREREQUISITE_RULES 包含至少 50 條規則
+    And 不重複的 tactic_id 數量 >= 8
+    And 載入時間 < 100ms
+    And 無 error 或 warning 日誌
+
+  Scenario: 修剪邏輯保護替代技術
+    Given 攻擊圖包含 T1110.001 和 T1190 節點（T1190 在 T1110.001 的 alternatives 中）
+    And T1110.001 和 T1190 共享 service.open_port 前置條件
+    When T1110.001 執行失敗並觸發 prune_dead_branches()
+    Then T1110.001 status = FAILED
+    And T1190 status 仍為 PENDING（受 alternatives 保護）
+    And 與 T1110.001 共享前置條件但不在 alternatives 的兄弟節點被修剪
+
+  Scenario: 直接成本公式語意正確
+    Given 節點 A 有 confidence=0.95, information_gain=0.9, risk_level=low, effort=1
+    And 節點 B 有 confidence=0.4, information_gain=0.3, risk_level=high, effort=4
+    When 計算 compute_edge_cost()
+    Then 節點 A 的 cost < 節點 B 的 cost
+    And Dijkstra 推薦包含節點 A 的路徑
+```
+
+---
+
+## 📎 追溯性（Traceability）
+
+| 類型 | 路徑 | 說明 | 日期 |
+|------|------|------|------|
+| 後端實作 | `backend/app/services/attack_graph_engine.py` | 規則載入 _load_rules()、成本公式 compute_edge_cost()、修剪邏輯修正 | 2026-03-26 |
+| 後端實作 | `backend/app/models/attack_graph.py` | TechniqueRule 擴展 + TechniqueRuleSchema Pydantic model | 2026-03-26 |
+| 後端實作 | `backend/app/data/technique_rules.yaml` | 55 條 MITRE ATT&CK 規則 YAML 檔案 | 2026-03-26 |
+| 後端實作 | `backend/app/routers/admin.py` | POST /admin/rules/reload hot-reload 端點 | 2026-03-26 |
+| 後端測試 | `backend/tests/test_attack_graph_yaml.py` | YAML 載入 + Pydantic 驗證測試 | 2026-03-26 |
+| 後端測試 | `backend/tests/test_attack_graph.py` | 攻擊圖引擎整合測試 | 2026-03-26 |
+| 後端測試 | `backend/tests/test_attack_graph_router.py` | 攻擊圖 API 路由測試 | 2026-03-26 |
+| 後端測試 | `backend/tests/test_orient_engine.py` | Orient 引擎測試（build_orient_summary 語意驗證） | 2026-03-26 |
+| E2E 測試 | `frontend/e2e/sit-ooda-lifecycle.spec.ts` | OODA 生命週期 SIT 測試 | 2026-03-26 |
+
+---
+
+## 📊 可觀測性（Observability）
+
+| 層級 | 項目 | 說明 |
+|------|------|------|
+| 後端 Metrics | `technique_rules_count` | 載入的規則數量（啟動時 + hot-reload 後） |
+| 後端 Metrics | `technique_rules_load_ms` | YAML 載入 + Pydantic 驗證耗時 |
+| 後端 Metrics | `attack_graph_nodes_per_target` | 每個 target 產生的 AttackNode 數量 |
+| 後端 Logs | `INFO: Loaded N technique rules from PATH in Xms` | 規則載入完成 log |
+| 後端 Logs | `INFO: Hot-reloaded N technique rules` | hot-reload 完成 log |
+| 後端 Logs | `WARNING: enables references non-existent technique_id` | 前向引用 warning |
+| 後端 Logs | `WARNING: Duplicate technique_id, later rule overrides` | 重複規則 warning |
+| 後端 Alerts | 規則載入失敗（FileNotFoundError / ValidationError） | 應用啟動失敗告警 |
+| 後端故障偵測 | YAML 檔案損壞或缺失 | 啟動時拋出明確錯誤訊息含路徑和行號 |
+| 前端 | N/A | 本 SPEC 無前端變更 |
 
 ---
 
@@ -640,5 +726,3 @@ async def reload_technique_rules():
   - SPEC-031（攻擊圖規格書）
   - SPEC-037（OODA Access Recovery — 參考 `credential.ssh.invalidated` fact 排除邏輯）
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

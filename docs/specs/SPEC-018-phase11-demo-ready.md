@@ -99,5 +99,104 @@
 - `frontend/src/components/layout/client-shell.tsx`
 - `frontend/src/lib/api.ts`
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->
+---
+
+## 副作用與連動（Side Effects）
+
+| 副作用 | 觸發條件 | 影響模組 | 驗證方式 |
+|--------|----------|----------|----------|
+| OODA side-effects 寫入 mission_steps / log_entries | `ooda_controller.trigger_cycle()` 執行 | `backend/app/services/ooda_controller.py`、DB mission_steps / log_entries 表 | `test_spec_007_ooda_services.py` + `test_e2e_ooda_loop.py` |
+| WebSocket 廣播 8 種事件 | OODA 各階段完成時 | 前端 4 頁面（c5isr / navigator / planner / monitor） | `frontend/e2e/full-workflow.spec.ts` 驗證即時更新 |
+| Toast 全域注入 | `ToastContext.tsx` 包裹 `client-shell.tsx` | 前端所有頁面的錯誤處理 | `frontend/src/contexts/__tests__/ToastContext.test.tsx` |
+| Report / Admin router 新增 | `main.py` 註冊新 router | `backend/app/main.py` 路由表 | `test_reports.py` + `test_admin.py` |
+
+---
+
+## Rollback Plan
+
+| 回滾步驟 | 資料影響 | 回滾驗證 | 回滾已測試 |
+|----------|----------|----------|------------|
+| 1. 還原 `ooda_controller.py` side-effects 寫入邏輯 | mission_steps 不再自動推進；log_entries 不再自動寫入 | `make test` 通過；OODA trigger 仍可呼叫（無 side-effect） | 是（遷移前行為） |
+| 2. 移除 Toast / PageLoading 元件 | 前端錯誤回到靜默模式 | 前端 `npm run build` 成功；頁面可載入 | 是 |
+| 3. 移除 reports / admin router | `/report` `/reset` API 不可用 | `make test` 通過；既有路由不受影響 | 是 |
+
+---
+
+## 測試矩陣（Test Matrix）
+
+| ID | 類型 | 場景 | 輸入 | 預期結果 | 場景參照 |
+|----|------|------|------|----------|----------|
+| P1 | 正向 | OODA 觸發後 mission_steps 推進 | `POST /api/operations/op-0001/ooda/trigger` | mission_steps 含 running/completed 狀態 | S1 |
+| P2 | 正向 | 報告匯出含 10 個 key | `GET /api/operations/op-0001/report` | 回傳 JSON 含 10 個頂層 key | S1 |
+| N1 | 負向 | 後端掛掉時前端顯示 Toast | API server 不可達 | Toast 顯示連線錯誤訊息 | S2 |
+| N2 | 負向 | OODA 非 idle 時重複觸發 | 連續兩次 POST trigger | 第二次回傳 409 Conflict | S2 |
+| B1 | 邊界 | Reset 後再觸發 OODA | `POST /reset` → `POST /ooda/trigger` | iteration_number 從 1 重新計算 | S3 |
+| B2 | 邊界 | WebSocket 斷線後重連 | 前端 ws 斷線 | `useWebSocket` 自動重連；重連後收到最新事件 | S3 |
+
+---
+
+## 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: Phase 11 Demo 就緒 — OODA 資料完整性與 UX
+
+  Background:
+    Given 後端服務已啟動
+    And 作戰 "op-0001" 已建立且包含至少一個 target
+
+  Scenario: S1 — OODA 觸發後 mission_steps 與 log_entries 更新
+    Given 作戰 "op-0001" 的 ooda_state 為 "idle"
+    When 發送 POST /api/operations/op-0001/ooda/trigger
+    Then 回傳 200 且 ooda_state 不為 "idle"
+    And GET /api/operations/op-0001/logs 回傳至少 4 筆 log entries
+    And mission_steps 中至少一筆狀態為 "completed"
+
+  Scenario: S2 — 後端不可達時前端顯示 Toast 錯誤通知
+    Given 前端頁面已載入
+    When 後端服務中斷
+    And 前端發起 API 請求
+    Then 畫面顯示 Toast 錯誤通知
+    And Toast 包含連線錯誤相關訊息
+
+  Scenario: S3 — Reset 後 OODA 迭代從 1 重新計算
+    Given 作戰 "op-0001" 已執行過至少一輪 OODA
+    When 發送 POST /api/operations/op-0001/reset
+    And 發送 POST /api/operations/op-0001/ooda/trigger
+    Then OODA iteration_number 為 1
+    And mission_steps 狀態全部重置
+```
+
+---
+
+## 追溯性（Traceability）
+
+| 項目 | 路徑 / 識別碼 | 狀態 |
+|------|---------------|------|
+| 規格文件 | `docs/specs/SPEC-018-phase11-demo-ready.md` | Done |
+| OODA Controller | `backend/app/services/ooda_controller.py` | 已修改 |
+| Reports Router | `backend/app/routers/reports.py` | 已新建 |
+| Admin Router | `backend/app/routers/admin.py` | 已新建 |
+| Toast Context | `frontend/src/contexts/ToastContext.tsx` | 已新建 |
+| Toast 元件 | `frontend/src/components/ui/Toast.tsx` | 已新建 |
+| PageLoading 元件 | `frontend/src/components/ui/PageLoading.tsx` | 已新建 |
+| RecommendationPanel | `frontend/src/components/ooda/RecommendationPanel.tsx` | 已新建 |
+| C5ISR 頁面 | `frontend/src/app/c5isr/page.tsx` | 已修改（WebSocket） |
+| 後端測試 — Reports | `backend/tests/test_reports.py` | 5 tests 通過 |
+| 後端測試 — Admin | `backend/tests/test_admin.py` | 5 tests 通過 |
+| 前端測試 — Toast | `frontend/src/contexts/__tests__/ToastContext.test.tsx` | 4 tests 通過 |
+| 前端測試 — Toast UI | `frontend/src/components/ui/__tests__/Toast.test.tsx` | 3 tests 通過 |
+| 前端測試 — PageLoading | `frontend/src/components/ui/__tests__/PageLoading.test.tsx` | 2 tests 通過 |
+| 前端測試 — RecommendationPanel | `frontend/src/components/ooda/__tests__/RecommendationPanel.test.tsx` | 5 tests 通過 |
+| E2E 測試 | `frontend/e2e/full-workflow.spec.ts` | 通過 |
+| 更新日期 | 2026-03-26 | — |
+
+---
+
+## 可觀測性（Observability）
+
+| 面向 | 內容 |
+|------|------|
+| **指標（Metrics）** | `ooda.trigger.duration_seconds`（histogram）、`ooda.side_effect.write_total`（counter, label: table=mission_steps/log_entries/targets）、`report.export.total`（counter）、`ws.broadcast.total`（counter, label: event_type） |
+| **日誌（Logs）** | OODA trigger 開始/完成（含 iteration_number）、side-effect 寫入筆數、Reset 執行紀錄、WebSocket 廣播事件類型與數量 |
+| **告警（Alerts）** | OODA trigger 超過 30 秒未完成、side-effect 寫入失敗（DB error）、WebSocket 廣播失敗率 > 5% |
+| **故障偵測（Fault Detection）** | mission_steps 全部 QUEUED 超過 60 秒（side-effect 未觸發）、log_entries 為空（寫入靜默失敗）、Report API 回傳不足 10 個 key |

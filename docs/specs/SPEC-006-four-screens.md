@@ -142,6 +142,103 @@
 
 ---
 
+## 🔗 副作用與連動（Side Effects）
+
+| 副作用 | 觸發條件 | 影響的系統/模組 | 驗證方式 |
+|--------|---------|----------------|----------|
+| WebSocket 連線建立 | `/monitor` 頁面載入時 | `ws_manager`（backend）、瀏覽器 WS 連線 | 開發者工具 Network → WS 觀察 `log.new`、`agent.beacon` 事件 |
+| OODA hook 狀態同步 | `/c5isr`、`/planner` 同時開啟 | `useOODA` 全域 hook → 多個畫面的 `OODAIndicator` | 觸發 OODA trigger 後確認兩個畫面指示器同步切換 |
+| 3D 拓樸動態 import | `/monitor` 首次載入 | Next.js chunk splitting、瀏覽器記憶體 | SSR 不報錯、client 端 `react-force-graph-3d` 正確渲染 |
+| API 請求併發 | 任一畫面載入時 | backend REST API（`/operations`、`/targets`、`/techniques` 等） | 種子資料存在時所有 API 回傳 200 |
+
+### 🔄 Rollback Plan
+
+| 項目 | 說明 |
+|------|------|
+| **回滾步驟** | `git revert` 對應 commit，移除 4 個 page.tsx 及其專屬元件目錄（`components/c5isr/`、`components/mitre/`、`components/ooda/`、`components/topology/`、`components/data/`、`components/cards/`） |
+| **資料影響** | 純前端元件，無資料庫變更；API 端點由 SPEC-004 獨立維護 |
+| **回滾驗證** | `cd frontend && npm test` 無失敗；`/c5isr`、`/navigator`、`/planner`、`/monitor` 回傳 404 |
+| **回滾已測試** | ☐ 是 / ☑ 否（前端元件為獨立模組，revert 風險低） |
+
+## 🧪 測試矩陣（Test Matrix）
+
+| # | 類型 | 輸入條件 | 預期結果 | 對應場景 |
+|---|------|---------|---------|---------|
+| P1 | ✅ 正向 | 種子資料已載入，開啟 `/c5isr` | 4 張 KPI 卡片 + C5ISR 六域面板 + OODA 指示器 + 推薦卡 + 執行表完整渲染 | S1 |
+| P2 | ✅ 正向 | 開啟 `/navigator`，技術狀態含 success/failed/running | ATT&CK 矩陣格依 TechniqueStatus 正確著色（綠/紅/藍脈動） | S1 |
+| P3 | ✅ 正向 | 開啟 `/monitor`，WebSocket 連線正常 | 3D 拓樸渲染 5 節點、即時日誌自動滾動、Agent 信標顯示 | S1 |
+| N1 | ❌ 負向 | API 回傳空陣列（無種子資料） | 各畫面顯示 empty state（「尚無資料」），不出現空白頁或 crash | S2 |
+| N2 | ❌ 負向 | WebSocket 未連線 | `/monitor` 顯示 connection indicator，降級為靜態渲染 | S2 |
+| B1 | 🔶 邊界 | 3D 拓樸 `react-force-graph-3d` 動態載入失敗 | 顯示 loading spinner 或 2D fallback，不出現 SSR 錯誤 | S3 |
+| B2 | 🔶 邊界 | `TechniqueStatus` 為所有 6 種狀態（success/running/failed/queued/untested/partial） | `MITRECell` 分別著色：綠/藍脈動/紅/灰/暗灰/黃 | S3 |
+
+## 🎬 驗收場景（Acceptance Scenarios）
+
+```gherkin
+Feature: SPEC-006 四核心畫面實作
+  作為 Athena 平台操作員
+  我想要 4 個核心畫面（C5ISR Board、MITRE Navigator、Mission Planner、Battle Monitor）像素級對齊設計稿
+  以便 在單一介面掌握紅隊作戰全貌
+
+  Background:
+    Given 後端已啟動且種子資料（OP-2024-017）已載入
+    And 前端 Next.js dev server 運行中
+
+  Scenario: S1 - C5ISR 指揮看板正常渲染
+    Given 使用者導航至 /c5isr
+    When 頁面載入完成
+    Then KPI 列顯示 4 張 MetricCard（12 Agents、73% Success、47 Techniques、7.4 Threat）
+    And C5ISR 六域面板顯示 6 張 DomainCard 含 health bar
+    And OODA 指示器顯示當前階段
+    And PentestGPT 推薦卡顯示 situation + 3 options
+
+  Scenario: S2 - API 無資料時顯示空狀態
+    Given 後端已啟動但無種子資料
+    When 使用者開啟任一畫面
+    Then 頁面顯示「尚無資料」empty state
+    And 不出現空白頁面或 JavaScript 錯誤
+
+  Scenario: S3 - 3D 拓樸 SSR 安全載入
+    Given 使用者導航至 /monitor
+    When react-force-graph-3d 動態載入
+    Then 不產生 SSR 相關錯誤
+    And 拓樸畫布顯示 5 個節點與連線
+
+  Scenario: S4 - MITRE 矩陣技術狀態著色
+    Given 使用者導航至 /navigator
+    And 技術執行狀態包含 success 和 failed
+    When 矩陣渲染完成
+    Then success 技術格顯示綠色
+    And failed 技術格顯示紅色
+    And untested 技術格顯示暗灰色
+```
+
+## 🔍 追溯性（Traceability）
+
+| 類型 | 檔案路徑 |
+|------|---------|
+| 實作 — C5ISR 頁面 | `frontend/src/app/warroom/page.tsx` |
+| 實作 — C5ISR 六域 | `frontend/src/components/c5isr/C5ISRDomainCard.tsx`, `C5ISRDomainDetail.tsx`, `C5ISRHealthGrid.tsx` |
+| 實作 — OODA 元件 | `frontend/src/components/c5isr/OODAFlowDiagram.tsx`, `frontend/src/components/warroom/OODATimelineBlock.tsx` |
+| 實作 — MITRE 元件 | `frontend/src/components/mitre/` (MITRECell) |
+| 實作 — Planner 元件 | `frontend/src/components/planner/MissionTab.tsx`, `AttackTab.tsx` |
+| 實作 — 資料元件 | `frontend/src/components/data/DataTable.tsx`, `LogEntryRow.tsx` |
+| 實作 — 卡片元件 | `frontend/src/components/cards/MetricCard.tsx` |
+| 實作 — hooks | `frontend/src/hooks/useSituationData.ts`, `useLiveLog.ts` |
+| 測試 — 元件單元 | `frontend/src/components/cards/__tests__/MetricCard.test.tsx`, `RecommendCard.test.tsx`, `TechniqueCard.test.tsx` |
+| 測試 — 資料元件 | `frontend/src/components/data/__tests__/DataTable.test.tsx`, `LogEntryRow.test.tsx` |
+| 測試 — OODA 元件 | `frontend/src/components/ooda/__tests__/OODATimeline.test.tsx`, `OODAIndicator.test.tsx`, `RecommendationPanel.test.tsx` |
+| 測試 — MITRE 元件 | `frontend/src/components/mitre/__tests__/MITRECell.test.tsx` |
+| 測試 — Planner 元件 | `frontend/src/components/planner/__tests__/EngagementPanel.test.tsx`, `ObjectivesPanel.test.tsx`, `TargetSummaryPanel.test.tsx` |
+| 測試 — E2E | `frontend/e2e/warroom.spec.ts`, `full-workflow.spec.ts`, `sit-ooda-lifecycle.spec.ts` |
+| 測試 — hooks | `frontend/src/hooks/__tests__/useOODA.test.ts`, `useExecutionUpdate.test.ts`, `useLiveLog.test.ts` |
+
+## 👁️ 可觀測性（Observability）
+
+N/A — 純前端 UI 元件，可觀測性由後端 API（SPEC-004）及 WebSocket（SPEC-009）負責。
+
+---
+
 ## ✅ 驗收標準（Done When）
 
 - [x] `cd frontend && npm test` — 畫面元件測試全數通過
@@ -181,5 +278,3 @@
 - 設計稿：`athena-c5isr-board.pen`、`athena-mitre-navigator.pen`、`athena-mission-planner.pen`、`athena-battle-monitor.pen`
 - SPEC-005：前端基礎（依賴——型別、佈局、hooks、atoms）
 
-<!-- tech-debt: scenario-pending — v3.2 upgrade: needs test matrix + Gherkin scenarios -->
-<!-- tech-debt: observability-pending — v3.3 upgrade: needs observability section -->

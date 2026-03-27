@@ -39,13 +39,13 @@ Athena 是一套 AI 驅動的 C5ISR（Command, Control, Communications, Computer
 ```mermaid
 graph TD
     subgraph UI["Pencil.dev UI 層 (Next.js 14 + React 18)"]
-        C5ISR["/c5isr — C5ISR 指揮看板"]
-        NAV["/navigator — MITRE ATT&CK 導航"]
+        C5ISR["/warroom — War Room 指揮看板"]
+        NAV["/attack-surface — Attack Surface 導航"]
         PLAN["/planner — 任務規劃器"]
-        MON["/monitor — 戰場監控 (3D)"]
+        MON["/warroom — War Room 戰場監控 (3D)"]
     end
 
-    subgraph Core["Athena 指揮與情報層 (Python 3.11 + FastAPI)"]
+    subgraph Core["Athena 指揮與情報層 (Python 3.12 + FastAPI)"]
         OODA["OODA 循環控制器"]
         ORIENT["Orient 引擎 (OrientEngine 自研)"]
         DECIDE["決策引擎"]
@@ -55,7 +55,7 @@ graph TD
     end
 
     subgraph DB["資料層"]
-        SQLITE[("SQLite\nathena.db")]
+        PG[("PostgreSQL 16\n(asyncpg)")]
     end
 
     subgraph External["外部服務 (API 邊界)"]
@@ -72,8 +72,8 @@ graph TD
     ORIENT -->|Anthropic SDK| LLM
     ROUTER -->|asyncssh| CAL
     ROUTER -.->|HTTP API 選用| SHA
-    Core --> SQLITE
-    C5MAP --> SQLITE
+    Core --> PG
+    C5MAP --> PG
 ```
 
 ### 三層智慧架構
@@ -102,8 +102,8 @@ graph LR
 
 | 服務名稱 | 職責 | 技術棧 | Port | 容器 |
 |----------|------|--------|------|------|
-| backend | REST API + WebSocket + OODA 引擎 + AI 整合 | Python 3.11 / FastAPI / Pydantic | 8000 | athena-backend |
-| frontend | 指揮官儀表板 UI（5 個畫面 + 3D 拓樸 + 情勢圖） | Next.js 14 / React 18 / Tailwind v4 | 3000 | athena-frontend |
+| backend | REST API + WebSocket + OODA 引擎 + AI 整合 | Python 3.12 / FastAPI / Pydantic | 58000 | athena-backend |
+| frontend | 指揮官儀表板 UI（5 個畫面 + 3D 拓樸 + 情勢圖） | Next.js 14 / React 18 / Tailwind v4 | 58080 | athena-frontend |
 | DirectSSHEngine | SSH 直接執行 MITRE techniques（預設引擎） | asyncssh / Python | 內建 | 無需獨立容器 |
 | C2EngineClient | 向後相容 C2 執行（選用，EXECUTION_ENGINE=c2） | Python / REST API | 8888 | 外部（獨立部署，選用） |
 
@@ -128,7 +128,7 @@ graph LR
 | Recon API | `routers/recon.py` | POST `/recon/scan`、GET `/recon/status`（Phase 12）；POST `/osint/discover`（Phase A） |
 | OSINT Engine | `services/osint_engine.py` | domain → 子網域枚舉（crt.sh + subfinder）→ DNS 解析 → Target 建立（Phase A） |
 | Scope Validator | `services/scope_validator.py` | ROE 範圍驗證：IP/CIDR/domain/wildcard，時間視窗，向後相容（Phase A） |
-| Vuln Lookup Service | `services/vuln_lookup.py` | NVD NIST API CVE 關聯 + SQLite 快取 → vuln.cve facts（Phase A） |
+| Vuln Lookup Service | `services/vuln_lookup.py` | NVD NIST API CVE 關聯 + PostgreSQL 快取 → vuln.cve facts（Phase A） |
 | Engagements API | `routers/engagements.py` | ROE CRUD + activate/suspend（Phase A） |
 | Attack Path API | `routers/techniques.py` — `GET /attack-path` | Attack Path Timeline 資料（JOIN technique_executions + techniques + targets）（Phase B） |
 | Tool Registry API | `routers/tools.py` | 工具/引擎 CRUD（list/get/create/patch/delete/check）— 6 endpoints（Phase G） |
@@ -137,10 +137,12 @@ graph LR
 
 ```
 docker-compose.yml
-├── backend (python:3.11-slim)  → :8000
+├── backend (python:3.12-slim)  → :58000
 │   ├── healthcheck: httpx GET /api/health
-│   └── volume: backend-data (SQLite)
-└── frontend (node:20-alpine, multi-stage)  → :3000
+│   └── depends_on: postgres
+├── postgres (postgres:16-alpine) → :5432
+│   └── volume: pg-data
+└── frontend (node:20-alpine, multi-stage)  → :58080
     └── depends_on: backend (service_healthy)
 ```
 
@@ -159,7 +161,7 @@ sequenceDiagram
     participant PG as OrientEngine（自研）
     participant LLM as Claude API
     participant CAL as DirectSSHEngine (Act)
-    participant DB as SQLite
+    participant DB as PostgreSQL
 
     CMD->>BE: POST /ooda/trigger (啟動迭代)
 
@@ -192,7 +194,7 @@ sequenceDiagram
 
 ```mermaid
 graph LR
-    BE["Backend :8000"] -->|"WS /ws/{op_id}"| FE["Frontend :3000"]
+    BE["Backend :58000"] -->|"WS /ws/{op_id}"| FE["Frontend :58080"]
 
     subgraph Events["事件類型"]
         E1["log.new"]
@@ -269,7 +271,7 @@ graph TD
 
 ## 已知技術債
 
-- [ ] SQLite 需遷移至 PostgreSQL（Phase 8 正式版）
+- [x] PostgreSQL 16 (asyncpg) 遷移完成（SPEC-045）
 - [ ] 3D 拓樸元件需 `dynamic import` + `"use client"`（Next.js SSR 限制）
 - [x] LLM API 離線測試需 mock 層（Phase 5 已建立 — `MOCK_LLM=True`）
 - [x] Mock C2 引擎客戶端（已建立 — `mock_c2_client.py`；原 mock_caldera_client.py Phase E 重命名）
@@ -306,7 +308,7 @@ graph TD
 | [ADR-005](adr/ADR-005-pentestgpt-orient-engine.md) | PentestGPT 整合為 Orient 引擎 | `Accepted` |
 | [ADR-006](adr/ADR-006-execution-engine-abstraction-and-license-isolation.md) | 執行引擎抽象層與授權隔離 | `Accepted` |
 | [ADR-007](adr/ADR-007-websocket-realtime-communication.md) | WebSocket 即時通訊架構 | `Accepted` |
-| [ADR-008](adr/ADR-008-sqlite-data-schema-design.md) | SQLite 資料模型與 Schema 設計 | `Accepted` |
+| [ADR-008](adr/ADR-008-sqlite-data-schema-design.md) | 資料模型與 Schema 設計（已遷移至 PostgreSQL 16） | `Accepted` |
 | [ADR-009](adr/ADR-009-frontend-component-architecture.md) | 前端元件架構與設計系統整合 | `Accepted` |
 | [ADR-010](adr/ADR-010-docker-compose-deployment.md) | Docker Compose 部署拓樸 | `Accepted` |
 | [ADR-011](adr/ADR-011-no-auth-for-poc.md) | POC 階段不實作身份驗證 | `Accepted` |
@@ -322,5 +324,5 @@ graph TD
 
 ## 詳細文件索引
 
-- [資料架構](architecture/data-architecture.md) — 13 Enum、12 Model、SQLite Schema、35+ REST API、種子資料
+- [資料架構](architecture/data-architecture.md) — 13 Enum、12 Model、PostgreSQL Schema、35+ REST API、種子資料
 - [專案結構](architecture/project-structure.md) — Monorepo 目錄佈局、各層職責、開發優先順序

@@ -42,7 +42,7 @@
 │   WebSocket Client (useWebSocket hook)                        │
 ├──────────────────────────────────────────────────────────────┤
 │              Application Layer（應用層）                       │
-│   FastAPI Routers (25 路由模組)                                │
+│   FastAPI Routers (26 路由模組)                                │
 │   Pydantic v2 請求/回應驗證 · ORJSONResponse                  │
 │   WebSocket Manager (即時事件推播)                             │
 ├──────────────────────────────────────────────────────────────┤
@@ -55,8 +55,8 @@
 ├──────────────────────────────────────────────────────────────┤
 │              Infrastructure Layer（基礎設施層）                │
 │   asyncpg + PostgreSQL 16 · Alembic Migrations                │
-│   EngineRouter → DirectSSHClient / C2EngineClient /           │
-│                  MetasploitClient / MCPEngineClient            │
+│   EngineRouter → DirectSSHEngine / C2EngineClient /           │
+│                  MetasploitEngineAdapter / MCPEngineClient     │
 │   MCPClientManager (MCP Tool Servers)                          │
 │   LLMClient (Anthropic Claude API)                             │
 └──────────────────────────────────────────────────────────────┘
@@ -145,7 +145,7 @@ localhost (開發 / POC 部署)
 | `FactCollector` | Observe 階段：彙整所有情報（主機、服務、憑證、弱點） | — | asyncpg |
 | `OrientEngine` | Orient 階段：以 Claude AI 分析情勢並產生攻擊建議 | FactCollector | Anthropic Claude API (MOCK_LLM) |
 | `DecisionEngine` | Decide 階段：從建議中選擇最優技術與目標 | — | — |
-| `EngineRouter` | Act 階段：路由至正確的執行引擎 | DirectSSHClient, C2EngineClient, MetasploitClient, MCPEngineClient | 外部 C2/MSF |
+| `EngineRouter` | Act 階段：路由至正確的執行引擎 | DirectSSHEngine, C2EngineClient, MetasploitEngineAdapter, MCPEngineClient | 外部 C2/MSF |
 | `ConstraintEngine` | 從 C5ISR 健康度 + OPSEC 狀態推導作戰約束 | C5ISRMapper, OpsecMonitor | — |
 | `C5ISRMapper` | 將作戰狀態映射到 C5ISR 六域（Command, Control, Comms, Computers, Cyber, ISR） | — | asyncpg |
 | `ReconEngine` | 偵察掃描協調（nmap、OSINT、弱點查詢） | MCPClientManager | MCP Tool Servers |
@@ -169,9 +169,9 @@ localhost (開發 / POC 部署)
 
 | 客戶端 | 職責 | 通訊協定 |
 |--------|------|----------|
-| `DirectSSHClient` | 直接 SSH 連線執行指令（內建，無需外部 C2） | SSH (paramiko / asyncssh) |
+| `DirectSSHEngine` | 直接 SSH 連線執行指令（內建，無需外部 C2） | SSH (paramiko / asyncssh) |
 | `C2EngineClient` | Caldera C2 REST API 整合 | HTTP REST |
-| `MetasploitClient` | Metasploit Framework RPC 整合 | MSGPACK-RPC |
+| `MetasploitEngineAdapter` | Metasploit Framework RPC 整合 | MSGPACK-RPC |
 | `MCPEngineClient` | MCP Tool Server 統一呼叫介面 | HTTP (Streamable HTTP) |
 | `MockC2Client` | 測試用模擬 C2 客戶端 | In-memory |
 
@@ -237,9 +237,9 @@ class OODAController:
                    │                               │
                    ▼                               │
             EngineRouter.execute()                 │
-            ├── DirectSSHClient                    │
+            ├── DirectSSHEngine                    │
             ├── C2EngineClient                     │
-            ├── MetasploitClient                   │
+            ├── MetasploitEngineAdapter             │
             └── MCPEngineClient                    │
                    │                               │
                    ▼                               │
@@ -264,9 +264,9 @@ class OODAController:
 
 | 條件 | 路由目標 |
 |------|----------|
-| 目標支援 SSH + 無需持久 Agent | `DirectSSHClient` |
+| 目標支援 SSH + 無需持久 Agent | `DirectSSHEngine` |
 | 目標有已部署 Caldera Agent | `C2EngineClient` |
-| 需要 Metasploit 模組 | `MetasploitClient` |
+| 需要 Metasploit 模組 | `MetasploitEngineAdapter` |
 | MCP 工具可執行 | `MCPEngineClient` |
 | 測試/開發環境 | `MockC2Client` |
 
@@ -797,7 +797,7 @@ WebSocket Manager 採用 per-operation 房間模式：
 | ADR-013 | Orient Prompt 工程策略 | 第 2.2 節 OrientEngine |
 | ADR-014 | Anthropic SDK 遷移 | 第 2.1.2 節 LLMClient |
 | ADR-015 | Recon + Initial Access Kill Chain | 第 2.1.2 節 ReconEngine, InitialAccessEngine |
-| ADR-017 | Direct SSH Engine | 第 2.1.3 節 DirectSSHClient |
+| ADR-017 | Direct SSH Engine | 第 2.1.3 節 DirectSSHEngine |
 | ADR-021 | Agent 能力匹配 for C2 | 第 2.1.2 節 AgentSwarm |
 | ADR-024 | MCP 架構與 Tool Server 整合 | 第 2.1.2 節 MCPClientManager |
 | ADR-025 | Exploit 驗證層 | 第 2.1.2 節 ExploitValidator |

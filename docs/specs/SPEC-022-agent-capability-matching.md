@@ -5,6 +5,7 @@
 | 欄位 | 內容 |
 |------|------|
 | **規格 ID** | SPEC-022 |
+| **狀態** | Accepted |
 | **關聯 ADR** | ADR-021 (Agent Capability Matching for C2 Execution) |
 | **估算複雜度** | 中 |
 | **建議模型** | Sonnet |

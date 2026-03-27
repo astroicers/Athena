@@ -175,20 +175,7 @@ make up                 # docker-compose up --build -d
 
 ## 螢幕截圖
 
-### C5ISR Board — 作戰態勢總覽
-<!-- TODO: docs/screenshots/c5isr-board.png -->
-
-### MITRE Navigator — 技術矩陣視覺化
-<!-- TODO: docs/screenshots/mitre-navigator.png -->
-
-### Mission Planner — 任務規劃與 OODA 循環
-<!-- TODO: docs/screenshots/mission-planner.png -->
-
-### Battle Monitor — 拓撲即時監控 + 攻擊情勢圖
-<!-- TODO: docs/screenshots/battle-monitor.png -->
-
-### Tool Registry — 工具/引擎管理
-<!-- TODO: docs/screenshots/tool-registry.png -->
+> 截圖與 Demo 影片準備中。可透過 `make up` 啟動後直接體驗完整介面。
 
 ---
 

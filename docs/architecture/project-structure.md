@@ -11,7 +11,7 @@ Athena 採用 **Monorepo** 結構，前後端分離但共存於同一 Git 倉庫
 設計資產（.pen 檔）獨立存放於 `design/` 目錄，與程式碼分離。
 
 **技術棧**：
-- 後端：Python 3.11 + FastAPI + SQLite + Pydantic
+- 後端：Python 3.12 + FastAPI + PostgreSQL 16 (asyncpg) + Pydantic
 - 前端：Next.js 14 (App Router) + React 18 + Tailwind CSS v4
 - 容器化：Docker + docker-compose
 - 設計：Pencil.dev (.pen)
@@ -49,7 +49,7 @@ Athena/
 │   │   ├── __init__.py
 │   │   ├── main.py                        # FastAPI 入口點
 │   │   ├── config.py                      # 環境變數配置
-│   │   ├── database.py                    # SQLite 連線管理
+│   │   ├── database.py                    # PostgreSQL 連線管理 (asyncpg)
 │   │   │
 │   │   ├── models/                        # 資料模型層
 │   │   │   ├── __init__.py                # 匯出所有 models
@@ -99,8 +99,8 @@ Athena/
 │   │       ├── __init__.py
 │   │       └── demo_scenario.py           # OP-2024-017 "Obtain Domain Admin"
 │   │
-│   ├── data/                              # SQLite 資料庫檔案
-│   │   └── .gitkeep                       # 保留空目錄（.db 由 .gitignore 排除）
+│   ├── data/                              # 資料目錄（PostgreSQL 由 Docker 管理）
+│   │   └── .gitkeep                       # 保留空目錄
 │   │
 │   └── tests/                             # 後端測試
 │       ├── __init__.py
@@ -252,7 +252,7 @@ Client → Router → Service → Client(外部) / DB
 | `services/` | 業務邏輯（OODA 編排、AI 整合） | 核心領域邏輯 |
 | `clients/` | 外部 API 封裝（Caldera、Shannon） | HTTP 客戶端 |
 | `seed/` | 示範情境資料 | OP-2024-017 完整場景 |
-| `data/` | SQLite 資料庫檔案 | .gitignore 排除 .db |
+| `data/` | 資料目錄（PostgreSQL 由 Docker volume 管理） | .gitignore 排除 .db |
 | `tests/` | pytest 單元/整合測試 | 以 OODA 循環為重點 |
 
 #### 關鍵檔案說明
@@ -267,9 +267,9 @@ Client → Router → Service → Client(外部) / DB
 - `DATABASE_URL`、`CALDERA_URL`、`SHANNON_URL`
 - `AUTOMATION_MODE`、`RISK_THRESHOLD` 預設值
 
-**`database.py`** — SQLite 連線管理
-- SQLite 連線池（aiosqlite）
-- Schema 初始化（CREATE TABLE IF NOT EXISTS）
+**`database.py`** — PostgreSQL 連線管理
+- PostgreSQL 連線池（asyncpg）
+- Schema 初始化（Alembic migrations）
 - Session 管理
 
 #### Services 核心邏輯
@@ -289,11 +289,10 @@ Next.js 14 App Router 架構，組件結構 1:1 對應設計系統。
 
 ```
 畫面路由對照：
-/          → redirect → /c5isr
-/c5isr     → C5ISR 指揮看板（主畫面）
-/navigator → MITRE ATT&CK 導航
+/          → redirect → /warroom
+/warroom   → War Room 指揮看板（主畫面，原 /c5isr + /monitor 合併）
+/attack-surface → Attack Surface 導航（原 /navigator）
 /planner   → 任務規劃器
-/monitor   → 戰場監控
 ```
 
 #### 組件分類邏輯
@@ -337,7 +336,7 @@ Next.js 14 App Router 架構，組件結構 1:1 對應設計系統。
 
 ```env
 # Athena 環境變數
-DATABASE_URL=sqlite:///backend/data/athena.db
+DATABASE_URL=postgresql://athena:athena@localhost:5432/athena
 
 # 外部服務
 CALDERA_URL=http://localhost:8888
@@ -385,7 +384,7 @@ test:
 
 # 清除資料庫
 clean:
-	rm -f backend/data/athena.db
+	docker-compose down -v  # removes PostgreSQL volume
 ```
 
 ### `docker-compose.yml`
@@ -394,25 +393,39 @@ clean:
 version: "3.8"
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: athena
+      POSTGRES_PASSWORD: athena
+      POSTGRES_DB: athena
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+
   backend:
     build: ./backend
     ports:
-      - "8000:8000"
-    volumes:
-      - ./backend/data:/app/data
+      - "58000:8000"
     env_file:
       - .env
+    depends_on:
+      - postgres
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
     build: ./frontend
     ports:
-      - "3000:3000"
+      - "58080:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://backend:8000/api
       - NEXT_PUBLIC_WS_URL=ws://backend:8000/ws
     depends_on:
       - backend
+
+volumes:
+  pg-data:
 ```
 
 ### `.gitignore`
@@ -498,7 +511,7 @@ POC 開發建議按以下順序推進：
 |------|------|------|
 | **Phase 1** | 建立目錄骨架 + 搬移設計檔 | 專案結構 |
 | **Phase 2** | `backend/app/models/` 全部模型 + enum | Pydantic 可 import |
-| **Phase 3** | `backend/app/database.py` + SQLite schema | DB 可初始化 |
+| **Phase 3** | `backend/app/database.py` + PostgreSQL schema | DB 可初始化 |
 | **Phase 4** | `backend/app/seed/demo_scenario.py` | OP-2024-017 種子資料 |
 | **Phase 5** | `backend/app/routers/` 核心 API | REST 可呼叫 |
 | **Phase 6** | `frontend/src/types/` TypeScript 型別 | 前端型別安全 |

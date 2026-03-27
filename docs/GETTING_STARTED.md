@@ -4,34 +4,61 @@
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Python | 3.11+ | Backend runtime |
+| Python | 3.12+ | Backend runtime |
 | pip | latest | Package management |
-| SQLite | 3.35+ | Database (bundled with Python) |
+| PostgreSQL | 16+ (included in Docker) | Database — no manual install needed if using docker-compose |
+| Docker + docker-compose | latest | Recommended: runs PostgreSQL + backend + frontend |
 | (Optional) Metasploit Framework | 6.x | Live exploit execution |
 | (Optional) subfinder | any | Subdomain enumeration |
 | (Optional) nmap | 7.x | Port scanning |
 
-## Quick Start (Development)
+## Quick Start — Docker (Recommended)
+
+Docker is the recommended approach. PostgreSQL runs in a Docker container alongside the backend and frontend — no manual database install needed.
 
 ```bash
 # 1. Clone the repo
 git clone https://github.com/your-org/Athena.git
 cd Athena
 
-# 2. Create virtualenv and install dependencies
+# 2. Configure environment
+cp .env.example .env
+# Edit .env — set ANTHROPIC_API_KEY at minimum
+
+# 3. Start all services (PostgreSQL + backend + frontend)
+docker-compose up --build
+
+# 4. Verify
+curl http://localhost:58000/api/health
+# Frontend available at http://localhost:58080
+```
+
+> **Note:** PostgreSQL runs inside a Docker container (`postgres:16-alpine`). No manual PostgreSQL installation is required when using docker-compose.
+
+## Quick Start — Local Development (without Docker)
+
+```bash
+# 1. Clone the repo
+git clone https://github.com/your-org/Athena.git
+cd Athena
+
+# 2. Ensure PostgreSQL 16+ is running locally (or use Docker for DB only)
+#    docker run -d --name athena-pg -e POSTGRES_USER=athena -e POSTGRES_PASSWORD=athena -e POSTGRES_DB=athena -p 5432:5432 postgres:16-alpine
+
+# 3. Create virtualenv and install dependencies
 cd backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
 
-# 3. Configure environment
+# 4. Configure environment
 cp .env.example .env
-# Edit .env — set ANTHROPIC_API_KEY at minimum
+# Edit .env — set ANTHROPIC_API_KEY and DATABASE_URL
 
-# 4. Start the server
+# 5. Start the server
 uvicorn app.main:app --reload --port 8000
 
-# 5. Verify
+# 6. Verify
 curl http://localhost:8000/api/health
 ```
 
@@ -85,7 +112,7 @@ Supported modules:
 
 ## API Reference
 
-Interactive API docs: `http://localhost:8000/docs`
+Interactive API docs: `http://localhost:58000/docs` (Docker) or `http://localhost:8000/docs` (local dev)
 
 Key endpoints:
 

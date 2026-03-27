@@ -344,7 +344,7 @@ class ToolRegistryEntry(BaseModel):
 
 ---
 
-## 5. SQLite Schema
+## 5. Database Schema (PostgreSQL 16)
 
 ```sql
 CREATE TABLE users (

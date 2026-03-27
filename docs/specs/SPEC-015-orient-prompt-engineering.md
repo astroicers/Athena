@@ -5,6 +5,7 @@
 | 欄位 | 內容 |
 |------|------|
 | **規格 ID** | SPEC-015 |
+| **狀態** | Accepted |
 | **關聯 ADR** | ADR-013（Orient Prompt 策略）、ADR-005（PentestGPT Orient 引擎） |
 | **估算複雜度** | 中 |
 | **建議模型** | Sonnet |

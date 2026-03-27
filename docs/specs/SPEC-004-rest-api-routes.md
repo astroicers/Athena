@@ -5,6 +5,7 @@
 | 欄位 | 內容 |
 |------|------|
 | **規格 ID** | SPEC-004 |
+| **狀態** | Accepted |
 | **關聯 ADR** | ADR-008（Schema）、ADR-011（無 Auth）、ADR-007（WebSocket） |
 | **估算複雜度** | 中 |
 | **建議模型** | Sonnet |

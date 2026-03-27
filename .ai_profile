@@ -11,3 +11,4 @@ coding_style: disabled
 openapi: disabled
 frontend_quality: enabled
 autopilot: disabled
+orchestrator: disabled

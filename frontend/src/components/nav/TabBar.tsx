@@ -31,13 +31,13 @@ export function TabBar({ tabs, activeTab, onChange }: TabBarProps) {
           className={`relative h-full px-4 text-athena-floor font-mono transition-colors flex items-center
             ${
               activeTab === tab.id
-                ? "text-[var(--color-accent)] font-semibold"
-                : "text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
+                ? "text-athena-accent font-semibold"
+                : "text-athena-text-tertiary hover:text-athena-text-secondary"
             }`}
         >
           {tab.label}
           {activeTab === tab.id && (
-            <span className="absolute bottom-0 left-4 right-4 h-[3px] bg-[var(--color-accent)] rounded-t-sm" />
+            <span className="absolute bottom-0 left-4 right-4 h-[3px] bg-athena-accent rounded-t-sm" />
           )}
         </button>
       ))}

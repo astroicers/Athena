@@ -14,11 +14,11 @@ import React, { ButtonHTMLAttributes } from "react";
 
 const VARIANT_STYLES = {
   primary:
-    "bg-[var(--color-accent)] text-[var(--color-text-primary)] font-bold border border-[var(--color-accent)] hover:bg-[var(--color-accent-hover)]",
+    "bg-athena-accent text-athena-text font-bold border border-athena-accent hover:bg-athena-accent-hover",
   secondary:
-    "bg-[var(--color-bg-surface)] text-[var(--color-text-primary)] border border-[var(--color-border-subtle)] hover:bg-[var(--color-bg-elevated)]",
+    "bg-athena-surface text-athena-text border border-[var(--color-border-subtle)] hover:bg-athena-elevated",
   danger:
-    "bg-[var(--color-error)]/[0.12] text-[var(--color-error)] border border-[var(--color-error)]/[0.25] hover:bg-[var(--color-error)]/20",
+    "bg-athena-error-bg text-athena-error border border-athena-error/25 hover:bg-athena-error/20",
 } as const;
 
 const SIZE_STYLES = {

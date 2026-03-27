@@ -28,10 +28,11 @@ describe("TabBar", () => {
     // Active tab should have the accent color class (underline-style)
     const allTab = screen.getByText("All");
     expect(allTab.className).toContain("text-athena-accent");
+    expect(allTab.className).toContain("font-semibold");
 
     // Inactive tab should not have accent color
     const activeTab = screen.getByText("Active");
-    expect(activeTab.className).toContain("text-athena-text-secondary");
+    expect(activeTab.className).toContain("text-athena-text-tertiary");
 
     fireEvent.click(screen.getByText("Active"));
     expect(handleChange).toHaveBeenCalledWith("active");

@@ -13,10 +13,10 @@
 import { ReactNode } from "react";
 
 const VARIANT_STYLES = {
-  success: "bg-[var(--color-success)]/[0.12] text-[var(--color-success)] border-[var(--color-success)]/[0.25]",
-  warning: "bg-[var(--color-warning)]/[0.12] text-[var(--color-warning)] border-[var(--color-warning)]/[0.25]",
-  error: "bg-[var(--color-error)]/[0.12] text-[var(--color-error)] border-[var(--color-error)]/[0.25]",
-  info: "bg-[var(--color-accent)]/[0.12] text-[var(--color-accent)] border-[var(--color-accent)]/[0.25]",
+  success: "bg-athena-success-bg text-athena-success border-athena-success/25",
+  warning: "bg-athena-warning-bg text-athena-warning border-athena-warning/25",
+  error: "bg-athena-error-bg text-athena-error border-athena-error/25",
+  info: "bg-athena-accent-bg text-athena-accent border-athena-accent/25",
 } as const;
 
 interface BadgeProps {

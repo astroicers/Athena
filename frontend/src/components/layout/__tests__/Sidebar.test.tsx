@@ -46,8 +46,8 @@ describe("Sidebar", () => {
     render(<Sidebar />, { wrapper: IntlWrapper });
     // Each NAV_ITEMS entry produces a link with a title attribute
     expect(screen.getByTitle("Operations")).toBeInTheDocument();
-    expect(screen.getByTitle("Mission Planner")).toBeInTheDocument();
     expect(screen.getByTitle("War Room")).toBeInTheDocument();
+    expect(screen.getByTitle("ATT&CK Surface")).toBeInTheDocument();
     expect(screen.getByTitle("Vulns")).toBeInTheDocument();
     expect(screen.getByTitle("Tool Registry")).toBeInTheDocument();
     // Total links: nav items + the GitHub star link
@@ -57,12 +57,12 @@ describe("Sidebar", () => {
 
   it("highlights the active item based on pathname", async () => {
     const { usePathname } = await import("next/navigation");
-    (usePathname as ReturnType<typeof vi.fn>).mockReturnValue("/planner");
+    (usePathname as ReturnType<typeof vi.fn>).mockReturnValue("/warroom");
 
     render(<Sidebar />, { wrapper: IntlWrapper });
 
-    const plannerLink = screen.getByTitle("Mission Planner");
-    expect(plannerLink.className).toContain("bg-athena-accent-bg");
+    const warRoomLink = screen.getByTitle("War Room");
+    expect(warRoomLink.className).toContain("bg-athena-accent-bg");
 
     // Non-active items should not have the active class
     const operationsLink = screen.getByTitle("Operations");

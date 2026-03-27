@@ -507,18 +507,18 @@ function WarRoomContent() {
 
   if (loading && !dashboard) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <main className="flex items-center justify-center h-full">
         <p className="text-athena-body font-mono text-athena-text-tertiary">
           {t("title")}...
         </p>
-      </div>
+      </main>
     );
   }
 
   /* ── Render ── */
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-athena-bg">
+    <main className="flex flex-col h-full overflow-hidden bg-athena-bg">
       {/* Constraint Banner */}
       <ConstraintBanner constraints={bannerData} onOverride={override} />
 
@@ -878,7 +878,7 @@ function WarRoomContent() {
           )}
         </div>
       )}
-    </div>
+    </main>
   );
 }
 

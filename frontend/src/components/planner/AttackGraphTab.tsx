@@ -83,7 +83,7 @@ function layoutNodes(
 
   // First node (entry) goes in center
   const entryIdx = nodes.findIndex(
-    (n) => n.type === "host" && n.label.toLowerCase().includes("entry"),
+    (n) => n.type === "host" && (n.label ?? "").toLowerCase().includes("entry"),
   );
   const entryNode = entryIdx >= 0 ? nodes[entryIdx] : null;
 
@@ -277,7 +277,7 @@ function AttackGraphCanvas({
         const colors = STATUS_COLORS[node.status] ?? DEFAULT_STATUS_COLOR;
         const isEntry =
           node.type === "host" &&
-          node.label.toLowerCase().includes("entry");
+          (node.label ?? "").toLowerCase().includes("entry");
 
         return (
           <g key={node.id}>

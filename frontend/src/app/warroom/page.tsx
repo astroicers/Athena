@@ -621,12 +621,14 @@ function WarRoomContent() {
               </div>
             )}
 
-            {/* Mission Objective */}
-            <MissionObjective
-              objective={objectives.length > 0 ? objectives[0].objective : t("noObjectives")}
-              targetsCompromised={targets.filter((tgt) => tgt.isCompromised).length}
-              targetsTotal={targets.length}
-            />
+            {/* Mission Objective — only shown when objectives exist */}
+            {objectives.length > 0 && (
+              <MissionObjective
+                objective={objectives[0].objective}
+                targetsCompromised={targets.filter((tgt) => tgt.isCompromised).length}
+                targetsTotal={targets.length}
+              />
+            )}
           </div>
 
           {/* Right: Status Panel */}

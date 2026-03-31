@@ -122,6 +122,9 @@ function WarRoomContent() {
   const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
   const [targetFacts, setTargetFacts] = useState<Array<{ trait: string; value: string; category: string }>>([]);
 
+  /* ── Objectives state ── */
+  const [objectives, setObjectives] = useState<Array<{ id: string; objective: string; status: string }>>([]);
+
   /* ── Mission tab state ── */
   const [steps, setSteps] = useState<MissionStep[]>([]);
   const [showCreateStep, setShowCreateStep] = useState(false);
@@ -181,7 +184,7 @@ function WarRoomContent() {
   const fetchData = useCallback(async () => {
     if (!operationId) return;
     try {
-      const [dashData, timelineData, targetData, stepsData] = await Promise.allSettled([
+      const [dashData, timelineData, targetData, stepsData, objData] = await Promise.allSettled([
         api.get<OodaDashboard>(
           `/operations/${operationId}/ooda/dashboard`,
         ),
@@ -193,6 +196,9 @@ function WarRoomContent() {
         ),
         api.get<MissionStep[]>(
           `/operations/${operationId}/mission/steps`,
+        ),
+        api.get<Array<{ id: string; objective: string; status: string }>>(
+          `/operations/${operationId}/objectives`,
         ),
       ]);
 
@@ -212,6 +218,11 @@ function WarRoomContent() {
       if (stepsData.status === "fulfilled" && stepsData.value) {
         setSteps(
           Array.isArray(stepsData.value) ? stepsData.value : [],
+        );
+      }
+      if (objData.status === "fulfilled" && objData.value) {
+        setObjectives(
+          Array.isArray(objData.value) ? objData.value : [],
         );
       }
     } catch {
@@ -612,9 +623,9 @@ function WarRoomContent() {
 
             {/* Mission Objective */}
             <MissionObjective
-              objective="Domain Admin on corp.local"
-              targetsCompromised={iterations.filter((i) => i.completedAt).length}
-              targetsTotal={5}
+              objective={objectives.length > 0 ? objectives[0].objective : t("noObjectives")}
+              targetsCompromised={targets.filter((tgt) => tgt.isCompromised).length}
+              targetsTotal={targets.length}
             />
           </div>
 

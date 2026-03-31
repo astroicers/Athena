@@ -138,11 +138,6 @@
     "reconScan": "偵察掃描",
     "initialAccess": "初始入場",
     "initialAccessStarted": "初始入場已啟動",
-    "scanning": "掃描中",
-    "reconResult": "掃描結果",
-    "servicesFound": "服務",
-    "factsWritten": "已寫入事實",
-    "failed": "失敗",
     "aiSummary": "AI 摘要",
     "attackSurface": "攻擊面",
     "recommendedTechniques": "建議技術",
@@ -700,7 +695,12 @@
     "oodaHistory": "OODA 歷史",
     "targetInfo": "目標資訊",
     "deactivateTarget": "取消目標",
-    "activateTarget": "設定目標"
+    "activateTarget": "設定目標",
+    "scanning": "掃描中",
+    "reconResult": "掃描結果",
+    "servicesFound": "服務",
+    "factsWritten": "已寫入事實",
+    "failed": "失敗"
   },
   "Legend": {
     "title": "圖例",

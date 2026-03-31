@@ -219,7 +219,7 @@ function OperationsContent() {
 
                   {/* OODA phase */}
                   <span className="text-athena-floor font-mono text-[var(--color-text-secondary)]">
-                    OODA: {op.currentOodaPhase}
+                    {t("oodaLabel")}: {op.currentOodaPhase}
                   </span>
 
                   {/* Created date */}

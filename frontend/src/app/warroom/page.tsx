@@ -305,10 +305,12 @@ function WarRoomContent() {
     domains: constraints?.hardLimits?.map((l) => l.domain) ?? [],
   };
 
-  const noiseLevel = 32;
-  const riskLevel = "LOW";
-  const matrixAction = "GO";
-  const confidence = 0.78;
+  // Derive status values from dashboard/OODA state
+  const hasIterations = (dashboard?.iterationCount ?? 0) > 0;
+  const noiseLevel = hasIterations ? Math.min(Math.round((dashboard?.iterationCount ?? 0) * 15), 100) : 0;
+  const riskLevel = noiseLevel >= 70 ? "HIGH" : noiseLevel >= 40 ? "MEDIUM" : "LOW";
+  const matrixAction = dashboard?.currentPhase === "decide" || dashboard?.currentPhase === "act" ? "GO" : "HOLD";
+  const confidence = hasIterations ? Math.min(0.5 + (dashboard?.iterationCount ?? 0) * 0.1, 0.98) : 0.0;
 
   /* ── Handlers: Timeline ── */
 

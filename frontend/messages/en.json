@@ -69,7 +69,8 @@
     "legendActive": "OODA loop running — scanning, analyzing, executing",
     "legendPaused": "Temporarily halted — awaiting authorization or blue team cooldown",
     "legendCompleted": "Mission finished — report generated",
-    "legendFailed": "Abnormally terminated — target unreachable, RoE violation, or system error"
+    "legendFailed": "Abnormally terminated — target unreachable, RoE violation, or system error",
+    "oodaLabel": "OODA"
   },
   "PageHeader": {},
   "C5ISR": {
@@ -841,7 +842,9 @@
       "markFalsePositive": "False Positive",
       "reopenDiscovered": "Reopen",
       "service": "Service"
-    }
+    },
+    "statusTransitions": "STATUS TRANSITIONS",
+    "pocEvidence": "POC EVIDENCE"
   },
   "OPSEC": {
     "title": "OPSEC Dashboard",

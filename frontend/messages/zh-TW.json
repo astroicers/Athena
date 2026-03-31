@@ -69,7 +69,8 @@
     "legendActive": "OODA 迴圈執行中 — 掃描、分析、攻擊進行中",
     "legendPaused": "暫時中止 — 等待授權窗口或藍隊冷卻期",
     "legendCompleted": "任務完成 — 報告已產出",
-    "legendFailed": "異常終止 — 目標不可達、違反交戰規則或系統錯誤"
+    "legendFailed": "異常終止 — 目標不可達、違反交戰規則或系統錯誤",
+    "oodaLabel": "OODA"
   },
   "PageHeader": {},
   "C5ISR": {
@@ -841,7 +842,9 @@
       "markFalsePositive": "標記誤報",
       "reopenDiscovered": "重新開啟",
       "service": "服務"
-    }
+    },
+    "statusTransitions": "狀態轉換",
+    "pocEvidence": "POC 證據"
   },
   "OPSEC": {
     "title": "OPSEC 儀表板",

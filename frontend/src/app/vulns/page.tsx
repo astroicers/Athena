@@ -460,7 +460,7 @@ function DetailPanel({
         <span
           className="font-mono text-athena-floor font-bold uppercase tracking-[2px] text-[var(--color-text-secondary)]"
         >
-          STATUS TRANSITIONS
+          {t("statusTransitions")}
         </span>
         <div className="flex flex-wrap gap-1.5">
           {statusActions.map((action) => (
@@ -663,7 +663,7 @@ function VulnsContent() {
         <div className="flex flex-col gap-2 shrink-0 px-6">
           <div className="flex items-center gap-2 border-t border-[var(--color-border)] pt-3">
             <span className="font-mono text-athena-floor font-bold uppercase tracking-[1.5px] text-[var(--color-text-tertiary)]">
-              POC EVIDENCE
+              {t("pocEvidence")}
             </span>
           </div>
           {operationId && (

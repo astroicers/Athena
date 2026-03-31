@@ -264,65 +264,7 @@ export function TargetDetailPanel({
         </div>
       )}
 
-      {/* ── Inline Scan Result ── */}
-      {!scanning && scanResult && (
-        <div className="mt-4 border border-[var(--color-border)] rounded-[var(--radius)] bg-[var(--color-bg-surface)] p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-athena-body font-mono font-bold text-[var(--color-text-primary)] uppercase tracking-wider">
-              {t("reconResult")}
-            </span>
-            <span className="text-athena-floor font-mono text-[var(--color-text-tertiary)]">
-              {scanResult.scanDurationSec.toFixed(1)}s
-            </span>
-          </div>
-
-          {/* Services table */}
-          {scanResult.services.length > 0 && (
-            <table className="w-full text-athena-floor font-mono border-collapse">
-              <thead>
-                <tr>
-                  <th className="text-left py-1 px-2 text-[var(--color-text-secondary)] border-b border-[var(--color-border)] font-semibold">Port</th>
-                  <th className="text-left py-1 px-2 text-[var(--color-text-secondary)] border-b border-[var(--color-border)] font-semibold">Service</th>
-                  <th className="text-left py-1 px-2 text-[var(--color-text-secondary)] border-b border-[var(--color-border)] font-semibold">Version</th>
-                </tr>
-              </thead>
-              <tbody>
-                {scanResult.services.map((svc) => (
-                  <tr key={`${svc.port}-${svc.protocol}`}>
-                    <td className="py-1 px-2 text-[var(--color-accent)] border-b border-[var(--color-border)]">
-                      {svc.port}/{svc.protocol}
-                    </td>
-                    <td className="py-1 px-2 text-[var(--color-text-primary)] border-b border-[var(--color-border)]">
-                      {svc.service}
-                    </td>
-                    <td className="py-1 px-2 text-[var(--color-text-tertiary)] border-b border-[var(--color-border)]">
-                      {svc.version}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-
-          {/* Stats row */}
-          <div className="flex gap-4 text-athena-floor font-mono text-[var(--color-text-secondary)]">
-            <span>{t("servicesFound")}: <strong className="text-[var(--color-text-primary)]">{scanResult.servicesFound}</strong></span>
-            <span>{t("factsWritten")}: <strong className="text-[var(--color-text-primary)]">{scanResult.factsWritten}</strong></span>
-          </div>
-
-          {/* Initial Access status */}
-          <div className="flex items-center gap-2 text-athena-floor font-mono">
-            <span className="text-[var(--color-text-secondary)]">{t("initialAccess")}:</span>
-            {scanResult.initialAccess.success ? (
-              <span className="text-[var(--color-success)]">
-                {scanResult.initialAccess.method} ({scanResult.initialAccess.credential})
-              </span>
-            ) : (
-              <span className="text-[var(--color-error)]">{t("failed")}</span>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Scan results are rendered via Markdown Section 2 above (from facts) */}
     </div>
   );
 }

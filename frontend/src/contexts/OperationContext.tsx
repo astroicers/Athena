@@ -10,15 +10,10 @@
 
 "use client";
 
-import { createContext, useCallback, useContext, useState, ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
 
 const STORAGE_KEY = "athena-op-id";
 const DEFAULT_OP_ID = "op-0001";
-
-function getPersistedOpId(): string {
-  if (typeof window === "undefined") return DEFAULT_OP_ID;
-  return localStorage.getItem(STORAGE_KEY) || DEFAULT_OP_ID;
-}
 
 interface OperationContextType {
   operationId: string;
@@ -28,13 +23,19 @@ interface OperationContextType {
 const OperationContext = createContext<OperationContextType | null>(null);
 
 export function OperationProvider({ children }: { children: ReactNode }) {
-  const [operationId, setOperationIdRaw] = useState(getPersistedOpId);
+  const [operationId, setOperationIdRaw] = useState(DEFAULT_OP_ID);
+
+  // Hydrate from localStorage after mount (avoids SSR mismatch)
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored && stored !== DEFAULT_OP_ID) {
+      setOperationIdRaw(stored);
+    }
+  }, []);
 
   const setOperationId = useCallback((id: string) => {
     setOperationIdRaw(id);
-    if (typeof window !== "undefined") {
-      localStorage.setItem(STORAGE_KEY, id);
-    }
+    localStorage.setItem(STORAGE_KEY, id);
   }, []);
 
   return (

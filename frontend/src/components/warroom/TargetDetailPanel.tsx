@@ -163,18 +163,20 @@ export function TargetDetailPanel({
     }
 
     if (iterMap.size > 0) {
-      const header = `## ${t("oodaHistory")}\n\n| # | Observe | Orient | Decide | Act |\n|---|---------|--------|--------|-----|`;
+      const header = `## ${t("oodaHistory")}\n\n| # | ${t("phase")} | Summary |\n|---|-------|---------|`;
       const rows = Array.from(iterMap.entries())
         .sort(([a], [b]) => a - b)
-        .map(
-          ([num, rec]) =>
-            `\n| ${num} | ${rec.observe || "-"} | ${rec.orient || "-"} | ${rec.decide || "-"} | ${rec.act || "-"} |`,
-        )
+        .map(([num, rec]) => {
+          const summary = rec.act || rec.decide || rec.orient || rec.observe || "-";
+          const phase = rec.act ? "Act" : rec.decide ? "Decide" : rec.orient ? "Orient" : "Observe";
+          return `\n| ${num} | ${phase} | ${summary.substring(0, 80)} |`;
+        })
         .join("");
       sections.push(header + rows + "\n");
     }
 
-    return sections.join("\n");
+    // Join sections with horizontal rule separators
+    return sections.join("\n---\n\n");
   }, [target, facts, timelineEntries, t, tHostCard]);
 
   return (

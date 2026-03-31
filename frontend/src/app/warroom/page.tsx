@@ -305,12 +305,8 @@ function WarRoomContent() {
     domains: constraints?.hardLimits?.map((l) => l.domain) ?? [],
   };
 
-  // Derive status values from dashboard/OODA state
-  const hasIterations = (dashboard?.iterationCount ?? 0) > 0;
-  const noiseLevel = hasIterations ? Math.min(Math.round((dashboard?.iterationCount ?? 0) * 15), 100) : 0;
-  const riskLevel = noiseLevel >= 70 ? "HIGH" : noiseLevel >= 40 ? "MEDIUM" : "LOW";
+  // Decision action derived from OODA phase
   const matrixAction = dashboard?.currentPhase === "decide" || dashboard?.currentPhase === "act" ? "GO" : "HOLD";
-  const confidence = hasIterations ? Math.min(0.5 + (dashboard?.iterationCount ?? 0) * 0.1, 0.98) : 0.0;
 
   /* ── Handlers: Timeline ── */
 
@@ -576,6 +572,15 @@ function WarRoomContent() {
               </div>
             </div>
 
+            {/* Empty state guide — shown when no iterations and no targets */}
+            {iterations.length === 0 && targets.length === 0 && (
+              <div className="border border-dashed border-[var(--color-border)] rounded-[var(--radius)] p-6 mt-2">
+                <pre className="font-mono text-athena-floor text-[var(--color-text-secondary)] whitespace-pre-wrap leading-relaxed">
+                  {tEmpty("plannerGuide")}
+                </pre>
+              </div>
+            )}
+
             {/* Recon Block */}
             {reconEntries.length > 0 && (
               <ReconBlock entries={reconEntries} />
@@ -636,10 +641,7 @@ function WarRoomContent() {
           {/* Right: Status Panel */}
           <StatusPanel
             c5isrDomains={domains}
-            noiseLevel={noiseLevel}
-            riskLevel={riskLevel}
             matrixAction={matrixAction}
-            confidence={confidence}
             targets={targetStats}
           />
         </div>

@@ -95,12 +95,9 @@ async def lifespan(app: FastAPI):
     _engine_registry.register("metasploit", MetasploitEngineAdapter())
     logger.info("Engine registry initialized: %s", _engine_registry.list_engines())
 
-    # Seed demo scenario if operations table is empty
-    async with db_manager.connection() as conn:
-        count = await conn.fetchval("SELECT COUNT(*) FROM operations")
-        if count == 0:
-            from app.seed.demo_scenario import seed
-            await seed()
+    # Seed playbook knowledge base + techniques + tools (no demo operations)
+    from app.database.seed import seed_if_empty
+    await seed_if_empty(db_manager)
 
     # MCP integration — only when opted in
     mcp_manager = None

@@ -662,10 +662,8 @@ function SubTabButton({
 export function AttackGraphTab() {
   const t = useTranslations("AttackGraph");
   const operationId = useOperationId();
-  const { graph, credentialGraph, loading, error, rebuild } =
+  const { graph, loading, error, rebuild } =
     useAttackGraph(operationId);
-
-  const [activeTab, setActiveTab] = useState<Tab>("graph");
   const [rebuilding, setRebuilding] = useState(false);
 
   const handleRebuild = useCallback(async () => {
@@ -688,14 +686,6 @@ export function AttackGraphTab() {
     ],
     [t],
   );
-
-  const credLegend = useMemo(() => {
-    if (!credentialGraph) return [];
-    return credentialGraph.nodes.map((cn, i) => ({
-      color: CRED_COLORS[i % CRED_COLORS.length],
-      label: cn.username,
-    }));
-  }, [credentialGraph]);
 
   /* ── Loading / Error ── */
 
@@ -721,94 +711,51 @@ export function AttackGraphTab() {
 
   return (
     <div className="flex flex-col h-full bg-athena-bg overflow-hidden">
-      {/* ── Sub-Tab Bar ── */}
-      <div className="h-10 flex items-stretch gap-6 px-6 bg-athena-surface shrink-0">
-        <SubTabButton
-          label={t("tabGraph").toUpperCase()}
-          active={activeTab === "graph"}
-          onClick={() => setActiveTab("graph")}
-        />
-        <SubTabButton
-          label={t("tabCredentials").toUpperCase()}
-          active={activeTab === "credentials"}
-          onClick={() => setActiveTab("credentials")}
-        />
-      </div>
-
       {/* ── Canvas Area ── */}
       <div className="flex-1 relative overflow-hidden">
-        {/* ── Attack Graph Sub-Tab ── */}
-        {activeTab === "graph" && (
-          <>
-            {graph && graph.nodes.length > 0 ? (
-              <AttackGraphCanvas nodes={graph.nodes} edges={graph.edges} />
-            ) : (
-              <div className="flex items-center justify-center h-full bg-athena-bg">
-                <span className="font-mono text-athena-floor text-athena-text-tertiary">
-                  {t("noData")}
-                </span>
-              </div>
-            )}
-
-            {/* Action buttons */}
-            <div className="absolute top-3 left-4 flex gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleRebuild}
-                disabled={rebuilding}
-                className="text-athena-floor uppercase tracking-wider text-athena-accent bg-transparent border-[color-mix(in_srgb,var(--color-accent)_31%,transparent)]"
-              >
-                {rebuilding ? t("rebuilding") : t("rebuild")}
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="text-athena-floor uppercase tracking-wider text-athena-accent bg-transparent border-[color-mix(in_srgb,var(--color-accent)_31%,transparent)]"
-              >
-                DEPTH SCAN
-              </Button>
-            </div>
-
-            {/* Right-side panels */}
-            {graph && (
-              <div className="absolute top-3 right-3 flex flex-col gap-2.5 z-10">
-                <GraphStatsPanel
-                  totalNodes={graph.stats.totalNodes}
-                  exploredNodes={graph.stats.exploredNodes}
-                  coverageScore={graph.stats.coverageScore}
-                  t={t}
-                />
-                <LegendPanel items={graphLegend} title={t("legendTitle")} />
-              </div>
-            )}
-          </>
+        {graph && graph.nodes.length > 0 ? (
+          <AttackGraphCanvas nodes={graph.nodes} edges={graph.edges} />
+        ) : (
+          <div className="flex items-center justify-center h-full bg-athena-bg">
+            <span className="font-mono text-athena-floor text-athena-text-tertiary">
+              {t("noData")}
+            </span>
+          </div>
         )}
 
-        {/* ── Credentials Sub-Tab ── */}
-        {activeTab === "credentials" && (
-          <>
-            {credentialGraph && credentialGraph.nodes.length > 0 ? (
-              <CredentialGraphCanvas
-                credNodes={credentialGraph.nodes}
-                credEdges={credentialGraph.edges}
-              />
-            ) : (
-              <div className="flex items-center justify-center h-full bg-athena-bg">
-                <span className="font-mono text-athena-floor text-athena-text-tertiary">
-                  {t("noCredentials")}
-                </span>
-              </div>
-            )}
+        {/* Action buttons */}
+        <div className="absolute top-3 left-4 flex gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleRebuild}
+            disabled={rebuilding}
+            className="text-athena-floor uppercase tracking-wider text-athena-accent bg-transparent border-[color-mix(in_srgb,var(--color-accent)_31%,transparent)]"
+          >
+            {rebuilding ? t("rebuilding") : t("rebuild")}
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleRebuild}
+            disabled={rebuilding}
+            className="text-athena-floor uppercase tracking-wider text-athena-accent bg-transparent border-[color-mix(in_srgb,var(--color-accent)_31%,transparent)]"
+          >
+            {rebuilding ? "..." : "DEPTH SCAN"}
+          </Button>
+        </div>
 
-            {/* Right-side panels */}
-            {credentialGraph && credentialGraph.nodes.length > 0 && (
-              <div className="absolute top-3 right-3 flex flex-col gap-2.5 z-10">
-                <CredStatsPanel credNodes={credentialGraph.nodes} t={t} />
-                <LegendPanel items={credLegend} title={t("legendTitle")} />
-              </div>
-            )}
-          </>
+        {/* Right-side panels */}
+        {graph && (
+          <div className="absolute top-3 right-3 flex flex-col gap-2.5 z-10">
+            <GraphStatsPanel
+              totalNodes={graph.stats.totalNodes}
+              exploredNodes={graph.stats.exploredNodes}
+              coverageScore={graph.stats.coverageScore}
+              t={t}
+            />
+            <LegendPanel items={graphLegend} title={t("legendTitle")} />
+          </div>
         )}
       </div>
     </div>

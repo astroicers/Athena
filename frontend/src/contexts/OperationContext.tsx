@@ -12,7 +12,13 @@
 
 import { createContext, useCallback, useContext, useState, ReactNode } from "react";
 
+const STORAGE_KEY = "athena-op-id";
 const DEFAULT_OP_ID = "op-0001";
+
+function getPersistedOpId(): string {
+  if (typeof window === "undefined") return DEFAULT_OP_ID;
+  return localStorage.getItem(STORAGE_KEY) || DEFAULT_OP_ID;
+}
 
 interface OperationContextType {
   operationId: string;
@@ -22,10 +28,13 @@ interface OperationContextType {
 const OperationContext = createContext<OperationContextType | null>(null);
 
 export function OperationProvider({ children }: { children: ReactNode }) {
-  const [operationId, setOperationIdRaw] = useState(DEFAULT_OP_ID);
+  const [operationId, setOperationIdRaw] = useState(getPersistedOpId);
 
   const setOperationId = useCallback((id: string) => {
     setOperationIdRaw(id);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_KEY, id);
+    }
   }, []);
 
   return (

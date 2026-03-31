@@ -174,7 +174,6 @@ function adaptCredentialResponse(
 
 interface UseAttackGraphReturn {
   graph: AttackGraphData | null;
-  credentialGraph: CredentialGraphData | null;
   loading: boolean;
   error: string | null;
   rebuild: () => Promise<void>;
@@ -183,8 +182,6 @@ interface UseAttackGraphReturn {
 
 export function useAttackGraph(operationId: string): UseAttackGraphReturn {
   const [graph, setGraph] = useState<AttackGraphData | null>(null);
-  const [credentialGraph, setCredentialGraph] =
-    useState<CredentialGraphData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -192,16 +189,10 @@ export function useAttackGraph(operationId: string): UseAttackGraphReturn {
     setLoading(true);
     setError(null);
     try {
-      const [rawGraph, rawCred] = await Promise.all([
-        api.get<BackendGraphResponse>(
-          `/operations/${operationId}/attack-graph`,
-        ),
-        api.get<BackendCredResponse>(
-          `/operations/${operationId}/credential-graph`,
-        ),
-      ]);
+      const rawGraph = await api.get<BackendGraphResponse>(
+        `/operations/${operationId}/attack-graph`,
+      );
       setGraph(adaptGraphResponse(rawGraph));
-      setCredentialGraph(adaptCredentialResponse(rawCred));
     } catch (err: unknown) {
       const msg =
         err instanceof Error
@@ -209,7 +200,6 @@ export function useAttackGraph(operationId: string): UseAttackGraphReturn {
           : "Failed to load attack graph";
       setError(msg);
       setGraph(null);
-      setCredentialGraph(null);
     } finally {
       setLoading(false);
     }
@@ -238,5 +228,5 @@ export function useAttackGraph(operationId: string): UseAttackGraphReturn {
     await fetchGraph();
   }, [fetchGraph]);
 
-  return { graph, credentialGraph, loading, error, rebuild, fetchPath };
+  return { graph, loading, error, rebuild, fetchPath };
 }

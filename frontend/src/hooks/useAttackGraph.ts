@@ -64,45 +64,49 @@ export interface CredentialGraphData {
 
 /* ── Backend → Frontend Adapters ── */
 
+/* Backend returns snake_case field names */
 interface BackendGraphNode {
-  nodeId: string;
-  targetId: string;
-  techniqueId: string;
-  tacticId: string;
+  node_id: string;
+  target_id: string;
+  technique_id: string;
+  tactic_id: string;
   status: string;
+  confidence: number;
+  risk_level: string;
   source: string;
 }
 
 interface BackendGraphEdge {
-  edgeId: string;
+  edge_id: string;
   source: string;
   target: string;
   relationship: string;
+  weight: number;
 }
 
 interface BackendGraphResponse {
   nodes: BackendGraphNode[];
   edges: BackendGraphEdge[];
-  stats: { totalNodes: number; exploredNodes: number; coverageScore?: number };
+  stats: { total_nodes: number; explored_nodes: number; coverage_score?: number };
   coverageScore: number;
 }
 
 function adaptGraphResponse(resp: BackendGraphResponse): AttackGraphData {
   return {
     nodes: (resp.nodes ?? []).map((n) => ({
-      id: n.nodeId,
-      label: n.targetId || n.techniqueId || n.nodeId,
-      type: (n.techniqueId && n.techniqueId !== n.nodeId
+      id: n.node_id,
+      label: n.technique_id || n.target_id || n.node_id,
+      type: (n.technique_id && n.technique_id !== n.node_id
         ? "technique"
         : "host") as AttackNode["type"],
       status: (["explored", "pending", "failed"].includes(n.status)
         ? n.status
         : "unreachable") as AttackNode["status"],
-      ip: n.targetId || undefined,
-      techniqueId: n.techniqueId || undefined,
+      ip: n.target_id || undefined,
+      techniqueId: n.technique_id || undefined,
     })),
     edges: (resp.edges ?? []).map((e) => ({
-      id: e.edgeId,
+      id: e.edge_id,
       source: e.source,
       target: e.target,
       type: (e.relationship === "lateral_move"
@@ -112,9 +116,9 @@ function adaptGraphResponse(resp: BackendGraphResponse): AttackGraphData {
           : "alternative") as AttackEdge["type"],
     })),
     stats: {
-      totalNodes: resp.stats?.totalNodes ?? 0,
-      exploredNodes: resp.stats?.exploredNodes ?? 0,
-      coverageScore: resp.coverageScore ?? resp.stats?.coverageScore ?? 0,
+      totalNodes: resp.stats?.total_nodes ?? 0,
+      exploredNodes: resp.stats?.explored_nodes ?? 0,
+      coverageScore: resp.coverageScore ?? resp.stats?.coverage_score ?? 0,
     },
   };
 }

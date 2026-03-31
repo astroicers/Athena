@@ -17,6 +17,7 @@ import remarkGfm from "remark-gfm";
 import { Button } from "@/components/atoms/Button";
 import type { Target } from "@/types/target";
 import type { OODATimelineEntry } from "@/types/ooda";
+import type { ReconScanResult } from "@/types/recon";
 
 /* ── Types ── */
 
@@ -24,6 +25,12 @@ interface Fact {
   trait: string;
   value: string;
   category: string;
+}
+
+interface ScanProgress {
+  phase: string | null;
+  step: number;
+  totalSteps: number;
 }
 
 interface TargetDetailPanelProps {
@@ -35,6 +42,9 @@ interface TargetDetailPanelProps {
   onActivate: () => void;
   onDelete: () => void;
   onOpenTerminal?: () => void;
+  scanning?: boolean;
+  scanProgress?: ScanProgress | null;
+  scanResult?: ReconScanResult | null;
 }
 
 /* ── Markdown component overrides ── */
@@ -84,6 +94,9 @@ export function TargetDetailPanel({
   onActivate,
   onDelete,
   onOpenTerminal,
+  scanning = false,
+  scanProgress,
+  scanResult,
 }: TargetDetailPanelProps) {
   const t = useTranslations("WarRoom");
   const tHostCard = useTranslations("HostCard");
@@ -177,9 +190,21 @@ export function TargetDetailPanel({
           variant="secondary"
           size="sm"
           onClick={onScan}
-          className="text-athena-floor text-[var(--color-accent)] border-[var(--color-accent)]/[0.25] bg-transparent hover:bg-[var(--color-accent)]/10 uppercase tracking-wider"
+          disabled={scanning}
+          className={`text-athena-floor border-[var(--color-accent)]/[0.25] bg-transparent uppercase tracking-wider ${
+            scanning
+              ? "text-[var(--color-text-tertiary)] cursor-wait"
+              : "text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
+          }`}
         >
-          {tHostCard("reconScan")}
+          {scanning ? (
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
+              {t("scanning")}
+            </span>
+          ) : (
+            tHostCard("reconScan")
+          )}
         </Button>
         <Button
           variant="secondary"
@@ -210,6 +235,94 @@ export function TargetDetailPanel({
           </button>
         )}
       </div>
+
+      {/* ── Scan Progress Bar ── */}
+      {scanning && scanProgress && scanProgress.totalSteps > 0 && (
+        <div className="mt-4 space-y-1.5">
+          <div className="flex justify-between text-athena-floor font-mono">
+            <span className="text-[var(--color-accent)]">
+              {scanProgress.phase ?? t("scanning")}
+            </span>
+            <span className="text-[var(--color-text-tertiary)]">
+              {scanProgress.step}/{scanProgress.totalSteps}
+            </span>
+          </div>
+          <div className="h-1.5 bg-[var(--color-bg-elevated)] rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[var(--color-accent)] rounded-full transition-all duration-500"
+              style={{ width: `${(scanProgress.step / scanProgress.totalSteps) * 100}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Scanning with no progress yet — simple spinner */}
+      {scanning && (!scanProgress || scanProgress.totalSteps === 0) && (
+        <div className="mt-4 flex items-center gap-2 text-athena-floor font-mono text-[var(--color-accent)]">
+          <span className="w-3.5 h-3.5 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
+          {t("scanning")}...
+        </div>
+      )}
+
+      {/* ── Inline Scan Result ── */}
+      {!scanning && scanResult && (
+        <div className="mt-4 border border-[var(--color-border)] rounded-[var(--radius)] bg-[var(--color-bg-surface)] p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-athena-body font-mono font-bold text-[var(--color-text-primary)] uppercase tracking-wider">
+              {t("reconResult")}
+            </span>
+            <span className="text-athena-floor font-mono text-[var(--color-text-tertiary)]">
+              {scanResult.scanDurationSec.toFixed(1)}s
+            </span>
+          </div>
+
+          {/* Services table */}
+          {scanResult.services.length > 0 && (
+            <table className="w-full text-athena-floor font-mono border-collapse">
+              <thead>
+                <tr>
+                  <th className="text-left py-1 px-2 text-[var(--color-text-secondary)] border-b border-[var(--color-border)] font-semibold">Port</th>
+                  <th className="text-left py-1 px-2 text-[var(--color-text-secondary)] border-b border-[var(--color-border)] font-semibold">Service</th>
+                  <th className="text-left py-1 px-2 text-[var(--color-text-secondary)] border-b border-[var(--color-border)] font-semibold">Version</th>
+                </tr>
+              </thead>
+              <tbody>
+                {scanResult.services.map((svc) => (
+                  <tr key={`${svc.port}-${svc.protocol}`}>
+                    <td className="py-1 px-2 text-[var(--color-accent)] border-b border-[var(--color-border)]">
+                      {svc.port}/{svc.protocol}
+                    </td>
+                    <td className="py-1 px-2 text-[var(--color-text-primary)] border-b border-[var(--color-border)]">
+                      {svc.service}
+                    </td>
+                    <td className="py-1 px-2 text-[var(--color-text-tertiary)] border-b border-[var(--color-border)]">
+                      {svc.version}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {/* Stats row */}
+          <div className="flex gap-4 text-athena-floor font-mono text-[var(--color-text-secondary)]">
+            <span>{t("servicesFound")}: <strong className="text-[var(--color-text-primary)]">{scanResult.servicesFound}</strong></span>
+            <span>{t("factsWritten")}: <strong className="text-[var(--color-text-primary)]">{scanResult.factsWritten}</strong></span>
+          </div>
+
+          {/* Initial Access status */}
+          <div className="flex items-center gap-2 text-athena-floor font-mono">
+            <span className="text-[var(--color-text-secondary)]">{t("initialAccess")}:</span>
+            {scanResult.initialAccess.success ? (
+              <span className="text-[var(--color-success)]">
+                {scanResult.initialAccess.method} ({scanResult.initialAccess.credential})
+              </span>
+            ) : (
+              <span className="text-[var(--color-error)]">{t("failed")}</span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

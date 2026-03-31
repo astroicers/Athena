@@ -151,7 +151,7 @@ function WarRoomContent() {
         const fullResult = await api.get<ReconScanResult>(
           `/operations/${operationId}/recon/scans/${data.scanId}`,
         );
-        setReconResult(fullResult);
+        // Result displays inline in TargetDetailPanel via targetScans
         if (data.targetId) {
           setTargetScans((prev) => ({ ...prev, [data.targetId]: fullResult }));
         }
@@ -721,6 +721,9 @@ function WarRoomContent() {
                 onActivate={() => handleSetActive(selectedTarget.id, true)}
                 onDelete={() => handleDeleteRequest(selectedTarget.id)}
                 onOpenTerminal={selectedTarget?.isCompromised ? () => setTerminalTarget(selectedTarget) : undefined}
+                scanning={scanState?.targetId === selectedTarget.id}
+                scanProgress={scanState?.targetId === selectedTarget.id ? scanState : null}
+                scanResult={targetScans[selectedTarget.id] ?? null}
               />
             ) : (
               <div className="flex items-center justify-center h-full">

@@ -195,9 +195,12 @@ export function ToolRegistryTable({
               </span>
             </div>
 
-            {/* MITRE — bg #27272A, text #52525B */}
-            <div className="flex flex-wrap w-[180px] shrink-0 gap-1">
-              {tool.mitreTechniques.map((tid) => (
+            {/* MITRE — max 2 visible badges, +N overflow indicator */}
+            <div
+              className="flex flex-wrap w-[180px] shrink-0 gap-1 overflow-hidden max-h-[28px] items-center"
+              title={tool.mitreTechniques.join(", ")}
+            >
+              {tool.mitreTechniques.slice(0, 2).map((tid) => (
                 <span
                   key={tid}
                   className="font-mono text-athena-floor inline-block rounded-[var(--radius)] bg-[var(--color-bg-elevated)] text-[var(--color-text-tertiary)] px-1.5 py-0.5"
@@ -205,6 +208,11 @@ export function ToolRegistryTable({
                   {tid}
                 </span>
               ))}
+              {tool.mitreTechniques.length > 2 && (
+                <span className="font-mono text-athena-floor inline-block rounded-[var(--radius)] bg-[var(--color-bg-elevated)] text-[var(--color-accent)] px-1.5 py-0.5">
+                  +{tool.mitreTechniques.length - 2}
+                </span>
+              )}
             </div>
 
             {/* CONTAINER — dot 6px + text 10px */}

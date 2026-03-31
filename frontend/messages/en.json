@@ -701,7 +701,9 @@
     "reconResult": "SCAN RESULT",
     "servicesFound": "Services",
     "factsWritten": "Facts Written",
-    "failed": "Failed"
+    "failed": "Failed",
+    "autoStarted": "Auto OODA started",
+    "autoStopped": "Auto OODA stopped"
   },
   "Legend": {
     "title": "LEGEND",
@@ -916,6 +918,8 @@
     "failedLoadRecommendation": "Failed to load recommendation",
     "failedResetOperation": "Failed to reset operation",
     "failedTriggerOoda": "Failed to trigger OODA cycle",
+    "failedAutoToggle": "Failed to toggle auto mode",
+    "failedDirective": "Failed to store directive",
     "failedExportReport": "Failed to export report",
     "failedReconScan": "Failed to start recon scan",
     "failedOsint": "Failed to start OSINT discovery",

@@ -701,7 +701,9 @@
     "reconResult": "掃描結果",
     "servicesFound": "服務",
     "factsWritten": "已寫入事實",
-    "failed": "失敗"
+    "failed": "失敗",
+    "autoStarted": "自動 OODA 已啟動",
+    "autoStopped": "自動 OODA 已停止"
   },
   "Legend": {
     "title": "圖例",
@@ -976,6 +978,8 @@
     "failedLoadRecommendation": "載入建議失敗",
     "failedResetOperation": "重設作業失敗",
     "failedTriggerOoda": "觸發 OODA 循環失敗",
+    "failedAutoToggle": "切換自動模式失敗",
+    "failedDirective": "儲存指令失敗",
     "failedExportReport": "匯出報告失敗",
     "failedReconScan": "啟動偵察掃描失敗",
     "failedOsint": "OSINT 探索啟動失敗",

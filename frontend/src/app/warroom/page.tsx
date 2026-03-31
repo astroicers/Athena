@@ -225,6 +225,15 @@ function WarRoomContent() {
           Array.isArray(objData.value) ? objData.value : [],
         );
       }
+      // Sync auto-mode status from backend
+      try {
+        const autoStatus = await api.get<{ running: boolean }>(
+          `/operations/${operationId}/ooda/auto-status`,
+        );
+        setAutoMode(autoStatus.running ?? false);
+      } catch {
+        // auto-status endpoint may not exist for new operations
+      }
     } catch {
       // silent
     } finally {
@@ -310,20 +319,37 @@ function WarRoomContent() {
 
   /* ── Handlers: Timeline ── */
 
+  const handleToggleAuto = useCallback(async () => {
+    try {
+      if (autoMode) {
+        await api.delete(`/operations/${operationId}/ooda/auto-stop`);
+        setAutoMode(false);
+        addToast(t("autoStopped"), "success");
+      } else {
+        await api.post(`/operations/${operationId}/ooda/auto-start`);
+        setAutoMode(true);
+        addToast(t("autoStarted"), "success");
+      }
+    } catch {
+      addToast(tErrors("failedAutoToggle"), "error");
+    }
+  }, [operationId, autoMode, addToast, t, tErrors]);
+
   const handleDirective = useCallback(
     async (directive: string) => {
-      if (!operationId || !dashboard?.latestIteration) return;
+      if (!operationId) return;
       try {
         await api.post(
-          `/operations/${operationId}/ooda/${dashboard.latestIteration.id}/directive`,
-          { directive },
+          `/operations/${operationId}/ooda/directive`,
+          { directive, scope: "next_cycle" },
         );
+        addToast(t("directiveSent"), "success");
         fetchData();
       } catch {
-        // silent
+        addToast(tErrors("failedDirective"), "error");
       }
     },
-    [operationId, dashboard, fetchData],
+    [operationId, addToast, t, tErrors, fetchData],
   );
 
   /* ── Handlers: Targets ── */
@@ -558,7 +584,7 @@ function WarRoomContent() {
                 <button
                   role="switch"
                   aria-checked={autoMode}
-                  onClick={() => setAutoMode(!autoMode)}
+                  onClick={handleToggleAuto}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] ${
                     autoMode ? "bg-[var(--color-accent)]" : "bg-[var(--color-border)]"
                   }`}

@@ -177,7 +177,7 @@ function OperationsContent() {
               <button
                 key={op.id}
                 onClick={() => handleSelect(op)}
-                className={`group text-left bg-[var(--color-bg-surface)] border rounded-[var(--radius)] hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer flex flex-col gap-2 p-4 h-[130px] ${STATUS_BORDER_CLASSES[op.status] ?? "border-[var(--color-border)]"}`}
+                className={`group text-left bg-[var(--color-bg-surface)] border rounded-[var(--radius)] hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer flex flex-col gap-2 p-4 min-h-[150px] ${STATUS_BORDER_CLASSES[op.status] ?? "border-[var(--color-border)]"}`}
               >
                 {/* Top row: codename + status badge + delete */}
                 <div className="flex items-center gap-2 w-full">
@@ -204,7 +204,7 @@ function OperationsContent() {
                 </div>
 
                 {/* Description / Name */}
-                <div className="font-mono text-[13px] text-[var(--color-text-secondary)] truncate">
+                <div className="font-mono text-[14px] leading-5 text-[var(--color-text-secondary)] truncate">
                   {op.name}
                 </div>
 
@@ -233,7 +233,7 @@ function OperationsContent() {
             {/* Empty card placeholder -- "+ New Operation" */}
             <button
               onClick={() => setShowCreate(true)}
-              className="flex items-center justify-center border border-[var(--color-border)] rounded-[var(--radius)] hover:border-[var(--color-border-subtle)] transition-colors cursor-pointer h-[130px]"
+              className="flex items-center justify-center border border-[var(--color-border)] rounded-[var(--radius)] hover:border-[var(--color-border-subtle)] transition-colors cursor-pointer min-h-[150px]"
             >
               <span className="font-mono text-athena-floor text-[var(--color-text-tertiary)]">
                 + New Operation

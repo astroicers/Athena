@@ -277,9 +277,9 @@ test.describe.serial("SIT — OODA UI/UX with Screenshots", () => {
   //  Cleanup
   // ──────────────────────────────────────────────────────────────
 
-  test("09. Cleanup — stop auto + soft reset", async ({ page }) => {
-    // Ensure auto stopped
+  test("09. Cleanup — stop auto + hard reset", async ({ page }) => {
     await page.request.delete(`${API}/operations/${operationId}/ooda/auto-stop`).catch(() => {});
-    await page.request.post(`${API}/operations/${operationId}/reset/soft`);
+    const resp = await page.request.post(`${API}/operations/${operationId}/reset`);
+    expect(resp.status()).toBe(204);
   });
 });

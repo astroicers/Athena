@@ -291,18 +291,11 @@ test.describe.serial("SIT — OODA Loop Complete Lifecycle", () => {
   //  Cleanup
   // ──────────────────────────────────────────────────────────────
 
-  test("20. Soft reset preserves targets", async ({ page }) => {
+  test("20. Hard reset cleans all data", async ({ page }) => {
     const resp = await page.request.post(
-      `${API}/operations/${operationId}/reset/soft`,
+      `${API}/operations/${operationId}/reset`,
     );
     expect(resp.status()).toBe(204);
-
-    // Verify targets still exist
-    const tResp = await page.request.get(
-      `${API}/operations/${operationId}/targets`,
-    );
-    const targets = await tResp.json();
-    expect(targets.length).toBeGreaterThanOrEqual(1);
 
     // Verify iterations cleared
     const dResp = await page.request.get(
@@ -310,5 +303,12 @@ test.describe.serial("SIT — OODA Loop Complete Lifecycle", () => {
     );
     const d = await dResp.json();
     expect(d.iteration_count).toBe(0);
+
+    // Verify targets cleared
+    const tResp = await page.request.get(
+      `${API}/operations/${operationId}/targets`,
+    );
+    const targets = await tResp.json();
+    expect(targets.length).toBe(0);
   });
 });

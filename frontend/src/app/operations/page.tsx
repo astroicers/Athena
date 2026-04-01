@@ -203,8 +203,8 @@ function OperationsContent() {
                   </span>
                 </div>
 
-                {/* Description */}
-                <div className="font-mono text-athena-floor text-[var(--color-text-secondary)] truncate">
+                {/* Description / Name */}
+                <div className="font-mono text-[13px] text-[var(--color-text-secondary)] truncate">
                   {op.name}
                 </div>
 

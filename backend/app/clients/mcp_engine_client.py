@@ -11,7 +11,7 @@
 """MCP Engine Client — BaseEngineClient adapter for MCP tool servers."""
 
 import logging
-from typing import Any
+from typing import Any, Callable
 from uuid import uuid4
 
 from app.clients import BaseEngineClient, ExecutionResult
@@ -21,11 +21,24 @@ from app.services.mcp_fact_extractor import MCPFactExtractor
 logger = logging.getLogger(__name__)
 
 
+# Per-tool argument shape overrides for MCP tools whose schemas
+# don't use the generic "target" key. Extend this only when schema
+# verification proves a mismatch; do not add aliases speculatively.
+#
+# Each shaper takes the raw target string and returns the dict that
+# should be passed as the tool's arguments.
+_TOOL_ARG_SHAPES: dict[str, Callable[[str], dict[str, Any]]] = {
+    # osint-recon.dns_resolve expects {subdomains: "comma,separated"}
+    "dns_resolve": lambda target: {"subdomains": target},
+}
+
+
 class MCPEngineClient(BaseEngineClient):
     """Adapts MCPClientManager to the BaseEngineClient interface.
 
     ability_id is used as the MCP tool name (or "server:tool" qualified).
-    target is passed as the "target" argument to the MCP tool.
+    target is normally passed as the "target" argument to the MCP tool,
+    unless an entry exists in ``_TOOL_ARG_SHAPES`` for that tool name.
     """
 
     def __init__(self, manager: MCPClientManager) -> None:
@@ -53,8 +66,11 @@ class MCPEngineClient(BaseEngineClient):
                     error=f"No MCP server found for tool '{ability_id}'",
                 )
 
-        # Build arguments
-        arguments: dict[str, Any] = {"target": target}
+        # Build arguments — honor per-tool shape override when present
+        shaper = _TOOL_ARG_SHAPES.get(tool_name)
+        arguments: dict[str, Any] = (
+            shaper(target) if shaper else {"target": target}
+        )
         if params:
             arguments.update(params)
 

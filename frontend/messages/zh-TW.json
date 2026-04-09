@@ -551,6 +551,7 @@
     "title": "作戰室",
     "timeline": "時間軸",
     "mission": "任務",
+    "phase": "階段",
     "kpiCollapse": "收合",
     "kpiExpand": "展開",
     "sidePanel": {

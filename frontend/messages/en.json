@@ -551,6 +551,7 @@
     "title": "War Room",
     "timeline": "Timeline",
     "mission": "Mission",
+    "phase": "Phase",
     "kpiCollapse": "Collapse",
     "kpiExpand": "Expand",
     "sidePanel": {

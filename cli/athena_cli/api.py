@@ -127,15 +127,13 @@ async def c5isr_report(op_id: str, domain: str) -> dict:
 # ── Recon ─────────────────────────────────────────────────────────
 
 async def recon_scan(
-    op_id: str, target_id: str, enable_initial_access: bool = True
+    op_id: str, target_id: str,
 ) -> dict:
+    """Trigger recon scan. SPEC-052: Initial access is now handled by OODA Act phase."""
     return await _request(
         "POST",
         f"/operations/{op_id}/recon/scan",
-        json={
-            "target_id": target_id,
-            "enable_initial_access": enable_initial_access,
-        },
+        json={"target_id": target_id},
     )
 
 

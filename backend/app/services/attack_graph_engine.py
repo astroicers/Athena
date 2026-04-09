@@ -846,8 +846,18 @@ class AttackGraphEngine:
     # ------------------------------------------------------------------
 
     async def _persist_graph(self, db, graph: AttackGraph) -> None:
-        """Persist graph nodes and edges to PostgreSQL."""
+        """Persist graph nodes and edges to PostgreSQL (clear + re-insert)."""
         now = datetime.now(timezone.utc)
+
+        # Clear old graph data before re-inserting
+        await db.execute(
+            "DELETE FROM attack_graph_edges WHERE operation_id = $1",
+            graph.operation_id,
+        )
+        await db.execute(
+            "DELETE FROM attack_graph_nodes WHERE operation_id = $1",
+            graph.operation_id,
+        )
 
         for node in graph.nodes.values():
             await db.execute(
@@ -865,12 +875,18 @@ class AttackGraphEngine:
                 node.execution_id, node.depth, now, now,
             )
 
+        seen_edge_ids: set[str] = set()
         for edge in graph.edges:
+            # Deduplicate in-memory before insert
+            if edge.edge_id in seen_edge_ids:
+                continue
+            seen_edge_ids.add(edge.edge_id)
             await db.execute(
                 "INSERT INTO attack_graph_edges "
                 "(id, operation_id, source_node_id, target_node_id, "
                 "weight, relationship, required_facts, source_type, created_at) "
-                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) "
+                "ON CONFLICT (id) DO NOTHING",
                 edge.edge_id, graph.operation_id, edge.source,
                 edge.target, edge.weight, edge.relationship.value,
                 json.dumps(edge.required_facts), edge.source_type, now,

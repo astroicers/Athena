@@ -358,6 +358,22 @@ async def get_latest_directive(
     return dict(row)
 
 
+@router.get("/operations/{operation_id}/brief")
+async def get_operation_brief(
+    operation_id: str,
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Return the latest auto-generated Operation Brief markdown."""
+    await ensure_operation(db, operation_id)
+    row = await db.fetchrow(
+        "SELECT brief_md, brief_updated_at FROM operations WHERE id = $1",
+        operation_id,
+    )
+    if not row or not row["brief_md"]:
+        return {"markdown": "", "updated_at": None}
+    return {"markdown": row["brief_md"], "updated_at": str(row["brief_updated_at"])}
+
+
 @router.post("/operations/{operation_id}/ooda/auto-start")
 
 

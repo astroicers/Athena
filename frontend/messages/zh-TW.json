@@ -627,6 +627,7 @@
     "tabTimeline": "時間軸",
     "tabTargets": "目標",
     "tabMission": "任務",
+    "tabBrief": "簡報",
     "targetHosts": "目標主機",
     "addTarget": "新增目標",
     "osintDiscover": "OSINT",
@@ -979,5 +980,16 @@
     "dismiss": "忽略",
     "viewOptions": "選項",
     "oodaRunning": "OODA 觀察 — 掃描目標中..."
+  },
+  "Brief": {
+    "title": "行動簡報",
+    "brief": "簡報",
+    "lastUpdated": "OODA #{num} 後自動產出",
+    "copy": "複製到剪貼簿",
+    "copied": "已複製！",
+    "download": "下載 .md",
+    "generating": "產出簡報中...",
+    "empty": "尚未產出簡報。執行 OODA 循環後自動產出。",
+    "refreshing": "更新中..."
   }
 }

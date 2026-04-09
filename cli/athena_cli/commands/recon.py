@@ -24,12 +24,11 @@ def recon_scan(
     op_id: str = typer.Argument(..., help="Operation ID"),
     target_id: str = typer.Argument(..., help="Target ID"),
     follow: bool = typer.Option(False, "--follow", "-f", help="Follow scan progress in real-time"),
-    no_initial_access: bool = typer.Option(False, "--no-initial-access", help="Skip initial access attempt"),
 ) -> None:
-    """Start a recon scan on a target."""
+    """Start a recon scan on a target. SPEC-052: Initial access handled by OODA."""
     async def _run() -> None:
         try:
-            result = await api.recon_scan(op_id, target_id, enable_initial_access=not no_initial_access)
+            result = await api.recon_scan(op_id, target_id)
             scan_id = result.get("scan_id", "?")
             console.print(f"[green]Scan queued[/]: {scan_id}")
 

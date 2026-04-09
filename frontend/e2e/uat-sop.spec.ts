@@ -294,7 +294,7 @@ test.describe.serial("UAT SOP — Full Platform Walkthrough", () => {
     // Trigger recon scan
     const resp = await page.request.post(
       `${API}/operations/${operationId}/recon/scan`,
-      { data: { target_id: targetId, enable_initial_access: false } },
+      { data: { target_id: targetId } },
     );
     expect([200, 202]).toContain(resp.status());
     await snap(page, "12a-recon-triggered");

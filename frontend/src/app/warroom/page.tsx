@@ -36,6 +36,7 @@ import { ObjectivesPanel } from "@/components/planner/ObjectivesPanel";
 import { EngagementPanel } from "@/components/planner/EngagementPanel";
 import { TargetSummaryPanel } from "@/components/planner/TargetSummaryPanel";
 import { TargetDetailPanel } from "@/components/warroom/TargetDetailPanel";
+import { BriefTab } from "@/components/warroom/BriefTab";
 import { ExecutionEngine, MissionStepStatus, RiskLevel } from "@/types/enums";
 import type { OODATimelineEntry } from "@/types/ooda";
 import type { Target } from "@/types/target";
@@ -67,7 +68,7 @@ interface OodaDashboard {
   recentIterations?: OodaIteration[];
 }
 
-type WarRoomTab = "timeline" | "targets" | "mission";
+type WarRoomTab = "timeline" | "targets" | "mission" | "brief";
 
 const STEP_VARIANT: Record<string, "success" | "warning" | "error" | "info"> = {
   [MissionStepStatus.COMPLETED]: "success",
@@ -98,6 +99,7 @@ function WarRoomContent() {
     { id: "timeline", label: t("tabTimeline") },
     { id: "targets", label: t("tabTargets") },
     { id: "mission", label: t("tabMission") },
+    { id: "brief", label: t("tabBrief") },
   ], [t]);
 
   /* ── Shared state ── */
@@ -213,6 +215,10 @@ function WarRoomContent() {
       ws.subscribe("ooda.completed", () => fetchData()),
       ws.subscribe("execution.update", () => fetchData()),
       ws.subscribe("operation.reset", () => fetchData()),
+      ws.subscribe("brief.updated", () => {
+        const w = window as unknown as Record<string, unknown>;
+        if (typeof w.__briefRefresh === "function") (w.__briefRefresh as () => void)();
+      }),
     ];
     return () => unsubs.forEach((fn) => fn());
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -819,6 +825,13 @@ function WarRoomContent() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ═══════════ BRIEF TAB ═══════════ */}
+      {activeTab === "brief" && (
+        <div className="flex-1 overflow-y-auto">
+          <BriefTab operationId={operationId} />
         </div>
       )}
 

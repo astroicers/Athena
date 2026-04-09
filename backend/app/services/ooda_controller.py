@@ -10,11 +10,22 @@
 
 """OODA loop orchestrator — coordinates Observe -> Orient -> Decide -> Act."""
 
+import asyncio
 import logging
 import uuid
 from datetime import datetime, timezone
 
 import asyncpg
+
+# Per-operation mutex to prevent concurrent OODA cycles on the same operation
+_OODA_LOCKS: dict[str, asyncio.Lock] = {}
+
+
+def _get_operation_lock(operation_id: str) -> asyncio.Lock:
+    """Get or create the asyncio lock for this operation."""
+    if operation_id not in _OODA_LOCKS:
+        _OODA_LOCKS[operation_id] = asyncio.Lock()
+    return _OODA_LOCKS[operation_id]
 
 from app.config import settings
 from app.database import db_manager
@@ -66,7 +77,25 @@ class OODAController:
         3. Decide:  decision_engine.evaluate()
         4. Act:     engine_router.execute() (if auto-approved)
         5. Cross:   c5isr_mapper.update()
+
+        Per-operation mutex prevents concurrent cycles on the same operation.
         """
+        lock = _get_operation_lock(operation_id)
+        if lock.locked():
+            logger.info("OODA cycle already running for %s, skipping", operation_id)
+            return {
+                "operation_id": operation_id,
+                "status": "skipped",
+                "reason": "concurrent_cycle_in_progress",
+            }
+
+        async with lock:
+            return await self._trigger_cycle_inner(db, operation_id)
+
+    async def _trigger_cycle_inner(
+        self, db: asyncpg.Connection, operation_id: str
+    ) -> dict:
+        """Internal cycle implementation — caller holds the operation lock."""
 
         # Create new OODA iteration
         row = await db.fetchrow(
@@ -524,6 +553,23 @@ class OODAController:
                 "UPDATE operations SET success_rate = $1 WHERE id = $2",
                 rate, operation_id,
             )
+
+        # -- 6. RECORD: Generate Operation Brief --
+        logger.info("OODA[%s] Brief generation starting", ooda_id[:8])
+        try:
+            from app.services.brief_generator import BriefGenerator
+            brief_gen = BriefGenerator()
+            brief_md = await brief_gen.generate(db, operation_id)
+            await db.execute(
+                "UPDATE operations SET brief_md = $1, brief_updated_at = $2 WHERE id = $3",
+                brief_md, datetime.now(timezone.utc), operation_id,
+            )
+            await self._ws.broadcast(operation_id, "brief.updated", {
+                "iteration": next_num,
+            })
+            logger.info("OODA[%s] Brief generated: %d chars", ooda_id[:8], len(brief_md))
+        except Exception as exc:
+            logger.exception("OODA[%s] Brief generation failed: %s", ooda_id[:8], exc)
 
         # Broadcast ooda.completed -- after ALL DB updates are committed
         try:

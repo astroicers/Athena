@@ -627,6 +627,7 @@
     "tabTimeline": "TIMELINE",
     "tabTargets": "TARGETS",
     "tabMission": "MISSION",
+    "tabBrief": "BRIEF",
     "targetHosts": "Target Hosts",
     "addTarget": "ADD TARGET",
     "osintDiscover": "OSINT",
@@ -979,5 +980,16 @@
     "dismiss": "Dismiss",
     "viewOptions": "Options",
     "oodaRunning": "OODA Observe -- scanning targets..."
+  },
+  "Brief": {
+    "title": "Operation Brief",
+    "brief": "Brief",
+    "lastUpdated": "Auto-generated after OODA #{num}",
+    "copy": "Copy to Clipboard",
+    "copied": "Copied!",
+    "download": "Download .md",
+    "generating": "Generating brief...",
+    "empty": "No brief generated yet. Run an OODA cycle to generate.",
+    "refreshing": "Refreshing..."
   }
 }

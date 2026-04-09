@@ -108,3 +108,6 @@ Makefile.pre-asp-upgrade
 .asp-audit-baseline.json
 .asp-agent-memory.yaml
 .asp-agent-session.json
+
+# Design archive (old .pen files)
+design/archive/

@@ -343,6 +343,9 @@ Feature: SPEC-007 OODA 循環引擎
 | 測試 — OODA 自動迴圈 | `backend/tests/test_ooda_auto_loop.py` |
 | 測試 — OODA 時間軸 | `backend/tests/test_ooda_timeline_detail.py` |
 | 測試 — E2E OODA | `backend/tests/test_e2e_ooda_loop.py` |
+| 測試 — OODA Recon 整合 | `backend/tests/test_ooda_recon_integration.py` |
+| 測試 — IA OODA 整合 | `backend/tests/test_initial_access_ooda.py` |
+| 相關 SPEC | SPEC-052（OODA-Native Recon & Initial Access） |
 | 測試 — C5ISR 報告 | `backend/tests/test_c5isr_reports.py`, `test_c5isr_domain_reports.py` |
 | 測試 — 前端 E2E | `frontend/e2e/sit-ooda-lifecycle.spec.ts` |
 

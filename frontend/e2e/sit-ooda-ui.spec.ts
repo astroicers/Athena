@@ -78,24 +78,11 @@ test.describe.serial("SIT — OODA UI/UX with Screenshots", () => {
     await page.request.patch(`${API}/operations/${operationId}/targets/active`,
       { data: { target_id: targetId } });
 
-    // Trigger recon + wait
-    await page.request.post(`${API}/operations/${operationId}/recon/scan`,
-      { data: { target_id: targetId, enable_initial_access: true } });
-
-    await pollUntil(page, `${API}/operations/${operationId}/recon/status`,
-      (d: unknown) => {
-        const s = (d as { status: string }).status;
-        return s === "completed" || s === "failed";
-      }, 90, 2000);
-
-    // Wait for auto-triggered OODA to complete
-    await pollUntil(page, `${API}/operations/${operationId}/ooda/dashboard`,
-      (d: unknown) => {
-        const dd = d as { iteration_count: number; latest_iteration?: { completed_at?: string } };
-        return dd.iteration_count >= 1 && !!dd.latest_iteration?.completed_at;
-      }, 60, 2000).catch(() => {
-      // Auto-OODA may not complete in time, that's ok
-    });
+    // SPEC-052: Target creation auto-triggers OODA cycle (no manual recon scan needed)
+    await pollUntil(page,
+      `${API}/operations/${operationId}/ooda/dashboard`,
+      (d: unknown) => ((d as { iteration_count?: number }).iteration_count ?? 0) >= 1,
+      90, 2000);
   });
 
   // ──────────────────────────────────────────────────────────────

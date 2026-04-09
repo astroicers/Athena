@@ -61,15 +61,6 @@ vi.mock("@/hooks/useC5ISRData", () => ({
   }),
 }));
 
-vi.mock("@/hooks/useReconScan", () => ({
-  useReconScan: () => ({
-    isScanning: false,
-    scanResult: null,
-    triggerScan: vi.fn(),
-    clearResult: vi.fn(),
-  }),
-}));
-
 import { api } from "@/lib/api";
 import WarRoomPage from "../page";
 

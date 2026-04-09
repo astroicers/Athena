@@ -105,8 +105,20 @@ class OODAController:
         await self._write_log(db, operation_id, "info",
             f"OODA #{next_num} Observe: collected {len(new_facts)} new facts")
 
-        # -- 1.1. AUTO-RECON for sparse-intel targets --
+        # -- 1.1. AUTO-RECON for sparse-intel targets (SPEC-052) --
+        # Mission-profile-aware fact threshold: SR=0, CO=2, SP=3, FA=5
+        _RECON_FACT_THRESHOLD: dict[str, int] = {
+            "SR": 0, "CO": 2, "SP": 3, "FA": 5,
+        }
+        _RECON_NOISE_COST: int = 2  # nmap scan = 2 noise points (T1595.001 low)
+
         try:
+            op_profile_row = await db.fetchrow(
+                "SELECT mission_profile FROM operations WHERE id = $1", operation_id,
+            )
+            profile_code = (op_profile_row["mission_profile"] if op_profile_row else None) or "SP"
+            fact_threshold = _RECON_FACT_THRESHOLD.get(profile_code, 3)
+
             sparse_targets = await db.fetch(
                 """SELECT t.id, t.hostname, t.ip_address
                    FROM targets t
@@ -114,42 +126,80 @@ class OODAController:
                        AND f.operation_id = $1
                    WHERE t.operation_id = $1 AND t.is_active = TRUE
                    GROUP BY t.id, t.hostname, t.ip_address
-                   HAVING COUNT(f.id) < 3""",
-                operation_id,
+                   HAVING COUNT(f.id) < $2""",
+                operation_id, fact_threshold + 1,  # < threshold+1 means <= threshold, but we want < threshold
             )
+
+            # Filter to targets strictly below threshold
+            # (the SQL HAVING uses < $2 where $2 = threshold, so it's correct)
+            # Re-query with exact threshold
+            sparse_targets = await db.fetch(
+                """SELECT t.id, t.hostname, t.ip_address
+                   FROM targets t
+                   LEFT JOIN facts f ON f.source_target_id = t.id
+                       AND f.operation_id = $1
+                   WHERE t.operation_id = $1 AND t.is_active = TRUE
+                   GROUP BY t.id, t.hostname, t.ip_address
+                   HAVING COUNT(f.id) < $2""",
+                operation_id, fact_threshold,
+            )
+
             if sparse_targets:
-                from app.services.recon_engine import ReconEngine
-                recon = ReconEngine(self._ws)
-                for st in sparse_targets[:3]:  # limit to 3 targets per cycle
-                    target_addr = st["ip_address"] or st["hostname"]
-                    if not target_addr:
-                        continue
-                    try:
-                        recon_result = await recon.scan(
-                            db, operation_id, st["id"],
-                        )
-                        logger.info(
-                            "OODA[%s] Auto-recon on %s: %d services found",
-                            ooda_id[:8], target_addr,
-                            len(recon_result.services) if recon_result else 0,
-                        )
-                    except Exception as recon_exc:
-                        logger.warning(
-                            "OODA[%s] Auto-recon failed for %s: %s",
-                            ooda_id[:8], target_addr, recon_exc,
-                        )
-                # Re-collect facts after auto-recon to include new findings
-                new_facts_2 = await self._fact_collector.collect(db, operation_id)
-                if new_facts_2:
-                    observe_summary = await self._fact_collector.summarize(
-                        db, operation_id,
+                # SPEC-052: Check noise budget before scanning
+                try:
+                    constraints = await ce.evaluate(db, operation_id)
+                    noise_remaining = getattr(constraints, "noise_budget_remaining", 999)
+                except Exception:
+                    noise_remaining = 999  # If constraint engine fails, allow recon
+
+                if noise_remaining < _RECON_NOISE_COST:
+                    logger.info(
+                        "OODA[%s] Auto-recon deferred: noise budget insufficient "
+                        "(remaining=%d, cost=%d, profile=%s)",
+                        ooda_id[:8], noise_remaining, _RECON_NOISE_COST, profile_code,
                     )
-                    await db.execute(
-                        "UPDATE ooda_iterations SET observe_summary = $1 WHERE id = $2",
-                        observe_summary[:1000], ooda_id,
-                    )
-                    await self._write_log(db, operation_id, "info",
-                        f"OODA #{next_num} Auto-recon: collected {len(new_facts_2)} additional facts")
+                    await self._write_log(db, operation_id, "warning",
+                        f"OODA #{next_num} Auto-recon deferred: noise budget insufficient")
+                else:
+                    from app.services.recon_engine import ReconEngine
+                    recon = ReconEngine(self._ws)
+                    # Mission-profile parallel limit
+                    _MAX_RECON_PARALLEL: dict[str, int] = {
+                        "SR": 1, "CO": 2, "SP": 3, "FA": 5,
+                    }
+                    max_targets = _MAX_RECON_PARALLEL.get(profile_code, 3)
+
+                    for st in sparse_targets[:max_targets]:
+                        target_addr = st["ip_address"] or st["hostname"]
+                        if not target_addr:
+                            continue
+                        try:
+                            recon_result = await recon.scan(
+                                db, operation_id, st["id"],
+                            )
+                            logger.info(
+                                "OODA[%s] Auto-recon on %s: %d services found",
+                                ooda_id[:8], target_addr,
+                                len(recon_result.services) if recon_result else 0,
+                            )
+                        except Exception as recon_exc:
+                            logger.warning(
+                                "OODA[%s] Auto-recon failed for %s: %s",
+                                ooda_id[:8], target_addr, recon_exc,
+                            )
+
+                    # Re-collect facts after auto-recon to include new findings
+                    new_facts_2 = await self._fact_collector.collect(db, operation_id)
+                    if new_facts_2:
+                        observe_summary = await self._fact_collector.summarize(
+                            db, operation_id,
+                        )
+                        await db.execute(
+                            "UPDATE ooda_iterations SET observe_summary = $1 WHERE id = $2",
+                            observe_summary[:1000], ooda_id,
+                        )
+                        await self._write_log(db, operation_id, "info",
+                            f"OODA #{next_num} Auto-recon: collected {len(new_facts_2)} additional facts")
         except Exception as auto_recon_exc:
             logger.warning("Auto-recon step failed: %s", auto_recon_exc)
 

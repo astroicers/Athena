@@ -136,9 +136,6 @@
     "terminal": "終端機",
     "osintDiscover": "OSINT",
     "osintStarted": "OSINT 偵察已啟動",
-    "reconScan": "偵察掃描",
-    "initialAccess": "初始入場",
-    "initialAccessStarted": "初始入場已啟動",
     "aiSummary": "AI 摘要",
     "attackSurface": "攻擊面",
     "recommendedTechniques": "建議技術",
@@ -366,7 +363,6 @@
     "privilege": "權限",
     "compromised": "已入侵",
     "secure": "安全",
-    "reconScan": "偵察掃描",
     "scanning": "掃描中...",
     "terminal": "終端機",
     "active": "當前目標",
@@ -426,29 +422,6 @@
     "tooManyCidr": "CIDR 範圍超過 256 台主機，請使用較小的範圍。",
     "tooManyEntries": "每次最多匯入 512 筆。"
   },
-  "ReconResult": {
-    "scanComplete": "掃描完成",
-    "title": "偵察掃描結果",
-    "ip": "IP",
-    "os": "作業系統",
-    "services": "服務",
-    "servicesFound": "找到 {count} 個",
-    "factsWritten": "已寫入事實",
-    "duration": "耗時",
-    "openPorts": "開放端口",
-    "initialAccess": "初始存取",
-    "status": "狀態",
-    "success": "成功",
-    "failed": "失敗",
-    "method": "方法",
-    "credential": "憑證",
-    "agent": "代理",
-    "deployed": "✓ 已部署",
-    "notDeployed": "✗ 未部署",
-    "error": "錯誤",
-    "triggerOoda": "觸發 OODA",
-    "triggering": "觸發中..."
-  },
   "Terminal": {
     "title": "終端機 —",
     "connecting": "連接中..."
@@ -474,11 +447,10 @@
     "reset": "重設所有步驟狀態為 QUEUED",
     "export": "匯出作戰報告 (JSON)",
     "addTarget": "新增目標主機",
-    "reconScan": "對此主機執行偵察掃描",
     "resetView": "重置視圖至全景"
   },
   "EmptyStates": {
-    "plannerGuide": "尚未定義目標 — 點擊上方 + 新增\n\n1. 點擊 [+ 新增] 新增目標主機\n2. 執行 [偵察掃描] 偵察目標\n3. 點擊 [OODA 循環] 啟動 AI 分析\n4. 執行任務",
+    "plannerGuide": "尚未定義目標 — 點擊上方 + 新增\n\n1. 點擊 [+ 新增] 新增目標主機\n2. 點擊 [OODA 循環] 啟動 AI 分析\n3. 執行任務",
     "monitorNoRec": "尚無 AI 建議。前往任務規劃器啟動 OODA 循環以產生建議。",
     "monitorGoToPlanner": "前往任務規劃器",
     "navigatorNoSelection": "← 從矩陣中選擇技術以查看詳情"
@@ -614,8 +586,6 @@
     "oodaTrigger": "啟動 OODA",
     "oodaTriggerHint": "儲存指令並啟動 OODA 循環",
     "viewFullLogs": "查看完整日誌",
-    "reconStarted": "偵察掃描已啟動",
-    "initialAccessStarted": "初始入場已啟動",
     "battleRhythm": "作戰節奏",
     "autoLoopStart": "自動",
     "autoLoopStop": "停止自動",
@@ -660,10 +630,8 @@
     "targetHosts": "目標主機",
     "addTarget": "新增目標",
     "osintDiscover": "OSINT",
-    "initialAccess": "初始入場",
     "terminal": "終端機",
     "aiSummary": "AI 摘要",
-    "reconComplete": "偵察完成 — 寫入 {factsWritten} 項事實",
     "targetActivated": "已設定為活躍目標",
     "targetDeactivated": "已停用目標",
     "targetDeleted": "已刪除 {hostname}",
@@ -697,11 +665,6 @@
     "targetInfo": "目標資訊",
     "deactivateTarget": "取消目標",
     "activateTarget": "設定目標",
-    "scanning": "掃描中",
-    "reconResult": "掃描結果",
-    "servicesFound": "服務",
-    "factsWritten": "已寫入事實",
-    "failed": "失敗",
     "autoStarted": "自動 OODA 已啟動",
     "autoStopped": "自動 OODA 已停止"
   },
@@ -762,9 +725,7 @@
     "catService": "服務",
     "catNetwork": "網路",
     "catOther": "其他",
-    "moreItems": "+{count} 項",
-    "reconScan": "偵察掃描",
-    "initialAccess": "初始入場"
+    "moreItems": "+{count} 項"
   },
   "Situation": {
     "title": "攻擊態勢圖",
@@ -981,15 +942,12 @@
     "failedAutoToggle": "切換自動模式失敗",
     "failedDirective": "儲存指令失敗",
     "failedExportReport": "匯出報告失敗",
-    "failedReconScan": "啟動偵察掃描失敗",
     "failedOsint": "OSINT 探索啟動失敗",
     "oodaFailed": "OODA 循環失敗",
     "failedRefreshTechniques": "重新整理技術失敗",
     "failedSetActive": "設定攻擊目標失敗",
     "failedDeleteTarget": "刪除目標失敗",
     "failedBatchImport": "批次匯入失敗",
-    "failedRecon": "偵察掃描啟動失敗",
-    "failedInitialAccess": "初始入場啟動失敗",
     "failedLoadWarRoom": "載入作戰室資料失敗"
   },
   "Engagement": {
@@ -1002,5 +960,24 @@
     "emergency": "緊急聯絡人",
     "activate": "啟用",
     "suspend": "暫停"
+  },
+  "CommandBar": {
+    "autonomousMode": "自主作戰",
+    "manualMode": "手動指揮",
+    "aiSuggests": "AI",
+    "adopt": "採納",
+    "execute": "執行",
+    "intervene": "介入",
+    "autonomousPlaceholder": "自主作戰中... 輸入指令可覆蓋 AI 決策",
+    "manualPlaceholder": "輸入作戰指令（Enter 提交）",
+    "directiveSubmitted": "指令已提交",
+    "interventionActive": "指揮介入 — 自主模式暫停",
+    "confirmAutonomous": "切換為自主作戰？AI 將自動執行 OODA 循環。",
+    "confirmManual": "切換為手動指揮？AI 將等待你的指令。",
+    "confirm": "確認",
+    "cancel": "取消",
+    "dismiss": "忽略",
+    "viewOptions": "選項",
+    "oodaRunning": "OODA 觀察 — 掃描目標中..."
   }
 }

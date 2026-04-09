@@ -136,9 +136,6 @@
     "terminal": "Terminal",
     "osintDiscover": "OSINT",
     "osintStarted": "OSINT discovery started",
-    "reconScan": "RECON SCAN",
-    "initialAccess": "INITIAL ACCESS",
-    "initialAccessStarted": "Initial access started",
     "aiSummary": "AI SUMMARY",
     "attackSurface": "Attack Surface",
     "recommendedTechniques": "Recommended Techniques",
@@ -366,7 +363,6 @@
     "privilege": "Privilege",
     "compromised": "COMPROMISED",
     "secure": "SECURE",
-    "reconScan": "RECON SCAN",
     "scanning": "SCANNING...",
     "terminal": "Terminal",
     "active": "ACTIVE",
@@ -426,29 +422,6 @@
     "tooManyCidr": "CIDR range exceeds 256 hosts. Use a narrower range.",
     "tooManyEntries": "Maximum 512 entries per batch."
   },
-  "ReconResult": {
-    "scanComplete": "SCAN COMPLETE",
-    "title": "Recon Scan Result",
-    "ip": "IP",
-    "os": "OS",
-    "services": "Services",
-    "servicesFound": "{count} found",
-    "factsWritten": "Facts Written",
-    "duration": "Duration",
-    "openPorts": "OPEN PORTS",
-    "initialAccess": "Initial Access",
-    "status": "Status",
-    "success": "SUCCESS",
-    "failed": "FAILED",
-    "method": "Method",
-    "credential": "Credential",
-    "agent": "Agent",
-    "deployed": "✓ deployed",
-    "notDeployed": "✗ not deployed",
-    "error": "Error",
-    "triggerOoda": "TRIGGER OODA",
-    "triggering": "TRIGGERING..."
-  },
   "Terminal": {
     "title": "TERMINAL —",
     "connecting": "Connecting..."
@@ -474,11 +447,10 @@
     "reset": "Reset all step statuses to QUEUED",
     "export": "Export operation report as JSON",
     "addTarget": "Add a new target host",
-    "reconScan": "Run reconnaissance scan on this host",
     "resetView": "Reset view to fit all nodes"
   },
   "EmptyStates": {
-    "plannerGuide": "No targets defined — click + ADD above\n\n1. Add a target host with [+ ADD]\n2. Run [RECON SCAN] on the target\n3. Trigger [OODA CYCLE] for AI analysis\n4. Execute mission",
+    "plannerGuide": "No targets defined — click + ADD above\n\n1. Add a target host with [+ ADD]\n2. Trigger [OODA CYCLE] for AI analysis\n3. Execute mission",
     "monitorNoRec": "No AI recommendation yet. Go to Mission Planner to trigger an OODA cycle.",
     "monitorGoToPlanner": "Go to Mission Planner",
     "navigatorNoSelection": "← Select a technique from the matrix to view details"
@@ -618,8 +590,6 @@
     "autoLoopStartHint": "Start automatic OODA loop (30s interval)",
     "autoLoopStopHint": "Stop automatic OODA loop",
     "viewFullLogs": "View full logs",
-    "reconStarted": "Recon scan started",
-    "initialAccessStarted": "Initial access started",
     "battleRhythm": "BATTLE RHYTHM",
     "campaignTimeline": "Campaign Timeline",
     "oodaIteration": "OODA #{num}",
@@ -660,10 +630,8 @@
     "targetHosts": "Target Hosts",
     "addTarget": "ADD TARGET",
     "osintDiscover": "OSINT",
-    "initialAccess": "INITIAL ACCESS",
     "terminal": "Terminal",
     "aiSummary": "AI SUMMARY",
-    "reconComplete": "Recon complete — {factsWritten} facts written",
     "targetActivated": "Target set as active",
     "targetDeactivated": "Target deactivated",
     "targetDeleted": "{hostname} deleted",
@@ -697,11 +665,6 @@
     "targetInfo": "Target Info",
     "deactivateTarget": "Deactivate Target",
     "activateTarget": "Set Active",
-    "scanning": "Scanning",
-    "reconResult": "SCAN RESULT",
-    "servicesFound": "Services",
-    "factsWritten": "Facts Written",
-    "failed": "Failed",
     "autoStarted": "Auto OODA started",
     "autoStopped": "Auto OODA stopped"
   },
@@ -762,9 +725,7 @@
     "catService": "Service",
     "catNetwork": "Network",
     "catOther": "Other",
-    "moreItems": "+{count} more",
-    "reconScan": "Recon Scan",
-    "initialAccess": "Initial Access"
+    "moreItems": "+{count} more"
   },
   "Situation": {
     "title": "Attack Situation Diagram",
@@ -921,15 +882,12 @@
     "failedAutoToggle": "Failed to toggle auto mode",
     "failedDirective": "Failed to store directive",
     "failedExportReport": "Failed to export report",
-    "failedReconScan": "Failed to start recon scan",
     "failedOsint": "Failed to start OSINT discovery",
     "oodaFailed": "OODA cycle failed",
     "failedRefreshTechniques": "Failed to refresh techniques",
     "failedSetActive": "Failed to set active target",
     "failedDeleteTarget": "Failed to delete target",
     "failedBatchImport": "Failed to batch import targets",
-    "failedRecon": "Failed to start recon scan",
-    "failedInitialAccess": "Failed to start initial access",
     "failedLoadWarRoom": "Failed to load War Room data"
   },
   "Objectives": {
@@ -1002,5 +960,24 @@
     "constraintStatus": "Constraint Status",
     "domainHealth": "C5ISR Domain Health",
     "waitingData": "Waiting for constraint data..."
+  },
+  "CommandBar": {
+    "autonomousMode": "Autonomous",
+    "manualMode": "Manual",
+    "aiSuggests": "AI",
+    "adopt": "Adopt",
+    "execute": "Execute",
+    "intervene": "Intervene",
+    "autonomousPlaceholder": "Autonomous ops active... Enter to override",
+    "manualPlaceholder": "Enter operational directive (Enter to submit)",
+    "directiveSubmitted": "Directive submitted",
+    "interventionActive": "Intervention - autonomous paused",
+    "confirmAutonomous": "Switch to autonomous mode? AI will cycle OODA automatically.",
+    "confirmManual": "Switch to manual command? AI will wait for your directives.",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "dismiss": "Dismiss",
+    "viewOptions": "Options",
+    "oodaRunning": "OODA Observe -- scanning targets..."
   }
 }

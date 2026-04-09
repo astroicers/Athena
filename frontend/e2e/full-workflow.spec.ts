@@ -101,71 +101,38 @@ test.describe.serial("Full Red Team Workflow — 192.168.0.26", () => {
   });
 
   // ──────────────────────────────────────────────
-  // Phase 3: Recon Scan
+  // Phase 3: OODA Auto-Recon (SPEC-052)
   // ──────────────────────────────────────────────
 
-  test("06. Trigger recon scan (202 Accepted)", async ({ page }) => {
-    const resp = await page.request.post(
-      `${API}/operations/${operationId}/recon/scan`,
-      { data: { target_id: targetId, enable_initial_access: true } },
-    );
-    expect(resp.status()).toBe(202);
-    const result = await resp.json();
-    expect(result.status).toBe("queued");
-  });
+  // SPEC-052: Recon is auto-triggered by OODA Observe phase after target creation.
+  // No manual POST /recon/scan needed — the OODA cycle starts automatically.
 
-  test("07. Poll recon until finished (completed or failed)", async ({ page }) => {
-    const result = await pollUntil(
-      page,
-      `${API}/operations/${operationId}/recon/status`,
-      (data: unknown) => {
-        const d = data as { status: string };
-        return d.status === "completed" || d.status === "failed";
-      },
-      90,
-      2000,
-    );
-    const r = result as { status: string };
-    // In test environments, scan may fail if target is unreachable
-    expect(["completed", "failed"]).toContain(r.status);
-  });
-
-  test("08. Verify scan result exists (may have 0 services if target unreachable)", async ({ page }) => {
+  test("06. Verify OODA auto-triggered after target creation", async ({ page }) => {
     const resp = await page.request.get(
-      `${API}/operations/${operationId}/recon/scans/by-target/${targetId}`,
+      `${API}/operations/${operationId}/ooda/dashboard`,
     );
-    // May be 200 (scan found) or 404 (no completed scan) if scan failed
-    expect([200, 404]).toContain(resp.status());
+    expect(resp.status()).toBe(200);
+    const dashboard = await resp.json();
+    // OODA cycle should have been initiated automatically
+    expect(dashboard).toBeTruthy();
   });
 
-  // ──────────────────────────────────────────────
-  // Phase 4: OODA Cycle #1
-  // ──────────────────────────────────────────────
-
-  test("09. Trigger OODA cycle #1 (202 Accepted)", async ({ page }) => {
-    const resp = await page.request.post(
-      `${API}/operations/${operationId}/ooda/trigger`,
-      {},
-    );
-    expect(resp.status()).toBe(202);
-  });
-
-  test("10. Poll OODA until iteration #1 completes", async ({ page }) => {
+  test("07. OODA auto-completes first cycle (Observe includes recon)", async ({ page }) => {
     const result = await pollUntil(
       page,
       `${API}/operations/${operationId}/ooda/dashboard`,
       (data: unknown) => {
-        const d = data as { latest_iteration?: { completed_at?: string } };
-        return !!d.latest_iteration?.completed_at;
+        const d = data as { iteration_count: number; latest_iteration?: { completed_at?: string } };
+        return d.iteration_count >= 1 && !!d.latest_iteration?.completed_at;
       },
-      30,
+      90,
       2000,
     );
     const d = result as { iteration_count: number };
     expect(d.iteration_count).toBeGreaterThanOrEqual(1);
   });
 
-  test("11. OODA timeline has phase entries", async ({ page }) => {
+  test("08. OODA timeline has observe entries from auto-recon", async ({ page }) => {
     const resp = await page.request.get(
       `${API}/operations/${operationId}/ooda/timeline`,
     );
@@ -173,6 +140,50 @@ test.describe.serial("Full Red Team Workflow — 192.168.0.26", () => {
     const timeline = await resp.json();
     expect(Array.isArray(timeline)).toBe(true);
     expect(timeline.length).toBeGreaterThan(0);
+    // Verify observe phase entries exist (recon results from auto-scan)
+    const observeEntries = timeline.filter(
+      (entry: { phase: string }) => entry.phase === "observe",
+    );
+    expect(observeEntries.length).toBeGreaterThan(0);
+  });
+
+  // ──────────────────────────────────────────────
+  // Phase 4: OODA Cycle #2 (manual trigger)
+  // ──────────────────────────────────────────────
+
+  // SPEC-052: Cycle #1 was auto-triggered. We now manually trigger cycle #2.
+  test("09. Trigger OODA cycle #2 (202 Accepted)", async ({ page }) => {
+    const resp = await page.request.post(
+      `${API}/operations/${operationId}/ooda/trigger`,
+      {},
+    );
+    expect(resp.status()).toBe(202);
+  });
+
+  test("10. Poll OODA until iteration #2 completes", async ({ page }) => {
+    const result = await pollUntil(
+      page,
+      `${API}/operations/${operationId}/ooda/dashboard`,
+      (data: unknown) => {
+        const d = data as { iteration_count: number; latest_iteration?: { completed_at?: string } };
+        return d.iteration_count >= 2 && !!d.latest_iteration?.completed_at;
+      },
+      60,
+      2000,
+    );
+    const d = result as { iteration_count: number };
+    expect(d.iteration_count).toBeGreaterThanOrEqual(2);
+  });
+
+  test("11. OODA timeline has phase entries from both cycles", async ({ page }) => {
+    const resp = await page.request.get(
+      `${API}/operations/${operationId}/ooda/timeline`,
+    );
+    expect(resp.status()).toBe(200);
+    const timeline = await resp.json();
+    expect(Array.isArray(timeline)).toBe(true);
+    // Should have entries from both auto-triggered cycle #1 and manual cycle #2
+    expect(timeline.length).toBeGreaterThanOrEqual(4);
   });
 
   // ──────────────────────────────────────────────
@@ -197,10 +208,10 @@ test.describe.serial("Full Red Team Workflow — 192.168.0.26", () => {
   });
 
   // ──────────────────────────────────────────────
-  // Phase 6: OODA Cycle #2
+  // Phase 6: OODA Cycle #3
   // ──────────────────────────────────────────────
 
-  test("14. Trigger OODA cycle #2", async ({ page }) => {
+  test("14. Trigger OODA cycle #3", async ({ page }) => {
     const resp = await page.request.post(
       `${API}/operations/${operationId}/ooda/trigger`,
       {},
@@ -208,19 +219,19 @@ test.describe.serial("Full Red Team Workflow — 192.168.0.26", () => {
     expect(resp.status()).toBe(202);
   });
 
-  test("15. Poll until iteration_count >= 2", async ({ page }) => {
+  test("15. Poll until iteration_count >= 3", async ({ page }) => {
     const result = await pollUntil(
       page,
       `${API}/operations/${operationId}/ooda/dashboard`,
       (data: unknown) => {
         const d = data as { iteration_count: number; latest_iteration?: { completed_at?: string } };
-        return d.iteration_count >= 2 && !!d.latest_iteration?.completed_at;
+        return d.iteration_count >= 3 && !!d.latest_iteration?.completed_at;
       },
       60,
       2000,
     );
     const d = result as { iteration_count: number };
-    expect(d.iteration_count).toBeGreaterThanOrEqual(2);
+    expect(d.iteration_count).toBeGreaterThanOrEqual(3);
   });
 
   test("16. Timeline detail has facts and recommendation", async ({ page }) => {
@@ -229,8 +240,8 @@ test.describe.serial("Full Red Team Workflow — 192.168.0.26", () => {
     );
     expect(resp.status()).toBe(200);
     const timeline = await resp.json();
-    // Should have multiple entries across 2 iterations
-    expect(timeline.length).toBeGreaterThanOrEqual(4);
+    // Should have multiple entries across 3 iterations
+    expect(timeline.length).toBeGreaterThanOrEqual(6);
   });
 
   // ──────────────────────────────────────────────

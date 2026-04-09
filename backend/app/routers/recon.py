@@ -41,10 +41,9 @@ _MOCK_SCAN_PHASES: list[tuple[str, float]] = [
     ("credential_test", 1.5),
     ("finalizing", 1.0),
 ]
-_REAL_SCAN_STEPS = 3  # nmap_scan, initial_access, finalizing
+_REAL_SCAN_STEPS = 2  # nmap_scan, finalizing
 class ReconScanRequest(BaseModel):
     target_id: str
-    enable_initial_access: bool = True
     c2_host: str | None = None  # defaults to settings.C2_ENGINE_URL
 class OSINTDiscoverRequest(BaseModel):
     domain: str
@@ -157,13 +156,8 @@ async def _run_scan_background(
             # Run nmap scan
             recon_result = await ReconEngine().scan(db, op_id, target_id)
 
-            if settings.MOCK_C2_ENGINE:
-                await _broadcast_phase("credential_test", 5)
-                await asyncio.sleep(1.5)
-            else:
-                await _broadcast_phase("initial_access", 2)
-
-            # Optional initial access -- multi-protocol (SSH/RDP/WinRM)
+            # Initial access decoupled from recon scan (SPEC-052).
+            # Use POST /recon/initial-access endpoint separately.
             ia_result = InitialAccessResult(
                 success=False,
                 method="none",
@@ -171,46 +165,13 @@ async def _run_scan_background(
                 agent_deployed=False,
                 error=None,
             )
-            if body.enable_initial_access:
-                ia_engine = InitialAccessEngine()
-                services_dicts = [
-                    {"port": svc.port, "service": svc.service}
-                    for svc in recon_result.services
-                ]
-                ia_result = await ia_engine.try_initial_access(
-                    db, op_id, target_id, ip_address, services_dicts,
-                )
-
-                # Bootstrap C2 agent only for SSH success (RDP/WinRM can't deploy sandcat)
-                if (
-                    ia_result.success
-                    and ia_result.method == "ssh_credential"
-                    and not settings.MOCK_C2_ENGINE
-                ):
-                    c2_host = (
-                        body.c2_host
-                        or settings.C2_AGENT_CALLBACK_URL
-                        or settings.C2_ENGINE_URL
-                    )
-                    cred_parts = (ia_result.credential or ":").split(":", 1)
-                    cred_tuple = (cred_parts[0], cred_parts[1] if len(cred_parts) > 1 else "")
-                    deployed = await ia_engine.bootstrap_c2_agent(
-                        ip_address, cred_tuple, c2_host
-                    )
-                    ia_result = InitialAccessResult(
-                        success=ia_result.success,
-                        method=ia_result.method,
-                        credential=ia_result.credential,
-                        agent_deployed=deployed,
-                        error=ia_result.error,
-                    )
 
             # Finalizing phase
             if settings.MOCK_C2_ENGINE:
                 await _broadcast_phase("finalizing", 6)
                 await asyncio.sleep(1.0)
             else:
-                await _broadcast_phase("finalizing", 3)
+                await _broadcast_phase("finalizing", 2)
 
             # Update DB as completed
             open_ports_json = json.dumps([
@@ -259,20 +220,7 @@ async def _run_scan_background(
                 },
             )
 
-            # R1: Auto-trigger OODA cycle after recon completion
-            try:
-                from app.services.ooda_trigger import auto_trigger_ooda
-                asyncio.create_task(
-                    auto_trigger_ooda(
-                        op_id,
-                        reason=f"recon.completed:scan-{scan_id[:8]}",
-                        delay_sec=5,
-                    )
-                )
-            except Exception as ooda_exc:
-                logger.warning(
-                    "Failed to auto-trigger OODA after recon: %s", ooda_exc,
-                )
+            # OODA auto-trigger removed -- now handled on target creation (SPEC-052)
 
         except Exception as exc:
             logger.exception("Background recon scan %s failed: %s", scan_id, exc)
@@ -410,13 +358,20 @@ class InitialAccessRequest(BaseModel):
 @router.post(
     "/operations/{op_id}/recon/initial-access",
     status_code=202,
+    deprecated=True,
 )
 async def run_initial_access(
     op_id: str,
     body: InitialAccessRequest,
     db: asyncpg.Connection = Depends(get_db),
 ) -> dict:
-    """Run initial access on a target (requires a prior completed recon scan)."""
+    """Run initial access on a target (requires a prior completed recon scan).
+
+    .. deprecated::
+        This endpoint is deprecated. Initial access will be handled by a
+        dedicated router in a future release. Use the standalone initial-access
+        service instead.
+    """
     await ensure_operation(db, op_id)
 
     # Validate target

@@ -247,7 +247,7 @@ async def evaluate(
     if any(hl.rule == "block_low_intel_targets" for hl in constraints.hard_limits):
         sparse_rows = await db.fetch(
             """SELECT t.id FROM targets t
-               LEFT JOIN facts f ON f.target_id = t.id AND f.operation_id = $1
+               LEFT JOIN facts f ON f.source_target_id = t.id AND f.operation_id = $1
                WHERE t.operation_id = $1
                GROUP BY t.id
                HAVING COUNT(f.id) < 3""",

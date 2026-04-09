@@ -24,7 +24,6 @@ import { Button } from "@/components/atoms/Button";
 import { Badge } from "@/components/atoms/Badge";
 import { HexConfirmModal } from "@/components/modal/HexConfirmModal";
 import { AddTargetModal } from "@/components/modal/AddTargetModal";
-import { ReconResultModal } from "@/components/modal/ReconResultModal";
 import { TerminalPanel } from "@/components/terminal/TerminalPanel";
 import { SectionHeader } from "@/components/atoms/SectionHeader";
 import { TargetSummaryPanel } from "@/components/planner/TargetSummaryPanel";
@@ -32,7 +31,6 @@ import { ExecutionEngine, MissionStepStatus, RiskLevel } from "@/types/enums";
 import type { MissionStep } from "@/types/mission";
 import type { OODATimelineEntry } from "@/types/ooda";
 import type { Target } from "@/types/target";
-import type { ReconScanResult } from "@/types/recon";
 
 const STEP_VARIANT: Record<string, "success" | "warning" | "error" | "info"> = {
   [MissionStepStatus.COMPLETED]: "success",
@@ -52,9 +50,6 @@ export interface MissionTabProps {
   targets: Target[];
   oodaPhase: string | null;
   resetStatus: "idle" | "resetting" | "done";
-  scanState: { targetId: string; phase: string | null; step: number; totalSteps: number } | null;
-  targetScans: Record<string, ReconScanResult>;
-  reconResult: ReconScanResult | null;
   terminalTarget: Target | null;
   deletingTarget: Target | null;
   showOodaConfirm: boolean;
@@ -63,14 +58,11 @@ export interface MissionTabProps {
   onSetShowOodaConfirm: (v: boolean) => void;
   onSetShowResetConfirm: (v: boolean) => void;
   onSetShowAddTarget: (v: boolean) => void;
-  onSetReconResult: (v: ReconScanResult | null) => void;
   onSetTerminalTarget: (v: Target | null) => void;
   onSetDeletingTarget: (v: Target | null) => void;
   onOodaTrigger: () => void;
   onReset: () => void;
   onExport: () => void;
-  onReconScan: (targetId: string) => void;
-  onInitialAccess?: (targetId: string) => void;
   onSetActive: (targetId: string, active: boolean) => void;
   onDeleteRequest: (targetId: string) => void;
   onConfirmDelete: () => void;
@@ -87,9 +79,6 @@ export function MissionTab({
   targets,
   oodaPhase,
   resetStatus,
-  scanState,
-  targetScans,
-  reconResult,
   terminalTarget,
   deletingTarget,
   showOodaConfirm,
@@ -98,14 +87,11 @@ export function MissionTab({
   onSetShowOodaConfirm,
   onSetShowResetConfirm,
   onSetShowAddTarget,
-  onSetReconResult,
   onSetTerminalTarget,
   onSetDeletingTarget,
   onOodaTrigger,
   onReset,
   onExport,
-  onReconScan,
-  onInitialAccess,
   onSetActive,
   onDeleteRequest,
   onConfirmDelete,
@@ -349,18 +335,8 @@ export function MissionTab({
                   isCompromised={tgt.isCompromised}
                   isActive={tgt.isActive}
                   privilegeLevel={tgt.privilegeLevel}
-                  isScanning={scanState?.targetId === tgt.id}
-                  scanPhase={scanState?.targetId === tgt.id ? scanState.phase : null}
-                  scanStep={scanState?.targetId === tgt.id ? scanState.step : 0}
-                  scanTotalSteps={scanState?.targetId === tgt.id ? scanState.totalSteps : 0}
-                  os={targetScans[tgt.id]?.osGuess ?? null}
-                  openPorts={targetScans[tgt.id]?.servicesFound}
-                  services={targetScans[tgt.id]?.services?.map((s) => ({ port: s.port, service: s.service }))}
-                  credentialFound={targetScans[tgt.id]?.initialAccess?.credential ?? null}
-                  onScan={onReconScan}
                   onSetActive={onSetActive}
                   onDelete={onDeleteRequest}
-                  onViewScanResult={targetScans[tgt.id] ? () => onSetReconResult(targetScans[tgt.id]) : undefined}
                 />
                 <div className="flex gap-1.5 mt-1.5">
                   {onOsintDiscover && (
@@ -371,17 +347,6 @@ export function MissionTab({
                       className="flex-1 text-athena-floor text-[var(--color-accent)] border-[var(--color-accent)]/[0.25] bg-transparent hover:bg-[var(--color-accent)]/10 uppercase tracking-wider"
                     >
                       {t("osintDiscover")}
-                    </Button>
-                  )}
-                  {onInitialAccess && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => onInitialAccess(tgt.id)}
-                      disabled={scanState?.targetId === tgt.id}
-                      className="flex-1 text-athena-floor text-[var(--color-warning)] border-[var(--color-warning)]/[0.25] bg-transparent hover:bg-[var(--color-warning)]/[0.12] uppercase tracking-wider"
-                    >
-                      {t("initialAccess")}
                     </Button>
                   )}
                   <Button
@@ -455,13 +420,6 @@ export function MissionTab({
         operationId={operationId}
         onSuccess={onAddTargetSuccess}
         onCancel={() => onSetShowAddTarget(false)}
-      />
-
-      <ReconResultModal
-        isOpen={reconResult !== null}
-        operationId={operationId}
-        result={reconResult}
-        onClose={() => onSetReconResult(null)}
       />
 
       {terminalTarget && (

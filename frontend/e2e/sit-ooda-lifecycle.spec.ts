@@ -11,9 +11,9 @@
 /**
  * SIT — OODA Loop Complete Lifecycle
  *
- * Self-contained: creates own operation + target, runs recon, triggers
- * OODA cycles, tests directive/auto-mode, verifies all API endpoints.
- * Does NOT depend on seed data.
+ * Self-contained: creates own operation + target, waits for OODA
+ * auto-triggered recon (SPEC-052), tests directive/auto-mode, verifies
+ * all API endpoints. Does NOT depend on seed data.
  */
 
 import { test, expect, Page } from "@playwright/test";
@@ -92,55 +92,28 @@ test.describe.serial("SIT — OODA Loop Complete Lifecycle", () => {
   });
 
   // ──────────────────────────────────────────────────────────────
-  //  Recon scan
+  //  OODA auto-triggered recon (SPEC-052)
   // ──────────────────────────────────────────────────────────────
 
-  test("04. Trigger recon scan (202)", async ({ page }) => {
-    const resp = await page.request.post(
-      `${API}/operations/${operationId}/recon/scan`,
-      { data: { target_id: targetId, enable_initial_access: true } },
-    );
-    expect(resp.status()).toBe(202);
-  });
+  // SPEC-052: Recon is now auto-triggered in OODA Observe phase.
+  // Target creation triggers an OODA cycle after a 2-second delay.
+  // No manual POST /recon/scan is needed — the Observe phase
+  // auto-scans targets with insufficient facts.
 
-  test("05. Poll recon until finished", async ({ page }) => {
-    const result = await pollUntil(
-      page,
-      `${API}/operations/${operationId}/recon/status`,
-      (data: unknown) => {
-        const d = data as { status: string };
-        return d.status === "completed" || d.status === "failed";
-      },
-      90,
-      2000,
-    );
-    const r = result as { status: string };
-    expect(["completed", "failed"]).toContain(r.status);
-  });
+  test("04. OODA auto-triggers recon in Observe", async ({ page }) => {
+    // Wait briefly for the auto-trigger delay (2s after target creation)
+    await page.waitForTimeout(3000);
 
-  // ──────────────────────────────────────────────────────────────
-  //  OODA Trigger + Verification
-  // ──────────────────────────────────────────────────────────────
-
-  test("06. GET /ooda/dashboard — baseline", async ({ page }) => {
     const resp = await page.request.get(
       `${API}/operations/${operationId}/ooda/dashboard`,
     );
     expect(resp.status()).toBe(200);
     const d = await resp.json();
-    // After recon auto-trigger, may already have 1+ iteration
+    // OODA cycle should have been initiated automatically
     expect(d.iteration_count).toBeGreaterThanOrEqual(0);
   });
 
-  test("07. POST /ooda/trigger — manual trigger (202)", async ({ page }) => {
-    const resp = await page.request.post(
-      `${API}/operations/${operationId}/ooda/trigger`,
-      {},
-    );
-    expect(resp.status()).toBe(202);
-  });
-
-  test("08. Poll until iteration completes", async ({ page }) => {
+  test("05. Poll OODA until first iteration completes", async ({ page }) => {
     const result = await pollUntil(
       page,
       `${API}/operations/${operationId}/ooda/dashboard`,
@@ -155,7 +128,7 @@ test.describe.serial("SIT — OODA Loop Complete Lifecycle", () => {
     expect(d.iteration_count).toBeGreaterThanOrEqual(1);
   });
 
-  test("09. Timeline has all 4 phases", async ({ page }) => {
+  test("06. Timeline has all 4 phases", async ({ page }) => {
     const resp = await page.request.get(
       `${API}/operations/${operationId}/ooda/timeline`,
     );
@@ -173,7 +146,7 @@ test.describe.serial("SIT — OODA Loop Complete Lifecycle", () => {
     expect(phases).toContain("act");
   });
 
-  test("10. Orient has recommended_technique_id", async ({ page }) => {
+  test("07. Orient has recommended_technique_id", async ({ page }) => {
     const resp = await page.request.get(
       `${API}/operations/${operationId}/ooda/timeline`,
     );
@@ -192,7 +165,7 @@ test.describe.serial("SIT — OODA Loop Complete Lifecycle", () => {
   //  Directive
   // ──────────────────────────────────────────────────────────────
 
-  test("11. Store directive", async ({ page }) => {
+  test("08. Store directive", async ({ page }) => {
     const resp = await page.request.post(
       `${API}/operations/${operationId}/ooda/directive`,
       { data: { directive: "Focus on SSH and FTP services", scope: "next_cycle" } },
@@ -200,7 +173,7 @@ test.describe.serial("SIT — OODA Loop Complete Lifecycle", () => {
     expect([200, 201]).toContain(resp.status());
   });
 
-  test("12. Get latest directive", async ({ page }) => {
+  test("09. Get latest directive", async ({ page }) => {
     const resp = await page.request.get(
       `${API}/operations/${operationId}/ooda/directive/latest`,
     );
@@ -213,7 +186,7 @@ test.describe.serial("SIT — OODA Loop Complete Lifecycle", () => {
   //  Auto Mode
   // ──────────────────────────────────────────────────────────────
 
-  test("13. Start auto mode", async ({ page }) => {
+  test("10. Start auto mode", async ({ page }) => {
     const resp = await page.request.post(
       `${API}/operations/${operationId}/ooda/auto-start`,
       {},
@@ -221,7 +194,7 @@ test.describe.serial("SIT — OODA Loop Complete Lifecycle", () => {
     expect([200, 202]).toContain(resp.status());
   });
 
-  test("14. Auto status = running", async ({ page }) => {
+  test("11. Auto status = running", async ({ page }) => {
     const resp = await page.request.get(
       `${API}/operations/${operationId}/ooda/auto-status`,
     );
@@ -230,14 +203,14 @@ test.describe.serial("SIT — OODA Loop Complete Lifecycle", () => {
     expect(d.status).toBe("running");
   });
 
-  test("15. Stop auto mode", async ({ page }) => {
+  test("12. Stop auto mode", async ({ page }) => {
     const resp = await page.request.delete(
       `${API}/operations/${operationId}/ooda/auto-stop`,
     );
     expect([200, 204]).toContain(resp.status());
   });
 
-  test("16. Auto status = stopped/idle", async ({ page }) => {
+  test("13. Auto status = stopped/idle", async ({ page }) => {
     const resp = await page.request.get(
       `${API}/operations/${operationId}/ooda/auto-status`,
     );
@@ -250,7 +223,7 @@ test.describe.serial("SIT — OODA Loop Complete Lifecycle", () => {
   //  History + Dashboard + Recommendations
   // ──────────────────────────────────────────────────────────────
 
-  test("17. History length matches iteration_count", async ({ page }) => {
+  test("14. History length matches iteration_count", async ({ page }) => {
     const dashResp = await page.request.get(
       `${API}/operations/${operationId}/ooda/dashboard`,
     );
@@ -264,7 +237,7 @@ test.describe.serial("SIT — OODA Loop Complete Lifecycle", () => {
     expect(history.length).toBe(dashboard.iteration_count);
   });
 
-  test("18. Dashboard aggregate has all sections", async ({ page }) => {
+  test("15. Dashboard aggregate has all sections", async ({ page }) => {
     const resp = await page.request.get(
       `${API}/operations/${operationId}/dashboard`,
     );
@@ -277,7 +250,7 @@ test.describe.serial("SIT — OODA Loop Complete Lifecycle", () => {
     expect(d.objectives).toBeTruthy();
   });
 
-  test("19. Recommendations exist after OODA", async ({ page }) => {
+  test("16. Recommendations exist after OODA", async ({ page }) => {
     const resp = await page.request.get(
       `${API}/operations/${operationId}/recommendations`,
     );
@@ -291,7 +264,7 @@ test.describe.serial("SIT — OODA Loop Complete Lifecycle", () => {
   //  Cleanup
   // ──────────────────────────────────────────────────────────────
 
-  test("20. Hard reset cleans all data", async ({ page }) => {
+  test("17. Hard reset cleans all data", async ({ page }) => {
     const resp = await page.request.post(
       `${API}/operations/${operationId}/reset`,
     );

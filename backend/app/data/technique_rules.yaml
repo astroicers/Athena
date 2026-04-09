@@ -41,8 +41,29 @@ rules:
       - "windows"
     description: "Active Scanning: Vulnerability Scanning"
 
+  - technique_id: "T1046"
+    tactic_id: "TA0043"
+    required_facts:
+      - "network.host.ip"
+    produced_facts:
+      - "service.open_port"
+    risk_level: "low"
+    base_confidence: 0.90
+    information_gain: 0.85
+    effort: 1
+    enables:
+      - "T1110.001"
+      - "T1190"
+      - "T1078.001"
+    alternatives:
+      - "T1595.001"
+    platforms:
+      - "linux"
+      - "windows"
+    description: "Network Service Discovery (nmap port/service enumeration)"
+
   # =========================================================================
-  # TA0001 — Initial Access (3 rules)
+  # TA0001 — Initial Access (4 rules)
   # =========================================================================
   - technique_id: "T1190"
     tactic_id: "TA0001"
@@ -82,6 +103,26 @@ rules:
       - "linux"
       - "windows"
     description: "Brute Force: Password Guessing"
+
+  - technique_id: "T1078.001"
+    tactic_id: "TA0001"
+    required_facts:
+      - "credential.ssh"
+    produced_facts:
+      - "access.shell"
+    risk_level: "low"
+    base_confidence: 0.85
+    information_gain: 0.5
+    effort: 1
+    enables:
+      - "T1059.004"
+      - "T1003.001"
+    alternatives:
+      - "T1110.001"
+    platforms:
+      - "linux"
+      - "windows"
+    description: "Valid Accounts: Default Accounts"
 
   - technique_id: "T1133"
     tactic_id: "TA0001"

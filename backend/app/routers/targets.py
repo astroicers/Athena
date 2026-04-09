@@ -10,13 +10,19 @@
 
 """Target and topology endpoints."""
 
+import asyncio
 import json
+import logging
 import uuid
 from datetime import datetime, timezone
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
 from starlette.responses import Response
+
+from app.services.ooda_trigger import auto_trigger_ooda
+
+logger = logging.getLogger(__name__)
 
 from app.database import get_db
 from app.models import Target
@@ -100,6 +106,19 @@ async def create_target(
         body.network_segment, operation_id, now,
     )
     row = await db.fetchrow("SELECT * FROM targets WHERE id = $1", target_id)
+
+    # SPEC-052: Auto-trigger OODA cycle on new target creation
+    try:
+        asyncio.create_task(
+            auto_trigger_ooda(
+                operation_id,
+                reason=f"target.added:{target_id}",
+                delay_sec=2,
+            )
+        )
+    except Exception as exc:
+        logger.warning("Failed to auto-trigger OODA after target creation: %s", exc)
+
     return _row_to_target(row)
 
 

@@ -13,7 +13,6 @@
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/atoms/Badge";
 import { Button } from "@/components/atoms/Button";
-import { ProgressBar } from "@/components/atoms/ProgressBar";
 import { Tooltip } from "@/components/ui/Tooltip";
 
 interface HostNodeCardProps {
@@ -23,37 +22,24 @@ interface HostNodeCardProps {
   role: string;
   isCompromised: boolean;
   privilegeLevel: string | null;
-  isScanning?: boolean;
   isActive?: boolean;
-  scanPhase?: string | null;
-  scanStep?: number;
-  scanTotalSteps?: number;
   os?: string | null;
   openPorts?: number;
   services?: Array<{ port: number; service: string }>;
   credentialFound?: string | null;
   lastScanAt?: string | null;
-  onScan?: (targetId: string) => void;
   onSetActive?: (targetId: string, active: boolean) => void;
   onDelete?: (targetId: string) => void;
-  onViewScanResult?: () => void;
 }
 
-function ShieldIcon({ isCompromised, isScanning }: { isCompromised: boolean; isScanning: boolean }) {
-  const bgColor = isScanning
-    ? "bg-[var(--color-accent)]/10"
-    : isCompromised
-      ? "bg-[var(--color-error)]/10"
-      : "bg-[var(--color-success)]/10";
+function ShieldIcon({ isCompromised }: { isCompromised: boolean }) {
+  const bgColor = isCompromised
+    ? "bg-[var(--color-error)]/10"
+    : "bg-[var(--color-success)]/10";
 
   return (
     <div className={`shrink-0 w-8 h-8 rounded-[var(--radius)] flex items-center justify-center ${bgColor}`}>
-      {isScanning ? (
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="animate-spin" style={{ animationDuration: "3s" }}>
-          <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5" strokeDasharray="22 22" className="text-[var(--color-accent)]" />
-          <circle cx="10" cy="10" r="2" fill="currentColor" className="text-[var(--color-accent)]" />
-        </svg>
-      ) : isCompromised ? (
+      {isCompromised ? (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--color-error)]">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
           <path d="M9 9l6 6M15 9l-6 6" />
@@ -75,20 +61,14 @@ export function HostNodeCard({
   role,
   isCompromised,
   privilegeLevel,
-  isScanning = false,
   isActive = false,
-  scanPhase = null,
-  scanStep = 0,
-  scanTotalSteps = 0,
   os,
   openPorts,
   services,
   credentialFound,
   lastScanAt,
-  onScan,
   onSetActive,
   onDelete,
-  onViewScanResult,
 }: HostNodeCardProps) {
   const t = useTranslations("HostCard");
 
@@ -103,7 +83,7 @@ export function HostNodeCard({
       }`}
     >
       <div className="flex gap-3">
-        <ShieldIcon isCompromised={isCompromised} isScanning={isScanning} />
+        <ShieldIcon isCompromised={isCompromised} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-2">
             <span className="text-athena-body font-mono font-bold text-[var(--color-text-primary)]">
@@ -137,7 +117,7 @@ export function HostNodeCard({
             )}
           </div>
           {/* Scan results summary */}
-          {openPorts != null && openPorts > 0 && !isScanning && (
+          {openPorts != null && openPorts > 0 && (
             <div className="mt-2 pt-2 border-t border-[var(--color-border)]/30 space-y-1">
               {os && (
                 <div className="flex justify-between text-athena-floor font-mono">
@@ -177,48 +157,10 @@ export function HostNodeCard({
                   {lastScanAt.split("T")[1]?.slice(0, 8)}
                 </div>
               )}
-              {onViewScanResult && (
-                <button
-                  onClick={onViewScanResult}
-                  className="text-athena-body font-mono text-[var(--color-accent)] hover:underline"
-                >
-                  {t("viewDetails")}
-                </button>
-              )}
             </div>
           )}
-          {isScanning && (
-            <div className="mt-2 space-y-1">
-              <div className="flex items-center justify-between text-athena-body font-mono">
-                <span className="text-[var(--color-accent)] animate-pulse">
-                  {scanPhase
-                    ? t(`phase_${scanPhase}` as Parameters<typeof t>[0])
-                    : t("scanning")}
-                </span>
-                {scanTotalSteps > 0 && (
-                  <span className="text-[var(--color-text-tertiary)]">
-                    {scanStep}/{scanTotalSteps}
-                  </span>
-                )}
-              </div>
-              <ProgressBar
-                value={scanStep}
-                max={scanTotalSteps || 1}
-              />
-            </div>
-          )}
-          {(onScan || onSetActive || onDelete) && id && (
+          {(onSetActive || onDelete) && id && (
             <div className="mt-3 flex gap-2 flex-wrap">
-              {onScan && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => onScan(id)}
-                  disabled={isScanning}
-                >
-                  {isScanning ? t("scanning") : t("reconScan")}
-                </Button>
-              )}
               {onSetActive && (
                 <Tooltip text={t(isActive ? "deactivateHint" : "setActiveHint")}>
                   <Button
@@ -235,7 +177,7 @@ export function HostNodeCard({
                   variant="danger"
                   size="sm"
                   onClick={() => onDelete(id)}
-                  disabled={isActive || isScanning}
+                  disabled={isActive}
                   title={isActive ? t("cannotDeleteActive") : undefined}
                 >
                   {t("delete")}

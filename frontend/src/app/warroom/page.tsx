@@ -17,17 +17,14 @@ import { useToast } from "@/contexts/ToastContext";
 import { api } from "@/lib/api";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useC5ISRData } from "@/hooks/useC5ISRData";
-import { useReconScan } from "@/hooks/useReconScan";
 import { ConstraintBanner } from "@/components/layout/ConstraintBanner";
 import { TabBar } from "@/components/nav/TabBar";
-import { ReconBlock } from "@/components/warroom/ReconBlock";
 import { OODATimelineBlock } from "@/components/warroom/OODATimelineBlock";
-import { DirectiveInput } from "@/components/warroom/DirectiveInput";
+import { CommandBar } from "@/components/warroom/CommandBar";
+import { ModeControl } from "@/components/warroom/ModeControl";
 import { MissionObjective } from "@/components/warroom/MissionObjective";
 import { StatusPanel } from "@/components/warroom/StatusPanel";
-import { HostNodeCard } from "@/components/cards/HostNodeCard";
 import { AddTargetModal } from "@/components/modal/AddTargetModal";
-import { ReconResultModal } from "@/components/modal/ReconResultModal";
 import { TerminalPanel } from "@/components/terminal/TerminalPanel";
 import { HexConfirmModal } from "@/components/modal/HexConfirmModal";
 import { SectionHeader } from "@/components/atoms/SectionHeader";
@@ -43,7 +40,6 @@ import { ExecutionEngine, MissionStepStatus, RiskLevel } from "@/types/enums";
 import type { OODATimelineEntry } from "@/types/ooda";
 import type { Target } from "@/types/target";
 import type { MissionStep } from "@/types/mission";
-import type { ReconScanResult, ReconScanQueued } from "@/types/recon";
 import type { ApiError } from "@/types/api";
 
 /* ── Constants ── */
@@ -114,8 +110,6 @@ function WarRoomContent() {
 
   /* ── Targets tab state ── */
   const [showAddTarget, setShowAddTarget] = useState(false);
-  const [reconResult, setReconResult] = useState<ReconScanResult | null>(null);
-  const [targetScans, setTargetScans] = useState<Record<string, ReconScanResult>>({});
   const [terminalTarget, setTerminalTarget] = useState<Target | null>(null);
   const [deletingTarget, setDeletingTarget] = useState<Target | null>(null);
   const [summaryTargetId, setSummaryTargetId] = useState<string | null>(null);
@@ -142,44 +136,7 @@ function WarRoomContent() {
   const ws = useWebSocket(operationId);
   const { domains, constraints, override } = useC5ISRData(operationId, ws);
 
-  // Recon scan hook
-  const { scanState, setScanState } = useReconScan(operationId, ws, {
-    onCompleted: async (data) => {
-      fetchData();
-      addToast(t("reconComplete", { factsWritten: data.factsWritten }), "success");
-      try {
-        const fullResult = await api.get<ReconScanResult>(
-          `/operations/${operationId}/recon/scans/${data.scanId}`,
-        );
-        // Result displays inline in TargetDetailPanel via targetScans
-        if (data.targetId) {
-          setTargetScans((prev) => ({ ...prev, [data.targetId]: fullResult }));
-        }
-      } catch {
-        // Modal won't open but toast already informed the user
-      }
-    },
-    onFailed: (error) => {
-      addToast(error || tErrors("failedReconScan"), "error");
-    },
-  });
-
   /* ── Data fetching ── */
-
-  async function fetchTargetScans(tgts: Target[]) {
-    const scans: Record<string, ReconScanResult> = {};
-    await Promise.all(
-      tgts.map((tgt) =>
-        api
-          .get<ReconScanResult | null>(
-            `/operations/${operationId}/recon/scans/by-target/${tgt.id}`,
-          )
-          .then((r) => { if (r) scans[tgt.id] = r; })
-          .catch(() => {})
-      ),
-    );
-    setTargetScans(scans);
-  }
 
   const fetchData = useCallback(async () => {
     if (!operationId) return;
@@ -213,7 +170,6 @@ function WarRoomContent() {
       if (targetData.status === "fulfilled" && targetData.value) {
         const tgts = Array.isArray(targetData.value) ? targetData.value : [];
         setTargets(tgts);
-        fetchTargetScans(tgts);
       }
       if (stepsData.status === "fulfilled" && stepsData.value) {
         setSteps(
@@ -292,8 +248,6 @@ function WarRoomContent() {
       targetIp: entry?.targetIp,
     };
   });
-  const reconEntries = timeline.filter((e) => e.iterationNumber === 0);
-
   const targetStats = targets.map((tgt) => ({
     id: tgt.id,
     hostname: tgt.hostname,
@@ -354,31 +308,6 @@ function WarRoomContent() {
 
   /* ── Handlers: Targets ── */
 
-  async function handleReconScan(targetId: string) {
-    setScanState({ targetId, phase: null, step: 0, totalSteps: 0 });
-    try {
-      await api.post<ReconScanQueued>(
-        `/operations/${operationId}/recon/scan`,
-        { target_id: targetId, enable_initial_access: true },
-      );
-    } catch (err) {
-      setScanState(null);
-      const apiError = err as ApiError;
-      addToast(apiError.detail || tErrors("failedReconScan"), "error");
-    }
-  }
-
-  async function handleInitialAccess(targetId: string) {
-    try {
-      await api.post(`/operations/${operationId}/recon/initial-access`, {
-        target_id: targetId,
-      });
-      addToast(t("initialAccessStarted"), "info");
-    } catch {
-      addToast(tErrors("failedInitialAccess"), "error");
-    }
-  }
-
   async function handleOsintDiscover(targetId: string) {
     try {
       await api.post(`/operations/${operationId}/osint/discover`, {
@@ -425,7 +354,7 @@ function WarRoomContent() {
 
   function refreshTargets() {
     api.get<Target[]>(`/operations/${operationId}/targets`)
-      .then((tgts) => { setTargets(tgts); fetchTargetScans(tgts); })
+      .then((tgts) => { setTargets(tgts); })
       .catch(() => addToast(tErrors("failedLoadTargets"), "error"));
   }
 
@@ -557,8 +486,11 @@ function WarRoomContent() {
       {/* Constraint Banner */}
       <ConstraintBanner constraints={bannerData} onOverride={override} />
 
-      {/* Tab Bar */}
-      <TabBar tabs={TABS} activeTab={activeTab} onChange={(id) => setActiveTab(id as WarRoomTab)} />
+      {/* Tab Bar + Mode Control */}
+      <div className="flex items-center justify-between pr-4">
+        <TabBar tabs={TABS} activeTab={activeTab} onChange={(id) => setActiveTab(id as WarRoomTab)} />
+        <ModeControl isAutoMode={autoMode} onToggle={handleToggleAuto} />
+      </div>
 
       {/* ═══════════ TIMELINE TAB ═══════════ */}
       {activeTab === "timeline" && (
@@ -577,25 +509,7 @@ function WarRoomContent() {
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-athena-floor font-mono text-[var(--color-text-secondary)]">
-                  {autoMode ? t("autoMode") : t("manualMode")}
-                </span>
-                <button
-                  role="switch"
-                  aria-checked={autoMode}
-                  onClick={handleToggleAuto}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] ${
-                    autoMode ? "bg-[var(--color-accent)]" : "bg-[var(--color-border)]"
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-5 w-5 rounded-full bg-white transition-transform ${
-                      autoMode ? "translate-x-5" : "translate-x-0.5"
-                    }`}
-                  />
-                </button>
-              </div>
+              {/* Mode control moved to tab bar */}
             </div>
 
             {/* Empty state guide — shown when no iterations and no targets */}
@@ -607,9 +521,20 @@ function WarRoomContent() {
               </div>
             )}
 
-            {/* Recon Block */}
-            {reconEntries.length > 0 && (
-              <ReconBlock entries={reconEntries} />
+            {/* OODA loading state — targets exist but no iterations yet */}
+            {iterations.length === 0 && targets.length > 0 && (
+              <div className="flex flex-col items-center justify-center py-16 gap-4">
+                <div className="relative w-12 h-12">
+                  <div className="absolute inset-0 rounded-full border-2 border-[var(--color-border)]" />
+                  <div className="absolute inset-0 rounded-full border-2 border-t-[var(--color-accent)] animate-spin" />
+                </div>
+                <span className="font-mono text-athena-floor text-[var(--color-text-secondary)]">
+                  OODA Observe — scanning targets...
+                </span>
+                <span className="font-mono text-[10px] text-[var(--color-text-tertiary)]">
+                  {targets.length} target(s) queued
+                </span>
+              </div>
             )}
 
             {/* OODA Iteration Blocks */}
@@ -618,7 +543,7 @@ function WarRoomContent() {
               return (
                 <div key={iter.id}>
                   {/* Connector line */}
-                  {idx > 0 || reconEntries.length > 0 ? (
+                  {idx > 0 ? (
                     <div className="flex justify-center py-1">
                       <div className="w-px h-4 bg-athena-border" />
                     </div>
@@ -633,16 +558,7 @@ function WarRoomContent() {
                     timelineEntries={timeline}
                   />
 
-                  {/* Directive Input (after completed iterations) */}
-                  {iter.completedAt && (
-                    <div className="mt-2">
-                      <DirectiveInput
-                        iterationId={iter.id}
-                        autoMode={autoMode}
-                        onSubmit={handleDirective}
-                      />
-                    </div>
-                  )}
+                  {/* SPEC-052: Directive input moved to CommandBar at bottom */}
                 </div>
               );
             })}
@@ -692,9 +608,7 @@ function WarRoomContent() {
                 <span className="text-athena-floor font-mono text-[var(--color-text-tertiary)] whitespace-pre-line">{tEmpty("plannerGuide")}</span>
               </div>
             ) : (
-              targets.map((tgt) => {
-                const openPortCount = targetScans[tgt.id]?.servicesFound ?? 0;
-                return (
+              targets.map((tgt) => (
                   <div
                     key={tgt.id}
                     onClick={() => setSelectedTargetId(tgt.id)}
@@ -727,15 +641,9 @@ function WarRoomContent() {
                       <span className="text-athena-floor font-mono text-[var(--color-text-tertiary)]">
                         {tgt.privilegeLevel ?? "N/A"}
                       </span>
-                      {openPortCount > 0 && (
-                        <span className="text-athena-floor font-mono text-[var(--color-text-tertiary)]">
-                          {openPortCount} ports
-                        </span>
-                      )}
                     </div>
                   </div>
-                );
-              })
+              ))
             )}
           </div>
 
@@ -746,14 +654,10 @@ function WarRoomContent() {
                 target={selectedTarget}
                 facts={targetFacts}
                 timelineEntries={timeline}
-                onScan={() => handleReconScan(selectedTarget.id)}
                 onDeactivate={() => handleSetActive(selectedTarget.id, false)}
                 onActivate={() => handleSetActive(selectedTarget.id, true)}
                 onDelete={() => handleDeleteRequest(selectedTarget.id)}
                 onOpenTerminal={selectedTarget?.isCompromised ? () => setTerminalTarget(selectedTarget) : undefined}
-                scanning={scanState?.targetId === selectedTarget.id}
-                scanProgress={scanState?.targetId === selectedTarget.id ? scanState : null}
-                scanResult={targetScans[selectedTarget.id] ?? null}
               />
             ) : (
               <div className="flex items-center justify-center h-full">
@@ -781,13 +685,6 @@ function WarRoomContent() {
               refreshTargets();
             }}
             onCancel={() => setShowAddTarget(false)}
-          />
-
-          <ReconResultModal
-            isOpen={reconResult !== null}
-            operationId={operationId}
-            result={reconResult}
-            onClose={() => setReconResult(null)}
           />
 
           {terminalTarget && (
@@ -924,6 +821,17 @@ function WarRoomContent() {
           )}
         </div>
       )}
+
+      {/* SPEC-052: Global Command Bar (bottom-fixed, cross-tab) */}
+      <CommandBar
+        operationId={operationId}
+        isAutoMode={autoMode}
+        onToggleMode={handleToggleAuto}
+        onCycleTriggered={() => fetchData()}
+        aiSuggestion={
+          dashboard?.latestIteration?.orientSummary ?? undefined
+        }
+      />
     </main>
   );
 }

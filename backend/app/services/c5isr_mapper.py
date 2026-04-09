@@ -689,6 +689,33 @@ class C5ISRMapper:
         covered_nodes = graph_row["covered"] or 0
         gc_value = (covered_nodes / total_nodes * 100) if total_nodes > 0 else 0.0
 
+        # SPEC-052: Recon coverage — targets with at least one collected fact
+        recon_cov_row = await db.fetchrow(
+            "SELECT COUNT(DISTINCT t.id) as total, "
+            "COUNT(DISTINCT CASE WHEN f.id IS NOT NULL THEN t.id END) as covered "
+            "FROM targets t "
+            "LEFT JOIN facts f ON f.source_target_id = t.id AND f.operation_id = t.operation_id "
+            "WHERE t.operation_id = $1 AND t.is_active = TRUE",
+            operation_id,
+        )
+        recon_total_targets = recon_cov_row["total"] or 0
+        recon_covered_targets = recon_cov_row["covered"] or 0
+        rc_value = (recon_covered_targets / recon_total_targets * 100) if recon_total_targets > 0 else 0.0
+
+        if recon_total_targets > 0 and rc_value == 0.0:
+            risks.append(RiskVector(
+                severity=RiskSeverity.CRIT,
+                message="Recon coverage 0%: no active targets have collected facts",
+            ))
+            actions.append("Initiate reconnaissance scans on active targets")
+        elif recon_total_targets > 0 and rc_value < 50.0:
+            risks.append(RiskVector(
+                severity=RiskSeverity.WARN,
+                message=f"Recon coverage {rc_value:.0f}% below 50% threshold "
+                        f"({recon_covered_targets}/{recon_total_targets} targets covered)",
+            ))
+            actions.append("Expand reconnaissance to uncovered active targets")
+
         if distinct_cats < 3:
             risks.append(RiskVector(
                 severity=RiskSeverity.INFO,
@@ -700,20 +727,23 @@ class C5ISRMapper:
         cross.append("Cyber: fact coverage informs technique selection")
 
         metrics = [
-            DomainMetric("confidence_trend", round(ct_value, 1), 0.35),
-            DomainMetric("fact_coverage", round(fc_value, 1), 0.35, distinct_cats, 7),
-            DomainMetric("graph_coverage", round(gc_value, 1), 0.30, covered_nodes, total_nodes if total_nodes > 0 else None),
+            DomainMetric("confidence_trend", round(ct_value, 1), 0.30),
+            DomainMetric("fact_coverage", round(fc_value, 1), 0.25, distinct_cats, 7),
+            DomainMetric("graph_coverage", round(gc_value, 1), 0.25, covered_nodes, total_nodes if total_nodes > 0 else None),
+            # SPEC-052: recon coverage metric
+            DomainMetric("recon_coverage", round(rc_value, 1), 0.20, recon_covered_targets, recon_total_targets if recon_total_targets > 0 else None),
         ]
 
         health = round(sum(m.value * m.weight for m in metrics), 1)
         status = self._health_to_status(health)
 
-        executive = f"Intel confidence {ct_value:.0f}%, {distinct_cats}/7 categories covered"
+        executive = f"Intel confidence {ct_value:.0f}%, {distinct_cats}/7 categories, recon {rc_value:.0f}%"
 
         tactical = (
             f"Confidence trend: {ct_value:.0f}%. "
             f"Fact coverage: {distinct_cats}/7 categories. "
-            f"Graph coverage: {covered_nodes}/{total_nodes} nodes reachable/completed."
+            f"Graph coverage: {covered_nodes}/{total_nodes} nodes reachable/completed. "
+            f"Recon coverage: {recon_covered_targets}/{recon_total_targets} active targets with facts."
         )
 
         # Asset roster: last 10 facts

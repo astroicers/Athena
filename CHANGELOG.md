@@ -7,6 +7,31 @@
 
 ## [Unreleased]
 
+### OODA-Native Recon & Initial Access（2026-04-01）
+
+#### Changed
+- **OODA Observe 階段**：Recon（TA0043）整合為 Observe 的自然部分，新目標自動觸發 OODA cycle，Mission Profile 感知偵察閾值（SR=0/CO=2/SP=3/FA=5），噪音預算檢查（`backend/app/services/ooda_controller.py`）（ADR-045, SPEC-052）
+- **Initial Access 解耦**：T1110/T1078 技術由 Orient 推薦 → Decide 7 層閘門評估 → Act 執行，不再綁在 Recon 掃描（`backend/app/services/engine_router.py`）
+- **Orient 系統提示詞**：新增 Rule 8 Recon→IA 轉換指引（`backend/app/services/orient_engine.py`）
+- **C5ISR ISR 域**：新增偵察覆蓋率指標（`backend/app/services/c5isr_mapper.py`）
+- **technique_rules.yaml**：新增 T1046（Network Service Discovery）和 T1078.001（Valid Accounts: Default）
+
+#### Removed
+- **手動 RECON SCAN 按鈕**：War Room Targets tab 不再需要手動觸發偵察
+- **ReconBlock.tsx**：移除 iterationNumber === 0 sentinel 顯示元件
+- **ReconResultModal.tsx**：移除 Recon 結果 Modal 和 TRIGGER OODA 按鈕
+- **enable_initial_access 參數**：從 recon scan API 移除 IA 綁定
+- **recon 完成後 auto_trigger_ooda**：由 target 建立時自動觸發取代
+
+#### Added
+- **目標建立自動觸發 OODA**：`POST /targets` 後自動呼叫 `auto_trigger_ooda()`（`backend/app/routers/targets.py`）
+- **EngineRouter IA 路由**：T1110/T1078 自動路由至 `InitialAccessEngine`，C2 bootstrap 在 Act 階段執行
+- **ADR-045**：OODA-Native Recon and Initial Access 架構決策
+- **SPEC-052**：OODA-Native Recon and Initial Access 規格書
+- **TDD 測試**：9 個新測試涵蓋 auto-trigger、noise budget、mission profile threshold、IA routing
+
+---
+
 ### UAT 全覆蓋 + Report Bug Fix + 專案整理（2026-03-27）
 
 #### Added

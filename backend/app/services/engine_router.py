@@ -71,6 +71,12 @@ _RECON_TECHNIQUE_PREFIXES: frozenset[str] = frozenset({
     "T1135",  # Network Share Discovery
 })
 
+# SPEC-052: Initial Access techniques routed to InitialAccessEngine
+_INITIAL_ACCESS_TECHNIQUE_PREFIXES: frozenset[str] = frozenset({
+    "T1110",  # Brute Force
+    "T1078",  # Valid Accounts
+})
+
 _TERMINAL_ERRORS: list[str] = [
     "scope violation",
     "platform mismatch",
@@ -220,6 +226,12 @@ class EngineRouter:
                 db, exec_id, now, technique_id, target_id, operation_id, ooda_iteration_id
             )
 
+        # -- SPEC-052: Initial Access route (T1110/T1078 -> InitialAccessEngine) --
+        if tech_prefix in _INITIAL_ACCESS_TECHNIQUE_PREFIXES:
+            return await self._execute_initial_access(
+                db, exec_id, now, technique_id, target_id, operation_id, ooda_iteration_id
+            )
+
         # -- MCP route: engine == "mcp" (explicit tool-registry dispatch) --
         if engine == "mcp" and settings.MCP_ENABLED and self._mcp_engine:
             return await self._execute_mcp(
@@ -311,6 +323,105 @@ class EngineRouter:
             return {
                 "execution_id": exec_id, "technique_id": technique_id,
                 "target_id": target_id, "engine": "mcp_recon",
+                "status": "failed", "error": str(e),
+            }
+
+    async def _execute_initial_access(
+        self, db, exec_id, now, technique_id, target_id,
+        operation_id, ooda_iteration_id,
+    ) -> dict:
+        """SPEC-052: Route Initial Access techniques to InitialAccessEngine.
+
+        Handles T1110 (Brute Force) and T1078 (Valid Accounts) via the
+        standard OODA Act phase, including C2 bootstrap if enabled.
+        """
+        from app.services.initial_access_engine import InitialAccessEngine
+
+        try:
+            # Get target info for IA engine
+            target_row = await db.fetchrow(
+                "SELECT ip_address, hostname FROM targets WHERE id = $1",
+                target_id,
+            )
+            if not target_row:
+                return {
+                    "execution_id": exec_id, "technique_id": technique_id,
+                    "target_id": target_id, "engine": "initial_access",
+                    "status": "failed", "error": "Target not found",
+                }
+
+            # Collect open port facts for the target
+            port_facts = await db.fetch(
+                "SELECT value FROM facts "
+                "WHERE source_target_id = $1 AND operation_id = $2 "
+                "AND trait = 'service.open_port'",
+                target_id, operation_id,
+            )
+
+            ia_engine = InitialAccessEngine(self._ws)
+            ia_result = await ia_engine.try_initial_access(
+                db=db,
+                operation_id=operation_id,
+                target_id=target_id,
+                target_ip=target_row["ip_address"] or target_row["hostname"],
+                open_ports=[f["value"] for f in port_facts],
+            )
+
+            # Record technique execution
+            status = "success" if ia_result.get("success") else "failed"
+            summary = (
+                f"Initial access via {ia_result.get('method', 'unknown')}: "
+                f"{'success' if ia_result.get('success') else 'failed'}"
+            )
+            if ia_result.get("credential"):
+                summary += f" (credential found)"
+
+            await db.execute(
+                "INSERT INTO technique_executions "
+                "(id, technique_id, target_id, operation_id, engine, status, "
+                "result_summary, started_at, completed_at, ooda_iteration_id) "
+                "VALUES ($1, $2, $3, $4, 'initial_access', $5, $6, $7, $8, $9)",
+                exec_id, technique_id, target_id, operation_id,
+                status, summary[:500], now, datetime.now(timezone.utc),
+                ooda_iteration_id,
+            )
+
+            # C2 bootstrap in Act phase (SPEC-052: moved from recon.py)
+            if (
+                ia_result.get("success")
+                and ia_result.get("method") == "ssh"
+                and ia_result.get("credential")
+                and settings.C2_BOOTSTRAP_ENABLED
+            ):
+                try:
+                    bootstrap_result = await ia_engine.bootstrap_c2_agent(
+                        db=db,
+                        operation_id=operation_id,
+                        target_id=target_id,
+                        credential=ia_result["credential"],
+                    )
+                    if bootstrap_result and bootstrap_result.get("success"):
+                        summary += f" | C2 agent deployed (paw: {bootstrap_result.get('paw', 'unknown')})"
+                        logger.info(
+                            "SPEC-052: C2 agent bootstrapped in Act phase for %s",
+                            target_id,
+                        )
+                except Exception as c2_exc:
+                    logger.warning("C2 bootstrap failed in Act phase: %s", c2_exc)
+
+            return {
+                "execution_id": exec_id, "technique_id": technique_id,
+                "target_id": target_id, "engine": "initial_access",
+                "status": status,
+                "result_summary": summary,
+                "error": None if ia_result.get("success") else ia_result.get("error", "IA failed"),
+            }
+
+        except Exception as e:
+            logger.exception("Initial Access execution failed for technique %s", technique_id)
+            return {
+                "execution_id": exec_id, "technique_id": technique_id,
+                "target_id": target_id, "engine": "initial_access",
                 "status": "failed", "error": str(e),
             }
 

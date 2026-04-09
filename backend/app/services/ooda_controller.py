@@ -363,15 +363,25 @@ class OODAController:
                 if st.status == "completed" and st.result and st.result.get("status") == "success":
                     execution_result = st.result
                     # Update target, agent, counters (same as single path success)
-                    # Don't downgrade privilege_level if already Root
+                    # Only mark compromised if we actually have a usable credential or shell
+                    # for this target — success on a pure recon technique (e.g. T1046 nmap)
+                    # does NOT mean we got access.
                     if st.target_id:
-                        await db.execute(
-                            "UPDATE targets SET is_compromised = TRUE, "
-                            "privilege_level = CASE WHEN privilege_level = 'Root' THEN 'Root' ELSE 'User' END, "
-                            "access_status = 'active' "
-                            "WHERE id = $1 AND operation_id = $2",
-                            st.target_id, operation_id,
+                        has_access = await db.fetchval(
+                            "SELECT EXISTS (SELECT 1 FROM facts "
+                            "WHERE operation_id = $1 AND source_target_id = $2 "
+                            "AND (trait LIKE 'credential.%' OR trait LIKE 'shell.%')"
+                            "AND trait NOT LIKE '%.invalidated')",
+                            operation_id, st.target_id,
                         )
+                        if has_access:
+                            await db.execute(
+                                "UPDATE targets SET is_compromised = TRUE, "
+                                "privilege_level = CASE WHEN privilege_level = 'Root' THEN 'Root' ELSE 'User' END, "
+                                "access_status = 'active' "
+                                "WHERE id = $1 AND operation_id = $2",
+                                st.target_id, operation_id,
+                            )
                     completed_at_now = datetime.now(timezone.utc)
                     await db.execute(
                         "UPDATE agents SET status = 'alive', last_beacon = $1 "
@@ -418,15 +428,25 @@ class OODAController:
                     execution_result["execution_id"], ooda_id,
                 )
             if execution_result and execution_result.get("status") == "success":
-                # Mark target as compromised (don't downgrade Root -> User)
+                # Only mark compromised if we actually have a usable credential or shell
+                # for this target — success on a pure recon technique (e.g. T1046 nmap)
+                # does NOT mean we got access.
                 if decision.get("target_id"):
-                    await db.execute(
-                        "UPDATE targets SET is_compromised = TRUE, "
-                        "privilege_level = CASE WHEN privilege_level = 'Root' THEN 'Root' ELSE 'User' END, "
-                        "access_status = 'active' "
-                        "WHERE id = $1 AND operation_id = $2",
-                        decision["target_id"], operation_id,
+                    has_access = await db.fetchval(
+                        "SELECT EXISTS (SELECT 1 FROM facts "
+                        "WHERE operation_id = $1 AND source_target_id = $2 "
+                        "AND (trait LIKE 'credential.%' OR trait LIKE 'shell.%')"
+                        "AND trait NOT LIKE '%.invalidated')",
+                        operation_id, decision["target_id"],
                     )
+                    if has_access:
+                        await db.execute(
+                            "UPDATE targets SET is_compromised = TRUE, "
+                            "privilege_level = CASE WHEN privilege_level = 'Root' THEN 'Root' ELSE 'User' END, "
+                            "access_status = 'active' "
+                            "WHERE id = $1 AND operation_id = $2",
+                            decision["target_id"], operation_id,
+                        )
                 # Activate one pending agent
                 completed_at_now = datetime.now(timezone.utc)
                 await db.execute(

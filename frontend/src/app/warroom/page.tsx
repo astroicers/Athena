@@ -241,12 +241,26 @@ function WarRoomContent() {
     }
   }, [selectedTargetId, operationId]);
 
-  /* ── Derived data (Timeline tab) ── */
+  /* ── Derived data (Timeline tab) ─────────────────────────────────
+   *
+   * Every `.map`/`.filter` entry point below is guarded with
+   * `Array.isArray(...)` and optional chaining on record fields.
+   * The backend is mostly well-typed, but WebSocket-driven refreshes
+   * and polling races occasionally deliver empty objects or partial
+   * records. Without these guards, a single bad shape would throw
+   * during render and the Next.js error boundary would take over the
+   * whole War Room page.
+   */
 
-  const rawIterations = dashboard?.recentIterations ?? (dashboard?.latestIteration ? [dashboard.latestIteration] : []);
+  const rawIterations = Array.isArray(dashboard?.recentIterations)
+    ? dashboard!.recentIterations
+    : (dashboard?.latestIteration ? [dashboard.latestIteration] : []);
+
+  const safeTimeline = Array.isArray(timeline) ? timeline : [];
+
   const iterations = rawIterations.map((iter) => {
-    const entry = timeline.find(
-      (e) => e.iterationNumber === iter.iterationNumber && e.targetHostname,
+    const entry = safeTimeline.find(
+      (e) => e?.iterationNumber === iter?.iterationNumber && e?.targetHostname,
     );
     return {
       ...iter,
@@ -254,24 +268,34 @@ function WarRoomContent() {
       targetIp: entry?.targetIp,
     };
   });
-  const targetStats = targets.map((tgt) => ({
-    id: tgt.id,
-    hostname: tgt.hostname,
-    ipAddress: tgt.ipAddress,
-    isCompromised: tgt.isCompromised,
-    privilegeLevel: tgt.privilegeLevel ?? "none",
-    iterationCount: iterations.filter((iter) => {
-      const entry = timeline.find(
-        (e) => e.iterationNumber === iter.iterationNumber && e.phase === "act",
-      );
-      return entry?.targetId === tgt.id;
-    }).length,
-  }));
 
+  const targetStats = (Array.isArray(targets) ? targets : [])
+    .filter((tgt): tgt is NonNullable<typeof tgt> => !!tgt && typeof tgt.id === "string")
+    .map((tgt) => ({
+      id: tgt.id,
+      hostname: tgt.hostname ?? "",
+      ipAddress: tgt.ipAddress ?? "",
+      isCompromised: !!tgt.isCompromised,
+      privilegeLevel: tgt.privilegeLevel ?? "none",
+      iterationCount: iterations.filter((iter) => {
+        const entry = safeTimeline.find(
+          (e) => e?.iterationNumber === iter?.iterationNumber && e?.phase === "act",
+        );
+        return entry?.targetId === tgt.id;
+      }).length,
+    }));
+
+  const hardLimits = Array.isArray(constraints?.hardLimits)
+    ? constraints!.hardLimits
+    : [];
   const bannerData = {
-    active: (constraints?.hardLimits?.length ?? 0) > 0,
-    messages: constraints?.hardLimits?.map((l) => l.suggestedAction) ?? [],
-    domains: constraints?.hardLimits?.map((l) => l.domain) ?? [],
+    active: hardLimits.length > 0,
+    messages: hardLimits
+      .map((l) => l?.suggestedAction ?? "")
+      .filter((msg): msg is string => !!msg),
+    domains: hardLimits
+      .map((l) => l?.domain ?? "")
+      .filter((d): d is string => !!d),
   };
 
   // Decision action derived from OODA phase

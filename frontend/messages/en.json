@@ -554,6 +554,9 @@
     "phase": "Phase",
     "kpiCollapse": "Collapse",
     "kpiExpand": "Expand",
+    "errorBoundaryTitle": "War Room render error",
+    "errorBoundaryHint": "Something in the live data stream caused the page to fail to render. The error was logged to the browser console.",
+    "errorBoundaryRetry": "Retry",
     "sidePanel": {
       "_title": "Side Panel",
       "aiDecision": "AI Decision",

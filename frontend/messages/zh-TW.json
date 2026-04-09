@@ -554,6 +554,9 @@
     "phase": "階段",
     "kpiCollapse": "收合",
     "kpiExpand": "展開",
+    "errorBoundaryTitle": "作戰室渲染錯誤",
+    "errorBoundaryHint": "即時資料流中的某個欄位讓頁面無法正常渲染。錯誤已輸出至瀏覽器 console。",
+    "errorBoundaryRetry": "重試",
     "sidePanel": {
       "_title": "側面板",
       "aiDecision": "AI 決策",

@@ -350,31 +350,48 @@ class EngineRouter:
                     "status": "failed", "error": "Target not found",
                 }
 
-            # Collect open port facts for the target
+            # Collect open port facts for the target — parse into {port, service} dicts
             port_facts = await db.fetch(
                 "SELECT value FROM facts "
                 "WHERE source_target_id = $1 AND operation_id = $2 "
                 "AND trait = 'service.open_port'",
                 target_id, operation_id,
             )
+            # Parse fact values like "22/tcp/ssh/OpenSSH_4.7p1" → {port: 22, service: "ssh"}
+            # Format (from recon_engine): "<port>/<proto>/<service>/<banner>"
+            services: list[dict] = []
+            for f in port_facts:
+                val = f["value"] or ""
+                if not val:
+                    continue
+                parts = val.split("/")
+                if len(parts) < 3:
+                    continue
+                try:
+                    port_num = int(parts[0])
+                except ValueError:
+                    continue
+                svc_name = (parts[2] or "").lower()
+                services.append({"port": port_num, "service": svc_name})
 
-            ia_engine = InitialAccessEngine(self._ws)
+            ia_engine = InitialAccessEngine()
             ia_result = await ia_engine.try_initial_access(
                 db=db,
                 operation_id=operation_id,
                 target_id=target_id,
-                target_ip=target_row["ip_address"] or target_row["hostname"],
-                open_ports=[f["value"] for f in port_facts],
+                ip=target_row["ip_address"] or target_row["hostname"],
+                services=services,
             )
 
-            # Record technique execution
-            status = "success" if ia_result.get("success") else "failed"
-            summary = (
-                f"Initial access via {ia_result.get('method', 'unknown')}: "
-                f"{'success' if ia_result.get('success') else 'failed'}"
-            )
-            if ia_result.get("credential"):
-                summary += f" (credential found)"
+            # Record technique execution — ia_result is InitialAccessResult dataclass
+            success = getattr(ia_result, "success", False) if not isinstance(ia_result, dict) else ia_result.get("success", False)
+            method = getattr(ia_result, "method", "unknown") if not isinstance(ia_result, dict) else ia_result.get("method", "unknown")
+            credential = getattr(ia_result, "credential", None) if not isinstance(ia_result, dict) else ia_result.get("credential")
+
+            status = "success" if success else "failed"
+            summary = f"Initial access via {method}: {'success' if success else 'failed'}"
+            if credential:
+                summary += " (credential found)"
 
             await db.execute(
                 "INSERT INTO technique_executions "
@@ -387,10 +404,11 @@ class EngineRouter:
             )
 
             # C2 bootstrap in Act phase (SPEC-052: moved from recon.py)
+            error = getattr(ia_result, "error", None) if not isinstance(ia_result, dict) else ia_result.get("error")
             if (
-                ia_result.get("success")
-                and ia_result.get("method") == "ssh"
-                and ia_result.get("credential")
+                success
+                and method == "ssh"
+                and credential
                 and settings.C2_BOOTSTRAP_ENABLED
             ):
                 try:
@@ -398,7 +416,7 @@ class EngineRouter:
                         db=db,
                         operation_id=operation_id,
                         target_id=target_id,
-                        credential=ia_result["credential"],
+                        credential=credential,
                     )
                     if bootstrap_result and bootstrap_result.get("success"):
                         summary += f" | C2 agent deployed (paw: {bootstrap_result.get('paw', 'unknown')})"
@@ -414,7 +432,7 @@ class EngineRouter:
                 "target_id": target_id, "engine": "initial_access",
                 "status": status,
                 "result_summary": summary,
-                "error": None if ia_result.get("success") else ia_result.get("error", "IA failed"),
+                "error": None if success else (error or "IA failed"),
             }
 
         except Exception as e:

@@ -111,10 +111,22 @@ async def stop_auto_loop(operation_id: str) -> dict:
 
 
 def get_loop_status(operation_id: str) -> dict:
+    """Return current auto-loop status for an operation.
+
+    Includes a boolean ``running`` field so frontend consumers can
+    straightforwardly read ``autoStatus.running`` without having to
+    interpret the ``status`` enum string. ``status`` is kept for
+    backward compatibility with log/audit consumers.
+    """
     meta = _active_loops.get(operation_id)
     if not meta:
-        return {"status": "idle", "operation_id": operation_id}
+        return {
+            "running": False,
+            "status": "idle",
+            "operation_id": operation_id,
+        }
     return {
+        "running": True,
         "status": "running",
         "operation_id": operation_id,
         "interval_sec": meta["interval_sec"],

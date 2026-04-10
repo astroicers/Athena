@@ -77,7 +77,13 @@ services:
     image: metasploitframework/metasploit-framework:latest
     profiles: [msf]
     ports:
+      # RPC management port — localhost only, never exposed externally
       - "127.0.0.1:55553:55553"
+      # SPEC-054 reverse-shell payload handler port. Bound on 0.0.0.0
+      # so an external relay machine can reach it via SSH reverse
+      # tunnel (relay listens on 0.0.0.0:4444 and forwards back here).
+      # Matches settings.RELAY_LPORT default.
+      - "0.0.0.0:4444:4444"
     entrypoint: []
     command: >
       /usr/src/metasploit-framework/msfrpcd -P ${MSF_RPC_PASSWORD:-msf_password}

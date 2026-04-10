@@ -161,7 +161,9 @@ async def ssh_terminal(
         return
 
     if use_msf:
-        await _run_msf_terminal(websocket, ip_address, hostname)
+        await _run_msf_terminal(
+            websocket, ip_address, hostname, target_id, operation_id,
+        )
 
 
 async def _run_ssh_terminal(
@@ -215,9 +217,20 @@ async def _run_ssh_terminal(
 
 
 async def _run_msf_terminal(
-    websocket: WebSocket, target_ip: str, hostname: str
+    websocket: WebSocket,
+    target_ip: str,
+    hostname: str,
+    target_id: str,
+    operation_id: str,
 ) -> None:
-    """Run interactive terminal via Metasploit shell session."""
+    """Run interactive terminal via Metasploit shell session.
+
+    SPEC-053: under one-shot mode, there is no persistent session to
+    reuse. If no existing session is found, infer the exploitable
+    service from facts and re-run the matching exploit to establish a
+    fresh session for this websocket. ``target_id`` and ``operation_id``
+    are required so we can query the facts table.
+    """
     from app.config import settings  # noqa: PLC0415
 
     if settings.MOCK_METASPLOIT:
@@ -266,25 +279,93 @@ async def _run_msf_terminal(
         await websocket.close()
         return
 
-    # Find session for this target
-    shell = None
-    sid = None
+    # ------------------------------------------------------------------
+    # SPEC-053: one-shot exploit mode — no persistent session reuse.
+    #
+    # There are two sub-paths:
+    #
+    # (A) Pre-existing session: a session for this target already exists
+    #     in msfrpcd (e.g. a very recent OODA exploit that hasn't been
+    #     reaped, or an environment that pre-dates one-shot mode). We
+    #     adopt it and drive an interactive shell loop as before.
+    #
+    # (B) No session: infer the exploitable service from facts and
+    #     re-run that exploit **per command**. Each command triggers
+    #     a fresh exploit → probe → release cycle. This is slower
+    #     than interactive mode but is safe against stale zombie shells
+    #     (see ADR-047 diagnostic note on vsftpd 2.3.4 backdoor).
+    # ------------------------------------------------------------------
+
+    # Path A probe
+    pre_existing_shell = None
+    pre_existing_sid = None
     for s_id, info in client.sessions.list.items():
         if info.get("target_host") == target_ip:
-            shell = client.sessions.session(s_id)
-            sid = s_id
+            pre_existing_shell = client.sessions.session(s_id)
+            pre_existing_sid = s_id
+            logger.info(
+                "Terminal reusing pre-existing session %s for %s",
+                pre_existing_sid, target_ip,
+            )
             break
 
-    if shell is None:
+    if pre_existing_shell is not None:
+        await _run_msf_terminal_with_session(
+            websocket, pre_existing_shell, pre_existing_sid,
+            target_ip, hostname,
+        )
+        return
+
+    # Path B: re-exploit per command
+    from app.clients.metasploit_client import MetasploitRPCEngine  # noqa: PLC0415
+    from app.database import db_manager as _db_mgr  # noqa: PLC0415
+    from app.services.engine_router import _KNOWN_EXPLOITABLE_BANNERS  # noqa: PLC0415
+
+    async with _db_mgr.connection() as _db:
+        rows = await _db.fetch(
+            "SELECT value FROM facts WHERE source_target_id = $1 "
+            "AND operation_id = $2 AND trait = 'service.open_port'",
+            target_id, operation_id,
+        )
+    inferred_service: "str | None" = None
+    for row in rows:
+        val_lower = (row["value"] or "").lower()
+        for banner_key, svc in _KNOWN_EXPLOITABLE_BANNERS.items():
+            if banner_key in val_lower:
+                inferred_service = svc
+                break
+        if inferred_service:
+            break
+
+    if inferred_service is None:
         await websocket.send_text(json.dumps({
-            "error": f"No active Metasploit session for {target_ip}"
+            "error": (
+                f"No active Metasploit session for {target_ip} and no "
+                "exploitable banner found to re-establish shell"
+            )
         }))
         await websocket.close()
         return
 
-    logger.info("Terminal using Metasploit session %s for %s", sid, target_ip)
+    msf = MetasploitRPCEngine()
+    exploit_fn = msf.get_exploit_for_service(inferred_service)
+    if exploit_fn is None:
+        await websocket.send_text(json.dumps({
+            "error": (
+                f"No exploit handler for inferred service "
+                f"{inferred_service!r}"
+            )
+        }))
+        await websocket.close()
+        return
+
     await websocket.send_text(json.dumps({
-        "output": f"Connected to {hostname} ({target_ip}) via Metasploit shell (session {sid})\r\n",
+        "output": (
+            f"[athena] Metasploit one-shot mode active for {hostname}.\r\n"
+            f"[athena] Each command triggers a fresh "
+            f"{inferred_service} exploit cycle (exploit -> probe -> "
+            f"release). Type a shell command and press enter.\r\n"
+        ),
         "exit_code": 0,
         "prompt": f"root@{hostname}:~# ",
     }))
@@ -301,10 +382,112 @@ async def _run_msf_terminal(
             if not cmd:
                 continue
             if len(cmd) > MAX_CMD_LEN:
-                await websocket.send_text(json.dumps({"error": "Command too long (max 1024 chars)"}))
+                await websocket.send_text(json.dumps({
+                    "error": "Command too long (max 1024 chars)",
+                }))
                 continue
             if _is_dangerous(cmd):
-                await websocket.send_text(json.dumps({"error": "Command refused: potentially destructive operation"}))
+                await websocket.send_text(json.dumps({
+                    "error": (
+                        "Command refused: potentially destructive operation"
+                    ),
+                }))
+                continue
+
+            # Re-exploit: launch, probe with THIS command, read, release.
+            try:
+                result = await msf._run_exploit(
+                    *_exploit_module_and_payload(inferred_service),
+                    {"RHOSTS": target_ip},
+                    probe_cmd=cmd,
+                )
+            except Exception as exc:
+                await websocket.send_text(json.dumps({
+                    "error": f"Re-exploit failed: {exc}",
+                }))
+                continue
+
+            if result.get("status") != "success":
+                await websocket.send_text(json.dumps({
+                    "error": (
+                        f"Exploit failed: {result.get('reason', 'unknown')}"
+                    ),
+                }))
+                continue
+
+            await websocket.send_text(json.dumps({
+                "output": result.get("output") or "(no output)\r\n",
+                "exit_code": 0,
+                "prompt": f"root@{hostname}:~# ",
+            }))
+    except WebSocketDisconnect:
+        pass
+    finally:
+        logger.info(
+            "Metasploit one-shot terminal session closed for %s (%s)",
+            hostname, target_ip,
+        )
+
+
+def _exploit_module_and_payload(service: str) -> tuple[str, str]:
+    """Resolve (module_path, payload) for a service name.
+
+    Thin wrapper around metasploit_client._EXPLOIT_MAP so the terminal
+    router can drive ``_run_exploit`` directly. Defaults to vsftpd
+    backdoor tuple if the service is unknown — the caller already
+    checked ``get_exploit_for_service`` so an unknown value here is
+    defensive only.
+    """
+    from app.clients.metasploit_client import _EXPLOIT_MAP  # noqa: PLC0415
+    return _EXPLOIT_MAP.get(service, _EXPLOIT_MAP["vsftpd"])
+
+
+async def _run_msf_terminal_with_session(
+    websocket: WebSocket,
+    shell,  # pymetasploit3 Session
+    sid: str,
+    target_ip: str,
+    hostname: str,
+) -> None:
+    """Interactive loop over a pre-existing Metasploit session.
+
+    Used only when ``_run_msf_terminal`` found a live session already
+    in msfrpcd's session table. In one-shot mode this is rare but
+    possible (e.g. a technique execution still racing the terminal
+    open). The shell is NOT stopped on close — the OODA cycle that
+    created it is responsible for its lifecycle.
+    """
+    await websocket.send_text(json.dumps({
+        "output": (
+            f"Connected to {hostname} ({target_ip}) via Metasploit "
+            f"shell (session {sid})\r\n"
+        ),
+        "exit_code": 0,
+        "prompt": f"root@{hostname}:~# ",
+    }))
+
+    try:
+        async for message in websocket.iter_text():
+            try:
+                data = json.loads(message)
+                cmd = str(data.get("cmd", "")).strip()
+            except (json.JSONDecodeError, AttributeError):
+                await websocket.send_text(json.dumps({"error": "Invalid JSON"}))
+                continue
+
+            if not cmd:
+                continue
+            if len(cmd) > MAX_CMD_LEN:
+                await websocket.send_text(json.dumps({
+                    "error": "Command too long (max 1024 chars)",
+                }))
+                continue
+            if _is_dangerous(cmd):
+                await websocket.send_text(json.dumps({
+                    "error": (
+                        "Command refused: potentially destructive operation"
+                    ),
+                }))
                 continue
 
             try:
@@ -321,8 +504,13 @@ async def _run_msf_terminal(
                     "prompt": f"root@{hostname}:~# ",
                 }))
             except Exception as exc:
-                await websocket.send_text(json.dumps({"error": f"Shell error: {exc}"}))
+                await websocket.send_text(json.dumps({
+                    "error": f"Shell error: {exc}",
+                }))
     except WebSocketDisconnect:
         pass
     finally:
-        logger.info("Metasploit terminal session closed for %s (session %s)", hostname, sid)
+        logger.info(
+            "Metasploit terminal session closed for %s (session %s)",
+            hostname, sid,
+        )

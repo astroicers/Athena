@@ -56,6 +56,10 @@ class Settings(BaseSettings):
     MSF_RPC_PASSWORD: str = ""
     MSF_RPC_SSL: bool = False
     MOCK_METASPLOIT: bool = True
+    # SPEC-053: Maximum time (seconds) to wait for a new Metasploit session
+    # after an exploit is executed. Previously hard-coded to 30s in
+    # metasploit_client._run_exploit. Configurable 10-300s range.
+    METASPLOIT_SESSION_WAIT_SEC: int = 60
     PERSISTENCE_ENABLED: bool = False
     # MCP integration
     MCP_ENABLED: bool = True

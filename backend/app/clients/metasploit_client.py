@@ -144,8 +144,32 @@ class MetasploitRPCEngine:
         return None
 
     async def _run_exploit(
-        self, module_path: str, payload: str, options: dict[str, Any]
+        self,
+        module_path: str,
+        payload: str,
+        options: dict[str, Any],
+        *,
+        probe_cmd: str = "id; uname -a; hostname",
     ) -> dict[str, Any]:
+        """Run an exploit module in **one-shot mode** (SPEC-053).
+
+        Each call is independent: no session reuse, no persistent
+        session handles. The flow is:
+
+            1. Launch the exploit module.
+            2. Poll ``client.sessions.list`` for up to
+               ``settings.METASPLOIT_SESSION_WAIT_SEC`` seconds until
+               a new session appears.
+            3. Write ``probe_cmd`` to the session, read the output.
+            4. **Release the session immediately** via ``shell.stop()``.
+            5. Return the probe output alongside the (now-released)
+               session id for audit purposes only.
+
+        If a later technique needs another shell, the upstream caller
+        (e.g. ``terminal.py``) is expected to call ``_run_exploit``
+        again, not to reuse the returned session id. See ADR-046 for
+        the rationale ("shell needed on demand, never maintained").
+        """
         if settings.MOCK_METASPLOIT:
             logger.info(
                 "[MOCK] MetasploitRPC: %s against %s",
@@ -164,30 +188,16 @@ class MetasploitRPCEngine:
                 None, self._connect
             )
 
-            target_ip = options.get("RHOSTS", "")
-
-            # Reuse existing session for the same target (e.g. vsftpd backdoor
-            # only opens one session on port 6200).
-            for sid, info in client.sessions.list.items():
-                if info.get("target_host") == target_ip:
-                    logger.info("Reusing existing session %s for %s", sid, target_ip)
-                    if not await self._check_session_health(client, sid):
-                        logger.warning("Session %s is unhealthy, skipping reuse", sid)
-                        continue
-                    shell = client.sessions.session(sid)
-                    shell.write("id\n")
-                    output = await self._read_shell_output(shell)
-                    return {
-                        "status": "success",
-                        "shell": sid,
-                        "output": output,
-                        "engine": "metasploit",
-                    }
-
-            # No existing session — launch exploit
+            # SPEC-053: one-shot mode — do NOT reuse existing sessions.
+            # Old implementation walked client.sessions.list looking for a
+            # session whose target_host matched, which caused stale shells
+            # (e.g. vsftpd 2.3.4 backdoor zombies on port 6200) to be
+            # returned with broken I/O. Every call now launches fresh.
             pre_sessions: set = set(client.sessions.list.keys())
 
-            module_type = "exploit" if module_path.startswith("exploit") else "auxiliary"
+            module_type = (
+                "exploit" if module_path.startswith("exploit") else "auxiliary"
+            )
             exploit = client.modules.use(module_type, module_path)
             for k, v in options.items():
                 exploit[k] = v
@@ -195,24 +205,55 @@ class MetasploitRPCEngine:
                 exploit.execute(payload=payload)
             else:
                 exploit.execute()
-            for _ in range(30):
+
+            # Configurable timeout — previously hard-coded to 30s
+            timeout_sec = settings.METASPLOIT_SESSION_WAIT_SEC
+            sid: "str | None" = None
+            for _ in range(timeout_sec):
                 await asyncio.sleep(1)
                 sessions = client.sessions.list
-                new_sessions = {k: v for k, v in sessions.items() if k not in pre_sessions}
+                new_sessions = {
+                    k: v for k, v in sessions.items() if k not in pre_sessions
+                }
                 if new_sessions:
                     sid = list(new_sessions.keys())[0]
-                    shell = client.sessions.session(sid)
-                    shell.write("id\n")
-                    output = await self._read_shell_output(shell)
-                    return {
-                        "status": "success",
-                        "shell": sid,
-                        "output": output,
-                        "engine": "metasploit",
-                    }
+                    break
+
+            if sid is None:
+                return {
+                    "status": "failed",
+                    "reason": f"no session within {timeout_sec}s",
+                    "engine": "metasploit",
+                }
+
+            # Run probe and always release the session, even on read errors.
+            output = ""
+            shell = None
+            try:
+                shell = client.sessions.session(sid)
+                shell.write(probe_cmd + "\n")
+                output = await self._read_shell_output(shell)
+            finally:
+                if shell is not None:
+                    try:
+                        await asyncio.get_running_loop().run_in_executor(
+                            None, shell.stop
+                        )
+                        logger.info(
+                            "Released session %s after one-shot exploit %s",
+                            sid, module_path,
+                        )
+                    except Exception as release_exc:
+                        # Release failure is not fatal — log and continue.
+                        logger.warning(
+                            "Failed to release session %s after %s: %s",
+                            sid, module_path, release_exc,
+                        )
+
             return {
-                "status": "failed",
-                "reason": "no session within 30s",
+                "status": "success",
+                "shell": sid,  # audit only; session has been stopped
+                "output": output,
                 "engine": "metasploit",
             }
         except Exception as exc:

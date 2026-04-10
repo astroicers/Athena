@@ -5,7 +5,7 @@
 | 欄位 | 內容 |
 |------|------|
 | **專案名稱** | Athena — AI 驅動自動化滲透測試平台 |
-| **版本** | v0.2.0 |
+| **版本** | v0.3.0 |
 | **最後更新** | 2026-04-10 |
 | **狀態** | Accepted |
 | **依據 SRS** | 尚未建立 |
@@ -257,6 +257,7 @@ class OODAController:
 - 輸出符合 Pydantic v2 模型的結構化 JSON
 - **結構化 Failure Context（SPEC-053）**：Orient 查詢 `technique_executions` 時 JOIN `targets` 並讀取 `failure_category` 欄位，把失敗紀錄以 `<technique> on <host> [<category>]: <error>` 格式餵給 LLM，讓 system prompt 的 Rule #2 Dead Branch Pruning 能真正運作
 - **Rule #9 IA-Exhausted Exploit Pivot（SPEC-053, ADR-046）**：當 Section 7 Failed Techniques 含 T1110.*/T1078.* with `[auth_failure]` 類別，且 target 有 `service.open_port` fact 匹配 `exploitable_banners.yaml` signature，system prompt 強制推薦 T1190 + `engine=metasploit`。明確聲明為 Rule #6（No Redundant Recommendations）的 exception
+- **Section 7.9 Relay Awareness（SPEC-054, ADR-047）**：`_build_user_prompt` 透過純函數 `_format_relay_infrastructure()` 注入 `relay_available: true|false` 區塊。Rule #8 擴充「Relay-aware exploit selection」指引：當 `relay_available: false` 時，LLM 須避免推薦 reverse shell 類 exploit（UnrealIRCd / Samba usermap / distccd），改推 bind shell（vsftpd）或 credential-based 技術。Rule #9 補充條件：T1190 reverse shell 子變體只在 `relay_available: true` 時可推薦
 
 #### EngineRouter（執行引擎路由器）
 
@@ -280,7 +281,7 @@ class OODAController:
 - 所有執行路徑（`_execute_initial_access`, `_execute_mcp`, `_execute_metasploit`, `_finalize_execution` 匯流）在失敗時寫入 `technique_executions.failure_category`，供 OrientEngine 下一輪 Observe 時消費
 - **跨類別 Pivot 的歸屬**：本 Router 不做執行層 auto-pivot（拒絕 ADR-046 選項 A）；當 IA 失敗時返回 `engine='initial_access'` + `failure_category='auth_failure'`，由 Orient 於下一 OODA iteration 依 Rule #9 決定是否推 T1190
 
-#### MetasploitRPCEngine（SPEC-053 One-Shot Mode）
+#### MetasploitRPCEngine（SPEC-053 One-Shot Mode + SPEC-054 Relay LHOST）
 
 **職責：** 透過 msfrpcd RPC 執行 exploit module，但**不維持 persistent session**。
 
@@ -291,6 +292,10 @@ class OODAController:
 - Session wait timeout 可由 `settings.METASPLOIT_SESSION_WAIT_SEC`（預設 60 秒）配置
 - 成功回傳 `{status: success, shell: sid, output, engine: metasploit}`——其中 `shell` 欄位只作審計紀錄，**session 在 return 時已被 stop**
 - `backend/app/routers/terminal.py` 偵測到 `credential.root_shell` fact 時，透過 `MetasploitRPCEngine.get_exploit_for_service()` 重跑 exploit 建立 fresh session 供 websocket 使用
+- **SPEC-054 LHOST 從 settings 注入**：`_resolve_lhost(explicit_lhost)` helper 按優先序決定 LHOST：(1) 呼叫者明確傳入 → (2) `settings.RELAY_IP` → (3) `"0.0.0.0"` 降級 sentinel。`exploit_samba` / `exploit_unrealircd` 預設 `lhost=None` 觸發自動解析；`exploit_vsftpd` 是 bind shell 不受影響
+- **所有 exploit methods 支援 `probe_cmd` keyword-only 參數**：terminal.py Path B 的 per-command re-exploit 迴圈統一透過 bound method 呼叫，把命令作為 `probe_cmd` passthrough 到 `_run_exploit`
+- **`backend/app/cli/generate_relay_script.py`**（SPEC-054）：產生 self-contained SSH reverse tunnel 腳本給使用者 `scp` 到 relay 機器執行，實作 ADR-047 簡化決策的「foreground + trap cleanup + 零殘留」承諾。入口為 `make relay-script` target
+- **`engine_router._execute_metasploit` 追加 LHOST audit log**（SPEC-054）：`metasploit <tid> status=<status> lhost=<value> rhosts=<ip> service=<svc>` 每次執行寫入，支援 operator 審計 relay 實際生效與否
 
 ### 2.3 前端模組結構
 

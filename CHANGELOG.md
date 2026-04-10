@@ -7,6 +7,52 @@
 
 ## [Unreleased]
 
+### Relay Port-Forwarding Script Generator for Reverse Shell Exploits（2026-04-10, SPEC-054 / ADR-047）
+
+延續 SPEC-053 的 Orient-driven pivot：SPEC-053 診斷發現 docker bridge `172.22.0.0/16` 與 target LAN `192.168.0.x` 之間是單向 route，導致 metasploit reverse shell exploit（Samba usermap_script / UnrealIRCd / distccd）無法 callback，ADR-047 以 `Draft` 記錄限制。使用者於 2026-04-10 提出**簡化方案**取代原規劃的 autossh + systemd：手動起一台 relay 機器、Athena 產生一次性 SSH reverse tunnel 腳本、foreground + trap cleanup + 零殘留。ADR-047 因此升級為 `Accepted`，SPEC-054 實作此簡化決策。
+
+#### Added
+- **5 個 `RELAY_*` settings** 於 `backend/app/config.py`：`RELAY_IP`, `RELAY_SSH_USER`（預設 `athena-relay`）, `RELAY_SSH_PORT`（預設 22）, `RELAY_LPORT`（預設 4444）, `RELAY_ATHENA_HOST`。`RELAY_IP == ""` 當作「無 relay」sentinel，系統進入 degraded mode 但不 crash
+- **`metasploit_client._resolve_lhost()` helper**：LHOST 解析優先序為「呼叫者明確 `lhost=` 參數 → `settings.RELAY_IP` → `0.0.0.0` fallback + warning」
+- **所有 exploit methods 加 `probe_cmd` keyword-only 參數**（`exploit_vsftpd`, `exploit_unrealircd`, `exploit_samba`, `exploit_winrm`），統一 bound method 呼叫介面
+- **`engine_router._execute_metasploit` LHOST audit log**：每次執行記錄 `metasploit <tid> status=<s> lhost=<v> rhosts=<ip> service=<svc>`
+- **`orient_engine._format_relay_infrastructure()` 純函數 helper**：讀取 `settings.RELAY_IP` 生成 Section 7.9 Infrastructure 區塊
+- **`_ORIENT_USER_PROMPT_TEMPLATE` Section 7.9 Infrastructure** + `_build_user_prompt` 注入 `{relay_infrastructure}`
+- **`_ORIENT_SYSTEM_PROMPT` Rule #8 擴充「Relay-aware exploit selection」addendum**：`relay_available: false` 時 LLM 須避免 UnrealIRCd / Samba usermap / distccd，改推 vsftpd 或 credential-based
+- **Rule #9 條件延伸**：T1190 reverse shell 子變體只在 `relay_available: true` 時推薦；`relay_available: false` 且 target 僅有 reverse-shell 類 banner 時標 blocked
+- **`backend/app/cli/generate_relay_script.py` CLI**：讀取 settings 渲染完整 bash 腳本到 stdout，參數缺失時 stderr + exit 1
+- **`Makefile` `relay-script` target**：`docker exec athena-backend-1 python3 -m app.cli.generate_relay_script > tmp/athena-relay.sh` + chmod
+- **SPEC-054 測試矩陣（36 個測試跨 7 個檔案）**：
+  - `test_spec054_config.py`（6）：5 個 RELAY_* settings 型別與預設值
+  - `test_spec054_relay_lhost.py`（8）：samba / unrealircd 從 settings 讀 LHOST + probe_cmd passthrough + degraded fallback + 明確 lhost 覆蓋
+  - `test_spec054_engine_router_relay.py`（2）：`_execute_metasploit` log LHOST value（relay set / relay empty）
+  - `test_spec054_terminal_relay.py`（5）：靜態分析 terminal.py Path B 源碼，確認使用 `get_exploit_for_service` bound method pattern（不再直接 `_run_exploit`）
+  - `test_spec054_script_generator.py`（6）：CLI stdout / stderr / exit code / 渲染內容 assertion
+  - `test_spec054_orient_relay_awareness.py`（7）：`_format_relay_infrastructure` + Rule #8/#9 靜態 prompt 斷言
+  - `test_spec054_script_cleanup.py`（2）：subprocess 送 SIGINT / SIGTERM，assert trap cleanup 執行 + 子 process 被 kill + exit 0
+- **ADR-047**（Accepted 2026-04-10 簡化決策）：Target-Segment Relay for Reverse Shell Connectivity — 選項 C 最小化部署模型，使用者手動啟動 + Athena 生成一次性腳本
+- **SPEC-054**：完整規格書 + 12 個測試矩陣 case + 9 個 Gherkin 驗收場景
+
+#### Changed
+- **`exploit_unrealircd` / `exploit_samba` 預設 LHOST 從 hardcoded `"0.0.0.0"` 改為 `None`**：觸發 `_resolve_lhost()` 自動從 `settings.RELAY_IP` 解析
+- **`terminal.py::_run_msf_terminal` Path B re-exploit 路徑重構**：改用 `msf.get_exploit_for_service(svc)` 返回的 bound method 呼叫（`exploit_fn(target_ip, probe_cmd=cmd)`），不再直接呼叫 `_run_exploit` with raw options（後者會繞過 LHOST 注入）
+- **ADR-047 狀態**：`Draft` → `Accepted`，決策段新增「最終決策（2026-04-10）：採用選項 C 最小化部署模型」
+- **`docs/SDS.md` v0.3.0**：OrientEngine 增補 Section 7.9 Relay Awareness；MetasploitRPCEngine 增補 `_resolve_lhost` + `probe_cmd` passthrough + CLI script generator 說明
+- **`docs/architecture.md` v0.5.0**：新增「SPEC-054 Relay Awareness」資料流圖；ADR 列表中 ADR-047 狀態從 `Draft` 改 `Accepted`
+- **`docs/architecture/data-architecture.md` v1.2**：新增「SPEC-054 Relay Settings (non-DB)」章節，文件化 5 個新 settings 的型別、預設、消費點、降級模式
+
+#### Fixed
+（無 bug fix，本 release 為功能新增 + 架構擴充）
+
+#### Deferred（等使用者部署 relay 後驗收）
+- 使用者起 VM / host 在 `192.168.0.x` 網段並設 SSH key
+- `.env` 設 `RELAY_IP` + `RELAY_ATHENA_HOST`
+- `make relay-script` + `scp` + `ssh ./athena-relay.sh`
+- Athena metasploit `exploit_samba` 對 metasploitable2 取得真實 reverse shell
+- SPEC-053 Gherkin S1/S3 從 Deferred 轉 pass（SPEC-054 解鎖基礎設施前提）
+
+---
+
 ### Orient-Driven Cross-Category Attack Pivot（2026-04-10, SPEC-053 / ADR-046）
 
 使用者故意把 metasploitable2 demo target 的 SSH 密碼改成不可猜值，目的是壓測 OODA 碰壁後**自主切換攻擊路徑**的能力。此發布把「AI 指揮官碰壁後換武器」從 prompt 文字變成可驗證的 first-class 能力，為 2026-05-07 演講提供核心敘事骨幹。

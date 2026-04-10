@@ -1,7 +1,7 @@
 # Athena — 開發路線圖
 
-> 版本：1.8 | 更新日期：2026-04-10
-> 狀態：Phase 0~12 完成 — v0.2.0 Orient-Driven Pivot | 155+ 個測試（SPEC-053 新增 40）
+> 版本：1.9 | 更新日期：2026-04-10
+> 狀態：Phase 0~12.7 完成 — v0.3.0 Relay Integration | 190+ 個測試（SPEC-053 新增 40 + SPEC-054 新增 36）
 
 ---
 
@@ -9,7 +9,7 @@
 
 Athena 是一套 AI 驅動的 C5ISR 網路作戰指揮平台。本路線圖描述從設計到正式開源發佈的完整旅程。
 
-**目前進度**：Phase 0~12 全部完成。v0.2.0 Orient-Driven Pivot 版本已合併。SPEC-053 新增 40 個單元測試（failure classifier 27 + Orient pivot 8 + metasploit one-shot 5）全數通過。
+**目前進度**：Phase 0~12.7 全部完成。v0.3.0 Relay Integration 版本已合併。SPEC-053 新增 40 個單元測試 + SPEC-054 新增 36 個單元測試（config 6 + relay_lhost 8 + engine_router 2 + terminal 5 + script_generator 6 + orient_relay 7 + script_cleanup 2）全數通過。
 
 ---
 
@@ -543,12 +543,63 @@ Athena/
 - [x] B3: `MCPEngineClient` per-tool argument shape override（修 dns_resolve schema mismatch）
 - [x] B4: War Room 前端 `.map` 入口 null guards + Next.js error boundary (`error.tsx`)
 
-### 12.6 已知範圍限制（ADR-047 Draft 追蹤）
+### 12.6 已知範圍限制（SPEC-054 處理軟體面 / 部分由 ADR-047 簡化決策解鎖）
 
-- [ ] Reverse shell 類 exploit（samba usermap / UnrealIRCd / distccd）需要 LHOST 可達
-- [ ] Docker bridge `172.22.0.0/16` ↔ target LAN `192.168.0.x` 無 reverse route
-- [ ] vsftpd 2.3.4 backdoor 在 metasploitable2 上僵屍化（需 target reboot）
-- [ ] 解法：ADR-047 Target-Segment Relay（延後至 relay 硬體部署後）
+- [x] Reverse shell 類 exploit（samba usermap / UnrealIRCd / distccd）LHOST 支援 — SPEC-054 從 `settings.RELAY_IP` 讀取
+- [x] Docker bridge `172.22.0.0/16` ↔ target LAN `192.168.0.x` 單向 route — SPEC-054 產生使用者可執行的 SSH reverse tunnel 腳本橋接
+- [ ] vsftpd 2.3.4 backdoor 在 metasploitable2 上僵屍化（需 target reboot 或改用 samba reverse shell 繞過）
+- [x] ADR-047 決策：採用簡化模型（使用者手動啟動 + 一次性腳本 + trap cleanup）
+
+## Phase 12.7：SPEC-054 Relay Port-Forwarding Script Generator `完成`
+
+> 完成日期：2026-04-10 | ADR-047 / SPEC-054 | v0.3.0
+
+### 12.7.1 Config + metasploit_client LHOST 注入
+
+- [x] `backend/app/config.py` 新增 5 個 `RELAY_*` 設定（`RELAY_IP`, `RELAY_SSH_USER`, `RELAY_SSH_PORT`, `RELAY_LPORT`, `RELAY_ATHENA_HOST`）
+- [x] `metasploit_client._resolve_lhost()` helper：優先序為「呼叫者明確參數 → `settings.RELAY_IP` → `0.0.0.0` 降級」
+- [x] `exploit_samba` / `exploit_unrealircd` 預設 `lhost=None` 觸發自動解析
+- [x] 所有 exploit methods 加 `probe_cmd` keyword-only 參數（統一 bound method 呼叫介面）
+
+### 12.7.2 engine_router + terminal.py 整合
+
+- [x] `engine_router._execute_metasploit` 新增 LHOST audit log：`metasploit <tid> status=<s> lhost=<v> rhosts=<ip> service=<svc>`
+- [x] `terminal.py` Path B re-exploit 改用 `get_exploit_for_service()` + bound method 呼叫（不再直接 `_run_exploit`），確保 LHOST 從 settings 注入
+
+### 12.7.3 Orient 感知 Relay 狀態
+
+- [x] `orient_engine._format_relay_infrastructure()` 純函數 helper
+- [x] `_ORIENT_USER_PROMPT_TEMPLATE` 新增 `{relay_infrastructure}` placeholder / Section 7.9 Infrastructure
+- [x] `_ORIENT_SYSTEM_PROMPT` Rule #8 末尾新增「Relay-aware exploit selection」addendum
+- [x] Rule #9 擴充條件：T1190 reverse shell 子變體只在 `relay_available: true` 時推薦
+
+### 12.7.4 CLI + Makefile
+
+- [x] `backend/app/cli/__init__.py` + `backend/app/cli/generate_relay_script.py`
+- [x] `make relay-script` target（`docker exec athena-backend-1 python3 -m app.cli.generate_relay_script > tmp/athena-relay.sh`）
+- [x] 腳本實作：`set -euo pipefail` + `trap cleanup EXIT SIGINT SIGTERM` + `ssh -N -R 0.0.0.0:LPORT:host:LPORT` + `wait $SSH_PID`
+- [x] 零殘留驗證：subprocess test 送 SIGINT，assert 子 process 被 kill + exit 0
+
+### 12.7.5 測試 + Regression
+
+- [x] 7 個新測試檔，共 36 個測試全 green：
+  - `test_spec054_config.py` (6)
+  - `test_spec054_relay_lhost.py` (8)
+  - `test_spec054_engine_router_relay.py` (2)
+  - `test_spec054_terminal_relay.py` (5)
+  - `test_spec054_script_generator.py` (6)
+  - `test_spec054_orient_relay_awareness.py` (7)
+  - `test_spec054_script_cleanup.py` (2)
+- [x] SPEC-053 regression：70 個既有測試全數維持 pass
+- [x] Full suite：SPEC-054 前後 24 failed baseline 未改變（無新 regression）
+
+### 12.7.6 Deferred 驗收（等使用者部署 relay）
+
+- [ ] 使用者起一台 VM/host 在 `192.168.0.x` 網段，設好 SSH key
+- [ ] `.env` 設定 `RELAY_IP`、`RELAY_ATHENA_HOST`
+- [ ] `make relay-script` 產出腳本並執行
+- [ ] Athena 觸發 metasploit `exploit_samba` 對 metasploitable2 成功取得 reverse shell
+- [ ] SPEC-053 Gherkin S1/S3 從 Deferred 轉 pass
 
 ---
 

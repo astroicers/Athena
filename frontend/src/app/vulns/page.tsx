@@ -518,6 +518,7 @@ function VulnsContent() {
   const [summary, setSummary] = useState<VulnSummary | null>(null);
 
   const fetchSummary = useCallback(async () => {
+    if (!operationId) return;
     try {
       const data = await api.get<VulnSummary>(
         `/operations/${operationId}/vulnerabilities/summary`,

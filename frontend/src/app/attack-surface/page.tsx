@@ -80,6 +80,7 @@ function AttackSurfaceContent() {
 
   /* ── Fetch data ── */
   const fetchData = useCallback(async () => {
+    if (!operationId) return;
     try {
       const [techs, path, tools] = await Promise.all([
         api.get<TechniqueWithStatus[]>(`/operations/${operationId}/techniques`),
@@ -105,6 +106,7 @@ function AttackSurfaceContent() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
+    if (!operationId) return;
     pollRef.current = setInterval(async () => {
       try {
         const techs = await api.get<TechniqueWithStatus[]>(

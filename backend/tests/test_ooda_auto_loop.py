@@ -84,6 +84,8 @@ async def test_get_loop_status_idle():
     """get_loop_status returns idle when no loop registered."""
     status = get_loop_status("op-999")
     assert status["status"] == "idle"
+    # SPEC-054: frontend reads .running as bool for auto-mode toggle sync
+    assert status["running"] is False
 
 
 async def test_get_loop_status_running():
@@ -96,6 +98,8 @@ async def test_get_loop_status_running():
     }
     status = get_loop_status("op-004")
     assert status["status"] == "running"
+    # SPEC-054: frontend reads .running as bool for auto-mode toggle sync
+    assert status["running"] is True
     assert status["iteration_count"] == 2
     assert status["max_iterations"] == 5
 

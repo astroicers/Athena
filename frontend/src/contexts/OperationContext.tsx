@@ -13,7 +13,11 @@
 import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
 
 const STORAGE_KEY = "athena-op-id";
-const DEFAULT_OP_ID = "op-0001";
+// Empty string = no operation selected yet. Consumers must guard
+// against empty operationId before making API calls.
+// Previously "op-0001" which caused 404 polling noise on every fresh
+// page load until localStorage hydrated.
+const DEFAULT_OP_ID = "";
 
 interface OperationContextType {
   operationId: string;

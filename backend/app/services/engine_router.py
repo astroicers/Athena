@@ -92,6 +92,104 @@ def _is_terminal_error(error: str | None) -> bool:
     return any(te in lower for te in _TERMINAL_ERRORS)
 
 
+# SPEC-053: Structured failure classification ------------------------------
+#
+# Every execution path in EngineRouter is expected to classify its failures
+# into one of the stable category strings below, and write that category
+# into ``technique_executions.failure_category``. The Orient engine reads
+# these categories when building the failed-techniques context block, and
+# the Rule #9 IA-exhausted pivot rule keys off ``auth_failure`` specifically.
+#
+# The classification is heuristic — we match lowercased substrings of the
+# error text. The order of the checks matters because earlier predicates
+# take precedence (auth failures often mention "failed" which would also
+# match other patterns). Keep the order stable; prefer adding new keywords
+# to existing categories over reordering.
+#
+# Expected category values:
+#   auth_failure         — credentials rejected, login denied
+#   service_unreachable  — network layer blocked (refused, unreachable,
+#                          no route, no targetable services)
+#   exploit_failed       — exploit module ran but did not yield a session
+#   privilege_insufficient — executed but lacked required privilege
+#   prerequisite_missing — upstream fact/credential/agent not available
+#   tool_error           — MCP tool schema mismatch / validation / missing
+#   timeout              — operation-level timeout (not an exploit no-session)
+#   unknown              — safe fallback; heuristic did not match
+
+
+def _classify_failure(error: "str | None", engine: str) -> str:
+    """Classify a failure error message into a stable category string.
+
+    This heuristic is intentionally simple and pure (no I/O). It is used
+    by every execution path in ``EngineRouter`` to populate
+    ``technique_executions.failure_category`` so Orient can reason about
+    dead paths (SPEC-053, ADR-046).
+
+    The ``engine`` parameter is currently unused by the matcher itself
+    but is accepted so callers don't have to re-derive context, and so
+    future refinements (e.g. metasploit-specific error phrasing) can
+    switch on engine without changing the call sites.
+    """
+    if not error:
+        return "unknown"
+    lower = error.lower()
+
+    # auth failures (check before generic "failed" matches)
+    if any(k in lower for k in (
+        "all ssh credentials failed",
+        "permission denied",
+        "login fail",
+        "authentication fail",
+        "credential rejected",
+    )):
+        return "auth_failure"
+
+    # service reachability (network layer)
+    if any(k in lower for k in (
+        "connection refused",
+        "no route",
+        "unreachable",
+        "no targetable services",
+        "host is down",
+    )):
+        return "service_unreachable"
+
+    # exploit engine failed to obtain a session
+    if ("no session" in lower) or ("exploit aborted" in lower):
+        return "exploit_failed"
+
+    # MCP / tool schema errors — check before "timeout" so that tool
+    # pydantic errors containing the word "timeout" in a field name don't
+    # miscategorise.
+    if any(k in lower for k in (
+        "validation error",
+        "field required",
+        "tool not found",
+    )):
+        return "tool_error"
+
+    # privilege insufficiency
+    if "privilege insufficient" in lower or "not root" in lower:
+        return "privilege_insufficient"
+
+    # prerequisite missing (fact / credential / agent)
+    if any(k in lower for k in (
+        "prerequisite missing",
+        "no credential",
+        "no agent",
+        "precondition",
+    )):
+        return "prerequisite_missing"
+
+    # pure timeout (not a metasploit "no session within Ns" which is
+    # already caught above as exploit_failed)
+    if ("timeout" in lower) or ("timed out" in lower):
+        return "timeout"
+
+    return "unknown"
+
+
 class EngineRouter:
     """Act phase: route technique execution to the appropriate engine."""
 
@@ -393,18 +491,24 @@ class EngineRouter:
             if credential:
                 summary += " (credential found)"
 
+            # SPEC-053: classify IA failure so Orient sees structured reason
+            error = getattr(ia_result, "error", None) if not isinstance(ia_result, dict) else ia_result.get("error")
+            failure_category = (
+                _classify_failure(error, "initial_access") if not success else None
+            )
+
             await db.execute(
                 "INSERT INTO technique_executions "
                 "(id, technique_id, target_id, operation_id, engine, status, "
-                "result_summary, started_at, completed_at, ooda_iteration_id) "
-                "VALUES ($1, $2, $3, $4, 'initial_access', $5, $6, $7, $8, $9)",
+                "result_summary, started_at, completed_at, ooda_iteration_id, "
+                "failure_category) "
+                "VALUES ($1, $2, $3, $4, 'initial_access', $5, $6, $7, $8, $9, $10)",
                 exec_id, technique_id, target_id, operation_id,
                 status, summary[:500], now, datetime.now(timezone.utc),
-                ooda_iteration_id,
+                ooda_iteration_id, failure_category,
             )
 
             # C2 bootstrap in Act phase (SPEC-052: moved from recon.py)
-            error = getattr(ia_result, "error", None) if not isinstance(ia_result, dict) else ia_result.get("error")
             if (
                 success
                 and method == "ssh"
@@ -477,13 +581,16 @@ class EngineRouter:
             logger.warning(
                 "No credentials for target %s in operation %s", target_id, operation_id
             )
+            # SPEC-053: no cred == prerequisite missing for Orient pivot logic
             await db.execute(
                 "INSERT INTO technique_executions "
                 "(id, technique_id, target_id, operation_id, ooda_iteration_id, "
-                "engine, status, started_at, completed_at, error_message) "
-                "VALUES ($1, $2, $3, $4, $5, $6, 'failed', $7, $8, $9)",
+                "engine, status, started_at, completed_at, error_message, "
+                "failure_category) "
+                "VALUES ($1, $2, $3, $4, $5, $6, 'failed', $7, $8, $9, $10)",
                 exec_id, technique_id, target_id, operation_id,
                 ooda_iteration_id, "mcp_ssh", now, now, error_msg,
+                "prerequisite_missing",
             )
             return {
                 "execution_id": exec_id,
@@ -735,12 +842,18 @@ class EngineRouter:
         status = "success" if result.success else "failed"
         facts_count = len(result.facts)
 
+        # SPEC-053: classify failure reason so Orient can reason about dead paths
+        failure_category = (
+            _classify_failure(result.error, engine) if not result.success else None
+        )
+
         await db.execute(
             "UPDATE technique_executions SET status = $1, result_summary = $2, "
-            "facts_collected_count = $3, completed_at = $4, error_message = $5 "
-            "WHERE id = $6",
+            "facts_collected_count = $3, completed_at = $4, error_message = $5, "
+            "failure_category = $6 "
+            "WHERE id = $7",
             status, result.output, facts_count, completed_at,
-            result.error, exec_id,
+            result.error, failure_category, exec_id,
         )
 
         # [I-1] Only increment techniques_executed on success
@@ -1158,17 +1271,24 @@ class EngineRouter:
         output = result_dict.get("output", result_dict.get("reason", ""))
         msf_engine_label = result_dict.get("engine", "metasploit")
 
+        # SPEC-053: classify metasploit failure reason for Orient consumption
+        msf_error = result_dict.get("reason") if status != "success" else None
+        failure_category = (
+            _classify_failure(msf_error, "metasploit") if status != "success" else None
+        )
+
         completed_at = datetime.now(timezone.utc)
         await db.execute(
             """UPDATE technique_executions
                SET status = $1, result_summary = $2,
                    facts_collected_count = 0, completed_at = $3,
-                   error_message = $4
-               WHERE id = $5""",
+                   error_message = $4, failure_category = $5
+               WHERE id = $6""",
             result_dict["status"],
             result_dict.get("output", ""),
             completed_at,
-            result_dict.get("reason") if result_dict["status"] != "success" else None,
+            msf_error,
+            failure_category,
             exec_id,
         )
         facts_count = 0

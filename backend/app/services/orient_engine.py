@@ -173,7 +173,7 @@ risk of skipping critical steps. If the graph shows a technique with EXPLORED st
 as already completed. UNREACHABLE nodes should be avoided unless you have new intelligence that \
 changes their feasibility.
 
-### 8. Recon-to-Initial Access Transition (SPEC-052)
+### 8. Recon-to-Initial Access Transition (SPEC-052, relaxed by SPEC-053)
 When the intelligence shows:
 - service.open_port facts with SSH (port 22), RDP (port 3389), WinRM (port 5985/5986), or FTP (port 21)
 - No credential facts yet exist for those services (no credential.ssh, credential.rdp, credential.winrm)
@@ -182,10 +182,34 @@ When the intelligence shows:
 Then you SHOULD recommend Initial Access techniques as the natural next step:
 - T1110.001 (Brute Force: Password Guessing) for SSH/RDP/WinRM services
 - T1078.001 (Valid Accounts: Default Accounts) if default credentials are likely (IoT, dev environments)
-- T1190 (Exploit Public-Facing Application) for HTTP services with known vulnerabilities (CVE facts present)
+- T1190 (Exploit Public-Facing Application) when a service banner matches a known exploitable
+  signature (e.g. "vsftpd 2.3.4", "UnrealIRCd", "samba 3.0", "distccd"). A CVE fact is NOT required
+  — the banner substring is sufficient evidence. Prefer engine="metasploit" for T1190.
 
 This is the natural Kill Chain progression from Reconnaissance (TA0043) to Initial Access (TA0001).
 Do NOT skip this step — establishing initial access is prerequisite for all post-exploitation techniques.
+
+### 9. Initial Access Exhausted → Exploit Pivot (SPEC-053, ADR-046)
+When Section 7 "Failed Techniques" contains an entry with the `[auth_failure]` category for
+an Initial Access technique (T1110.*, T1078.*) on a target, AND that target has a
+`service.open_port` fact whose value matches any known exploitable banner signature
+(vsftpd_2.3.4, unrealircd, samba 3.0, distccd, or similar), THEN you MUST recommend T1190
+(Exploit Public-Facing Application) on that target with engine="metasploit".
+
+Reasoning: credential-based initial access has been exhausted on that target. The kill chain
+cannot progress via credentials, so pivot to exploit-based initial access using the detected
+vulnerable banner. Do NOT retry T1110 on the same target in the same iteration — it will
+deterministically fail again. Only retry T1110 after new credentials are harvested elsewhere.
+
+This rule is an EXPLICIT EXCEPTION to Rule #6 (No Redundant Recommendations). T1190 may be
+recommended on a target where T1110 previously failed, and this is NOT a redundancy — it is
+the correct cross-category pivot. Record the pivot reasoning in `situation_assessment` so
+the Timeline can show it as an AI decision, not a silent fallback.
+
+If no exploitable banner is present on the failed target, do NOT recommend T1190 on that
+target. Instead recommend a Discovery technique to enumerate alternative attack surfaces
+(T1046 Network Service Discovery on adjacent hosts, T1018 Remote System Discovery, etc.)
+or flag the target path as blocked.
 
 ## Output Contract
 Respond with ONLY valid JSON (no markdown, no extra text). The JSON must match this schema exactly:
@@ -597,14 +621,27 @@ class OrientEngine:
             f"- {r['technique_id']}: {r['result_summary'] or 'completed'}" for r in completed
         ) or "None yet"
 
-        # Q3: Failed techniques
+        # Q3: Failed techniques — SPEC-053 structured failure context
+        #
+        # JOIN targets so the LLM can see WHICH host a technique failed on
+        # (not just the technique ID). Include failure_category so Rule #2
+        # dead-branch pruning and Rule #9 IA-exhausted pivot can fire without
+        # the LLM having to parse raw error strings.
         failed = await db.fetch(
-            "SELECT te.technique_id, te.error_message "
-            "FROM technique_executions te WHERE te.operation_id = $1 AND te.status = 'failed'",
+            "SELECT te.technique_id, te.failure_category, te.error_message, "
+            "te.target_id, t.hostname, t.ip_address "
+            "FROM technique_executions te "
+            "LEFT JOIN targets t ON t.id = te.target_id "
+            "WHERE te.operation_id = $1 AND te.status = 'failed' "
+            "ORDER BY te.started_at DESC NULLS LAST LIMIT 20",
             operation_id,
         )
         failed_str = "\n".join(
-            f"- {r['technique_id']}: {r['error_message'] or 'failed'}" for r in failed
+            f"- {r['technique_id']} on "
+            f"{r['hostname'] or r['ip_address'] or 'unknown'} "
+            f"[{r['failure_category'] or 'unknown'}]: "
+            f"{(r['error_message'] or 'failed')[:200]}"
+            for r in failed
         ) or "None"
 
         # Q4: Targets (enriched with os, network_segment, access_status -- SPEC-037)

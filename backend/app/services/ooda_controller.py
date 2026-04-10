@@ -306,6 +306,39 @@ class OODAController:
         await self._write_log(db, operation_id, "info",
             f"OODA #{next_num} Decide: {decide_summary[:80]}")
 
+        # -- SPEC-053: Cross-category pivot detection --
+        # If the current decision is a T1190 exploit on a target whose most
+        # recent failure was T1110/T1078 with auth_failure category, we are
+        # executing an Orient-driven cross-category pivot. Broadcast an
+        # ``ooda.pivot`` event so the War Room Timeline can render a pivot
+        # badge and so the Operation Brief can note the decision point.
+        try:
+            pivot_info = await self._detect_cross_category_pivot(
+                db, operation_id, decision,
+            )
+            if pivot_info is not None:
+                await self._ws.broadcast(
+                    operation_id,
+                    "ooda.pivot",
+                    {
+                        "iteration": next_num,
+                        **pivot_info,
+                    },
+                )
+                await self._write_log(
+                    db,
+                    operation_id,
+                    "info",
+                    f"OODA #{next_num} Pivot: "
+                    f"{pivot_info['from_technique']} -> "
+                    f"{pivot_info['to_technique']} "
+                    f"({pivot_info['reason']})",
+                )
+        except Exception as pivot_exc:
+            logger.warning(
+                "ooda.pivot detection failed: %s", pivot_exc,
+            )
+
         # -- 4. ACT --
         await self._update_phase(db, operation_id, ooda_id, OODAPhase.ACT)
         execution_result = None
@@ -675,6 +708,49 @@ class OODAController:
             )
         except Exception:
             pass  # fire-and-forget per SPEC-007
+
+    async def _detect_cross_category_pivot(
+        self,
+        db: asyncpg.Connection,
+        operation_id: str,
+        decision: dict,
+    ) -> "dict | None":
+        """Detect an Orient-driven cross-category pivot (SPEC-053).
+
+        Returns a dict with ``from_technique``, ``to_technique``, and
+        ``reason`` if the current decision is pivoting away from a
+        credential-based Initial Access failure on the same target.
+        Returns ``None`` if this is not a pivot.
+
+        Criteria (matches ADR-046 Rule #9):
+          - Current decision's technique prefix is ``T1190``
+          - ``decision['target_id']`` has a failed T1110.* or T1078.*
+            execution whose ``failure_category`` is ``auth_failure``
+        """
+        to_technique = decision.get("technique_id")
+        target_id = decision.get("target_id")
+        if not to_technique or not target_id:
+            return None
+        if not to_technique.startswith("T1190"):
+            return None
+
+        row = await db.fetchrow(
+            "SELECT technique_id FROM technique_executions "
+            "WHERE operation_id = $1 AND target_id = $2 "
+            "AND status = 'failed' AND failure_category = 'auth_failure' "
+            "AND (technique_id LIKE 'T1110%' OR technique_id LIKE 'T1078%') "
+            "ORDER BY started_at DESC NULLS LAST LIMIT 1",
+            operation_id, target_id,
+        )
+        if row is None:
+            return None
+
+        return {
+            "from_technique": row["technique_id"],
+            "to_technique": to_technique,
+            "target_id": target_id,
+            "reason": "ia_exhausted_banner_matched",
+        }
 
     async def _write_log(
         self, db: asyncpg.Connection, operation_id: str,

@@ -5,8 +5,8 @@
 | 欄位 | 內容 |
 |------|------|
 | **專案名稱** | Athena — AI 驅動自動化滲透測試平台 |
-| **版本** | v0.1.0 |
-| **最後更新** | 2026-03-25 |
+| **版本** | v0.2.0 |
+| **最後更新** | 2026-04-10 |
 | **狀態** | Accepted |
 | **依據 SRS** | 尚未建立 |
 | **作者** | Athena Team |
@@ -255,6 +255,8 @@ class OODAController:
 - `MOCK_LLM=true` 時回傳預設建議，不呼叫外部 API
 - 接受 `OperationalConstraints` 限制建議數量（`orient_max_options`）
 - 輸出符合 Pydantic v2 模型的結構化 JSON
+- **結構化 Failure Context（SPEC-053）**：Orient 查詢 `technique_executions` 時 JOIN `targets` 並讀取 `failure_category` 欄位，把失敗紀錄以 `<technique> on <host> [<category>]: <error>` 格式餵給 LLM，讓 system prompt 的 Rule #2 Dead Branch Pruning 能真正運作
+- **Rule #9 IA-Exhausted Exploit Pivot（SPEC-053, ADR-046）**：當 Section 7 Failed Techniques 含 T1110.*/T1078.* with `[auth_failure]` 類別，且 target 有 `service.open_port` fact 匹配 `exploitable_banners.yaml` signature，system prompt 強制推薦 T1190 + `engine=metasploit`。明確聲明為 Rule #6（No Redundant Recommendations）的 exception
 
 #### EngineRouter（執行引擎路由器）
 
@@ -271,6 +273,24 @@ class OODAController:
 | 測試/開發環境 | `MockC2Client` |
 
 **執行引擎列舉（`ExecutionEngine` enum）：** SSH, PERSISTENT_SSH, C2, METASPLOIT, WINRM, MCP, MOCK
+
+**SPEC-053 擴充：結構化失敗分類**
+
+- 模組層新增 `_classify_failure(error, engine) -> str` 純函數 heuristic，將錯誤訊息分類為 8 種 `failure_category` 值之一：`auth_failure`, `service_unreachable`, `exploit_failed`, `privilege_insufficient`, `prerequisite_missing`, `tool_error`, `timeout`, `unknown`
+- 所有執行路徑（`_execute_initial_access`, `_execute_mcp`, `_execute_metasploit`, `_finalize_execution` 匯流）在失敗時寫入 `technique_executions.failure_category`，供 OrientEngine 下一輪 Observe 時消費
+- **跨類別 Pivot 的歸屬**：本 Router 不做執行層 auto-pivot（拒絕 ADR-046 選項 A）；當 IA 失敗時返回 `engine='initial_access'` + `failure_category='auth_failure'`，由 Orient 於下一 OODA iteration 依 Rule #9 決定是否推 T1190
+
+#### MetasploitRPCEngine（SPEC-053 One-Shot Mode）
+
+**職責：** 透過 msfrpcd RPC 執行 exploit module，但**不維持 persistent session**。
+
+**關鍵行為：**
+
+- 每次 `_run_exploit()` 都是獨立一次循環：launch exploit → poll for new session → write probe_cmd → read output → `shell.stop()` 釋放
+- 移除原本「walk `client.sessions.list` 找 target_host match 重用」的邏輯（SPEC-053 前曾導致 vsftpd 2.3.4 backdoor 僵屍 session 汙染）
+- Session wait timeout 可由 `settings.METASPLOIT_SESSION_WAIT_SEC`（預設 60 秒）配置
+- 成功回傳 `{status: success, shell: sid, output, engine: metasploit}`——其中 `shell` 欄位只作審計紀錄，**session 在 return 時已被 stop**
+- `backend/app/routers/terminal.py` 偵測到 `credential.root_shell` fact 時，透過 `MetasploitRPCEngine.get_exploit_for_service()` 重跑 exploit 建立 fresh session 供 websocket 使用
 
 ### 2.3 前端模組結構
 

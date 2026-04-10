@@ -1,6 +1,6 @@
 # Athena — Data Architecture
 
-> Version: 1.0 | Date: 2026-02-22 | Status: POC Design
+> Version: 1.1 | Date: 2026-04-10 | Status: POC Design
 
 ---
 
@@ -221,7 +221,28 @@ class TechniqueExecution(BaseModel):
     started_at: datetime | None
     completed_at: datetime | None
     error_message: str | None
+    failure_category: str | None        # SPEC-053: structured failure
+                                        # reason for Orient pivot logic
 ```
+
+**`failure_category` 值域（SPEC-053 convention，非 SQL enum）：**
+
+| 值 | 意義 |
+|----|------|
+| `auth_failure` | SSH brute/WinRM login 全部拒絕 |
+| `service_unreachable` | port closed / timeout / connection refused / no targetable services |
+| `exploit_failed` | exploit 執行但沒拿到 shell（含 metasploit "no session within Ns"） |
+| `privilege_insufficient` | 執行成功但權限不夠 |
+| `prerequisite_missing` | 缺 credential / agent / precondition |
+| `tool_error` | MCP tool schema 錯、binary 不存在、validation fail |
+| `timeout` | 純超時 |
+| `unknown` | 無法分類（heuristic fallback） |
+
+**寫入流程：** `backend/app/services/engine_router.py::_classify_failure()` 在每條失敗執行路徑（`_execute_initial_access`, `_execute_mcp`, `_execute_metasploit`, `_finalize_execution`）寫入 DB。
+
+**讀取流程：** `backend/app/services/orient_engine.py` 在 Orient context 組裝時 JOIN targets 讀 failure_category，格式化為 `<tech> on <host> [<category>]: <error>` 餵給 LLM，支援 Rule #2 Dead Branch Pruning 和 Rule #9 IA-Exhausted Exploit Pivot。
+
+**Index：** `idx_te_failure_category` (partial on `operation_id, failure_category WHERE failure_category IS NOT NULL`) — 加速 Orient 的 failed-techniques 查詢。
 
 ### Fact
 

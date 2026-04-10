@@ -1,7 +1,7 @@
 # Athena — 開發路線圖
 
-> 版本：1.7 | 更新日期：2026-02-27
-> 狀態：Phase 0~11 完成 — v0.1.0 POC 發佈 | 115 個測試（61 pytest + 54 Vitest）
+> 版本：1.8 | 更新日期：2026-04-10
+> 狀態：Phase 0~12 完成 — v0.2.0 Orient-Driven Pivot | 155+ 個測試（SPEC-053 新增 40）
 
 ---
 
@@ -500,6 +500,55 @@ Athena/
   - Frontend 14: ToastContext (4) + Toast (3) + PageLoading (2) + RecommendationPanel (5)
 - [x] 移除 5 個模組的 `tech-debt: test-pending` 標記
 - [x] 後端 61 pytest + 前端 54 Vitest 全數通過
+
+---
+
+## Phase 12：Orient-Driven Cross-Category Pivot `完成`
+
+> 完成日期：2026-04-10 | ADR-046 / SPEC-053 | v0.2.0
+
+### 12.1 結構化 Failure Awareness
+
+- [x] Migration 004: `technique_executions.failure_category` 欄位 + partial index
+- [x] `_classify_failure` heuristic (8 category enum)，每條執行路徑寫入
+- [x] Orient `_build_user_prompt` JOIN targets 讀結構化 failure
+- [x] 40 個 SPEC-053 單元測試全 green
+
+### 12.2 Orient Prompt Rule #9
+
+- [x] Rule #8 放寬：T1190 觸發條件從「HTTP + CVE fact」改為「any exploitable banner」
+- [x] Rule #9 新增：IA exhausted + banner → MUST pivot to T1190 metasploit（明確聲明為 Rule #6 exception）
+- [x] 實機驗證：Orient 在 metasploitable2 target 上主動推薦 T1190 並引用 SPEC-053
+
+### 12.3 Metasploit One-Shot Mode
+
+- [x] `_run_exploit` 移除 session reuse 邏輯（修復 vsftpd backdoor zombie session 問題）
+- [x] 動態 timeout via `METASPLOIT_SESSION_WAIT_SEC`（預設 60s，取代 hard-coded 30s）
+- [x] 成功後立即 `shell.stop()` 釋放 session
+- [x] `terminal.py` MSF 路徑改為偵測到 `credential.root_shell` fact 時 re-exploit 建立 fresh session
+
+### 12.4 OODA Pivot WebSocket Event
+
+- [x] `OODAController._detect_cross_category_pivot()` helper
+- [x] Broadcast `ooda.pivot` event 含 `from_technique`, `to_technique`, `target_id`, `reason`
+- [x] War Room Timeline 消費事件（前端整合 deferred）
+
+### 12.5 相關 Bug Fixes
+
+- [x] B1: Swarm/Single path compromise gate 要求 credential/shell fact 才升級狀態
+- [x] B1: `_execute_initial_access` service parser 改用 `/` 分隔
+- [x] B1: `InitialAccessEngine()` 無參數建構
+- [x] B1: i18n `WarRoom.phase` key 補齊
+- [x] B2: `ooda_scheduler.get_loop_status()` 加 `running: bool` 欄位（修 Autonomous 切回 Manual bug）
+- [x] B3: `MCPEngineClient` per-tool argument shape override（修 dns_resolve schema mismatch）
+- [x] B4: War Room 前端 `.map` 入口 null guards + Next.js error boundary (`error.tsx`)
+
+### 12.6 已知範圍限制（ADR-047 Draft 追蹤）
+
+- [ ] Reverse shell 類 exploit（samba usermap / UnrealIRCd / distccd）需要 LHOST 可達
+- [ ] Docker bridge `172.22.0.0/16` ↔ target LAN `192.168.0.x` 無 reverse route
+- [ ] vsftpd 2.3.4 backdoor 在 metasploitable2 上僵屍化（需 target reboot）
+- [ ] 解法：ADR-047 Target-Segment Relay（延後至 relay 硬體部署後）
 
 ---
 

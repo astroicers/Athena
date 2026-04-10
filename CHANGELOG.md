@@ -7,6 +7,49 @@
 
 ## [Unreleased]
 
+### Orient-Driven Cross-Category Attack Pivot（2026-04-10, SPEC-053 / ADR-046）
+
+使用者故意把 metasploitable2 demo target 的 SSH 密碼改成不可猜值，目的是壓測 OODA 碰壁後**自主切換攻擊路徑**的能力。此發布把「AI 指揮官碰壁後換武器」從 prompt 文字變成可驗證的 first-class 能力，為 2026-05-07 演講提供核心敘事骨幹。
+
+#### Added
+- **`technique_executions.failure_category` 欄位**：8 種 convention 字串（`auth_failure`, `service_unreachable`, `exploit_failed`, `privilege_insufficient`, `prerequisite_missing`, `tool_error`, `timeout`, `unknown`）+ partial index（Migration 004）
+- **`engine_router._classify_failure()` heuristic**：模組層純函數，每個執行路徑失敗時呼叫並寫入 DB
+- **Orient 結構化 failure context**：`_build_user_prompt` 的失敗技術 query JOIN targets 並 format 為 `<tech> on <host> [<category>]: <error>` 餵給 LLM
+- **Orient System Prompt Rule #9「Initial Access Exhausted → Exploit Pivot」**：明確指示 LLM 在 IA failed + banner matched 時推薦 T1190 metasploit，聲明為 Rule #6 exception
+- **Metasploit One-Shot Exploit Mode**：`_run_exploit` 每次獨立執行 → probe → `shell.stop()` 釋放，不維持 persistent session
+- **`METASPLOIT_SESSION_WAIT_SEC` config**：取代 hard-coded 30 秒 poll（預設 60s）
+- **`OODAController._detect_cross_category_pivot()`**：偵測 T1190 after T1110/T1078 auth_failure 並 broadcast `ooda.pivot` WebSocket event
+- **Terminal router MSF re-exploit 路徑**：偵測到 `credential.root_shell` fact 時由 `get_exploit_for_service` 重跑 exploit 建立 fresh session
+- **ADR-046**（Accepted）：Orient-Driven Cross-Category Attack Pivot 決策記錄
+- **ADR-047**（Draft）：Target-Segment Relay for Reverse Shell Connectivity 追蹤 reverse shell 拓撲限制
+- **SPEC-053**：完整規格書 + Gherkin 驗收場景 + 8 個測試矩陣 case
+- **40 個 SPEC-053 單元測試**（`test_spec053_failure_classifier.py`, `test_spec053_orient_pivot.py`, `test_spec053_metasploit_oneshot.py`）
+
+#### Changed
+- **Orient Rule #8 放寬**：T1190 觸發條件從「HTTP services with known vulnerabilities (CVE facts present)」改為「any service matching known exploitable banner signature」，不再需要 CVE fact
+- **`metasploit_client._run_exploit` 不再 reuse 既有 session**：解決 vsftpd 2.3.4 backdoor 僵屍 session 汙染問題
+- **Migration 004 套用**：`alembic_version` 從 003 更新至 004
+- **`docs/SDS.md` v0.2.0**：OrientEngine 增補 Rule #9 行為、EngineRouter 增補結構化失敗分類說明、新增 MetasploitRPCEngine One-Shot Mode 章節
+- **`docs/architecture.md` v0.4.0**：新增 `ooda.pivot` WebSocket 事件、新增「Orient-Driven Cross-Category Pivot」資料流圖
+- **`docs/architecture/data-architecture.md` v1.1**：TechniqueExecution Pydantic model 增 `failure_category` 欄位 + 值域表
+
+#### Fixed
+- **B1: OODA compromise gate**（`ooda_controller.py`）：Swarm 和 Single path 不再僅憑 `status=success` 升級 `is_compromised`，必須該 target 有非 invalidated 的 `credential.*` 或 `shell.*` fact。修復先前 T1046 nmap 成功誤標 compromised 的 bug。
+- **B1: InitialAccessEngine service parser**（`engine_router.py`）：`_execute_initial_access` 解析 `service.open_port` fact 由錯誤的 `val.split()`（空白）改為 `val.split("/")`（正確格式 `port/proto/service/banner`），讓 `_PROTOCOL_MAP` 能真正匹配。修復 T1110 always returning `method='none'` 的 bug。
+- **B1: InitialAccessEngine constructor**（`engine_router.py`）：`InitialAccessEngine(self._ws)` → `InitialAccessEngine()`（class 無 `__init__`），修復每次 IA routing 都拋 TypeError 的 bug。
+- **B1: i18n `WarRoom.phase` key**（`en.json` / `zh-TW.json`）：補齊缺失 key，修復 OODA iteration detail table 顯示 literal key 的 bug。
+- **B2: auto-status API 契約**（`ooda_scheduler.py`）：`get_loop_status()` 加 `running: bool` 欄位，修復前端每 15 秒 polling 後 Autonomous toggle 被 `autoStatus.running ?? false` 打回 Manual 的 bug。保留 `status` 欄位做向後兼容。
+- **B3: MCP dns_resolve schema mismatch**（`mcp_engine_client.py`）：加 `_TOOL_ARG_SHAPES` per-tool override，`dns_resolve` 接收 `{"subdomains": target}` 而非 `{"target": target}`。修復 T1596 always failing with pydantic validation error 的 bug。
+- **B4a: War Room 前端 .map 入口 null guards**（`page.tsx`）：`rawIterations` / `targetStats` / `bannerData` 全加 `Array.isArray` + optional chaining，避免 WebSocket 送來的不完整 payload 觸發 render 例外。
+- **B4b: Next.js App Router error boundary**（`warroom/error.tsx`）：新增 `error.tsx` 捕捉 render 例外，取代 Next.js 預設的「Application error: a client-side exception has occurred」空白頁。含 i18n 錯誤文案和 Retry 按鈕。
+
+#### Deferred（ADR-047 relay 實作後回填）
+- Gherkin Scenario S1 完整端到端：T1190 實際取得 root shell
+- Gherkin Scenario S3：Terminal re-exploit 透過 relay 建立新 session 的功能性驗證
+- 演講 demo：metasploitable2 從 0 → OODA T1110 fail → OODA T1190 pivot 成功 shell → Brief → 新 Claude 續接
+
+---
+
 ### OODA-Native Recon & Initial Access（2026-04-01）
 
 #### Changed

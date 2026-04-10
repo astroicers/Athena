@@ -3,8 +3,8 @@
 | 欄位 | 內容 |
 |------|------|
 | **專案** | Athena |
-| **版本** | v0.3.0 |
-| **最後更新** | 2026-03-04 |
+| **版本** | v0.4.0 |
+| **最後更新** | 2026-04-10 |
 
 ---
 
@@ -206,8 +206,63 @@ graph LR
         E7["recommendation"]
         E8["operation.reset"]
         E9["orient.thinking"]
+        E10["ooda.pivot<br/>(SPEC-053)"]
     end
 ```
+
+### Orient-Driven Cross-Category Pivot（SPEC-053 / ADR-046）
+
+以下資料流展示 Orient 如何自主從 credential-based IA（T1110 SSH brute）切換到 exploit-based IA（T1190 Metasploit），這是演講 demo 的核心敘事：
+
+```
+TechniqueExecution (T1110.001 failed)
+          │
+          ├── error_message: "All SSH credentials failed..."
+          └── failure_category: "auth_failure"  ◄── _classify_failure()
+                       │
+                       ▼
+         ┌──────────────────────────────┐
+         │ Orient Engine (next OODA)    │
+         │  JOIN targets + failed       │
+         │  "T1110.001 on host X        │
+         │   [auth_failure]: ..."       │
+         └──────────────┬───────────────┘
+                        │
+                        ▼
+         ┌──────────────────────────────┐
+         │ System Prompt Rule #9        │
+         │ IA exhausted + banner        │
+         │ vsftpd_2.3.4 / samba / ...   │
+         │ => MUST recommend T1190      │
+         │    engine=metasploit         │
+         └──────────────┬───────────────┘
+                        │
+                        ▼
+              Decision: T1190 on host X
+                        │
+                        ▼
+         OODAController._detect_cross_category_pivot()
+                        │
+                        ▼
+              WebSocket ooda.pivot event
+              { from: T1110.001,
+                to:   T1190,
+                reason: ia_exhausted_banner_matched }
+                        │
+                        ▼
+                War Room Timeline
+             (pivot badge rendered)
+                        │
+                        ▼
+              Act: _execute_metasploit()
+                    one-shot mode:
+                    exploit → probe → shell.stop()
+```
+
+**三個保險機制**：
+1. 執行層**不**做 auto-pivot（拒絕 ADR-046 Option A），所有 pivot 決策由 Orient 做
+2. OODAController 只**偵測**跨類別 pivot 以廣播事件，不重寫 Decision
+3. Metasploit 以 one-shot mode 運行，不維持 persistent shell（避免 zombie backdoor）
 
 ---
 
@@ -319,6 +374,8 @@ graph TD
 | [ADR-016](adr/ADR-016-enterprise-external-pentest-phase-a.md) | 企業化外部滲透測試 Phase A 架構 | `Accepted` |
 | [ADR-017](adr/ADR-017-direct-ssh-engine.md) | DirectSSHEngine — SSH 直接執行引擎 | `Accepted` |
 | [ADR-018](adr/ADR-018-technique-playbook-knowledge-base.md) | Technique Playbook 知識庫架構 | `Accepted` |
+| [ADR-046](adr/ADR-046-orient-driven-cross-category-attack-pivot.md) | Orient-Driven Cross-Category Attack Pivot | `Accepted` |
+| [ADR-047](adr/ADR-047-target-segment-relay-for-reverse-shell-connectivity.md) | Target-Segment Relay for Reverse Shell Connectivity | `Draft` |
 
 ---
 

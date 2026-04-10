@@ -199,8 +199,21 @@ class MetasploitRPCEngine:
                 "exploit" if module_path.startswith("exploit") else "auxiliary"
             )
             exploit = client.modules.use(module_type, module_path)
+
+            # Set exploit-level options (RHOSTS, etc.) via the module
+            # __setitem__ interface. LHOST and LPORT are PAYLOAD options
+            # and must NOT be set on the exploit module object (pymetasploit3
+            # raises KeyError("Invalid option 'LHOST'")). Instead we inject
+            # them directly into the module's ``runoptions`` dict, which is
+            # the dict that gets sent verbatim to the msfrpc RPC call. This
+            # is the supported pattern when using a string payload name
+            # rather than a PayloadModule object.
             for k, v in options.items():
-                exploit[k] = v
+                if k in ("LHOST", "LPORT"):
+                    # Inject payload options directly into runoptions
+                    exploit.runoptions[k] = v
+                else:
+                    exploit[k] = v
             if payload:
                 exploit.execute(payload=payload)
             else:
@@ -231,8 +244,37 @@ class MetasploitRPCEngine:
             shell = None
             try:
                 shell = client.sessions.session(sid)
+                # cmd/unix/reverse shells need a brief stabilization
+                # period after session creation before the I/O pipe is
+                # ready. Without this, the first shell.read() often
+                # returns empty even though the shell is alive.
+                await asyncio.sleep(2)
+                # Drain any banner or stale output from the shell
+                await asyncio.get_running_loop().run_in_executor(
+                    None, shell.read
+                )
+                # Reverse shell sessions through a relay tunnel have
+                # higher I/O latency than bind shells. The msfrpcd
+                # session buffer often doesn't flush until a second
+                # write arrives. We work around this by sending a
+                # short sentinel echo first, waiting for msfrpcd to
+                # observe the I/O activity, then sending the real
+                # probe command and reading the combined output.
+                shell.write("echo ATHENA_PROBE_START\n")
+                await asyncio.sleep(3)
+                # Drain the echo response (may or may not have arrived)
+                await asyncio.get_running_loop().run_in_executor(
+                    None, shell.read
+                )
                 shell.write(probe_cmd + "\n")
-                output = await self._read_shell_output(shell)
+                # Poll for probe output with increasing intervals
+                for _wait in (3, 3, 5):
+                    await asyncio.sleep(_wait)
+                    output = await asyncio.get_running_loop().run_in_executor(
+                        None, shell.read
+                    )
+                    if output:
+                        break
             finally:
                 if shell is not None:
                     try:

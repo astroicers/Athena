@@ -86,11 +86,12 @@ trap cleanup EXIT SIGINT SIGTERM
 echo "[athena-relay] Pre-flight checks..."
 command -v ssh >/dev/null || {{ echo "ssh not found"; exit 1; }}
 
-if command -v ss >/dev/null 2>&1; then
-    if ss -tln 2>/dev/null | grep -q ":${{LPORT}} "; then
-        echo "[athena-relay] ERROR: port ${{LPORT}} already bound on this host"
-        exit 1
-    fi
+# Check if LPORT is already bound on the RELAY (not locally — local 4444
+# may be the docker msf-rpc port mapping which is correct and expected).
+if ssh -o ConnectTimeout=5 -p "${{SSH_PORT}}" "${{SSH_USER}}@${{RELAY_IP}}" \
+       "ss -tln 2>/dev/null | grep -q ':${{LPORT}} '" 2>/dev/null; then
+    echo "[athena-relay] ERROR: port ${{LPORT}} already bound on relay ${{RELAY_IP}}"
+    exit 1
 fi
 
 # --- Start reverse tunnel ---

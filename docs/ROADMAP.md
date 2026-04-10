@@ -9,7 +9,7 @@
 
 Athena 是一套 AI 驅動的 C5ISR 網路作戰指揮平台。本路線圖描述從設計到正式開源發佈的完整旅程。
 
-**目前進度**：Phase 0~11 全部完成。v0.1.0 POC 版本已發佈。後端 61 pytest + 前端 54 Vitest 測試全數通過。
+**目前進度**：Phase 0~12 全部完成。v0.2.0 Orient-Driven Pivot 版本已合併。SPEC-053 新增 40 個單元測試（failure classifier 27 + Orient pivot 8 + metasploit one-shot 5）全數通過。
 
 ---
 

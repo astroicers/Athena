@@ -1271,6 +1271,17 @@ class EngineRouter:
         output = result_dict.get("output", result_dict.get("reason", ""))
         msf_engine_label = result_dict.get("engine", "metasploit")
 
+        # SPEC-054: audit LHOST source for every reverse-shell exploit
+        # attempt so operators can verify the relay pipeline is working.
+        # For bind-shell exploits (e.g. vsftpd) the value shown is the
+        # degraded sentinel — we do not suppress it, so a single log grep
+        # covers both cases.
+        _lhost_for_log = settings.RELAY_IP or "(none/bind)"
+        logger.info(
+            "metasploit %s status=%s lhost=%s rhosts=%s service=%s",
+            technique_id, status, _lhost_for_log, target_ip, service_name,
+        )
+
         # SPEC-053: classify metasploit failure reason for Orient consumption
         msf_error = result_dict.get("reason") if status != "success" else None
         failure_category = (

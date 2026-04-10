@@ -394,13 +394,14 @@ async def _run_msf_terminal(
                 }))
                 continue
 
-            # Re-exploit: launch, probe with THIS command, read, release.
+            # Re-exploit via the bound method returned by
+            # get_exploit_for_service. SPEC-054: this routes through
+            # exploit_samba / exploit_unrealircd etc., which read LHOST
+            # from settings.RELAY_IP automatically. Calling _run_exploit
+            # directly would bypass that injection and always send the
+            # legacy hardcoded "0.0.0.0".
             try:
-                result = await msf._run_exploit(
-                    *_exploit_module_and_payload(inferred_service),
-                    {"RHOSTS": target_ip},
-                    probe_cmd=cmd,
-                )
+                result = await exploit_fn(target_ip, probe_cmd=cmd)
             except Exception as exc:
                 await websocket.send_text(json.dumps({
                     "error": f"Re-exploit failed: {exc}",

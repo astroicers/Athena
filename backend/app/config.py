@@ -60,6 +60,18 @@ class Settings(BaseSettings):
     # after an exploit is executed. Previously hard-coded to 30s in
     # metasploit_client._run_exploit. Configurable 10-300s range.
     METASPLOIT_SESSION_WAIT_SEC: int = 60
+    # SPEC-054: Target-segment relay for reverse-shell exploits (ADR-047).
+    # Empty RELAY_IP = no relay available; Orient will deprioritize
+    # reverse-shell exploits via the Rule #8/#9 relay-aware addendum, and
+    # metasploit_client falls back to LHOST="0.0.0.0" with a warning.
+    # When RELAY_IP is set, RELAY_ATHENA_HOST MUST also be set so the
+    # generated relay script knows how to forward callbacks back to
+    # Athena's msfrpcd listener.
+    RELAY_IP: str = ""
+    RELAY_SSH_USER: str = "athena-relay"
+    RELAY_SSH_PORT: int = 22
+    RELAY_LPORT: int = 4444
+    RELAY_ATHENA_HOST: str = ""
     PERSISTENCE_ENABLED: bool = False
     # MCP integration
     MCP_ENABLED: bool = True

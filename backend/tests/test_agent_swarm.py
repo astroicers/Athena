@@ -28,10 +28,11 @@ async def _seed_swarm_rows(db) -> None:
         "VALUES ('op-1', 'OP-1', 'SwarmTest', 'SWARM', 'test') "
         "ON CONFLICT DO NOTHING"
     )
-    for tgt_id, ip_suffix in [("tgt-1", "1"), ("tgt-2", "2"), ("tgt-3", "3")]:
+    for i in range(5):
+        tgt_id = f"tgt-{i}"
         await db.execute(
             "INSERT INTO targets (id, hostname, ip_address, role, operation_id) "
-            f"VALUES ('{tgt_id}', 'swarm-{tgt_id}', '10.0.0.{ip_suffix}', 'target', 'op-1') "
+            f"VALUES ('{tgt_id}', 'swarm-{tgt_id}', '10.0.0.{i}', 'target', 'op-1') "
             "ON CONFLICT DO NOTHING"
         )
     await db.execute(
@@ -461,7 +462,6 @@ class TestDecisionEngineParallelTasks:
         )
 
     async def test_evaluate_produces_parallel_tasks(self, tmp_db):
-        await _seed_swarm_rows(tmp_db)
         from app.services.decision_engine import DecisionEngine
 
         await self._setup_db(tmp_db)
@@ -492,7 +492,6 @@ class TestDecisionEngineParallelTasks:
         assert result["parallel_tasks"][1]["technique_id"] == "T1087"
 
     async def test_manual_mode_no_parallel_tasks(self, tmp_db):
-        await _seed_swarm_rows(tmp_db)
         from app.services.decision_engine import DecisionEngine
 
         await tmp_db.execute(
@@ -523,7 +522,6 @@ class TestDecisionEngineParallelTasks:
         assert result["parallel_tasks"] == []
 
     async def test_high_risk_excluded_from_parallel_tasks(self, tmp_db):
-        await _seed_swarm_rows(tmp_db)
         from app.services.decision_engine import DecisionEngine
 
         await self._setup_db(tmp_db)
@@ -562,7 +560,6 @@ class TestDecisionEngineParallelTasks:
         assert "T_CRITICAL" not in technique_ids
 
     async def test_parallel_tasks_dedup(self, tmp_db):
-        await _seed_swarm_rows(tmp_db)
         from app.services.decision_engine import DecisionEngine
 
         await self._setup_db(tmp_db)

@@ -310,6 +310,11 @@ class EngineRouter:
         exec_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
 
+        logger.info(
+            "_execute_single ENTRY: technique=%s engine=%s target=%s",
+            technique_id, engine, target_id,
+        )
+
         # Get the technique's c2_ability_id
         tech_row = await db.fetchrow(
             "SELECT mitre_id, c2_ability_id FROM techniques WHERE mitre_id = $1",
@@ -337,8 +342,13 @@ class EngineRouter:
                 engine, operation_id, ooda_iteration_id,
             )
 
-        # -- Explicit Metasploit route: engine == "metasploit" (SPEC-037 P2) --
-        if engine == "metasploit":
+        # -- Explicit Metasploit route: engine == "metasploit" OR
+        #    technique is T1190 with an exploitable banner (SPEC-053/054).
+        #    Orient Rule #9 recommends T1190 engine=metasploit, but the LLM
+        #    sometimes omits recommended_engine in the JSON, causing
+        #    decision_engine to default to "ssh". To prevent this from
+        #    silently breaking the pivot, we also check technique_id.
+        if engine == "metasploit" or technique_id.startswith("T1190"):
             service = await self._has_exploitable_service(db, operation_id, target_id)
             if not service:
                 service = await self._infer_exploitable_service(db, operation_id, target_id)
@@ -347,11 +357,12 @@ class EngineRouter:
                 if target_ip:
                     return await self._execute_metasploit(
                         db, exec_id, now, technique_id, target_id, operation_id,
-                        ooda_iteration_id, service, target_ip, engine,
+                        ooda_iteration_id, service, target_ip, "metasploit",
                     )
             logger.warning(
-                "engine=metasploit requested but no exploitable service found for %s -- falling through",
-                target_id,
+                "engine=metasploit requested (or T1190 inferred) but no exploitable service found for %s "
+                "(engine=%s, technique=%s) -- falling through",
+                target_id, engine, technique_id,
             )
 
         # -- Metasploit route: exploit=true CVE fact -> highest priority --
@@ -1255,6 +1266,10 @@ class EngineRouter:
             "status": "running", "engine": "metasploit",
         })
 
+        logger.info(
+            "_execute_metasploit: technique=%s service=%s target=%s",
+            technique_id, service_name, target_ip,
+        )
         msf_engine = MetasploitRPCEngine()
         method = msf_engine.get_exploit_for_service(service_name)
         if method is None:

@@ -387,11 +387,23 @@ async def test_metasploit_route_on_explicit_engine(tmp_db):
 
 
 @pytest.mark.asyncio
-async def test_banner_fallback_auto_detects_vsftpd(tmp_db):
-    """Default routing auto-detects vsftpd from banner when no vuln.cve fact exists."""
+async def test_t1110_routes_to_initial_access_not_auto_fallback(tmp_db):
+    """SPEC-053 (ADR-046): T1110 no longer silently falls back to metasploit.
+
+    Under SPEC-052 T1110.* is routed to ``_execute_initial_access`` which
+    looks for credential-accessible services (ssh/rdp/winrm). If no such
+    service is available the call returns ``engine='initial_access'`` with
+    status=failed and an appropriate ``failure_category`` — the router
+    must NOT auto-pivot to Metasploit on the basis of a banner. Pivoting
+    to T1190 is the responsibility of the Orient engine (Rule #9), which
+    will read the structured failure context on the next OODA iteration.
+
+    See ADR-046 for why Option A (execution-layer auto-pivot) was rejected.
+    """
     from app.clients.mock_c2_client import MockC2Client
 
-    # Seed required data
+    # Seed required data: target has vsftpd banner but no SSH port, so
+    # the credential-based IA path has nothing to try.
     await tmp_db.execute(
         "INSERT INTO techniques (id, mitre_id, name, tactic, tactic_id, risk_level) "
         "VALUES ('t1', 'T1110.001', 'Brute Force', 'Credential Access', 'TA0006', 'medium')"
@@ -422,8 +434,25 @@ async def test_banner_fallback_auto_detects_vsftpd(tmp_db):
         engine="auto", operation_id="op-1",
     )
 
-    # Should have been intercepted by banner-based Metasploit fallback
-    assert result.get("engine") in ("metasploit", "metasploit_mock")
+    # SPEC-053 contract: T1110 stays in initial_access engine, does NOT
+    # get silently redirected to metasploit by the router. Orient will
+    # see the failure on its next iteration and pivot to T1190 via Rule #9.
+    assert result.get("engine") == "initial_access"
+    assert result.get("status") == "failed"
+
+    # And the DB row recorded the structured failure category so Orient
+    # can key off it (auth_failure for brute exhausted OR
+    # service_unreachable for no targetable services).
+    row = await tmp_db.fetchrow(
+        "SELECT failure_category FROM technique_executions "
+        "WHERE operation_id = $1 AND technique_id = $2 AND status = 'failed'",
+        "op-1", "T1110.001",
+    )
+    assert row is not None
+    assert row["failure_category"] in (
+        "auth_failure",
+        "service_unreachable",
+    )
 
 
 @pytest.mark.asyncio

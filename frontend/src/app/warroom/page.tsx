@@ -107,6 +107,8 @@ function WarRoomContent() {
   const [timeline, setTimeline] = useState<OODATimelineEntry[]>([]);
   const [targets, setTargets] = useState<Target[]>([]);
   const [autoMode, setAutoMode] = useState(false);
+  const [relayAvailable, setRelayAvailable] = useState(false);
+  const [pivotIterations, setPivotIterations] = useState<Record<number, { from: string; to: string }>>({});
   const [loading, setLoading] = useState(true);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -185,10 +187,11 @@ function WarRoomContent() {
       }
       // Sync auto-mode status from backend
       try {
-        const autoStatus = await api.get<{ running: boolean }>(
+        const autoStatus = await api.get<{ running: boolean; relay_available?: boolean }>(
           `/operations/${operationId}/ooda/auto-status`,
         );
         setAutoMode(autoStatus.running ?? false);
+        setRelayAvailable(autoStatus.relay_available ?? false);
       } catch {
         // auto-status endpoint may not exist for new operations
       }
@@ -218,6 +221,14 @@ function WarRoomContent() {
       ws.subscribe("brief.updated", () => {
         const w = window as unknown as Record<string, unknown>;
         if (typeof w.__briefRefresh === "function") (w.__briefRefresh as () => void)();
+      }),
+      ws.subscribe("ooda.pivot", (data: { iteration?: number; from_technique?: string; to_technique?: string }) => {
+        if (data.iteration != null && data.from_technique && data.to_technique) {
+          setPivotIterations((prev) => ({
+            ...prev,
+            [data.iteration!]: { from: data.from_technique!, to: data.to_technique! },
+          }));
+        }
       }),
     ];
     return () => unsubs.forEach((fn) => fn());
@@ -586,6 +597,7 @@ function WarRoomContent() {
                     constraints={constraints ?? undefined}
                     isCurrent={isCurrent}
                     timelineEntries={timeline}
+                    pivotInfo={pivotIterations[iter.iterationNumber]}
                   />
 
                   {/* SPEC-052: Directive input moved to CommandBar at bottom */}
@@ -615,6 +627,7 @@ function WarRoomContent() {
             c5isrDomains={domains}
             matrixAction={matrixAction}
             targets={targetStats}
+            relayAvailable={relayAvailable}
           />
         </div>
       )}

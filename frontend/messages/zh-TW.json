@@ -424,7 +424,8 @@
   },
   "Terminal": {
     "title": "終端機 —",
-    "connecting": "連接中..."
+    "connecting": "連接中...",
+    "commandPending": "執行中..."
   },
   "Hints": {
     "oodaCycle": "目前作戰決策循環階段",
@@ -557,6 +558,11 @@
     "errorBoundaryTitle": "作戰室渲染錯誤",
     "errorBoundaryHint": "即時資料流中的某個欄位讓頁面無法正常渲染。錯誤已輸出至瀏覽器 console。",
     "errorBoundaryRetry": "重試",
+    "pivotBadge": "路徑切換",
+    "relayStatus": "中繼站",
+    "relayOn": "啟用",
+    "relayOff": "未啟用",
+    "commandPending": "執行中...",
     "sidePanel": {
       "_title": "側面板",
       "aiDecision": "AI 決策",

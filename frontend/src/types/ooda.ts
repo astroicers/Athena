@@ -53,6 +53,7 @@ export interface PhaseDetail {
   resultSummary?: string;
   errorMessage?: string;
   factsCollectedCount?: number;
+  failureCategory?: string;
 }
 
 export interface OODATimelineEntry {

@@ -37,6 +37,7 @@ interface OODATimelineBlockProps {
   constraints?: OperationalConstraints;
   isCurrent?: boolean;
   timelineEntries?: OODATimelineEntry[];
+  pivotInfo?: { from: string; to: string };
 }
 
 const PHASE_ORDER: OODAPhase[] = [
@@ -95,6 +96,7 @@ export function OODATimelineBlock({
   constraints,
   isCurrent = false,
   timelineEntries,
+  pivotInfo,
 }: OODATimelineBlockProps) {
   const t = useTranslations("WarRoom");
   const isCompleted = iteration.completedAt !== null;
@@ -116,6 +118,11 @@ export function OODATimelineBlock({
           {iteration.targetHostname && (
             <span className="text-athena-floor font-mono px-2 py-1 rounded-[var(--radius)] bg-[var(--color-accent)]/[0.12] border border-[var(--color-accent)]/[0.25] text-[var(--color-accent)]">
               [{iteration.targetIp}] {iteration.targetHostname}
+            </span>
+          )}
+          {pivotInfo && (
+            <span className="text-xs font-mono px-2 py-0.5 rounded-[var(--radius)] bg-[#7C3AED]/[0.08] border border-[#7C3AED]/[0.20] text-[#7C3AED]">
+              {t("pivotBadge")} {pivotInfo.from} &rarr; {pivotInfo.to}
             </span>
           )}
         </div>

@@ -258,7 +258,8 @@ async def get_ooda_timeline(
                 elif phase_name == "act" and row["technique_execution_id"]:
                     act_exec = await db.fetchrow(
                         "SELECT technique_id, engine, status, result_summary, error_message, "
-                        "facts_collected_count FROM technique_executions WHERE id = $1",
+                        "facts_collected_count, failure_category "
+                        "FROM technique_executions WHERE id = $1",
                         row["technique_execution_id"],
                     )
                     if act_exec:
@@ -269,6 +270,7 @@ async def get_ooda_timeline(
                             "result_summary": act_exec["result_summary"],
                             "error_message": act_exec["error_message"],
                             "facts_collected_count": act_exec["facts_collected_count"] or 0,
+                            "failure_category": act_exec["failure_category"],
                         }
 
                 entries.append(

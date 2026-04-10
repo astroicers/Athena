@@ -26,6 +26,7 @@ interface StatusPanelProps {
   c5isrDomains: C5ISRStatus[];
   matrixAction: string;
   targets?: TargetStat[];
+  relayAvailable?: boolean;
 }
 
 function healthColor(pct: number): string {
@@ -57,6 +58,7 @@ export function StatusPanel({
   c5isrDomains,
   matrixAction,
   targets,
+  relayAvailable = false,
 }: StatusPanelProps) {
   const t = useTranslations("WarRoom");
   const action = actionStyle(matrixAction);
@@ -144,6 +146,22 @@ export function StatusPanel({
             {matrixAction}
           </span>
         </div>
+      </div>
+
+      {/* RELAY STATUS */}
+      <div className="flex items-center justify-between">
+        <span className="text-athena-floor text-athena-text-tertiary uppercase tracking-wider font-semibold">
+          {t("relayStatus")}
+        </span>
+        <span
+          className={`text-sm font-mono font-bold ${
+            relayAvailable
+              ? "text-athena-success"
+              : "text-[var(--color-text-tertiary)]"
+          }`}
+        >
+          {relayAvailable ? `● ${t("relayOn")}` : `○ ${t("relayOff")}`}
+        </span>
       </div>
     </div>
   );

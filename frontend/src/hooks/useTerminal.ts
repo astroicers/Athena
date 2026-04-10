@@ -32,6 +32,7 @@ export interface UseTerminalReturn {
   entries: TerminalEntry[];
   prompt: string;
   isConnected: boolean;
+  pending: boolean;
   sendCommand: (cmd: string) => void;
   clear: () => void;
 }
@@ -44,6 +45,7 @@ export function useTerminal(
   const [entries, setEntries] = useState<TerminalEntry[]>([]);
   const [prompt, setPrompt] = useState("$ ");
   const [isConnected, setIsConnected] = useState(false);
+  const [pending, setPending] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
 
   const addEntry = useCallback((type: TerminalEntry["type"], text: string) => {
@@ -69,12 +71,15 @@ export function useTerminal(
         const msg = JSON.parse(e.data) as TerminalMessage;
         if (msg.error) {
           addEntry("error", msg.error);
+          setPending(false);
         } else if (msg.output !== undefined) {
           addEntry("output", msg.output);
           if (msg.prompt) setPrompt(msg.prompt);
+          setPending(false);
         }
       } catch {
         addEntry("error", "Failed to parse server message");
+        setPending(false);
       }
     };
 
@@ -98,14 +103,16 @@ export function useTerminal(
   const sendCommand = useCallback((cmd: string) => {
     if (!cmd.trim()) return;
     addEntry("input", cmd);
+    setPending(true);
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ cmd }));
     } else {
       addEntry("error", "Not connected");
+      setPending(false);
     }
   }, [addEntry]);
 
   const clear = useCallback(() => setEntries([]), []);
 
-  return { entries, prompt, isConnected, sendCommand, clear };
+  return { entries, prompt, isConnected, pending, sendCommand, clear };
 }

@@ -424,7 +424,8 @@
   },
   "Terminal": {
     "title": "TERMINAL —",
-    "connecting": "Connecting..."
+    "connecting": "Connecting...",
+    "commandPending": "Executing..."
   },
   "Hints": {
     "oodaCycle": "Current decision loop phase",
@@ -557,6 +558,11 @@
     "errorBoundaryTitle": "War Room render error",
     "errorBoundaryHint": "Something in the live data stream caused the page to fail to render. The error was logged to the browser console.",
     "errorBoundaryRetry": "Retry",
+    "pivotBadge": "PIVOT",
+    "relayStatus": "RELAY",
+    "relayOn": "ON",
+    "relayOff": "OFF",
+    "commandPending": "Executing...",
     "sidePanel": {
       "_title": "Side Panel",
       "aiDecision": "AI Decision",

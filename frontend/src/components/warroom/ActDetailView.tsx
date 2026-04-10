@@ -49,6 +49,11 @@ export function ActDetailView({ detail }: ActDetailViewProps) {
         >
           {status}
         </span>
+        {detail.failureCategory && isFailed && (
+          <span className="text-xs font-mono px-1.5 py-0.5 rounded-[var(--radius)] bg-[var(--color-error)]/[0.08] border border-[var(--color-error)]/[0.15] text-[var(--color-error)]">
+            [{detail.failureCategory}]
+          </span>
+        )}
       </div>
 
       {/* Technique + Engine info */}

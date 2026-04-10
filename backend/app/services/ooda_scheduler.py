@@ -118,12 +118,16 @@ def get_loop_status(operation_id: str) -> dict:
     interpret the ``status`` enum string. ``status`` is kept for
     backward compatibility with log/audit consumers.
     """
+    from app.config import settings as _settings  # noqa: PLC0415
+
+    relay_available = bool(getattr(_settings, "RELAY_IP", "") or "")
     meta = _active_loops.get(operation_id)
     if not meta:
         return {
             "running": False,
             "status": "idle",
             "operation_id": operation_id,
+            "relay_available": relay_available,
         }
     return {
         "running": True,
@@ -132,4 +136,5 @@ def get_loop_status(operation_id: str) -> dict:
         "interval_sec": meta["interval_sec"],
         "max_iterations": meta["max_iterations"],
         "iteration_count": meta["iteration_count"],
+        "relay_available": relay_available,
     }

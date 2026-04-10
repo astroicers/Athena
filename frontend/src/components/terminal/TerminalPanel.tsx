@@ -37,7 +37,7 @@ export function TerminalPanel({
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { entries, prompt, isConnected, sendCommand, clear } = useTerminal(
+  const { entries, prompt, isConnected, pending, sendCommand, clear } = useTerminal(
     operationId,
     targetId,
     true,
@@ -153,10 +153,10 @@ export function TerminalPanel({
         />
         <button
           type="submit"
-          disabled={!isConnected || !input.trim()}
+          disabled={!isConnected || !input.trim() || pending}
           className="px-3 py-1.5 text-athena-floor font-mono font-semibold bg-[var(--color-accent)]/[0.12] border border-[var(--color-accent)]/[0.25] text-[var(--color-accent)] rounded-[var(--radius)] hover:bg-[var(--color-accent)]/[0.2] disabled:opacity-30"
         >
-          {tCommon("send")}
+          {pending ? t("commandPending") : tCommon("send")}
         </button>
       </form>
     </div>

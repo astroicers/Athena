@@ -30,6 +30,39 @@ def _to_camel_case(snake_str: str) -> str:
     return components[0] + ''.join(x.title() for x in components[1:])
 
 
+def _format_relay_infrastructure() -> str:
+    """SPEC-054: Build the Section 7.9 Infrastructure block for Orient.
+
+    Pure function so it can be unit-tested without spinning up the
+    whole ``OrientEngine``. Reads ``settings.RELAY_IP`` and emits a
+    short block that tells the LLM whether reverse-shell exploits are
+    viable on this Athena deployment.
+
+    The key `relay_available: true|false` is intentionally spelled as
+    a single underscored token so the prompt matches the LLM-facing
+    Rule #8/#9 text that references `relay_available`.
+    """
+    relay_ip = getattr(settings, "RELAY_IP", "") or ""
+    available = bool(relay_ip)
+    if available:
+        return (
+            "- relay_available: true\n"
+            f"- Relay LHOST: {relay_ip}\n"
+            "- Reverse shell exploits viable: true\n"
+            "- Permitted exploit classes: bind shell, reverse shell, "
+            "credential-based"
+        )
+    return (
+        "- relay_available: false\n"
+        "- Relay LHOST: (none)\n"
+        "- Reverse shell exploits viable: false\n"
+        "- Permitted exploit classes: bind shell (vsftpd), "
+        "credential-based (T1110.*, T1078.*)\n"
+        "- AVOID: reverse-shell exploits (UnrealIRCd, Samba usermap, "
+        "distccd) because target cannot call back to Athena"
+    )
+
+
 def _dict_to_camel_case(d: dict) -> dict:
     """Convert dict keys from snake_case to camelCase (shallow for recommendations)."""
     from datetime import datetime as _dt
@@ -189,12 +222,41 @@ Then you SHOULD recommend Initial Access techniques as the natural next step:
 This is the natural Kill Chain progression from Reconnaissance (TA0043) to Initial Access (TA0001).
 Do NOT skip this step — establishing initial access is prerequisite for all post-exploitation techniques.
 
-### 9. Initial Access Exhausted → Exploit Pivot (SPEC-053, ADR-046)
+**Relay-aware exploit selection (SPEC-054, ADR-047):** Before recommending any reverse-shell
+exploit, consult Section 7.9 "INFRASTRUCTURE". If `relay_available: false`, AVOID the following
+reverse-shell exploits because the target cannot call back to Athena across the network boundary:
+
+  - `exploit/unix/irc/unreal_ircd_3281_backdoor` (UnrealIRCd)
+  - `exploit/multi/samba/usermap_script` (Samba usermap)
+  - `exploit/unix/misc/distcc_exec` (distccd)
+  - Any Metasploit module whose payload is `cmd/unix/reverse` or variants
+
+When `relay_available: false`, prefer instead:
+
+  - **Bind shell exploits**: `exploit/unix/ftp/vsftpd_234_backdoor` (vsftpd 2.3.4) — target opens
+    a listener on port 6200, Athena connects outbound
+  - **Credential-based techniques**: T1110.001 (Brute Force), T1078.001 (Valid Accounts), etc.
+  - **Discovery techniques**: T1046, T1018, T1087 to enumerate alternative attack surfaces
+
+When `relay_available: true` with a specific `Relay LHOST` set, reverse-shell exploits become
+viable — Metasploit's LHOST is injected from `settings.RELAY_IP` automatically, so you may
+recommend them normally.
+
+### 9. Initial Access Exhausted → Exploit Pivot (SPEC-053, ADR-046, extended by SPEC-054)
 When Section 7 "Failed Techniques" contains an entry with the `[auth_failure]` category for
 an Initial Access technique (T1110.*, T1078.*) on a target, AND that target has a
 `service.open_port` fact whose value matches any known exploitable banner signature
 (vsftpd_2.3.4, unrealircd, samba 3.0, distccd, or similar), THEN you MUST recommend T1190
 (Exploit Public-Facing Application) on that target with engine="metasploit".
+
+**SPEC-054 relay_available condition:** The specific T1190 sub-variant depends on Section 7.9:
+
+  - If `relay_available: true`: you may recommend the reverse-shell variant
+    (samba/UnrealIRCd/distccd) matching the target banner
+  - If `relay_available: false`: recommend ONLY the bind-shell variant
+    (vsftpd_2.3.4) if the target banner includes vsftpd 2.3.4. If the only exploitable
+    banners are reverse-shell class (e.g. Samba/UnrealIRCd without vsftpd), flag the target
+    path as blocked and recommend a Discovery technique instead
 
 Reasoning: credential-based initial access has been exhausted on that target. The kill chain
 cannot progress via credentials, so pivot to exploit-based initial access using the detected
@@ -299,6 +361,9 @@ Next Logical Stage: {next_stage}
 
 ## 7.8. AVAILABLE MCP TOOLS (stateless query tools)
 {mcp_tools_summary}
+
+## 7.9. INFRASTRUCTURE (SPEC-054 relay awareness)
+{relay_infrastructure}
 
 ## 8. LATEST OBSERVE SUMMARY
 {observe_summary}
@@ -909,6 +974,7 @@ class OrientEngine:
             playbook_summary=playbook_summary,
             lateral_opportunities=lateral_str,
             mcp_tools_summary=mcp_tools_summary,
+            relay_infrastructure=_format_relay_infrastructure(),
             attack_graph_summary=attack_graph_summary or "Not available.",
             known_vulnerabilities=known_vulnerabilities_str,
             opsec_detection_risk=opsec_detection_risk,

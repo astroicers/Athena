@@ -13,11 +13,11 @@
 import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
 
 const STORAGE_KEY = "athena-op-id";
-// Empty string = no operation selected yet. Consumers must guard
-// against empty operationId before making API calls.
-// Previously "op-0001" which caused 404 polling noise on every fresh
-// page load until localStorage hydrated.
+// Empty string = no operation selected yet. Consumers guard against
+// empty operationId before making API calls.
 const DEFAULT_OP_ID = "";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:58000/api";
 
 interface OperationContextType {
   operationId: string;
@@ -29,12 +29,29 @@ const OperationContext = createContext<OperationContextType | null>(null);
 export function OperationProvider({ children }: { children: ReactNode }) {
   const [operationId, setOperationIdRaw] = useState(DEFAULT_OP_ID);
 
-  // Hydrate from localStorage after mount (avoids SSR mismatch)
+  // Hydrate from localStorage after mount (avoids SSR mismatch).
+  // If localStorage is empty or stale, auto-select the first active
+  // operation from the backend so the War Room always has a valid
+  // operation context (C5 regression fix).
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored && stored !== DEFAULT_OP_ID) {
+    if (stored && stored.length > 0) {
       setOperationIdRaw(stored);
+      return;
     }
+    // No stored operation — fetch the first one from the API
+    fetch(`${API_BASE}/operations`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((ops: Array<{ id: string; status?: string }>) => {
+        const active = ops.find((o) => o.status === "active") ?? ops[0];
+        if (active?.id) {
+          setOperationIdRaw(active.id);
+          localStorage.setItem(STORAGE_KEY, active.id);
+        }
+      })
+      .catch(() => {
+        // API not available — stay with empty operationId
+      });
   }, []);
 
   const setOperationId = useCallback((id: string) => {

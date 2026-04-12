@@ -5,16 +5,38 @@ const API = "http://localhost:58000/api";
 test.describe("SIT — War Room Tabs (SHADOW-STRIKE)", () => {
   test.setTimeout(60_000);
 
+  // Helper: set operationId to the first operation that has targets
+  async function setOperationWithTargets(page: import("@playwright/test").Page) {
+    const opsResp = await page.request.get(`${API}/operations`);
+    const ops = (await opsResp.json()) as Array<{ id: string; status: string }>;
+    for (const op of ops.filter((o) => o.status === "active")) {
+      const tResp = await page.request.get(`${API}/operations/${op.id}/targets`);
+      if (tResp.ok()) {
+        const targets = await tResp.json();
+        if (Array.isArray(targets) && targets.length > 0) {
+          await page.goto("/warroom");
+          await page.evaluate((id) => localStorage.setItem("athena-op-id", id), op.id);
+          await page.reload();
+          await page.waitForLoadState("networkidle");
+          await page.waitForTimeout(2000);
+          return;
+        }
+      }
+    }
+    // Fallback — just go to warroom without a specific operation
+    await page.goto("/warroom");
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(3000);
+  }
+
   // ──────────────────────────────────────────────
   // 1. Timeline tab loads with OODA blocks
   // ──────────────────────────────────────────────
 
   test("Timeline tab loads with OODA blocks", async ({ page }) => {
-    await page.goto("/warroom");
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(3000);
+    await setOperationWithTargets(page);
 
-    const main = page.locator("main");
+    const main = page.locator("main").first();
     await expect(main).toBeVisible();
 
     const bodyText = await page.locator("body").textContent();
@@ -27,9 +49,7 @@ test.describe("SIT — War Room Tabs (SHADOW-STRIKE)", () => {
   // ──────────────────────────────────────────────
 
   test("Timeline tab has OODA iteration content", async ({ page }) => {
-    await page.goto("/warroom");
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(3000);
+    await setOperationWithTargets(page);
 
     const bodyText = await page.locator("body").textContent();
     expect(bodyText).toBeTruthy();
@@ -43,9 +63,7 @@ test.describe("SIT — War Room Tabs (SHADOW-STRIKE)", () => {
   // ──────────────────────────────────────────────
 
   test("Targets tab shows target list", async ({ page }) => {
-    await page.goto("/warroom");
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(3000);
+    await setOperationWithTargets(page);
 
     const targetsTab = page
       .locator(
@@ -55,7 +73,7 @@ test.describe("SIT — War Room Tabs (SHADOW-STRIKE)", () => {
     await targetsTab.click();
     await page.waitForTimeout(2000);
 
-    const main = page.locator("main");
+    const main = page.locator("main").first();
     await expect(main).toBeVisible();
 
     const bodyText = await page.locator("body").textContent();
@@ -68,9 +86,7 @@ test.describe("SIT — War Room Tabs (SHADOW-STRIKE)", () => {
   // ──────────────────────────────────────────────
 
   test("Targets tab shows compromised indicator", async ({ page }) => {
-    await page.goto("/warroom");
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(3000);
+    await setOperationWithTargets(page);
 
     const targetsTab = page
       .locator(
@@ -95,9 +111,7 @@ test.describe("SIT — War Room Tabs (SHADOW-STRIKE)", () => {
   // ──────────────────────────────────────────────
 
   test("Mission tab renders", async ({ page }) => {
-    await page.goto("/warroom");
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(3000);
+    await setOperationWithTargets(page);
 
     const missionTab = page
       .locator(
@@ -107,7 +121,7 @@ test.describe("SIT — War Room Tabs (SHADOW-STRIKE)", () => {
     await missionTab.click();
     await page.waitForTimeout(2000);
 
-    const main = page.locator("main");
+    const main = page.locator("main").first();
     await expect(main).toBeVisible();
   });
 
@@ -116,9 +130,7 @@ test.describe("SIT — War Room Tabs (SHADOW-STRIKE)", () => {
   // ──────────────────────────────────────────────
 
   test("Status panel shows C5ISR data", async ({ page, request }) => {
-    await page.goto("/warroom");
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(3000);
+    await setOperationWithTargets(page);
 
     // Find SHADOW-STRIKE operation via API
     const opsResp = await request.get(`${API}/operations`);
@@ -155,11 +167,9 @@ test.describe("SIT — War Room Tabs (SHADOW-STRIKE)", () => {
   // ──────────────────────────────────────────────
 
   test("Tab switching preserves page state", async ({ page }) => {
-    await page.goto("/warroom");
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(3000);
+    await setOperationWithTargets(page);
 
-    const main = page.locator("main");
+    const main = page.locator("main").first();
 
     // Switch to Targets tab
     const targetsTab = page

@@ -106,7 +106,7 @@ export function useC5ISRData(
         );
       }
       if (constraintRes.status === "fulfilled" && constraintRes.value) {
-        setConstraints(constraintRes.value);
+        setConstraints(normalizeConstraints(constraintRes.value));
       }
     } catch {
       // silent
@@ -134,9 +134,9 @@ export function useC5ISRData(
     });
 
     const unsub2 = ws.subscribe("constraint.active", (data) => {
-      const payload = data as OperationalConstraints;
-      if (payload) {
-        setConstraints(payload);
+      const normalized = normalizeConstraints(data);
+      if (normalized) {
+        setConstraints(normalized);
       }
     });
 

@@ -25,6 +25,62 @@ interface UseC5ISRDataReturn {
   fetchReport: (domain: string) => Promise<DomainReport | null>;
 }
 
+// Backend returns snake_case; frontend type is camelCase. Normalize on ingest.
+function normalizeConstraints(raw: unknown): OperationalConstraints | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const warningsRaw = Array.isArray(r.warnings) ? r.warnings : [];
+  const hardLimitsRaw = Array.isArray(r.hard_limits)
+    ? r.hard_limits
+    : Array.isArray(r.hardLimits)
+      ? r.hardLimits
+      : [];
+  return {
+    warnings: warningsRaw.map((w) => {
+      const o = w as Record<string, unknown>;
+      return {
+        domain: String(o.domain ?? ""),
+        healthPct: Number(o.health_pct ?? o.healthPct ?? 0),
+        message: String(o.message ?? ""),
+      };
+    }),
+    hardLimits: hardLimitsRaw.map((h) => {
+      const o = h as Record<string, unknown>;
+      return {
+        domain: String(o.domain ?? ""),
+        healthPct: Number(o.health_pct ?? o.healthPct ?? 0),
+        rule: String(o.rule ?? ""),
+        effect: (o.effect as Record<string, unknown>) ?? {},
+        suggestedAction: String(o.suggested_action ?? o.suggestedAction ?? ""),
+      };
+    }),
+    orientMaxOptions: Number(r.orient_max_options ?? r.orientMaxOptions ?? 0),
+    minConfidenceOverride:
+      (r.min_confidence_override as number | null) ??
+      (r.minConfidenceOverride as number | null) ??
+      null,
+    maxParallelOverride:
+      (r.max_parallel_override as number | null) ??
+      (r.maxParallelOverride as number | null) ??
+      null,
+    blockedTargets: Array.isArray(r.blocked_targets)
+      ? (r.blocked_targets as string[])
+      : Array.isArray(r.blockedTargets)
+        ? (r.blockedTargets as string[])
+        : [],
+    forcedMode:
+      (r.forced_mode as string | null) ?? (r.forcedMode as string | null) ?? null,
+    noiseBudgetRemaining: Number(
+      r.noise_budget_remaining ?? r.noiseBudgetRemaining ?? 0,
+    ),
+    activeOverrides: Array.isArray(r.active_overrides)
+      ? (r.active_overrides as string[])
+      : Array.isArray(r.activeOverrides)
+        ? (r.activeOverrides as string[])
+        : [],
+  };
+}
+
 export function useC5ISRData(
   operationId: string | null,
   ws?: UseWebSocketReturn | null,

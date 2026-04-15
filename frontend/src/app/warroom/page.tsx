@@ -222,11 +222,12 @@ function WarRoomContent() {
         const w = window as unknown as Record<string, unknown>;
         if (typeof w.__briefRefresh === "function") (w.__briefRefresh as () => void)();
       }),
-      ws.subscribe("ooda.pivot", (data: { iteration?: number; from_technique?: string; to_technique?: string }) => {
-        if (data.iteration != null && data.from_technique && data.to_technique) {
+      ws.subscribe("ooda.pivot", (data) => {
+        const d = data as { iteration?: number; from_technique?: string; to_technique?: string };
+        if (d.iteration != null && d.from_technique && d.to_technique) {
           setPivotIterations((prev) => ({
             ...prev,
-            [data.iteration!]: { from: data.from_technique!, to: data.to_technique! },
+            [d.iteration!]: { from: d.from_technique!, to: d.to_technique! },
           }));
         }
       }),

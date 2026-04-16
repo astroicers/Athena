@@ -2,8 +2,9 @@
 
 | 欄位 | 內容 |
 |------|------|
-| **狀態** | `Accepted` |
-| **日期** | 2026-04-09 / 決策簡化 2026-04-10 |
+| **狀態** | `Superseded` |
+| **日期** | 2026-04-09 / 決策簡化 2026-04-10 / Superseded 2026-04-16 |
+| **取代原因** | 實測後確認 relay VM 在 target 網段仍無法建立 reverse route 回 Athena docker bridge。改以 SPEC-056 Multi-Protocol Credential Spray 繞過 reverse shell 限制——OODA 自動 pivot 到 MySQL/PostgreSQL/FTP credential-based 路徑 |
 | **決策者** | Athena Core Team |
 
 ---

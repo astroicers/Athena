@@ -208,13 +208,16 @@ changes their feasibility.
 
 ### 8. Recon-to-Initial Access Transition (SPEC-052, relaxed by SPEC-053)
 When the intelligence shows:
-- service.open_port facts with SSH (port 22), RDP (port 3389), WinRM (port 5985/5986), or FTP (port 21)
-- No credential facts yet exist for those services (no credential.ssh, credential.rdp, credential.winrm)
+- service.open_port facts with SSH (port 22), RDP (port 3389), WinRM (port 5985/5986), \
+FTP (port 21), MySQL (port 3306), or PostgreSQL (port 5432)
+- No credential facts yet exist for those services (no credential.ssh, credential.rdp, \
+credential.winrm, credential.mysql, credential.postgresql, credential.ftp)
 - Kill chain position is at TA0043 (Reconnaissance) or TA0007 (Discovery)
 
 Then you SHOULD recommend Initial Access techniques as the natural next step:
-- T1110.001 (Brute Force: Password Guessing) for SSH/RDP/WinRM services
-- T1078.001 (Valid Accounts: Default Accounts) if default credentials are likely (IoT, dev environments)
+- T1110.001 (Brute Force: Password Guessing) for SSH/RDP/WinRM/MySQL/PostgreSQL/FTP services
+- T1078.001 (Valid Accounts: Default Accounts) if default credentials are likely (IoT, dev environments, \
+databases with root no-password, FTP anonymous login)
 - T1190 (Exploit Public-Facing Application) when a service banner matches a known exploitable
   signature (e.g. "vsftpd 2.3.4", "UnrealIRCd", "samba 3.0", "distccd"). A CVE fact is NOT required
   — the banner substring is sufficient evidence. Prefer engine="metasploit" for T1190.
@@ -258,10 +261,25 @@ an Initial Access technique (T1110.*, T1078.*) on a target, AND that target has 
     banners are reverse-shell class (e.g. Samba/UnrealIRCd without vsftpd), flag the target
     path as blocked and recommend a Discovery technique instead
 
-Reasoning: credential-based initial access has been exhausted on that target. The kill chain
-cannot progress via credentials, so pivot to exploit-based initial access using the detected
-vulnerable banner. Do NOT retry T1110 on the same target in the same iteration — it will
-deterministically fail again. Only retry T1110 after new credentials are harvested elsewhere.
+Reasoning: credential-based initial access has been exhausted on that target for the specific \
+protocol that was tried (e.g. SSH). The kill chain cannot progress via THAT protocol's credentials, \
+so pivot to exploit-based initial access using the detected vulnerable banner.
+
+**SPEC-056 Multi-Protocol Credential Pivot:** If T1110 failed with `[auth_failure]` on SSH \
+(port 22) but the target ALSO has MySQL (port 3306), PostgreSQL (port 5432), or FTP (port 21) \
+open AND no credential.mysql / credential.postgresql / credential.ftp facts exist yet, THEN \
+you SHOULD recommend T1110.001 again — the InitialAccessEngine will automatically iterate \
+`_PROTOCOL_MAP` and try MySQL/PostgreSQL/FTP credentials. This is NOT a redundant retry of \
+the same protocol; it is a cross-protocol pivot within the credential-based attack class.
+
+Priority order for multi-protocol pivot:
+1. MySQL root no-password (extremely common in dev/CTF/lab environments)
+2. PostgreSQL postgres no-password (same)
+3. FTP anonymous login (RFC 1635 anonymous access)
+
+Do NOT retry T1110 on the same protocol that already failed — it will deterministically fail \
+again. Only retry T1110 after new credentials are harvested elsewhere OR to try a DIFFERENT \
+protocol not yet attempted.
 
 This rule is an EXPLICIT EXCEPTION to Rule #6 (No Redundant Recommendations). T1190 may be
 recommended on a target where T1110 previously failed, and this is NOT a redundancy — it is

@@ -13,12 +13,15 @@
 import logging
 from typing import Any
 
+# Force scheduler logs to WARNING so they survive uvicorn's default level filter
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.config import settings
 from app.services.ooda_controller import build_ooda_controller
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 _scheduler = AsyncIOScheduler(timezone="UTC")
 _active_loops: dict[str, dict[str, Any]] = {}
@@ -31,7 +34,7 @@ def get_scheduler() -> AsyncIOScheduler:
 def start_scheduler() -> None:
     if not _scheduler.running:
         _scheduler.start()
-        logger.info("OODA APScheduler started")
+        logger.warning("OODA APScheduler started")
 
 
 def stop_scheduler() -> None:
@@ -73,7 +76,7 @@ async def start_auto_loop(
             await stop_auto_loop(operation_id)
             return
         meta["iteration_count"] += 1
-        logger.info("OODA auto-cycle %d for operation %s", meta["iteration_count"], operation_id)
+        logger.warning("OODA auto-cycle %d for operation %s", meta["iteration_count"], operation_id)
         try:
             async with db_manager.connection() as db:
                 await controller.trigger_cycle(db, operation_id)
@@ -87,6 +90,7 @@ async def start_auto_loop(
         id=f"ooda_{operation_id}",
         replace_existing=True,
         max_instances=1,
+        misfire_grace_time=interval_sec,  # allow full interval window for delayed triggers
     )
     return {
         "status": "started",

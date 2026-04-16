@@ -26,3 +26,22 @@ protocols:
     mcp_tool: winrm_credential_check
     fact_trait: credential.winrm
     creds_key: windows
+  # SPEC-056: Multi-protocol credential spray extension
+  - port: 3306
+    service_keywords: [mysql]
+    protocol: mysql
+    mcp_tool: mysql_credential_check
+    fact_trait: credential.mysql
+    creds_key: mysql
+  - port: 5432
+    service_keywords: [postgresql]
+    protocol: postgresql
+    mcp_tool: postgresql_credential_check
+    fact_trait: credential.postgresql
+    creds_key: postgresql
+  - port: 21
+    service_keywords: [ftp]
+    protocol: ftp
+    mcp_tool: ftp_credential_check
+    fact_trait: credential.ftp
+    creds_key: ftp

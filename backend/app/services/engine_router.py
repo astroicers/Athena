@@ -162,6 +162,7 @@ def _classify_failure(error: "str | None", engine: str) -> str:
     # auth failures (check before generic "failed" matches)
     if any(k in lower for k in (
         "all ssh credentials failed",
+        "all protocols failed",
         "permission denied",
         "login fail",
         "authentication fail",
@@ -937,8 +938,9 @@ class EngineRouter:
             db, exec_id, technique_id, target_id, "mcp",
             operation_id, result,
         )
-        if final.get("status") == "success":
-            await self._mark_target_compromised(db, target_id, result.output)
+        # Generic MCP execution success (recon, discovery, etc.) does NOT
+        # imply shell access. Compromise gate is handled by OODA controller
+        # via _SHELL_CAPABLE_TRAITS check after credential facts are written.
         return final
 
     async def _execute_c2(

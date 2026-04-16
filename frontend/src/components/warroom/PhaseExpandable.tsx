@@ -69,7 +69,7 @@ export function PhaseExpandable({
     }
   }, [expanded, rawExpanded, detail]);
 
-  const hasDetail = detail !== undefined;
+  const hasDetail = detail != null;
   const canExpand = hasDetail && !isPending;
 
   const dotSize = isActive ? 14 : 12;

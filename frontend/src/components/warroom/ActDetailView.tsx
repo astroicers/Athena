@@ -27,6 +27,8 @@ const STATUS_COLORS: Record<string, string> = {
 export function ActDetailView({ detail }: ActDetailViewProps) {
   const t = useTranslations("WarRoom");
 
+  if (!detail) return null;
+
   const status = detail.status?.toUpperCase() ?? "RUNNING";
   const statusColor =
     STATUS_COLORS[status] ?? "var(--color-text-tertiary)";

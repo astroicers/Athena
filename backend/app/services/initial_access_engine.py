@@ -188,6 +188,16 @@ class InitialAccessEngine:
                         "%s login succeeded for %s@%s:%s",
                         protocol.upper(), username, ip, port,
                     )
+
+                    # SPEC-057: PostgreSQL COPY TO PROGRAM shell escalation
+                    # If we got PostgreSQL credential, try OS exec to upgrade
+                    # from data-plane to shell-capable access.
+                    if protocol == "postgresql":
+                        await self._try_postgresql_shell_escalation(
+                            db, operation_id, target_id, ip,
+                            username, password, port, mgr,
+                        )
+
                     return InitialAccessResult(
                         success=True,
                         method=f"{protocol}_credential",
@@ -576,6 +586,61 @@ class InitialAccessEngine:
             agent_deployed=False,
             error="All credentials failed",
         )
+
+    # ------------------------------------------------------------------
+    # SPEC-057: PostgreSQL COPY TO PROGRAM shell escalation
+    # ------------------------------------------------------------------
+
+    async def _try_postgresql_shell_escalation(
+        self,
+        db: asyncpg.Connection,
+        operation_id: str,
+        target_id: str,
+        ip: str,
+        username: str,
+        password: str,
+        port: int,
+        mgr,
+    ) -> None:
+        """After PostgreSQL credential success, attempt OS exec via COPY TO PROGRAM.
+
+        If successful, writes a ``credential.shell`` fact which is in
+        ``_SHELL_CAPABLE_TRAITS`` and will trigger the compromise gate.
+        Failure is non-fatal — the credential.postgresql fact is still valid.
+        """
+        try:
+            result = await mgr.call_tool(
+                "credential-checker", "postgresql_exec_check",
+                {"target": ip, "username": username, "password": password, "port": port},
+            )
+            text = (
+                result["content"][0]["text"]
+                if result.get("content")
+                else "{}"
+            )
+            parsed = json.loads(text)
+
+            if parsed.get("facts"):
+                shell_value = parsed["facts"][0]["value"]
+                await self._write_credential_fact(
+                    db, operation_id, target_id, shell_value,
+                    trait="credential.shell",
+                )
+                logger.warning(
+                    "PostgreSQL COPY TO PROGRAM escalation succeeded for %s@%s:%s",
+                    username, ip, port,
+                )
+            else:
+                raw = parsed.get("raw_output", "unknown")
+                logger.warning(
+                    "PostgreSQL COPY TO PROGRAM escalation failed for %s@%s:%s — %s",
+                    username, ip, port, raw,
+                )
+        except Exception:
+            logger.debug(
+                "PostgreSQL shell escalation skipped for %s:%s (MCP error or unavailable)",
+                ip, port,
+            )
 
     async def _write_credential_fact(
         self,

@@ -487,7 +487,7 @@ class OODAController:
                     has_access = await db.fetchval(
                         "SELECT EXISTS (SELECT 1 FROM facts "
                         "WHERE operation_id = $1 AND source_target_id = $2 "
-                        "AND (trait LIKE 'credential.%' OR trait LIKE 'shell.%')"
+                        f"{_SHELL_TRAIT_SQL} "
                         "AND trait NOT LIKE '%.invalidated')",
                         operation_id, decision["target_id"],
                     )

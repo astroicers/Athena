@@ -162,6 +162,7 @@ def _classify_failure(error: "str | None", engine: str) -> str:
     # auth failures (check before generic "failed" matches)
     if any(k in lower for k in (
         "all ssh credentials failed",
+        "all protocols failed",
         "permission denied",
         "login fail",
         "authentication fail",

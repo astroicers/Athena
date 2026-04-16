@@ -140,7 +140,9 @@ class LLMClient:
             if settings.ANTHROPIC_API_KEY:
                 client_kwargs["api_key"] = settings.ANTHROPIC_API_KEY
             if settings.ANTHROPIC_AUTH_TOKEN:
+                from app.services.oauth_token_manager import OAUTH_BETA_HEADER
                 client_kwargs["auth_token"] = settings.ANTHROPIC_AUTH_TOKEN
+                client_kwargs["default_headers"] = {"anthropic-beta": OAUTH_BETA_HEADER}
             self._anthropic_client = anthropic.AsyncAnthropic(**client_kwargs)
 
         message = await self._anthropic_client.messages.create(

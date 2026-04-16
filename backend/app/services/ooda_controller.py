@@ -191,7 +191,7 @@ class OODAController:
                         f"OODA #{next_num} Auto-recon deferred: noise budget insufficient")
                 else:
                     from app.services.recon_engine import ReconEngine
-                    recon = ReconEngine(self._ws)
+                    recon = ReconEngine()
                     # Mission-profile parallel limit
                     _MAX_RECON_PARALLEL: dict[str, int] = {
                         "SR": 1, "CO": 2, "SP": 3, "FA": 5,

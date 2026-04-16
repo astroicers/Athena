@@ -61,7 +61,7 @@ class ReconEngine:
         # Step 1: Fetch target IP
         # ------------------------------------------------------------------
         row = await db.fetchrow(
-            "SELECT ip_address FROM targets WHERE id = $1 AND operation_id = $2",
+            "SELECT ip_address, hostname FROM targets WHERE id = $1 AND operation_id = $2",
             target_id, operation_id,
         )
         if row is None:
@@ -69,6 +69,7 @@ class ReconEngine:
                 f"Target {target_id!r} not found in operation {operation_id!r}"
             )
         ip_address: str = row["ip_address"]
+        hostname: str | None = row["hostname"]
 
         # ------------------------------------------------------------------
         # Step 1b: Scope validation — check engagement ROE
@@ -181,10 +182,68 @@ class ReconEngine:
                         target_id=target_id,
                         probe_result=probe_result,
                     )
+                    # Chain SSRF probe after HTTP probe (use hostname for vhost-dependent paths)
+                    ssrf_target = hostname or ip_address
+                    ssrf_url = f"http://{ssrf_target}"
+                    try:
+                        ssrf_result = await manager.call_tool(
+                            "web-scanner", "web_ssrf_probe",
+                            {"target_url": ssrf_url},
+                        )
+                        await self._write_web_facts(
+                            db=db,
+                            operation_id=operation_id,
+                            target_id=target_id,
+                            probe_result=ssrf_result,
+                        )
+                    except Exception:
+                        logger.warning(
+                            "SSRF probe failed for %s, continuing",
+                            ssrf_target,
+                        )
             except Exception:
                 logger.warning(
                     "Web reconnaissance failed for %s, continuing without web data",
                     ip_address,
+                )
+        elif not http_services and hostname and settings.MCP_ENABLED:
+            # Fallback: nmap found no HTTP services but target has a hostname
+            # (e.g. CloudFront/S3 endpoints that don't respond to nmap).
+            # Probe ports 80/443 directly using the hostname.
+            try:
+                from app.services.mcp_client_manager import get_mcp_manager
+                manager = get_mcp_manager()
+                if manager and manager.is_connected("web-scanner"):
+                    probe_result = await manager.call_tool(
+                        "web-scanner", "web_http_probe",
+                        {"target": hostname, "ports": [80, 443]},
+                    )
+                    await self._write_web_facts(
+                        db=db,
+                        operation_id=operation_id,
+                        target_id=target_id,
+                        probe_result=probe_result,
+                    )
+                    try:
+                        ssrf_result = await manager.call_tool(
+                            "web-scanner", "web_ssrf_probe",
+                            {"target_url": f"http://{hostname}"},
+                        )
+                        await self._write_web_facts(
+                            db=db,
+                            operation_id=operation_id,
+                            target_id=target_id,
+                            probe_result=ssrf_result,
+                        )
+                    except Exception:
+                        logger.warning(
+                            "SSRF fallback probe failed for %s, continuing",
+                            hostname,
+                        )
+            except Exception:
+                logger.warning(
+                    "Web fallback probe failed for %s, continuing",
+                    hostname,
                 )
 
         # ------------------------------------------------------------------

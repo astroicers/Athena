@@ -170,6 +170,10 @@ class FactCollector:
     def _category_from_trait(trait: str) -> FactCategory:
         if "credential" in trait or "hash" in trait:
             return FactCategory.CREDENTIAL
+        if trait.startswith("cloud."):
+            return FactCategory.CREDENTIAL
+        if trait.startswith("web."):
+            return FactCategory.WEB
         if "network" in trait or "ip" in trait:
             return FactCategory.NETWORK
         if "service" in trait or "port" in trait:

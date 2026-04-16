@@ -14,7 +14,7 @@ import logging
 
 import asyncpg
 
-from app.models.enums import AutomationMode, NoiseLevel, RiskLevel
+from app.models.enums import AutomationMode, NOISE_POINTS, NoiseLevel, RiskLevel
 from app.services.kill_chain_enforcer import KillChainEnforcer
 from app.services.knowledge_base import get_noise_risk_matrix
 from app.services.validation_engine import ValidationEngine
@@ -30,11 +30,7 @@ _RISK_ORDER = {
 }
 
 # Noise points per noise_level for budget tracking (NR2)
-_NOISE_POINTS: dict[str, int] = {
-    "low": 2,
-    "medium": 5,
-    "high": 8,
-}
+_NOISE_POINTS = NOISE_POINTS
 
 # Noise x Risk decision matrix per mission profile (NR1)
 # True = auto-approvable, False = needs_confirmation, None = needs_manual
@@ -341,15 +337,31 @@ class DecisionEngine:
                 "parallel_tasks": [],
             }
 
-        # HIGH -> HexConfirmModal confirmation
+        # HIGH -> auto-approve if threshold allows, otherwise HexConfirmModal
         if technique_risk == RiskLevel.HIGH:
+            if threshold_level >= _RISK_ORDER.get(RiskLevel.HIGH, 2):
+                pass  # Fall through to normal matrix/auto-approve logic below
+            else:
+                return {
+                    **base,
+                    "auto_approved": False,
+                    "needs_confirmation": True,
+                    "needs_manual": False,
+                    "reason": "High risk -- requires HexConfirmModal confirmation",
+                    "parallel_tasks": [],
+                }
+
+        # Threshold bypass: if technique risk is within the operator's accepted
+        # threshold, auto-approve without consulting the NR1 matrix.
+        # CRITICAL is already handled above (always manual).
+        if tech_level <= threshold_level:
             return {
                 **base,
-                "auto_approved": False,
-                "needs_confirmation": True,
+                "auto_approved": True,
+                "needs_confirmation": False,
                 "needs_manual": False,
-                "reason": "High risk -- requires HexConfirmModal confirmation",
-                "parallel_tasks": [],
+                "reason": f"Risk ({technique_risk.value}) within threshold ({risk_threshold})",
+                "parallel_tasks": parallel_tasks,
             }
 
         # NR1: Matrix says needs_confirmation — override auto-approve
@@ -365,17 +377,6 @@ class DecisionEngine:
                     f"— requires confirmation"
                 ),
                 "parallel_tasks": [],
-            }
-
-        # Within threshold -> auto-approve
-        if tech_level <= threshold_level:
-            return {
-                **base,
-                "auto_approved": True,
-                "needs_confirmation": False,
-                "needs_manual": False,
-                "reason": f"Risk ({technique_risk.value}) within threshold ({risk_threshold})",
-                "parallel_tasks": parallel_tasks,
             }
 
         # Above threshold (e.g. MEDIUM when threshold is LOW) -> needs commander approval

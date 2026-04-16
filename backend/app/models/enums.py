@@ -175,3 +175,7 @@ class OPSECEventType(str, Enum):
 class ConstraintLevel(str, Enum):
     WARNING = "warning"
     CRITICAL = "critical"
+
+
+# Canonical noise point values per noise_level — single source of truth
+NOISE_POINTS: dict[str, int] = {"low": 1, "medium": 3, "high": 8}

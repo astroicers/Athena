@@ -28,6 +28,7 @@ def _get_operation_lock(operation_id: str) -> asyncio.Lock:
     return _OODA_LOCKS[operation_id]
 
 from app.config import settings
+from app.models.enums import NOISE_POINTS
 from app.database import db_manager
 from app.models.enums import OODAPhase
 from app.services.agent_swarm import SwarmExecutor
@@ -345,7 +346,7 @@ class OODAController:
         act_summary = ""
 
         # -- PRE-ACT: OPSEC noise budget pre-check --
-        noise_map = {"low": 2, "medium": 5, "high": 8}
+        noise_map = NOISE_POINTS
         try:
             noise_budget_remaining = getattr(constraints, "noise_budget_remaining", None)
             if noise_budget_remaining is not None and decision.get("technique_id"):
@@ -438,6 +439,31 @@ class OODAController:
             else:
                 await self._write_log(db, operation_id, "success",
                     f"OODA #{next_num} Act: {swarm_result.act_summary}")
+
+            # ADR-048: After swarm, also execute the primary recommended technique
+            # if it wasn't included in parallel_tasks (e.g. T1190 SSRF exploit)
+            primary_tid = decision.get("technique_id")
+            primary_in_swarm = any(
+                t.get("technique_id") == primary_tid for t in parallel_tasks
+            ) if primary_tid else True
+            if (
+                not primary_in_swarm
+                and decision.get("auto_approved")
+                and primary_tid
+                and decision.get("target_id")
+            ):
+                logger.info("OODA[%s] Act phase -- executing primary %s (not in swarm)", ooda_id[:8], primary_tid)
+                primary_result = await self._router.execute(
+                    db,
+                    technique_id=primary_tid,
+                    target_id=decision["target_id"],
+                    engine=decision.get("engine", "ssh"),
+                    operation_id=operation_id,
+                    ooda_iteration_id=ooda_id,
+                )
+                if primary_result and primary_result.get("status") == "success":
+                    execution_result = primary_result
+                act_summary += f" | Primary {primary_tid}: {primary_result.get('status', 'unknown')}"
 
         elif decision.get("auto_approved") and decision.get("technique_id") and decision.get("target_id"):
             # -- SINGLE PATH (existing, unchanged) --
@@ -545,47 +571,49 @@ class OODAController:
         )
 
         # -- POST-ACT: OPSEC evaluation (SPEC-048) --
-        try:
-            from app.services import opsec_monitor, threat_level as tl_svc
+        # Only record noise when a technique was actually executed (not skipped/manual)
+        if execution_result is not None:
+            try:
+                from app.services import opsec_monitor, threat_level as tl_svc
 
-            exec_success = bool(
-                execution_result and execution_result.get("status") == "success"
-            )
-            tech_noise = "medium"  # default
-            if decision.get("technique_id"):
-                noise_row = await db.fetchrow(
-                    "SELECT noise_level FROM techniques WHERE mitre_id = $1",
-                    decision["technique_id"],
+                exec_success = bool(
+                    execution_result.get("status") == "success"
                 )
-                if noise_row and noise_row["noise_level"]:
-                    tech_noise = noise_row["noise_level"]
+                tech_noise = "medium"  # default
+                if decision.get("technique_id"):
+                    noise_row = await db.fetchrow(
+                        "SELECT noise_level FROM techniques WHERE mitre_id = $1",
+                        decision["technique_id"],
+                    )
+                    if noise_row and noise_row["noise_level"]:
+                        tech_noise = noise_row["noise_level"]
 
-            opsec_status = await opsec_monitor.evaluate_after_act(
-                db, operation_id,
-                technique_noise=tech_noise,
-                target_id=decision.get("target_id"),
-                technique_id=decision.get("technique_id"),
-                execution_success=exec_success,
-            )
-            threat = await tl_svc.compute_threat_level(db, operation_id)
+                opsec_status = await opsec_monitor.evaluate_after_act(
+                    db, operation_id,
+                    technique_noise=tech_noise,
+                    target_id=decision.get("target_id"),
+                    technique_id=decision.get("technique_id"),
+                    execution_success=exec_success,
+                )
+                threat = await tl_svc.compute_threat_level(db, operation_id)
 
-            # Broadcast OPSEC alerts if thresholds exceeded
-            if opsec_status.detection_risk > 60:
-                await self._ws.broadcast(operation_id, "opsec.alert", {
-                    "detection_risk": opsec_status.detection_risk,
-                    "noise_budget_remaining": opsec_status.noise_budget_remaining,
+                # Broadcast OPSEC alerts if thresholds exceeded
+                if opsec_status.detection_risk > 60:
+                    await self._ws.broadcast(operation_id, "opsec.alert", {
+                        "detection_risk": opsec_status.detection_risk,
+                        "noise_budget_remaining": opsec_status.noise_budget_remaining,
+                    })
+                if opsec_status.noise_budget_remaining <= 0:
+                    await self._ws.broadcast(operation_id, "opsec.budget_warning", {
+                        "budget_total": opsec_status.noise_budget_total,
+                        "budget_used": opsec_status.noise_budget_used,
+                    })
+                await self._ws.broadcast(operation_id, "threat.update", {
+                    "level": threat.level,
+                    "components": threat.components,
                 })
-            if opsec_status.noise_budget_remaining <= 0:
-                await self._ws.broadcast(operation_id, "opsec.budget_warning", {
-                    "budget_total": opsec_status.noise_budget_total,
-                    "budget_used": opsec_status.noise_budget_used,
-                })
-            await self._ws.broadcast(operation_id, "threat.update", {
-                "level": threat.level,
-                "components": threat.components,
-            })
-        except Exception as exc:
-            logger.warning("OPSEC post-act evaluation failed: %s", exc)
+            except Exception as exc:
+                logger.warning("OPSEC post-act evaluation failed: %s", exc)
 
         # -- 5. C5ISR UPDATE --
         logger.info("OODA[%s] C5ISR update", ooda_id[:8])

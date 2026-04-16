@@ -25,6 +25,7 @@ from app.models.api_schemas import (
     OperationUpdate,
 )
 from app.models.recommendation import TacticalOption
+from app.config import settings
 from app.services.mission_profile_loader import get_all_profiles, get_profile
 
 router = APIRouter()
@@ -75,11 +76,11 @@ async def create_operation(
     now = datetime.now(timezone.utc)
     await db.execute(
         "INSERT INTO operations "
-        "(id, code, name, codename, strategic_intent, mission_profile, status, "
-        "current_ooda_phase, created_at, updated_at) "
-        "VALUES ($1, $2, $3, $4, $5, $6, 'planning', 'observe', $7, $8)",
+        "(id, code, name, codename, strategic_intent, mission_profile, "
+        "risk_threshold, status, current_ooda_phase, created_at, updated_at) "
+        "VALUES ($1, $2, $3, $4, $5, $6, $7, 'planning', 'observe', $8, $9)",
         op_id, body.code, body.name, body.codename, body.strategic_intent,
-        body.mission_profile.value, now, now,
+        body.mission_profile.value, settings.RISK_THRESHOLD, now, now,
     )
 
     row = await db.fetchrow("SELECT * FROM operations WHERE id = $1", op_id)

@@ -19,12 +19,13 @@ from uuid import uuid4
 import asyncpg
 
 from app.models.opsec import OPSECEvent, OPSECStatus
+from app.models.enums import NOISE_POINTS
 from app.services.mission_profile_loader import get_profile
 
 logger = logging.getLogger(__name__)
 
 # ── Noise point values per noise_level ────────────────────────────────────
-_NOISE_POINTS = {"low": 1, "medium": 3, "high": 8}
+_NOISE_POINTS = NOISE_POINTS
 
 # ── Detection risk weights ────────────────────────────────────────────────
 _W_NOISE = 0.35

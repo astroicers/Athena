@@ -101,7 +101,7 @@ settings = Settings()
 def get_task_model_map() -> dict[str, str]:
     """Return task->model mapping, evaluated at call time for runtime override."""
     return {
-        "orient_analysis":        settings.CLAUDE_MODEL_HAIKU,
+        "orient_analysis":        settings.CLAUDE_MODEL_SONNET,
         "fact_summary":           settings.CLAUDE_MODEL_HAIKU,
         "node_summary":           settings.CLAUDE_MODEL_HAIKU,
         "format_report":          settings.CLAUDE_MODEL_HAIKU,

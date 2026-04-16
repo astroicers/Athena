@@ -280,14 +280,20 @@ When the intelligence shows:
 - Target environment is cloud-hosted (AWS/Azure/GCP indicators in facts, or strategic_intent mentions cloud)
 - Kill chain position is at TA0001 (Initial Access) or TA0006 (Credential Access)
 Then:
-- MUST recommend using web_http_fetch to request cloud metadata endpoints via the discovered proxy
-- For AWS: proxy the URL http://169.254.169.254/latest/meta-data/iam/security-credentials/
-- Engine: "mcp", tool hint: "web-scanner:web_http_fetch"
-- If a previous web_http_fetch returned an IAM role name (plain text, no JSON), the next step MUST fetch \
-the full credential by appending the role name to the URL
+- recommended_technique_id MUST be "T1190" (Exploit Public-Facing Application via SSRF)
+- recommended_engine MUST be "mcp"
+- The engine_router will automatically use web_http_fetch via the discovered SSRF proxy to fetch IMDS credentials
+- If `cloud.aws.imds_role` fact exists, the system will automatically append the role name to fetch full credential JSON
 - Risk level: HIGH (credential exfiltration)
+- Do NOT use T1078.004 or T1530 here — those are for AFTER credential is obtained
+
+IMPORTANT: If `cloud.aws.imds_role` fact exists but `cloud.aws.iam_credential` does NOT exist, \
+you MUST recommend web_http_fetch to complete IMDS credential extraction BEFORE any lateral movement. \
+Do NOT recommend T1078.004 or T1530 until cloud.aws.iam_credential fact is present in the intelligence.
 
 ### 11. Cloud Credential Lateral Movement (ADR-048)
+PREREQUISITE: This rule ONLY applies when `cloud.aws.iam_credential` fact exists (not just `cloud.aws.imds_role`). \
+If only imds_role exists, you MUST use Rule #10 to fetch the full credential first.
 When the intelligence shows:
 - `cloud.aws.iam_credential` fact exists (AWS temporary credential successfully exfiltrated)
 - Kill chain position is at TA0006 (Credential Access) or later

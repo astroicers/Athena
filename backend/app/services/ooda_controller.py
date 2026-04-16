@@ -42,6 +42,25 @@ from app.ws_manager import WebSocketManager
 
 logger = logging.getLogger(__name__)
 
+# Credential traits that represent OS-level shell access.
+# credential.mysql / credential.postgresql / credential.ftp are
+# data-plane credentials and do NOT grant shell; they should not
+# trigger the compromise gate.
+_SHELL_CAPABLE_TRAITS = (
+    "credential.ssh",
+    "credential.rdp",
+    "credential.winrm",
+    "credential.root_shell",
+    "credential.shell",
+)
+
+# SQL fragment for the compromise gate check
+_SHELL_TRAIT_SQL = (
+    "AND trait IN ("
+    + ", ".join(f"'{t}'" for t in _SHELL_CAPABLE_TRAITS)
+    + ")"
+)
+
 
 class OODAController:
     """
@@ -403,7 +422,7 @@ class OODAController:
                         has_access = await db.fetchval(
                             "SELECT EXISTS (SELECT 1 FROM facts "
                             "WHERE operation_id = $1 AND source_target_id = $2 "
-                            "AND (trait LIKE 'credential.%' OR trait LIKE 'shell.%')"
+                            f"{_SHELL_TRAIT_SQL} "
                             "AND trait NOT LIKE '%.invalidated')",
                             operation_id, st.target_id,
                         )

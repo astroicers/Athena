@@ -41,6 +41,8 @@ interface ObserveDetailViewProps {
 export function ObserveDetailView({ detail }: ObserveDetailViewProps) {
   const t = useTranslations("WarRoom");
 
+  if (!detail) return null;
+
   const facts = detail.facts ?? [];
   const portFacts: ParsedPort[] = [];
   const otherFacts: Array<{ trait: string; value: string; category: string }> =

@@ -56,6 +56,8 @@ function ConfidenceBar({
 export function DecideDetailView({ detail }: DecideDetailViewProps) {
   const t = useTranslations("WarRoom");
 
+  if (!detail) return null;
+
   const matrixAction = detail.matrixAction?.toUpperCase() ?? "GO";
   const actionColor =
     ACTION_COLORS[matrixAction] ?? "var(--color-text-tertiary)";

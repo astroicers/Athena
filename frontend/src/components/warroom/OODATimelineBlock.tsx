@@ -157,7 +157,7 @@ export function OODATimelineBlock({
               <PhaseExpandable
                 phase={PHASE_KEYS[phase]}
                 summary={summary}
-                detail={entry?.detail}
+                detail={entry?.detail ?? undefined}
                 isActive={isActive}
                 isPending={isPending}
                 phaseColor={PHASE_COLORS[phase]}

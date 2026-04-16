@@ -316,7 +316,8 @@ class DecisionEngine:
             }
 
         # Low confidence -> force manual (threshold from constraints or default 0.5)
-        if confidence < min_confidence_floor:
+        # Exception: auto_full mode bypasses confidence floor — fully autonomous
+        if confidence < min_confidence_floor and automation_mode != AutomationMode.AUTO_FULL:
             return {
                 **base,
                 "auto_approved": False,

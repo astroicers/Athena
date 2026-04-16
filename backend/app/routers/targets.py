@@ -100,8 +100,8 @@ async def create_target(
     now = datetime.now(timezone.utc)
     await db.execute(
         "INSERT INTO targets (id, hostname, ip_address, os, role, "
-        "network_segment, is_compromised, privilege_level, operation_id, created_at) "
-        "VALUES ($1, $2, $3, $4, $5, $6, FALSE, NULL, $7, $8)",
+        "network_segment, is_compromised, privilege_level, is_active, operation_id, created_at) "
+        "VALUES ($1, $2, $3, $4, $5, $6, FALSE, NULL, TRUE, $7, $8)",
         target_id, body.hostname, body.ip_address, body.os, body.role,
         body.network_segment, operation_id, now,
     )
@@ -195,8 +195,8 @@ async def batch_create_targets(
         now = datetime.now(timezone.utc)
         await db.execute(
             "INSERT INTO targets (id, hostname, ip_address, os, role, "
-            "network_segment, is_compromised, privilege_level, operation_id, created_at) "
-            "VALUES ($1, $2, $3, $4, $5, $6, FALSE, NULL, $7, $8)",
+            "network_segment, is_compromised, privilege_level, is_active, operation_id, created_at) "
+            "VALUES ($1, $2, $3, $4, $5, $6, FALSE, NULL, TRUE, $7, $8)",
             target_id,
             entry.hostname,
             entry.ip_address,

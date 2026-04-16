@@ -628,12 +628,27 @@ class EngineRouter:
                 }
 
             # Collect open port facts for the target — parse into {port, service} dicts
-            port_facts = await db.fetch(
-                "SELECT value FROM facts "
-                "WHERE source_target_id = $1 AND operation_id = $2 "
-                "AND trait = 'service.open_port'",
-                target_id, operation_id,
-            )
+            # SPEC-058: Retry up to 3 times with 2s delay if no facts found
+            # (safety net for Swarm race condition where T1046 hasn't committed yet)
+            import asyncio as _asyncio
+
+            port_facts = []
+            for _retry in range(3):
+                port_facts = await db.fetch(
+                    "SELECT value FROM facts "
+                    "WHERE source_target_id = $1 AND operation_id = $2 "
+                    "AND trait = 'service.open_port'",
+                    target_id, operation_id,
+                )
+                if port_facts:
+                    break
+                if _retry < 2:
+                    logger.warning(
+                        "SPEC-058: no service.open_port facts for target %s "
+                        "(attempt %d/3, retrying in 2s)", target_id, _retry + 1,
+                    )
+                    await _asyncio.sleep(2)
+
             # Parse fact values like "22/tcp/ssh/OpenSSH_4.7p1" → {port: 22, service: "ssh"}
             # Format (from recon_engine): "<port>/<proto>/<service>/<banner>"
             services: list[dict] = []

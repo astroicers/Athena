@@ -206,6 +206,24 @@ risk of skipping critical steps. If the graph shows a technique with EXPLORED st
 as already completed. UNREACHABLE nodes should be avoided unless you have new intelligence that \
 changes their feasibility.
 
+### 7.5 Prerequisite Sequencing (SPEC-058)
+When recommending multiple techniques in the same cycle, NEVER include BOTH a \
+Reconnaissance technique (T1046, T1018, T1595) AND a technique that depends on its \
+results (T1110, T1078, T1190) in the same options list. Credential brute force (T1110) \
+and exploit (T1190) REQUIRE service.open_port facts from a PRIOR nmap scan to know \
+which protocols and banners exist on the target.
+
+If Section 4 "Intelligence" does NOT yet contain any service.open_port facts for the \
+target, recommend ONLY T1046 (Network Service Discovery) in this cycle. Credential \
+and exploit techniques will be recommended in the NEXT cycle after T1046 facts are available.
+
+If Section 4 already contains service.open_port facts (from a prior OODA cycle or auto-recon), \
+T1046 is NOT needed — recommend T1110/T1078/T1190 directly without T1046.
+
+Rationale: Athena's Swarm executor runs all recommended techniques in parallel. If T1046 \
+and T1110 run simultaneously, T1110 queries for service.open_port facts before T1046 has \
+written them, causing a deterministic "No targetable services found" failure.
+
 ### 8. Recon-to-Initial Access Transition (SPEC-052, relaxed by SPEC-053)
 When the intelligence shows:
 - service.open_port facts with SSH (port 22), RDP (port 3389), WinRM (port 5985/5986), \

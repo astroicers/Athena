@@ -289,6 +289,27 @@ class DecisionEngine:
                     deduped.append(pt)
             parallel_tasks = deduped
 
+            # SPEC-058: Prerequisite filter — remove credential/exploit tasks
+            # when recon task is in the same batch (recon must complete first
+            # to provide service.open_port facts for InitialAccessEngine)
+            _RECON_TECHNIQUES = {"T1046", "T1018", "T1595"}
+            _RECON_DEPENDENT_PREFIXES = ("T1110", "T1078", "T1190")
+            has_recon = any(
+                t["technique_id"] in _RECON_TECHNIQUES for t in parallel_tasks
+            )
+            if has_recon:
+                before_count = len(parallel_tasks)
+                parallel_tasks = [
+                    t for t in parallel_tasks
+                    if not t["technique_id"].startswith(_RECON_DEPENDENT_PREFIXES)
+                ]
+                removed = before_count - len(parallel_tasks)
+                if removed:
+                    logger.warning(
+                        "SPEC-058: removed %d recon-dependent tasks from parallel batch "
+                        "(recon must complete first)", removed,
+                    )
+
         base = {
             "technique_id": rec_technique_id,
             "target_id": target_id,

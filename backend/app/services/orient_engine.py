@@ -318,7 +318,7 @@ When the intelligence shows:
 Then:
 - recommended_technique_id MUST be "T1190" (Exploit Public-Facing Application via SSRF)
 - recommended_engine MUST be "mcp"
-- The engine_router will automatically use web_http_fetch via the discovered SSRF proxy to fetch IMDS credentials
+- The engine_router will automatically use web_http_fetch (web-scanner) via the discovered SSRF proxy to fetch IMDS credentials from 169.254.169.254
 - If `cloud.aws.imds_role` fact exists, the system will automatically append the role name to fetch full credential JSON
 - Risk level: HIGH (credential exfiltration)
 - Do NOT use T1078.004 or T1530 here — those are for AFTER credential is obtained

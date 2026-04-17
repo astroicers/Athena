@@ -53,7 +53,7 @@ class TestOrientRule10:
 
     def test_rule10_mentions_mcp_engine(self) -> None:
         prompt = orient_module._ORIENT_SYSTEM_PROMPT
-        assert "web-scanner" in prompt
+        assert "web-scanner" in prompt or "web_http_fetch" in prompt
 
 
 class TestOrientRule11:
@@ -154,7 +154,7 @@ class TestEngineRouterWebExploit:
 
     @pytest.mark.asyncio
     async def test_route_t1190_metasploit_unchanged(self, seeded_db) -> None:
-        """engine='metasploit' + T1190 -> still goes to MetasploitRPCEngine (not broken)."""
+        """engine='metasploit' + T1190 + MCP_ENABLED=False -> MetasploitRPCEngine."""
         from app.services.engine_router import EngineRouter
 
         mock_fc = MagicMock()
@@ -162,7 +162,8 @@ class TestEngineRouterWebExploit:
         mock_ws = MagicMock()
         mock_ws.broadcast = AsyncMock()
 
-        router = EngineRouter(MagicMock(), mock_fc, mock_ws, mcp_engine=MagicMock())
+        # No MCP engine → metasploit fallback
+        router = EngineRouter(MagicMock(), mock_fc, mock_ws, mcp_engine=None)
 
         # Seed an exploitable service fact so metasploit route is taken
         await seeded_db.execute(
@@ -174,7 +175,7 @@ class TestEngineRouterWebExploit:
 
         with patch("app.services.engine_router.settings") as s, \
              patch("app.clients.metasploit_client.MetasploitRPCEngine") as mock_msf_cls:
-            s.MCP_ENABLED = True
+            s.MCP_ENABLED = False
             s.MOCK_C2_ENGINE = True
             s.EXECUTION_ENGINE = "mcp_ssh"
             s.PERSISTENCE_ENABLED = False

@@ -42,7 +42,13 @@ class _StubSession:
     def __init__(self, sid: str):
         self._sid = sid
         self.writes: list[str] = []
-        self._reads: list[str] = ["uid=0(root) gid=0(root)\n# "]
+        # Provide enough reads for the one-shot flow:
+        # 1. drain banner, 2. drain echo sentinel, 3. probe output
+        self._reads: list[str] = [
+            "Welcome to shell\n",
+            "ATHENA_PROBE_START\n",
+            "uid=0(root) gid=0(root)\nLinux metasploitable\nmetasploitable\n",
+        ]
         self.stopped = False
 
     def write(self, data: str) -> None:
@@ -137,21 +143,15 @@ async def test_t03_run_exploit_releases_session_after_probe() -> None:
     engine = MetasploitRPCEngine()
 
     # Patch _connect to return our stub client
-    with patch.object(engine, "_connect", return_value=client):
-        # Patch _read_shell_output to return something plausible
-        async def _fake_read(*args, **kwargs):
-            return "uid=0(root) gid=0(root)\nLinux metasploitable\nmetasploitable\n"
-
-        with patch.object(
-            engine, "_read_shell_output", side_effect=_fake_read,
-        ):
-            # Force MOCK_METASPLOIT off so we exercise the real path
-            with patch.object(settings, "MOCK_METASPLOIT", False):
-                result = await engine._run_exploit(
-                    "exploit/unix/ftp/vsftpd_234_backdoor",
-                    "cmd/unix/interact",
-                    {"RHOSTS": "192.168.0.26"},
-                )
+    with patch.object(engine, "_connect", return_value=client), \
+         patch("app.clients.metasploit_client.asyncio.sleep", new_callable=AsyncMock), \
+         patch.object(settings, "MOCK_METASPLOIT", False), \
+         patch.object(settings, "METASPLOIT_SESSION_WAIT_SEC", 2):
+        result = await engine._run_exploit(
+            "exploit/unix/ftp/vsftpd_234_backdoor",
+            "cmd/unix/interact",
+            {"RHOSTS": "192.168.0.26"},
+        )
 
     assert result["status"] == "success", result
     assert result["shell"] == "session_42"

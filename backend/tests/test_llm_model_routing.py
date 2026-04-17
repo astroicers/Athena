@@ -38,12 +38,12 @@ def _api_key_patch():
 
 
 # ---------------------------------------------------------------------------
-# Test 1: orient_analysis routes to Opus
+# Test 1: orient_analysis routes to Sonnet (per config.py TASK_MODEL_MAP)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_task_type_orient_routes_to_opus():
-    """task_type='orient_analysis' should resolve to the Opus model."""
+async def test_task_type_orient_routes_to_sonnet():
+    """task_type='orient_analysis' should resolve to the Sonnet model."""
     client = _make_client()
 
     with _api_key_patch(), \
@@ -52,16 +52,16 @@ async def test_task_type_orient_routes_to_opus():
         await client.call("sys", "usr", task_type="orient_analysis")
         mock_call.assert_awaited_once()
         actual_model = mock_call.call_args[0][2]  # positional arg: model
-        assert actual_model == settings.CLAUDE_MODEL_OPUS
+        assert actual_model == settings.CLAUDE_MODEL_SONNET
 
 
 # ---------------------------------------------------------------------------
-# Test 2: fact_summary routes to Sonnet
+# Test 2: fact_summary routes to Haiku (per config.py TASK_MODEL_MAP)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_task_type_fact_summary_routes_to_sonnet():
-    """task_type='fact_summary' should resolve to the Sonnet model."""
+async def test_task_type_fact_summary_routes_to_haiku():
+    """task_type='fact_summary' should resolve to the Haiku model."""
     client = _make_client()
 
     with _api_key_patch(), \
@@ -70,7 +70,7 @@ async def test_task_type_fact_summary_routes_to_sonnet():
         await client.call("sys", "usr", task_type="fact_summary")
         mock_call.assert_awaited_once()
         actual_model = mock_call.call_args[0][2]
-        assert actual_model == settings.CLAUDE_MODEL_SONNET
+        assert actual_model == settings.CLAUDE_MODEL_HAIKU
 
 
 # ---------------------------------------------------------------------------
@@ -195,8 +195,10 @@ async def test_explicit_model_overrides_task_type():
 
 def test_task_model_map_uses_settings_values():
     """TASK_MODEL_MAP entries should reference settings.CLAUDE_MODEL_* values."""
-    assert TASK_MODEL_MAP["orient_analysis"] == settings.CLAUDE_MODEL_OPUS
-    assert TASK_MODEL_MAP["fact_summary"] == settings.CLAUDE_MODEL_SONNET
-    assert TASK_MODEL_MAP["node_summary"] == settings.CLAUDE_MODEL_HAIKU
-    assert TASK_MODEL_MAP["format_report"] == settings.CLAUDE_MODEL_HAIKU
-    assert TASK_MODEL_MAP["classify_vulnerability"] == settings.CLAUDE_MODEL_HAIKU
+    from app.config import get_task_model_map
+    task_map = get_task_model_map()
+    assert task_map["orient_analysis"] == settings.CLAUDE_MODEL_SONNET
+    assert task_map["fact_summary"] == settings.CLAUDE_MODEL_HAIKU
+    assert task_map["node_summary"] == settings.CLAUDE_MODEL_HAIKU
+    assert task_map["format_report"] == settings.CLAUDE_MODEL_HAIKU
+    assert task_map["classify_vulnerability"] == settings.CLAUDE_MODEL_HAIKU

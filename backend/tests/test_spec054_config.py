@@ -15,57 +15,64 @@ documented defaults and types. These are the contract the rest of
 SPEC-054 relies on.
 """
 
+import pytest
+
 from app.config import Settings
 
 
+_RELAY_ENV_VARS = (
+    "RELAY_IP", "RELAY_SSH_USER", "RELAY_SSH_PORT",
+    "RELAY_LPORT", "RELAY_ATHENA_HOST",
+)
+
+
+@pytest.fixture(autouse=True)
+def _clean_relay_env(monkeypatch):
+    """Remove RELAY_* env vars so Settings reads pure defaults."""
+    for var in _RELAY_ENV_VARS:
+        monkeypatch.delenv(var, raising=False)
+
+
+def _defaults() -> Settings:
+    """Create Settings without .env file influence."""
+    return Settings(_env_file=None)
+
+
 def test_relay_ip_default_is_empty_string() -> None:
-    """RELAY_IP default must be '' so empty == 'no relay' sentinel."""
-    s = Settings()
+    s = _defaults()
     assert hasattr(s, "RELAY_IP")
     assert s.RELAY_IP == ""
     assert isinstance(s.RELAY_IP, str)
 
 
 def test_relay_ssh_user_default() -> None:
-    """RELAY_SSH_USER default must be 'athena-relay'."""
-    s = Settings()
+    s = _defaults()
     assert hasattr(s, "RELAY_SSH_USER")
     assert s.RELAY_SSH_USER == "athena-relay"
 
 
 def test_relay_ssh_port_default() -> None:
-    """RELAY_SSH_PORT default must be 22 (int)."""
-    s = Settings()
+    s = _defaults()
     assert hasattr(s, "RELAY_SSH_PORT")
     assert s.RELAY_SSH_PORT == 22
     assert isinstance(s.RELAY_SSH_PORT, int)
 
 
 def test_relay_lport_default() -> None:
-    """RELAY_LPORT default must be 4444 (int)."""
-    s = Settings()
+    s = _defaults()
     assert hasattr(s, "RELAY_LPORT")
     assert s.RELAY_LPORT == 4444
     assert isinstance(s.RELAY_LPORT, int)
 
 
 def test_relay_athena_host_default_is_empty_string() -> None:
-    """RELAY_ATHENA_HOST default must be '' — must be set when RELAY_IP is set."""
-    s = Settings()
+    s = _defaults()
     assert hasattr(s, "RELAY_ATHENA_HOST")
     assert s.RELAY_ATHENA_HOST == ""
     assert isinstance(s.RELAY_ATHENA_HOST, str)
 
 
 def test_all_five_relay_settings_exist() -> None:
-    """Sanity: all 5 RELAY_* settings are defined."""
-    s = Settings()
-    required = {
-        "RELAY_IP",
-        "RELAY_SSH_USER",
-        "RELAY_SSH_PORT",
-        "RELAY_LPORT",
-        "RELAY_ATHENA_HOST",
-    }
-    for attr in required:
+    s = _defaults()
+    for attr in _RELAY_ENV_VARS:
         assert hasattr(s, attr), f"Settings missing {attr}"

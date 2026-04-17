@@ -162,7 +162,7 @@ async def test_engine_router_mcp_ssh_route(seeded_db):
     # Insert required data for this test
     await seeded_db.execute(
         "INSERT INTO techniques (id, mitre_id, name, tactic, tactic_id, risk_level) "
-        "VALUES ('t1-mcp-route', 'T1592', 'Host Discovery', 'Reconnaissance', 'TA0043', 'low') "
+        "VALUES ('t1-mcp-route', 'T1003.001', 'OS Credential Dumping', 'Credential Access', 'TA0006', 'high') "
         "ON CONFLICT DO NOTHING"
     )
     await seeded_db.execute(
@@ -180,7 +180,7 @@ async def test_engine_router_mcp_ssh_route(seeded_db):
 
         result = await router.execute(
             db=seeded_db,
-            technique_id="T1592",
+            technique_id="T1003.001",
             target_id="test-target-1",
             engine="auto",
             operation_id="test-op-1",

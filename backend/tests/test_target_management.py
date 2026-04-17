@@ -158,6 +158,11 @@ async def test_delete_non_active_target(client):
         "role": "target",
     })
     target_id = create_resp.json()["id"]
+    # Deactivate it first (new targets are created with is_active=TRUE)
+    await client.patch(
+        "/api/operations/test-op-1/targets/active",
+        json={"target_id": ""},
+    )
     resp = await client.delete(
         f"/api/operations/test-op-1/targets/{target_id}",
     )

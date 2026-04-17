@@ -28,6 +28,9 @@ def _make_ws() -> MagicMock:
     ws = MagicMock()
     ws.broadcast = AsyncMock()
     ws.send_personal = AsyncMock()
+    ws.active_connection_count = MagicMock(return_value=0)
+    ws._broadcast_total = 0
+    ws._broadcast_success = 0
     return ws
 
 
@@ -48,7 +51,7 @@ async def test_target_creation_auto_triggers_ooda(client):
 
     with patch("app.routers.targets.auto_trigger_ooda", new_callable=AsyncMock) as mock_trigger:
         resp = await client.post(
-            "/operations/test-op-1/targets",
+            "/api/operations/test-op-1/targets",
             json={
                 "hostname": "WEB-01",
                 "ip_address": "10.0.1.20",
@@ -97,7 +100,7 @@ async def test_observe_auto_recon_zero_facts(seeded_db):
 
     # Mock ReconEngine to verify it gets called
     mock_recon_result = _make_recon_result(services=5)
-    with patch("app.services.ooda_controller.ReconEngine") as MockReconClass:
+    with patch("app.services.recon_engine.ReconEngine") as MockReconClass:
         mock_recon = MagicMock()
         mock_recon.scan = AsyncMock(return_value=mock_recon_result)
         MockReconClass.return_value = mock_recon
@@ -166,7 +169,7 @@ async def test_observe_auto_recon_respects_noise_budget(seeded_db):
     mock_constraints.max_parallel_override = None
     mock_constraints.active_overrides = []
 
-    with patch("app.services.ooda_controller.ReconEngine") as MockReconClass, \
+    with patch("app.services.recon_engine.ReconEngine") as MockReconClass, \
          patch("app.services.constraint_engine.evaluate", new_callable=AsyncMock, return_value=mock_constraints):
         mock_recon = MagicMock()
         mock_recon.scan = AsyncMock(return_value=_make_recon_result())
@@ -233,7 +236,7 @@ async def test_observe_auto_recon_mission_profile_threshold(seeded_db, profile, 
             f"fact-{profile}-{i}", f"service.port.{i}", str(8000 + i), target_id,
         )
 
-    with patch("app.services.ooda_controller.ReconEngine") as MockReconClass:
+    with patch("app.services.recon_engine.ReconEngine") as MockReconClass:
         mock_recon = MagicMock()
         mock_recon.scan = AsyncMock(return_value=_make_recon_result())
         MockReconClass.return_value = mock_recon
@@ -277,7 +280,7 @@ async def test_no_iteration_zero_sentinel(seeded_db):
 
     ws = _make_ws()
 
-    with patch("app.services.ooda_controller.ReconEngine") as MockReconClass:
+    with patch("app.services.recon_engine.ReconEngine") as MockReconClass:
         mock_recon = MagicMock()
         mock_recon.scan = AsyncMock(return_value=_make_recon_result())
         MockReconClass.return_value = mock_recon

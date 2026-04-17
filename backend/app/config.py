@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     MOCK_C2_ENGINE: bool = True
     # "mcp_ssh" | "c2" | "mock"
     EXECUTION_ENGINE: str = "mcp_ssh"
+    C2_BOOTSTRAP_ENABLED: bool = False  # SPEC-052: C2 agent bootstrap in Act phase
     C2_MOCK_BEACON: bool = False  # True skips 30s beacon wait (only relevant when EXECUTION_ENGINE=c2)
     ANTHROPIC_API_KEY: str = ""
     ANTHROPIC_AUTH_TOKEN: str = ""

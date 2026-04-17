@@ -686,9 +686,19 @@ class TestReconEngineStep8b:
             "web-scanner": True,
         }.get(name, False))
 
-        # call_tool returns nmap result first, then web probe result
+        ssrf_probe_result = {
+            "content": [
+                {
+                    "type": "text",
+                    "text": json.dumps({"facts": [], "raw_output": ""}),
+                }
+            ],
+            "is_error": False,
+        }
+
+        # call_tool returns nmap result first, then web probe, then SSRF probe
         mock_manager.call_tool = AsyncMock(
-            side_effect=[mock_mcp_result, web_probe_result]
+            side_effect=[mock_mcp_result, web_probe_result, ssrf_probe_result]
         )
 
         with patch("app.services.recon_engine.settings") as mock_settings, \
@@ -703,8 +713,8 @@ class TestReconEngineStep8b:
 
             result = await ReconEngine().scan(db, "op-001", "tgt-001")
 
-        # Verify web probe was called
-        assert mock_manager.call_tool.call_count == 2
+        # Verify web probe was called (nmap + web_http_probe + web_ssrf_probe)
+        assert mock_manager.call_tool.call_count == 3
         web_call = mock_manager.call_tool.call_args_list[1]
         assert web_call[0][0] == "web-scanner"
         assert web_call[0][1] == "web_http_probe"

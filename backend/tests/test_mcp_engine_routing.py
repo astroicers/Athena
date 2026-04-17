@@ -141,7 +141,7 @@ async def test_mcp_ssh_routes_to_executor(seeded_db):
 
         result = await router.execute(
             db=seeded_db,
-            technique_id="T1592",
+            technique_id="T1003.001",
             target_id="test-target-1",
             engine="auto",
             operation_id="test-op-1",
@@ -156,8 +156,8 @@ async def test_mcp_ssh_routes_to_executor(seeded_db):
 
 
 @pytest.mark.asyncio
-async def test_execute_mcp_marks_compromised(seeded_db):
-    """_execute_mcp() should call _mark_target_compromised on success."""
+async def test_execute_mcp_writes_technique_execution(seeded_db):
+    """_execute_mcp() should write a technique_executions record on success."""
     from app.services.engine_router import EngineRouter
     from app.clients import ExecutionResult
 
@@ -188,18 +188,20 @@ async def test_execute_mcp_marks_compromised(seeded_db):
         exec_id="mcp-exec-2",
         now=datetime.now(timezone.utc),
         ability_id="nmap-scanner:scan_host",
-        technique_id="T1592",
+        technique_id="T1003.001",
         target_id="test-target-1",
         engine="mcp",
         operation_id="test-op-1",
         ooda_iteration_id=None,
     )
 
+    # Generic MCP execution writes a technique_executions record
     row = await seeded_db.fetchrow(
-        "SELECT is_compromised, privilege_level FROM targets WHERE id = 'test-target-1'"
+        "SELECT engine, status FROM technique_executions WHERE id = 'mcp-exec-2'"
     )
-    assert row["is_compromised"] is True
-    assert row["privilege_level"] == "root"
+    assert row is not None
+    assert row["engine"] == "mcp"
+    assert row["status"] == "success"
 
 
 def test_ooda_controller_wires_mcp():

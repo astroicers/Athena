@@ -90,6 +90,45 @@
       "enabled": true,
       "description": "API endpoint discovery, schema detection, and authentication bypass testing",
       "tool_prefix": "api"
+    },
+    "privesc-scanner": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "server"
+      ],
+      "env": {},
+      "http_url": "http://mcp-privesc-scanner:8080/mcp",
+      "enabled": true,
+      "description": "TODO: describe what this tool does",
+      "tool_prefix": "privesc-scanner"
+    },
+    "credential-dumper": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "server"
+      ],
+      "env": {},
+      "http_url": "http://mcp-credential-dumper:8080/mcp",
+      "enabled": true,
+      "description": "TODO: describe what this tool does",
+      "tool_prefix": "credential-dumper"
+    },
+    "lateral-mover": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "server"
+      ],
+      "env": {},
+      "http_url": "http://mcp-lateral-mover:8080/mcp",
+      "enabled": true,
+      "description": "TODO: describe what this tool does",
+      "tool_prefix": "lateral-mover"
     }
   }
 }

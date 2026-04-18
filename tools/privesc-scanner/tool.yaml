@@ -1,0 +1,19 @@
+# Athena MCP Tool Metadata
+tool_id: "privesc-scanner"
+name: "Privilege Escalation Scanner"
+description: "Detects Linux/Windows privilege escalation vectors (SUID, sudo, kernel, UAC)"
+category: "execution"
+risk_level: "high"
+mitre_techniques: ["T1548.001", "T1548.002", "T1548.003", "T1574.006", "T1068"]
+output_traits: ["privesc.suid_binary", "privesc.sudo_rule", "privesc.kernel_vuln", "privesc.token_privilege", "privesc.uac_level", "privesc.writable_path"]
+
+mcp:
+  transport: "stdio"
+  command: "python"
+  args: ["-m", "server"]
+  http_url: "http://mcp-privesc-scanner:8080/mcp"
+  tool_prefix: "privesc"
+
+docker:
+  port: 58098
+  environment: {}

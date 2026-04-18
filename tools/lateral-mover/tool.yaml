@@ -1,0 +1,19 @@
+# Athena MCP Tool Metadata
+tool_id: "lateral-mover"
+name: "Lateral Movement Suite"
+description: "PsExec/WMIExec/SMB lateral movement with Pass-the-Hash support"
+category: "credential_access"
+risk_level: "critical"
+mitre_techniques: ["T1021.002", "T1021.003", "T1047", "T1550.002", "T1570"]
+output_traits: ["lateral.session", "lateral.smb_share", "lateral.readable_share", "credential.shell"]
+
+mcp:
+  transport: "stdio"
+  command: "python"
+  args: ["-m", "server"]
+  http_url: "http://mcp-lateral-mover:8080/mcp"
+  tool_prefix: "lateral"
+
+docker:
+  port: 58100
+  environment: {}

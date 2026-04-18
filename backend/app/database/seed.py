@@ -707,7 +707,7 @@ TECHNIQUE_PLAYBOOK_SEEDS = (
 )
 
 # ---------------------------------------------------------------------------
-# Tool registry seeds (10 entries)
+# Tool registry seeds (13 entries)
 # ---------------------------------------------------------------------------
 TOOL_REGISTRY_SEEDS = [
     {"tool_id": "nmap", "name": "Nmap", "kind": "tool", "category": "reconnaissance",
@@ -759,6 +759,27 @@ TOOL_REGISTRY_SEEDS = [
      "mitre_techniques": '["T1110.001","T1021.004"]', "risk_level": "high",
      "output_traits": '["credential.ssh"]',
      "config_json": '{"mcp_server":"credential-checker","mcp_tool":"ssh_credential_check"}'},
+    {"tool_id": "privesc_scanner", "name": "Privilege Escalation Scanner", "kind": "tool",
+     "category": "execution",
+     "description": "Linux/Windows privilege escalation vector detection",
+     "mitre_techniques": '["T1548.001","T1548.002","T1548.003","T1574.006","T1068"]',
+     "risk_level": "high",
+     "output_traits": '["privesc.suid_binary","privesc.sudo_rule","privesc.kernel_vuln","privesc.token_privilege","privesc.uac_level","privesc.writable_path"]',
+     "config_json": '{"mcp_server":"privesc-scanner","mcp_tool":"linux_privesc_scan"}'},
+    {"tool_id": "credential_dumper", "name": "Credential Dumper", "kind": "tool",
+     "category": "credential_access",
+     "description": "Impacket-based SAM/NTDS/DCSync/Kerberoasting credential extraction",
+     "mitre_techniques": '["T1003.001","T1003.002","T1003.003","T1003.006","T1558.003"]',
+     "risk_level": "critical",
+     "output_traits": '["credential.hash","credential.domain_user","credential.kerberos_hash","credential.spn_account","credential.cached","credential.dpapi_key"]',
+     "config_json": '{"mcp_server":"credential-dumper","mcp_tool":"dump_sam_hashes"}'},
+    {"tool_id": "lateral_mover", "name": "Lateral Movement Suite", "kind": "tool",
+     "category": "credential_access",
+     "description": "PsExec/WMIExec/SMB lateral movement with Pass-the-Hash support",
+     "mitre_techniques": '["T1021.002","T1021.003","T1047","T1550.002","T1570"]',
+     "risk_level": "critical",
+     "output_traits": '["lateral.session","lateral.smb_share","lateral.readable_share","credential.shell"]',
+     "config_json": '{"mcp_server":"lateral-mover","mcp_tool":"psexec_lateral"}'},
 ]
 
 # ---------------------------------------------------------------------------

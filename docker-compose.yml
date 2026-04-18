@@ -177,6 +177,30 @@ services:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
+  mcp-privesc-scanner:
+    build: { context: ./tools/privesc-scanner }
+    profiles: [mcp]
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--port", "8080"]
+    ports:
+      - "127.0.0.1:58098:8080"
+    restart: unless-stopped
+
+  mcp-credential-dumper:
+    build: { context: ./tools/credential-dumper }
+    profiles: [mcp]
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--port", "8080"]
+    ports:
+      - "127.0.0.1:58099:8080"
+    restart: unless-stopped
+
+  mcp-lateral-mover:
+    build: { context: ./tools/lateral-mover }
+    profiles: [mcp]
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--port", "8080"]
+    ports:
+      - "127.0.0.1:58100:8080"
+    restart: unless-stopped
+
 volumes:
   backend-data:
     driver: local

@@ -1,0 +1,20 @@
+tool_id: "cloudfox-enum"
+name: "CloudFox Enumerator"
+description: "AWS/Azure/GCP environment enumeration + privilege escalation path detection"
+category: "discovery"
+risk_level: "high"
+mitre_techniques: ["T1580", "T1087.004", "T1069.003"]
+output_traits: ["cloud.iam_role", "cloud.privesc_path", "cloud.overprivileged_user",
+                 "cloud.public_resource", "cloud.secret_found", "cloud.misconfiguration",
+                 "cloud.env_variable", "cloud.ssm_parameter"]
+
+mcp:
+  transport: "stdio"
+  command: "python"
+  args: ["-m", "server"]
+  http_url: "http://mcp-cloudfox-enum:8080/mcp"
+  tool_prefix: "cloudfox"
+
+docker:
+  port: 58105
+  environment: {}

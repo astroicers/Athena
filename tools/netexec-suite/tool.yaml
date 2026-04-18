@@ -1,0 +1,21 @@
+tool_id: "netexec-suite"
+name: "NetExec Suite"
+description: "Multi-protocol AD enumeration, password spraying, remote execution via NetExec"
+category: "credential_access"
+risk_level: "critical"
+mitre_techniques: ["T1110.003", "T1087.002", "T1069.002", "T1021.002", "T1003.006"]
+output_traits: ["ad.smb_host", "ad.smb_share", "ad.smb_user", "ad.gpp_password",
+                 "credential.valid_pair", "ad.sprayed_account", "ad.asreproast_user",
+                 "ad.kerberoastable_user", "ad.laps_password", "lateral.session",
+                 "credential.shell", "ad.spn_account"]
+
+mcp:
+  transport: "stdio"
+  command: "python"
+  args: ["-m", "server"]
+  http_url: "http://mcp-netexec-suite:8080/mcp"
+  tool_prefix: "netexec"
+
+docker:
+  port: 58102
+  environment: {}

@@ -1,0 +1,19 @@
+tool_id: "responder-capture"
+name: "Responder Capture"
+description: "LLMNR/NBT-NS/mDNS poisoning + NTLMv2 hash capture via Responder"
+category: "credential_access"
+risk_level: "critical"
+mitre_techniques: ["T1557.001", "T1040"]
+output_traits: ["credential.ntlmv2_hash", "ad.responder_victim",
+                 "ad.responder_session", "ad.responder_stopped"]
+
+mcp:
+  transport: "stdio"
+  command: "python"
+  args: ["-m", "server"]
+  http_url: "http://mcp-responder-capture:8080/mcp"
+  tool_prefix: "responder"
+
+docker:
+  port: 58104
+  environment: {}

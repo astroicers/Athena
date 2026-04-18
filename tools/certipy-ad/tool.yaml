@@ -1,0 +1,21 @@
+tool_id: "certipy-ad"
+name: "Certipy AD CS"
+description: "AD Certificate Services vulnerability exploitation (ESC1-ESC8)"
+category: "credential_access"
+risk_level: "critical"
+mitre_techniques: ["T1649", "T1558.004", "T1550.003"]
+output_traits: ["ad.vulnerable_template", "ad.esc_type", "ad.ca_name",
+                 "ad.certificate_pfx", "ad.impersonated_user",
+                 "credential.hash", "credential.certificate_auth",
+                 "credential.shadow_credential"]
+
+mcp:
+  transport: "stdio"
+  command: "python"
+  args: ["-m", "server"]
+  http_url: "http://mcp-certipy-ad:8080/mcp"
+  tool_prefix: "certipy"
+
+docker:
+  port: 58103
+  environment: {}

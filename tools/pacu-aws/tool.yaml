@@ -1,0 +1,21 @@
+tool_id: "pacu-aws"
+name: "Pacu AWS"
+description: "AWS exploitation framework: IAM privesc, S3 enum, Lambda backdoor, EC2 enum"
+category: "credential_access"
+risk_level: "critical"
+mitre_techniques: ["T1078.004", "T1530", "T1525"]
+output_traits: ["cloud.iam_privesc", "cloud.exploitable_policy", "cloud.s3_bucket",
+                 "cloud.s3_public_bucket", "cloud.s3_sensitive_file",
+                 "cloud.lambda_function", "cloud.lambda_backdoor_opportunity",
+                 "cloud.ec2_instance", "cloud.security_group_open", "cloud.ec2_public_ip"]
+
+mcp:
+  transport: "stdio"
+  command: "python"
+  args: ["-m", "server"]
+  http_url: "http://mcp-pacu-aws:8080/mcp"
+  tool_prefix: "pacu"
+
+docker:
+  port: 58106
+  environment: {}

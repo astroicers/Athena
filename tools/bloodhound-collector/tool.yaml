@@ -1,0 +1,19 @@
+tool_id: "bloodhound-collector"
+name: "BloodHound Collector"
+description: "AD environment graph collection + attack path analysis via BloodHound"
+category: "discovery"
+risk_level: "high"
+mitre_techniques: ["T1087.002", "T1069.002", "T1482"]
+output_traits: ["ad.bloodhound_data", "ad.domain_users_count", "ad.attack_path",
+                 "ad.high_value_target", "ad.domain_trust", "ad.trust_direction"]
+
+mcp:
+  transport: "stdio"
+  command: "python"
+  args: ["-m", "server"]
+  http_url: "http://mcp-bloodhound-collector:8080/mcp"
+  tool_prefix: "bloodhound"
+
+docker:
+  port: 58101
+  environment: {}

@@ -1,0 +1,19 @@
+tool_id: "scoutsuite-audit"
+name: "ScoutSuite Auditor"
+description: "Multi-cloud security compliance audit (AWS/Azure/GCP/Alibaba/Oracle)"
+category: "discovery"
+risk_level: "medium"
+mitre_techniques: ["T1580", "T1526"]
+output_traits: ["cloud.audit_finding", "cloud.critical_count", "cloud.high_count",
+                 "cloud.service_finding", "cloud.misconfiguration"]
+
+mcp:
+  transport: "stdio"
+  command: "python"
+  args: ["-m", "server"]
+  http_url: "http://mcp-scoutsuite-audit:8080/mcp"
+  tool_prefix: "scoutsuite"
+
+docker:
+  port: 58107
+  environment: {}

@@ -129,6 +129,97 @@
       "enabled": true,
       "description": "TODO: describe what this tool does",
       "tool_prefix": "lateral-mover"
+    },
+    "bloodhound-collector": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "server"
+      ],
+      "env": {},
+      "http_url": "http://mcp-bloodhound-collector:8080/mcp",
+      "enabled": true,
+      "description": "TODO: describe what this tool does",
+      "tool_prefix": "bloodhound-collector"
+    },
+    "netexec-suite": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "server"
+      ],
+      "env": {},
+      "http_url": "http://mcp-netexec-suite:8080/mcp",
+      "enabled": true,
+      "description": "TODO: describe what this tool does",
+      "tool_prefix": "netexec-suite"
+    },
+    "certipy-ad": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "server"
+      ],
+      "env": {},
+      "http_url": "http://mcp-certipy-ad:8080/mcp",
+      "enabled": true,
+      "description": "TODO: describe what this tool does",
+      "tool_prefix": "certipy-ad"
+    },
+    "responder-capture": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "server"
+      ],
+      "env": {},
+      "http_url": "http://mcp-responder-capture:8080/mcp",
+      "enabled": true,
+      "description": "TODO: describe what this tool does",
+      "tool_prefix": "responder-capture"
+    },
+    "cloudfox-enum": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "server"
+      ],
+      "env": {},
+      "http_url": "http://mcp-cloudfox-enum:8080/mcp",
+      "enabled": true,
+      "description": "TODO: describe what this tool does",
+      "tool_prefix": "cloudfox-enum"
+    },
+    "pacu-aws": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "server"
+      ],
+      "env": {},
+      "http_url": "http://mcp-pacu-aws:8080/mcp",
+      "enabled": true,
+      "description": "TODO: describe what this tool does",
+      "tool_prefix": "pacu-aws"
+    },
+    "scoutsuite-audit": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "server"
+      ],
+      "env": {},
+      "http_url": "http://mcp-scoutsuite-audit:8080/mcp",
+      "enabled": true,
+      "description": "TODO: describe what this tool does",
+      "tool_prefix": "scoutsuite-audit"
     }
   }
 }

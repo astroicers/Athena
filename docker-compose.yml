@@ -201,6 +201,62 @@ services:
       - "127.0.0.1:58100:8080"
     restart: unless-stopped
 
+  mcp-bloodhound-collector:
+    build: { context: ./tools/bloodhound-collector }
+    profiles: [mcp]
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--port", "8080"]
+    ports:
+      - "127.0.0.1:58101:8080"
+    restart: unless-stopped
+
+  mcp-netexec-suite:
+    build: { context: ./tools/netexec-suite }
+    profiles: [mcp]
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--port", "8080"]
+    ports:
+      - "127.0.0.1:58102:8080"
+    restart: unless-stopped
+
+  mcp-certipy-ad:
+    build: { context: ./tools/certipy-ad }
+    profiles: [mcp]
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--port", "8080"]
+    ports:
+      - "127.0.0.1:58103:8080"
+    restart: unless-stopped
+
+  mcp-responder-capture:
+    build: { context: ./tools/responder-capture }
+    profiles: [mcp]
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--port", "8080"]
+    ports:
+      - "127.0.0.1:58104:8080"
+    restart: unless-stopped
+
+  mcp-cloudfox-enum:
+    build: { context: ./tools/cloudfox-enum }
+    profiles: [mcp]
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--port", "8080"]
+    ports:
+      - "127.0.0.1:58105:8080"
+    restart: unless-stopped
+
+  mcp-pacu-aws:
+    build: { context: ./tools/pacu-aws }
+    profiles: [mcp]
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--port", "8080"]
+    ports:
+      - "127.0.0.1:58106:8080"
+    restart: unless-stopped
+
+  mcp-scoutsuite-audit:
+    build: { context: ./tools/scoutsuite-audit }
+    profiles: [mcp]
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--port", "8080"]
+    ports:
+      - "127.0.0.1:58107:8080"
+    restart: unless-stopped
+
 volumes:
   backend-data:
     driver: local

@@ -19,6 +19,7 @@ import {
 } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { useToast } from "@/contexts/ToastContext";
 import { Button } from "@/components/atoms/Button";
 import type { OrientRecommendation } from "@/types/recommendation";
 
@@ -151,6 +152,8 @@ function ProgressBar({ value, color }: { value: number; color: string }) {
 export function DecisionPanel({ operationId }: { operationId: string }) {
   const t = useTranslations("AIDecisionPage");
   const tRec = useTranslations("Recommendations");
+  const tErrors = useTranslations("Errors");
+  const { addToast } = useToast();
 
   /* State */
   const [recommendation, setRecommendation] =
@@ -209,12 +212,14 @@ export function DecisionPanel({ operationId }: { operationId: string }) {
         `/operations/${operationId}/recommendations/${recommendation.id}/accept`,
       );
       setRecommendation(updated);
-    } catch {
-      // silently fail
+      await fetchData();
+    } catch (err: unknown) {
+      console.warn("[DecisionPanel] accept failed:", err);
+      addToast(tErrors("failedAcceptRecommendation"), "error");
     } finally {
       setAccepting(false);
     }
-  }, [recommendation, operationId]);
+  }, [recommendation, operationId, fetchData, addToast, tErrors]);
 
   /* Derived: confidence score */
   const confidence = recommendation?.confidence ?? 0;

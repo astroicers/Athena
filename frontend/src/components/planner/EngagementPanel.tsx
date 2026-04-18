@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { useToast } from "@/contexts/ToastContext";
 import { SectionHeader } from "@/components/atoms/SectionHeader";
 import { Badge } from "@/components/atoms/Badge";
 import { Button } from "@/components/atoms/Button";
@@ -29,6 +30,8 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "error" | "info"> =
 
 export function EngagementPanel({ operationId }: { operationId: string }) {
   const t = useTranslations("Engagement");
+  const tErrors = useTranslations("Errors");
+  const { addToast } = useToast();
   const [engagement, setEngagement] = useState<Engagement | null>(null);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
@@ -58,8 +61,9 @@ export function EngagementPanel({ operationId }: { operationId: string }) {
         `/operations/${operationId}/engagement/activate`,
       );
       setEngagement(data);
-    } catch {
-      // silently fail
+    } catch (err: unknown) {
+      console.warn("[EngagementPanel] activate failed:", err);
+      addToast(tErrors("failedActivateEngagement"), "error");
     } finally {
       setToggling(false);
     }
@@ -73,8 +77,9 @@ export function EngagementPanel({ operationId }: { operationId: string }) {
         `/operations/${operationId}/engagement/suspend`,
       );
       setEngagement(data);
-    } catch {
-      // silently fail
+    } catch (err: unknown) {
+      console.warn("[EngagementPanel] suspend failed:", err);
+      addToast(tErrors("failedSuspendEngagement"), "error");
     } finally {
       setToggling(false);
     }

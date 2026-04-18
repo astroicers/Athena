@@ -962,7 +962,15 @@
     "failedSetActive": "設定攻擊目標失敗",
     "failedDeleteTarget": "刪除目標失敗",
     "failedBatchImport": "批次匯入失敗",
-    "failedLoadWarRoom": "載入作戰室資料失敗"
+    "failedLoadWarRoom": "載入作戰室資料失敗",
+    "failedActivateEngagement": "啟用交戰規則失敗",
+    "failedSuspendEngagement": "暫停交戰規則失敗",
+    "failedAcceptRecommendation": "接受建議失敗",
+    "failedSubmitDirective": "提交指令失敗",
+    "failedLoadBrief": "載入行動簡報失敗",
+    "failedExportPoc": "匯出 PoC 報告失敗",
+    "failedLoadOpsecTrend": "載入 OPSEC 趨勢資料失敗",
+    "failedLoadOpsecEvents": "載入 OPSEC 事件失敗"
   },
   "Engagement": {
     "title": "交戰規則",

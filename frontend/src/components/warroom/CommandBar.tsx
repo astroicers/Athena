@@ -6,6 +6,7 @@
 import { useState, useCallback, useRef, type KeyboardEvent } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { useToast } from "@/contexts/ToastContext";
 
 interface CommandBarProps {
   operationId: string;
@@ -24,6 +25,8 @@ export function CommandBar({
 }: CommandBarProps) {
   const t = useTranslations("CommandBar");
   const tToast = useTranslations("WarRoom");
+  const tErrors = useTranslations("Errors");
+  const { addToast } = useToast();
   const [directive, setDirective] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -51,12 +54,13 @@ export function CommandBar({
       onCycleTriggered?.();
 
       setDirective("");
-    } catch {
-      // Error handling via toast in parent
+    } catch (err: unknown) {
+      console.warn("[CommandBar] directive submit failed:", err);
+      addToast(tErrors("failedSubmitDirective"), "error");
     } finally {
       setIsSubmitting(false);
     }
-  }, [directive, isSubmitting, isAutoMode, operationId, onToggleMode, onCycleTriggered]);
+  }, [directive, isSubmitting, isAutoMode, operationId, onToggleMode, onCycleTriggered, addToast, tErrors]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLInputElement>) => {

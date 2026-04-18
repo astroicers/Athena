@@ -15,6 +15,7 @@ import { useTranslations } from "next-intl";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { api } from "@/lib/api";
+import { useToast } from "@/contexts/ToastContext";
 import { Button } from "@/components/atoms/Button";
 
 /* ── Types ── */
@@ -72,9 +73,12 @@ const mdComponents = {
 
 export function BriefTab({ operationId }: BriefTabProps) {
   const t = useTranslations("Brief");
+  const tErrors = useTranslations("Errors");
+  const { addToast } = useToast();
   const [brief, setBrief] = useState<BriefResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchBrief = useCallback(async () => {
@@ -84,12 +88,14 @@ export function BriefTab({ operationId }: BriefTabProps) {
         `/operations/${operationId}/brief`,
       );
       setBrief(data);
-    } catch {
-      // No brief yet or fetch error — keep current state
+    } catch (err: unknown) {
+      console.warn("[BriefTab] brief fetch failed:", err);
+      addToast(tErrors("failedLoadBrief"), "error");
+      setError(true);
     } finally {
       setLoading(false);
     }
-  }, [operationId]);
+  }, [operationId, addToast, tErrors]);
 
   useEffect(() => {
     fetchBrief();
@@ -130,6 +136,17 @@ export function BriefTab({ operationId }: BriefTabProps) {
       <div className="flex items-center justify-center h-full">
         <span className="text-athena-floor font-mono text-[var(--color-text-tertiary)]">
           {t("generating")}
+        </span>
+      </div>
+    );
+  }
+
+  /* ── Error state ── */
+  if (error && !brief?.markdown) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <span className="text-athena-floor font-mono text-[var(--color-error)]">
+          {tErrors("failedLoadBrief")}
         </span>
       </div>
     );

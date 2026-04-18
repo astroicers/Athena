@@ -902,7 +902,15 @@
     "failedSetActive": "Failed to set active target",
     "failedDeleteTarget": "Failed to delete target",
     "failedBatchImport": "Failed to batch import targets",
-    "failedLoadWarRoom": "Failed to load War Room data"
+    "failedLoadWarRoom": "Failed to load War Room data",
+    "failedActivateEngagement": "Failed to activate engagement",
+    "failedSuspendEngagement": "Failed to suspend engagement",
+    "failedAcceptRecommendation": "Failed to accept recommendation",
+    "failedSubmitDirective": "Failed to submit directive",
+    "failedLoadBrief": "Failed to load operation brief",
+    "failedExportPoc": "Failed to export PoC report",
+    "failedLoadOpsecTrend": "Failed to load OPSEC trend data",
+    "failedLoadOpsecEvents": "Failed to load OPSEC events"
   },
   "Objectives": {
     "title": "OBJECTIVES",

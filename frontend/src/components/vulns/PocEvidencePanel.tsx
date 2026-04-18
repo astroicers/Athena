@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { useToast } from "@/contexts/ToastContext";
 import { Button } from "@/components/atoms/Button";
 import type { PocRecord, PocSummary } from "@/types/poc";
 
@@ -149,9 +150,13 @@ function PocCard({ record, index }: { record: PocRecord; index: number }) {
 function ExportDropdown({
   t,
   operationId,
+  addToast,
+  tErrors,
 }: {
   t: (key: string) => string;
   operationId: string;
+  addToast: (message: string, severity?: "info" | "success" | "warning" | "error") => void;
+  tErrors: (key: string) => string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -191,8 +196,9 @@ function ExportDropdown({
       a.download = `poc-report-${operationId}.json`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch {
-      // silent fail
+    } catch (err: unknown) {
+      console.warn("[PocEvidencePanel] export failed:", err);
+      addToast(tErrors("failedExportPoc"), "error");
     }
   }
 
@@ -240,6 +246,8 @@ interface PocApiResponse {
 
 export default function PocEvidencePanel({ operationId }: PocEvidencePanelProps) {
   const t = useTranslations("Poc");
+  const tErrors = useTranslations("Errors");
+  const { addToast } = useToast();
 
   const [records, setRecords] = useState<PocRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -368,7 +376,7 @@ export default function PocEvidencePanel({ operationId }: PocEvidencePanelProps)
             {operationId?.slice(0, 12).toUpperCase()}
           </span>
         </div>
-        <ExportDropdown t={t} operationId={operationId ?? ""} />
+        <ExportDropdown t={t} operationId={operationId ?? ""} addToast={addToast} tErrors={tErrors} />
       </div>
 
       {/* Summary bar */}

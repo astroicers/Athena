@@ -20,6 +20,7 @@ import {
 import { useTranslations } from "next-intl";
 import { useOPSEC } from "@/hooks/useOPSEC";
 import { api } from "@/lib/api";
+import { useToast } from "@/contexts/ToastContext";
 import { Button } from "@/components/atoms/Button";
 import {
   TimeSeriesChart,
@@ -145,6 +146,8 @@ function MetricCard({
 
 export function OpsecPanel({ operationId }: { operationId: string }) {
   const t = useTranslations("OPSEC");
+  const tErrors = useTranslations("Errors");
+  const { addToast } = useToast();
   const { opsec, loading, error } = useOPSEC(operationId);
 
   // -- Noise trend time series --
@@ -160,10 +163,11 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
       if (Array.isArray(raw)) {
         setTrendData(raw.map((r) => ({ timestamp: r.ts, value: r.totalNoise })));
       }
-    } catch {
-      // Silently fail -- trend chart simply stays empty
+    } catch (err: unknown) {
+      console.warn("[OpsecPanel] trend fetch failed:", err);
+      addToast(tErrors("failedLoadOpsecTrend"), "error");
     }
-  }, [operationId]);
+  }, [operationId, addToast, tErrors]);
 
   useEffect(() => {
     fetchTrend();
@@ -208,10 +212,11 @@ export function OpsecPanel({ operationId }: { operationId: string }) {
         );
         setEvents(opsecEvents.length > 0 ? opsecEvents : data);
       }
-    } catch {
-      // Silently fail
+    } catch (err: unknown) {
+      console.warn("[OpsecPanel] events fetch failed:", err);
+      addToast(tErrors("failedLoadOpsecEvents"), "error");
     }
-  }, [operationId]);
+  }, [operationId, addToast, tErrors]);
 
   useEffect(() => {
     fetchEvents();

@@ -1,6 +1,6 @@
 # Athena — Data Architecture
 
-> Version: 1.2 | Date: 2026-04-10 | Status: POC Design
+> Version: 1.3 | Date: 2026-04-18 | Status: POC Design
 
 ---
 
@@ -57,13 +57,13 @@ ACT      → Battle Monitor    (auto: Caldera/Shannon executes)
 | `ExecutionEngine` | caldera, shannon | Execution engine |
 | `C5ISRDomain` | command, control, comms, computers, cyber, isr | C5ISR six domains |
 | `C5ISRDomainStatus` | operational, active, nominal, engaged, scanning, degraded, offline, critical | Domain health |
-| `FactCategory` | credential, host, network, service, vulnerability, file | Intelligence classification |
+| `FactCategory` | credential, host, network, service, vulnerability, file, ad, cloud, lateral, privesc | Intelligence classification |
 | `LogSeverity` | info, success, warning, error, critical | Log severity level |
 | `KillChainStage` | recon, weaponize, deliver, exploit, install, c2, action | Cyber Kill Chain 7 stages |
 | `RiskLevel` | low, medium, high, critical | Risk assessment |
 | `AutomationMode` | manual, semi_auto | Automation mode |
 | `ToolKind` | tool, engine | Tool registry kind |
-| `ToolCategory` | reconnaissance, enumeration, vulnerability_scanning, credential_access, exploitation, execution | Tool category |
+| `ToolCategory` | reconnaissance, enumeration, vulnerability_scanning, credential_access, exploitation, execution, discovery | Tool category |
 
 ---
 

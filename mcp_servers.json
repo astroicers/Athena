@@ -101,7 +101,7 @@
       "env": {},
       "http_url": "http://mcp-privesc-scanner:8080/mcp",
       "enabled": true,
-      "description": "TODO: describe what this tool does",
+      "description": "Linux/Windows privilege escalation vector detection (SUID, sudo, kernel, UAC)",
       "tool_prefix": "privesc-scanner"
     },
     "credential-dumper": {
@@ -114,7 +114,7 @@
       "env": {},
       "http_url": "http://mcp-credential-dumper:8080/mcp",
       "enabled": true,
-      "description": "TODO: describe what this tool does",
+      "description": "Impacket-based SAM/NTDS/DCSync/Kerberoasting credential extraction",
       "tool_prefix": "credential-dumper"
     },
     "lateral-mover": {
@@ -127,7 +127,7 @@
       "env": {},
       "http_url": "http://mcp-lateral-mover:8080/mcp",
       "enabled": true,
-      "description": "TODO: describe what this tool does",
+      "description": "PsExec/WMIExec/SMB lateral movement with Pass-the-Hash support",
       "tool_prefix": "lateral-mover"
     },
     "bloodhound-collector": {
@@ -140,7 +140,7 @@
       "env": {},
       "http_url": "http://mcp-bloodhound-collector:8080/mcp",
       "enabled": true,
-      "description": "TODO: describe what this tool does",
+      "description": "AD environment graph collection and attack path analysis via BloodHound",
       "tool_prefix": "bloodhound-collector"
     },
     "netexec-suite": {
@@ -153,7 +153,7 @@
       "env": {},
       "http_url": "http://mcp-netexec-suite:8080/mcp",
       "enabled": true,
-      "description": "TODO: describe what this tool does",
+      "description": "Multi-protocol AD enumeration, password spraying, and remote execution",
       "tool_prefix": "netexec-suite"
     },
     "certipy-ad": {
@@ -166,7 +166,7 @@
       "env": {},
       "http_url": "http://mcp-certipy-ad:8080/mcp",
       "enabled": true,
-      "description": "TODO: describe what this tool does",
+      "description": "AD Certificate Services vulnerability exploitation (ESC1-ESC8)",
       "tool_prefix": "certipy-ad"
     },
     "responder-capture": {
@@ -179,7 +179,7 @@
       "env": {},
       "http_url": "http://mcp-responder-capture:8080/mcp",
       "enabled": true,
-      "description": "TODO: describe what this tool does",
+      "description": "LLMNR/NBT-NS/mDNS poisoning and NTLMv2 hash capture",
       "tool_prefix": "responder-capture"
     },
     "cloudfox-enum": {
@@ -192,7 +192,7 @@
       "env": {},
       "http_url": "http://mcp-cloudfox-enum:8080/mcp",
       "enabled": true,
-      "description": "TODO: describe what this tool does",
+      "description": "AWS/Azure/GCP environment enumeration and privilege escalation path detection",
       "tool_prefix": "cloudfox-enum"
     },
     "pacu-aws": {
@@ -205,7 +205,7 @@
       "env": {},
       "http_url": "http://mcp-pacu-aws:8080/mcp",
       "enabled": true,
-      "description": "TODO: describe what this tool does",
+      "description": "AWS exploitation framework: IAM privesc, S3 enum, Lambda backdoor, EC2 enum",
       "tool_prefix": "pacu-aws"
     },
     "scoutsuite-audit": {
@@ -218,7 +218,7 @@
       "env": {},
       "http_url": "http://mcp-scoutsuite-audit:8080/mcp",
       "enabled": true,
-      "description": "TODO: describe what this tool does",
+      "description": "Multi-cloud security compliance audit (AWS/Azure/GCP/Alibaba/Oracle)",
       "tool_prefix": "scoutsuite-audit"
     }
   }

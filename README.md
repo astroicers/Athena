@@ -137,7 +137,7 @@ Athena 的自動化管線對應 Lockheed Martin Cyber Kill Chain 七階段：
 - **DirectSSHEngine** — asyncssh 單次連線，輕量預設
 - **C2EngineClient** — 選用外部 C2 整合，API 隔離
 - **EngineRouter** — 統一路由到四種引擎
-- **Tool Registry** — 集中式工具/引擎註冊中心，CRUD REST API + 前端管理頁面（10 個預設種子工具）
+- **Tool Registry** — 集中式工具/引擎註冊中心，CRUD REST API + 前端管理頁面（20 個預設種子工具）
 
 **合規與報告**
 - **ScopeValidator** — RoE 白/黑名單範圍驗證，防止誤掃

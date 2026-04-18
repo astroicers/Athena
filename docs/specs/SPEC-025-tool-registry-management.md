@@ -40,7 +40,7 @@
 ### 後端
 
 1. **`tool_registry` DDL** — 新 SQLite 表，含 14 欄位（id, tool_id, name, description, kind, category, version, enabled, source, config_json, mitre_techniques, risk_level, output_traits, created_at, updated_at）
-2. **Seed 資料** — 10 筆預設工具/引擎（source=`seed`）：nmap, subfinder, crtsh, nvd_lookup, ssh, persistent_ssh, c2, metasploit, winrm, mock
+2. **Seed 資料** — 20 筆預設工具/引擎（source=`seed`）：nmap, subfinder, crtsh, nvd_lookup, ssh, persistent_ssh, c2, metasploit, winrm, mock + 10 個 MCP 工具（SPEC-060/061）
 3. **Pydantic Models** — `ToolRegistryCreate`、`ToolRegistryUpdate`、`ToolRegistryEntry`
 4. **Enums** — `ToolKind`（tool/engine）、`ToolCategory`（6 類）
 5. **REST API**：
@@ -66,7 +66,7 @@
 ## ✅ Done When
 
 - [x] `tool_registry` DDL 在 `init_db()` 中建立
-- [x] 10 筆 seed 工具在首次啟動時寫入（`source='seed'`）
+- [x] 20 筆 seed 工具在首次啟動時寫入（`source='seed'`，含 SPEC-060/061 新增）
 - [x] `GET /api/tools` 回傳列表，支援 kind/category/enabled filter
 - [x] `POST /api/tools` 新增 user 工具，重複 tool_id → HTTP 409
 - [x] `DELETE /api/tools/{tool_id}` seed 工具 → HTTP 403
@@ -155,8 +155,8 @@ _SPEC 由 Claude Opus 4.6 於 2026-03-04 補建，對應 Tool Registry 實作。
 
 | 副作用 | 觸發條件 | 影響模組 | 驗證方式 |
 |--------|----------|----------|----------|
-| `tool_registry` DDL 新增至 `init_db()` | 首次啟動 / DB 初始化 | `backend/app/database.py`（`backend/app/database/seed.py`） | pytest 驗證 seed 資料 ≥10 筆 |
-| 10 筆 seed 工具自動寫入 | 首次啟動且 `tool_registry` 為空 | `backend/app/database/seed.py` | `test_list_tools` 驗證 ≥10 筆 |
+| `tool_registry` DDL 新增至 `init_db()` | 首次啟動 / DB 初始化 | `backend/app/database.py`（`backend/app/database/seed.py`） | pytest 驗證 seed 資料 ≥20 筆 |
+| 20 筆 seed 工具自動寫入 | 首次啟動且 `tool_registry` 為空 | `backend/app/database/seed.py` | `test_list_tools` 驗證 ≥20 筆 |
 | main.py include tools router | 應用啟動 | `backend/app/main.py` | `GET /api/tools` 正常回傳 |
 | NAV_ITEMS 新增 Tool Registry | 前端頁面載入 | `frontend/src/lib/constants.ts` | 導航欄顯示 Tool Registry 連結 |
 | enums 新增 ToolKind / ToolCategory | 後端 model validation | `backend/app/models/enums.py` | pytest 驗證 enum 值 |
@@ -178,7 +178,7 @@ _SPEC 由 Claude Opus 4.6 於 2026-03-04 補建，對應 Tool Registry 實作。
 
 | ID | 類型 | 場景 | 預期結果 | 場景參考 |
 |----|------|------|----------|----------|
-| P1 | 正向 | GET /api/tools 無 filter | 回傳 ≥10 筆 seed 工具列表 | Scenario: 列出所有工具 |
+| P1 | 正向 | GET /api/tools 無 filter | 回傳 ≥20 筆 seed 工具列表 | Scenario: 列出所有工具 |
 | P2 | 正向 | POST /api/tools 新增 user 工具 | HTTP 201，回傳新工具 entry | Scenario: 新增 user 工具 |
 | P3 | 正向 | PATCH /api/tools/{tool_id} 更新 enabled=false | HTTP 200，updated_at 自動更新 | — |
 | N1 | 負向 | POST /api/tools 重複 tool_id | HTTP 409 Conflict | Scenario: 重複 tool_id 被拒 |
@@ -199,7 +199,7 @@ Feature: Tool Registry 管理系統
   Scenario: 列出所有工具
     When 呼叫 GET /api/tools
     Then 回傳 HTTP 200
-    And 列表包含 ≥10 筆 seed 工具
+    And 列表包含 ≥20 筆 seed 工具
     And 每筆工具包含 tool_id、name、kind、category、enabled 欄位
 
   Scenario: 新增 user 工具

@@ -48,7 +48,11 @@
 - C5ISR 6-domain battle dashboard (Command/Control/Comms/Computers/Cyber/ISR)
 - Constraint engine (mission profile-aware noise/risk thresholds)
 - OPSEC monitoring (noise tracking, threat level computation, cross-domain penalty)
-- MCP tool servers: nmap-scanner, osint-recon, vuln-lookup, credential-checker, attack-executor, web-scanner, api-fuzzer, msf-rpc
+- MCP tool servers (20 total):
+  - Core: nmap-scanner, osint-recon, vuln-lookup, credential-checker, attack-executor, web-scanner, api-fuzzer, msf-rpc
+  - Post-exploitation: privesc-scanner, credential-dumper, lateral-mover
+  - AD attack chain: bloodhound-collector, netexec-suite, certipy-ad, responder-capture
+  - Cloud attack chain: cloudfox-enum, pacu-aws, scoutsuite-audit
 - Tool Registry with enable/disable toggle, health checks, and execution API
 - Vulnerability management module (severity heat strip, status pipeline, PoC evidence)
 - Engagement/ROE lifecycle (draft -> active -> suspended)

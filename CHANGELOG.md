@@ -7,6 +7,35 @@
 
 ## [Unreleased]
 
+### AD/Cloud Attack Chain MCP Tools（2026-04-18, SPEC-060 / SPEC-061）
+
+新增 10 個 MCP 工具伺服器，覆蓋 Post-Exploitation、AD 攻擊鏈、Cloud 攻擊鏈，MCP 工具總數從 10 增至 20。
+
+#### Added
+- **Post-Exploitation 工具（SPEC-060, ports 58098-58100）：**
+  - `privesc-scanner` — Linux/Windows 提權向量偵測（SUID、sudo、kernel、UAC）
+  - `credential-dumper` — Impacket SAM/NTDS/DCSync/Kerberoasting 憑證提取
+  - `lateral-mover` — PsExec/WMIExec/SMB 橫向移動 + Pass-the-Hash
+- **AD 攻擊鏈工具（SPEC-061, ports 58101-58104）：**
+  - `bloodhound-collector` — BloodHound AD 環境圖譜收集 + 攻擊路徑分析
+  - `netexec-suite` — NetExec 多協議 AD 列舉、密碼噴灑、遠端執行（5 個 MCP tool）
+  - `certipy-ad` — AD CS 證書服務漏洞利用（ESC1-ESC8）
+  - `responder-capture` — LLMNR/NBT-NS/mDNS 中毒 + NTLMv2 hash 擷取（三階段 listener）
+- **Cloud 攻擊鏈工具（SPEC-061, ports 58105-58107）：**
+  - `cloudfox-enum` — AWS/Azure/GCP 環境列舉 + 提權路徑偵測
+  - `pacu-aws` — AWS 攻擊框架（IAM 提權、S3 列舉、Lambda 後門、EC2 列舉）
+  - `scoutsuite-audit` — 多雲安全合規審計（AWS/Azure/GCP/Alibaba/Oracle）
+- **Seed Data：** 新增 7 筆 TOOL_REGISTRY_SEEDS、9 個 MITRE technique、25 筆 MCP_DISCOVERED_MITRE 映射
+- **SPEC-060**（retroactive）：Post-Exploitation MCP Tools 規格書
+- **SPEC-061**：AD/Cloud Attack Chain MCP Tools 規格書
+
+#### Changed
+- `mcp_servers.json`：補齊 10 個工具的 TODO 描述
+- `README.md`：種子工具數量 10 → 20
+- `ROADMAP.md`：MCP tool servers 列表增補至 20 個
+
+---
+
 ### Relay Port-Forwarding Script Generator for Reverse Shell Exploits（2026-04-10, SPEC-054 / ADR-047）
 
 延續 SPEC-053 的 Orient-driven pivot：SPEC-053 診斷發現 docker bridge `172.22.0.0/16` 與 target LAN `192.168.0.x` 之間是單向 route，導致 metasploit reverse shell exploit（Samba usermap_script / UnrealIRCd / distccd）無法 callback，ADR-047 以 `Draft` 記錄限制。使用者於 2026-04-10 提出**簡化方案**取代原規劃的 autossh + systemd：手動起一台 relay 機器、Athena 產生一次性 SSH reverse tunnel 腳本、foreground + trap cleanup + 零殘留。ADR-047 因此升級為 `Accepted`，SPEC-054 實作此簡化決策。

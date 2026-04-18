@@ -13,18 +13,20 @@
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
+
+import { ToastProvider } from "@/contexts/ToastContext";
+import { OperationProvider, useOperationId } from "@/contexts/OperationContext";
+import { useGlobalAlerts } from "@/hooks/useGlobalAlerts";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import { api } from "@/lib/api";
+
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { MockBanner } from "@/components/layout/MockBanner";
 import { ConstraintBanner } from "@/components/layout/ConstraintBanner";
 import { NotificationCenter } from "@/components/layout/NotificationCenter";
 import { LocaleSwitcher } from "@/components/layout/LocaleSwitcher";
-import { useGlobalAlerts } from "@/hooks/useGlobalAlerts";
-import { useWebSocket } from "@/hooks/useWebSocket";
-import { api } from "@/lib/api";
-
-import { ToastProvider } from "@/contexts/ToastContext";
-import { OperationProvider, useOperationId } from "@/contexts/OperationContext";
 import { ToastContainer } from "@/components/ui/Toast";
 
 function ShellInner({ children }: { children: ReactNode }) {
@@ -50,7 +52,10 @@ function ShellInner({ children }: { children: ReactNode }) {
     api
       .get<{ codename?: string }>(`/operations/${operationId}`)
       .then((op) => setOpCodename(op?.codename ?? null))
-      .catch(() => setOpCodename(null));
+      .catch((err: unknown) => {
+        console.warn("[ClientShell] Failed to fetch operation codename:", err);
+        setOpCodename(null);
+      });
   }, [operationId]);
 
   const alertCount = opsecAlerts.length + (constraints.active ? 1 : 0);
@@ -59,7 +64,9 @@ function ShellInner({ children }: { children: ReactNode }) {
     (domain: string) => {
       api
         .post(`/operations/${operationId}/constraints/override`, { domain })
-        .catch(() => {});
+        .catch((err: unknown) => {
+          console.warn("[ClientShell] Constraint override failed:", err);
+        });
     },
     [operationId],
   );
@@ -107,10 +114,22 @@ function ShellInner({ children }: { children: ReactNode }) {
 }
 
 export function ClientShell({ children }: { children: ReactNode }) {
+  const tCommon = useTranslations("Common");
+  const errorLabels = useMemo(
+    () => ({
+      title: tCommon("errorBoundaryTitle"),
+      message: tCommon("errorBoundaryMessage"),
+      retry: tCommon("errorBoundaryRetry"),
+    }),
+    [tCommon],
+  );
+
   return (
     <ToastProvider>
       <OperationProvider>
-        <ShellInner>{children}</ShellInner>
+        <ErrorBoundary labels={errorLabels}>
+          <ShellInner>{children}</ShellInner>
+        </ErrorBoundary>
         <ToastContainer />
       </OperationProvider>
     </ToastProvider>

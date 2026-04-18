@@ -15,6 +15,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const WS_BASE =
   process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:58000/ws";
 
+const MAX_RECONNECT_DELAY = 16000;
+
 export interface TerminalEntry {
   type: "input" | "output" | "error" | "system";
   text: string;
@@ -47,6 +49,9 @@ export function useTerminal(
   const [isConnected, setIsConnected] = useState(false);
   const [pending, setPending] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
+  const reconnectDelayRef = useRef(1000);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const intentionalCloseRef = useRef(false);
 
   const addEntry = useCallback((type: TerminalEntry["type"], text: string) => {
     setEntries((prev) => [
@@ -55,7 +60,7 @@ export function useTerminal(
     ]);
   }, []);
 
-  useEffect(() => {
+  const connect = useCallback(() => {
     if (!enabled || typeof window === "undefined") return;
 
     const url = `${WS_BASE}/${operationId}/targets/${targetId}/terminal`;
@@ -64,11 +69,12 @@ export function useTerminal(
 
     ws.onopen = () => {
       setIsConnected(true);
+      reconnectDelayRef.current = 1000;
     };
 
-    ws.onmessage = (e) => {
+    ws.onmessage = (ev) => {
       try {
-        const msg = JSON.parse(e.data) as TerminalMessage;
+        const msg = JSON.parse(ev.data) as TerminalMessage;
         if (msg.error) {
           addEntry("error", msg.error);
           setPending(false);
@@ -77,7 +83,8 @@ export function useTerminal(
           if (msg.prompt) setPrompt(msg.prompt);
           setPending(false);
         }
-      } catch {
+      } catch (parseErr) {
+        console.warn("[Terminal] Failed to parse server message:", parseErr);
         addEntry("error", "Failed to parse server message");
         setPending(false);
       }
@@ -85,20 +92,31 @@ export function useTerminal(
 
     ws.onclose = () => {
       setIsConnected(false);
-      addEntry("system", "Connection closed.");
+      wsRef.current = null;
+
+      if (!intentionalCloseRef.current) {
+        addEntry("system", "Connection lost. Reconnecting...");
+        const delay = reconnectDelayRef.current;
+        reconnectDelayRef.current = Math.min(delay * 2, MAX_RECONNECT_DELAY);
+        reconnectTimerRef.current = setTimeout(connect, delay);
+      }
     };
 
     ws.onerror = () => {
-      addEntry("error", "WebSocket error — connection failed.");
       ws.close();
     };
+  }, [enabled, operationId, targetId, addEntry]);
 
+  useEffect(() => {
+    intentionalCloseRef.current = false;
+    connect();
     return () => {
-      ws.close();
+      intentionalCloseRef.current = true;
+      clearTimeout(reconnectTimerRef.current);
+      wsRef.current?.close();
       wsRef.current = null;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, operationId, targetId]);
+  }, [connect]);
 
   const sendCommand = useCallback((cmd: string) => {
     if (!cmd.trim()) return;

@@ -175,8 +175,9 @@ class InitialAccessEngine:
                 )
                 parsed = json.loads(text)
 
-                if parsed.get("facts"):
-                    cred_value = parsed["facts"][0]["value"]
+                facts = parsed.get("facts")
+                if facts and isinstance(facts[0], dict) and "value" in facts[0]:
+                    cred_value = facts[0]["value"]
                     await self._write_credential_fact(
                         db, operation_id, target_id, cred_value, trait=trait,
                     )
@@ -620,8 +621,9 @@ class InitialAccessEngine:
             )
             parsed = json.loads(text)
 
-            if parsed.get("facts"):
-                shell_value = parsed["facts"][0]["value"]
+            shell_facts = parsed.get("facts")
+            if shell_facts and isinstance(shell_facts[0], dict) and "value" in shell_facts[0]:
+                shell_value = shell_facts[0]["value"]
                 await self._write_credential_fact(
                     db, operation_id, target_id, shell_value,
                     trait="credential.shell",

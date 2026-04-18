@@ -598,8 +598,8 @@ class EngineRouter:
                 if url_part.startswith("http"):
                     return f"{url_part}/169.254.169.254/latest/meta-data/iam/security-credentials/"
                 continue
-            if any(kw in value.lower() for kw in _SSRF_PROXY_KEYWORDS):
-                base = value.rstrip("/")
+            if any(kw in raw_value.lower() for kw in _SSRF_PROXY_KEYWORDS):
+                base = raw_value.rstrip("/")
                 return f"{base}/169.254.169.254/latest/meta-data/iam/security-credentials/"
         return None
 

@@ -39,8 +39,10 @@ export function OperationProvider({ children }: { children: ReactNode }) {
       setOperationIdRaw(stored);
       return;
     }
-    // No stored operation — fetch the first one from the API
-    fetch(`${API_BASE}/operations`)
+    // No stored operation — fetch the first one from the API (5s timeout)
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    fetch(`${API_BASE}/operations`, { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : []))
       .then((ops: Array<{ id: string; status?: string }>) => {
         const active = ops.find((o) => o.status === "active") ?? ops[0];
@@ -49,9 +51,10 @@ export function OperationProvider({ children }: { children: ReactNode }) {
           localStorage.setItem(STORAGE_KEY, active.id);
         }
       })
-      .catch(() => {
-        // API not available — stay with empty operationId
-      });
+      .catch((err: unknown) => {
+        console.warn("[OperationContext] Auto-select failed:", err);
+      })
+      .finally(() => clearTimeout(timeout));
   }, []);
 
   const setOperationId = useCallback((id: string) => {

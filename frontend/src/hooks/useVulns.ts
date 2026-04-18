@@ -10,7 +10,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { Vulnerability, VulnStatus } from "@/types/vulnerability";
 
@@ -26,6 +26,8 @@ export function useVulns(operationId: string): UseVulnsReturn {
   const [vulns, setVulns] = useState<Vulnerability[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const vulnsRef = useRef(vulns);
+  vulnsRef.current = vulns;
 
   const fetchVulns = useCallback(async () => {
     setLoading(true);
@@ -50,13 +52,20 @@ export function useVulns(operationId: string): UseVulnsReturn {
 
   const updateStatus = useCallback(
     async (vulnId: string, newStatus: VulnStatus) => {
-      await api.put(
-        `/operations/${operationId}/vulnerabilities/${vulnId}/status`,
-        { status: newStatus },
+      const snapshot = vulnsRef.current;
+      setVulns((cur) =>
+        cur.map((v) => (v.id === vulnId ? { ...v, status: newStatus } : v)),
       );
-      setVulns((prev) =>
-        prev.map((v) => (v.id === vulnId ? { ...v, status: newStatus } : v)),
-      );
+      try {
+        await api.put(
+          `/operations/${operationId}/vulnerabilities/${vulnId}/status`,
+          { status: newStatus },
+        );
+      } catch (err: unknown) {
+        setVulns(snapshot);
+        const msg = err instanceof Error ? err.message : "Failed to update vulnerability status";
+        setError(msg);
+      }
     },
     [operationId],
   );

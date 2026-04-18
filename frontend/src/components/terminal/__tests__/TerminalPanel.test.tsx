@@ -32,6 +32,7 @@ vi.mock("@/hooks/useTerminal", () => ({
     entries: mockEntries,
     prompt: "user@target:~$ ",
     isConnected: mockIsConnected,
+    pending: false,
     sendCommand: mockSendCommand,
     clear: mockClear,
   }),

@@ -31,14 +31,12 @@ export interface OpsecAlert {
   timestamp: string;
 }
 
+const MAX_OPSEC_ALERTS = 50;
+const EMPTY_CONSTRAINTS: ConstraintAlert = { active: false, messages: [], domains: [] };
 let alertCounter = 0;
 
 export function useGlobalAlerts(ws: UseWebSocketReturn | null): GlobalAlerts {
-  const [constraints, setConstraints] = useState<ConstraintAlert>({
-    active: false,
-    messages: [],
-    domains: [],
-  });
+  const [constraints, setConstraints] = useState<ConstraintAlert>(EMPTY_CONSTRAINTS);
   const [opsecAlerts, setOpsecAlerts] = useState<OpsecAlert[]>([]);
 
   const handleConstraintActive = useCallback((data: unknown) => {
@@ -49,7 +47,7 @@ export function useGlobalAlerts(ws: UseWebSocketReturn | null): GlobalAlerts {
   }, []);
 
   const handleConstraintExpired = useCallback(() => {
-    setConstraints({ active: false, messages: [], domains: [] });
+    setConstraints(EMPTY_CONSTRAINTS);
   }, []);
 
   const handleOpsecAlert = useCallback((data: unknown) => {
@@ -60,8 +58,14 @@ export function useGlobalAlerts(ws: UseWebSocketReturn | null): GlobalAlerts {
       severity: d.severity === "error" ? "error" : "warning",
       timestamp: new Date().toISOString(),
     };
-    setOpsecAlerts((prev) => [...prev.slice(-49), alert]);
+    setOpsecAlerts((prev) => [...prev.slice(-(MAX_OPSEC_ALERTS - 1)), alert]);
   }, []);
+
+  // Reset stale alerts when WS reference changes (i.e. operation switch)
+  useEffect(() => {
+    setConstraints(EMPTY_CONSTRAINTS);
+    setOpsecAlerts([]);
+  }, [ws]);
 
   useEffect(() => {
     if (!ws) return;

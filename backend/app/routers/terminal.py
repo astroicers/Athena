@@ -226,6 +226,7 @@ async def _run_ssh_terminal(
     finally:
         try:
             conn.close()
+            await conn.wait_closed()
         except Exception:
             pass
         logger.info("SSH terminal session closed for %s", hostname)

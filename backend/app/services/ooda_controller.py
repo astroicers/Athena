@@ -198,7 +198,8 @@ class OODAController:
                 try:
                     constraints = await ce.evaluate(db, operation_id)
                     noise_remaining = getattr(constraints, "noise_budget_remaining", 999)
-                except Exception:
+                except Exception as ce_exc:
+                    logger.warning("Constraint engine failed, defaulting noise_remaining=999: %s", ce_exc)
                     noise_remaining = 999  # If constraint engine fails, allow recon
 
                 if noise_remaining < _RECON_NOISE_COST:
@@ -266,8 +267,8 @@ class OODAController:
             try:
                 await self._ws.broadcast(operation_id, "constraint.active",
                     constraints.model_dump())
-            except Exception:
-                pass
+            except Exception as ws_exc:
+                logger.debug("WS broadcast constraint.active failed: %s", ws_exc)
 
         # -- 1.5. ATTACK GRAPH REBUILD --
         from app.services.attack_graph_engine import AttackGraphEngine
@@ -319,8 +320,8 @@ class OODAController:
                 "auto_approved": decision.get("auto_approved"),
                 "reason": decide_summary,
             })
-        except Exception:
-            pass  # fire-and-forget
+        except Exception as ws_exc:
+            logger.debug("WS broadcast decision.result failed: %s", ws_exc)
         await self._advance_mission_step(db, operation_id, step_index=1, status="completed")
         await self._advance_mission_step(db, operation_id, step_index=2, status="running")
         await self._write_log(db, operation_id, "info",
@@ -684,8 +685,8 @@ class OODAController:
                     ),
                 },
             )
-        except Exception:
-            pass  # fire-and-forget
+        except Exception as ws_exc:
+            logger.debug("WS broadcast ooda.completed failed: %s", ws_exc)
 
         # Return iteration summary
         final = await db.fetchrow(
@@ -753,8 +754,8 @@ class OODAController:
             await self._ws.broadcast(
                 operation_id, "ooda.phase", {"phase": phase.value}
             )
-        except Exception:
-            pass  # fire-and-forget per SPEC-007
+        except Exception as ws_exc:
+            logger.debug("WS broadcast ooda.phase failed: %s", ws_exc)
 
     async def _detect_cross_category_pivot(
         self,
@@ -817,8 +818,8 @@ class OODAController:
                 "id": log_id, "timestamp": now, "severity": severity,
                 "source": "ooda_controller", "message": message,
             })
-        except Exception:
-            pass  # fire-and-forget
+        except Exception as ws_exc:
+            logger.debug("WS broadcast log.new failed: %s", ws_exc)
 
     async def _advance_mission_step(
         self, db: asyncpg.Connection, operation_id: str,
@@ -834,7 +835,7 @@ class OODAController:
         )
         if not row:
             return
-        step_id = row["id"] if isinstance(row, dict) or hasattr(row, "__getitem__") else row[0]
+        step_id = row["id"]
         if status == "running":
             await db.execute(
                 "UPDATE mission_steps SET status = $1, started_at = $2 WHERE id = $3",
@@ -883,8 +884,8 @@ def build_ooda_controller() -> "OODAController":
     if not settings.MOCK_C2_ENGINE:
         try:
             c2_engine = C2EngineClient(settings.C2_ENGINE_URL, settings.C2_ENGINE_API_KEY)
-        except Exception:
-            logger.warning("build_ooda_controller: failed to connect to C2 engine, falling back to mock")
+        except Exception as c2_exc:
+            logger.warning("build_ooda_controller: failed to connect to C2 engine, falling back to mock: %s", c2_exc)
 
     mcp_engine_client = None
     if settings.MCP_ENABLED:

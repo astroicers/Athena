@@ -13,7 +13,10 @@
     "clear": "CLEAR",
     "connected": "CONNECTED",
     "offline": "OFFLINE",
-    "disconnected": "DISCONNECTED"
+    "disconnected": "DISCONNECTED",
+    "errorBoundaryTitle": "Something went wrong",
+    "errorBoundaryMessage": "An unexpected error occurred.",
+    "errorBoundaryRetry": "Try again"
   },
   "Nav": {
     "operations": "Operations",

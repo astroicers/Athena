@@ -45,7 +45,7 @@ class MockModeMiddleware(BaseHTTPMiddleware):
             response.headers["X-Athena-Mock"] = ",".join(mock_flags)
         return response
 
-from app.database import db_manager, get_db, init_db
+from app.database import db_manager, init_db
 from app.services.ooda_scheduler import start_scheduler, stop_scheduler
 from app.routers import (
     admin,
@@ -114,19 +114,26 @@ async def lifespan(app: FastAPI):
         app.state.mcp_manager = mcp_manager
         set_mcp_manager(mcp_manager)
 
-        if mcp_manager:
-            from app.clients.mcp_engine_client import MCPEngineClient
-            _mcp_client = MCPEngineClient(mcp_manager)
-            _engine_registry.register("mcp", _mcp_client)
-            _engine_registry.register("mcp_ssh", _mcp_client)
-            logger.info("MCP engines registered in engine_registry")
+        from app.clients.mcp_engine_client import MCPEngineClient
+        _mcp_client = MCPEngineClient(mcp_manager)
+        _engine_registry.register("mcp", _mcp_client)
+        _engine_registry.register("mcp_ssh", _mcp_client)
+        logger.info("MCP engines registered in engine_registry")
 
     yield  # application runs here
 
+    # Shutdown: close engine clients, MCP, scheduler, DB
+    for engine_name in ("c2", "mock"):
+        try:
+            client = _engine_registry.get(engine_name)
+            if client and hasattr(client, "aclose"):
+                await client.aclose()
+        except Exception:
+            logger.debug("Failed to close %s engine client", engine_name)
     if mcp_manager is not None:
         await mcp_manager.shutdown()
-        from app.services.mcp_client_manager import set_mcp_manager as _set
-        _set(None)
+        from app.services.mcp_client_manager import set_mcp_manager
+        set_mcp_manager(None)
     stop_scheduler()
     await db_manager.shutdown()
 

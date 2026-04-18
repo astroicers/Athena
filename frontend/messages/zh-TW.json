@@ -13,7 +13,10 @@
     "clear": "清空",
     "connected": "已連接",
     "offline": "離線",
-    "disconnected": "已斷線"
+    "disconnected": "已斷線",
+    "errorBoundaryTitle": "發生錯誤",
+    "errorBoundaryMessage": "發生了未預期的錯誤。",
+    "errorBoundaryRetry": "重試"
   },
   "Nav": {
     "operations": "作戰行動",

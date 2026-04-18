@@ -30,6 +30,15 @@ from app.services.mission_profile_loader import get_all_profiles, get_profile
 
 router = APIRouter()
 
+# Whitelist of columns that may appear in PATCH /operations/:id SET clauses.
+# Derived from OperationUpdate schema fields + the auto-managed updated_at.
+_ALLOWED_UPDATE_COLUMNS: frozenset[str] = frozenset({
+    "status", "current_ooda_phase", "threat_level", "success_rate",
+    "techniques_executed", "techniques_total", "active_agents",
+    "data_exfiltrated_bytes", "automation_mode", "risk_threshold",
+    "mission_profile", "updated_at",
+})
+
 
 def _row_to_operation(row: asyncpg.Record) -> Operation:
     """Convert a DB row to an Operation model."""
@@ -122,6 +131,11 @@ async def update_operation(
     now = datetime.now(timezone.utc)
     updates["updated_at"] = now
 
+    # Validate column names against whitelist to prevent SQL injection
+    bad_cols = set(updates) - _ALLOWED_UPDATE_COLUMNS
+    if bad_cols:
+        raise HTTPException(status_code=400, detail=f"Invalid update fields: {bad_cols}")
+
     set_clause = ", ".join(f"{k} = ${i+1}" for i, k in enumerate(updates))
     values = [v.value if hasattr(v, "value") else v for v in updates.values()]
     values.append(operation_id)
@@ -142,7 +156,6 @@ async def get_operation_summary(
     operation_id: str,
     db: asyncpg.Connection = Depends(get_db),
 ):
-
     # Operation
     op_row = await db.fetchrow("SELECT * FROM operations WHERE id = $1", operation_id)
     if not op_row:

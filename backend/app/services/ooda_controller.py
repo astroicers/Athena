@@ -379,7 +379,7 @@ class OODAController:
                     if pre_noise_row and pre_noise_row["noise_level"]
                     else "medium"
                 )
-                noise_points = noise_map.get(pre_noise_level, 5)
+                noise_points = noise_map.get(pre_noise_level, NOISE_POINTS["medium"])
                 if noise_budget_remaining - noise_points < 0:
                     logger.warning(
                         "OODA[%s] PRE-ACT OPSEC: technique %s noise=%s (%d pts) "

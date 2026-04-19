@@ -183,7 +183,7 @@ class DecisionEngine:
         nr_decision = matrix.get(
             (technique_noise, technique_risk.value), False
         )
-        noise_points = _NOISE_POINTS.get(technique_noise, 5)
+        noise_points = _NOISE_POINTS.get(technique_noise, _NOISE_POINTS["medium"])
 
         # -- NR2: Noise budget enforcement --
         noise_budget_remaining = 999  # default unlimited

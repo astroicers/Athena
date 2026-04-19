@@ -238,3 +238,14 @@ async def web_http_fetch(
   - [ADR-020] Non-SSH Initial Access
   - [SPEC-053] Orient-Driven Pivot and Metasploit One-Shot Exploit
   - [SPEC-054] Relay-Aware Exploit Selection
+  - [SPEC-055] Cloud SSRF-to-IMDS Credential Exfiltration
+
+---
+
+## 實作完成紀錄
+
+| 日期 | 項目 |
+|------|------|
+| 2026-04-17 | Phase 1 完成：`web_http_fetch` + `web_ssrf_probe` MCP tools, Orient Rule #10/#11, engine_router web exploit routing, fact schema `cloud.aws.*` |
+| 2026-04-17 | E2E 驗證通過：flAWS.cloud Level 5 自動 SSRF → IMDS → credential exfiltration (`cloud.aws.iam_credential` fact 成功寫入) |
+| 2026-04-17 | Code review: 統一 NOISE_POINTS 常量、IAM role name 格式驗證、decision engine threshold bypass 修正 |

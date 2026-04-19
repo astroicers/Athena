@@ -11,6 +11,7 @@
 """Act phase — route execution to MCP attack-executor, C2 engine, or mock."""
 
 import logging
+import re
 import uuid
 from datetime import datetime, timezone
 
@@ -99,6 +100,14 @@ def _is_web_exploit_technique(technique_id: str, engine: str) -> bool:
     if engine != "mcp":
         return False
     return technique_id in _WEB_EXPLOIT_TECHNIQUES
+
+
+_IAM_ROLE_NAME_RE = re.compile(r"^[\w+=,.@\-]{1,128}$")
+
+
+def _is_valid_iam_role_name(name: str) -> bool:
+    """Reject HTML, whitespace blobs, or other garbage before chaining IMDS step 2."""
+    return bool(_IAM_ROLE_NAME_RE.match(name))
 
 
 _TERMINAL_ERRORS: list[str] = [
@@ -527,7 +536,7 @@ class EngineRouter:
                 pass
             if body1 and not body1.startswith("{") and not body1.startswith("[") and not body1.startswith("<"):
                 role_name = body1.split("\n")[0].strip()
-                if role_name:
+                if role_name and _is_valid_iam_role_name(role_name):
                     credential_url = f"{ssrf_url.rstrip('/')}/{role_name}"
                     result = await self._mcp_engine.execute(
                         "web-scanner:web_http_fetch",

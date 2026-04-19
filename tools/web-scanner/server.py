@@ -10,6 +10,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import shutil
 import urllib.parse
 from pathlib import Path
@@ -756,7 +757,7 @@ async def web_ssrf_probe(target_url: str) -> str:
                         if role_result:
                             _, role_body = role_result
                             role_name = role_body.strip().split("\n")[0].strip()
-                            if role_name and "<!doctype" not in role_name.lower():
+                            if role_name and re.match(r"^[\w+=,.@\-]{1,128}$", role_name):
                                 facts.append({
                                     "trait": "cloud.aws.imds_role",
                                     "value": role_name,

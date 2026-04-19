@@ -73,6 +73,9 @@ class Settings(BaseSettings):
     RELAY_SSH_PORT: int = 22
     RELAY_LPORT: int = 4444
     RELAY_ATHENA_HOST: str = ""
+    # Multi-relay support: JSON array of relay configs
+    # Format: [{"name":"dmz","ip":"10.0.1.5","ssh_user":"relay","lport":4444}, ...]
+    RELAY_CONFIGS: str = ""
     PERSISTENCE_ENABLED: bool = False
     # MCP integration
     MCP_ENABLED: bool = True

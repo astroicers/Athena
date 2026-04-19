@@ -339,6 +339,30 @@ Then:
 - Phase 1 limitation: recommend only — actual cloud CLI execution is deferred to Phase 2
 - Include in situation_assessment: "AWS IAM credential exfiltrated, cloud lateral movement available"
 
+### 12. AD Enumeration Chain
+When the intelligence shows:
+- `ad.bloodhound_data` or `ad.attack_path` facts exist
+Then:
+- PRIORITIZE the next technique along the attack_path (e.g. T1003.006 DCSync if path shows domain admin reachable)
+- If no bloodhound data exists AND target OS is Windows or facts indicate AD domain (host.ad_domain), \
+recommend T1087.002 (Account Discovery: Domain Account) first, then bloodhound_collect
+- Engine: "mcp" for AD MCP tools (bloodhound-collector, credential-dumper, etc.)
+
+### 13. Kerberos Ticket Forge Priority
+When the intelligence shows:
+- `credential.ntlm_hash` containing krbtgt -> recommend T1558.001 (Golden Ticket) via impacket-ad
+- `ad.kerberoastable_user` fact exists -> recommend hashcat_crack_kerberoast first, then impacket_get_tgt
+- `credential.ntlmv2_hash` fact exists -> recommend T1110.002 hashcat_crack_ntlm
+- Engine: "mcp" for hashcat-crack, impacket-ad tools
+
+### 14. AD Persistence Timing
+AD persistence techniques (T1556.001 Skeleton Key, T1547.005 Custom SSP, T1547.008 DNSAdmins) \
+should ONLY be recommended when:
+- Target is already compromised (is_compromised=true)
+- Privilege escalation confirmed (ad.acl_edge or ad.gpo_modified facts exist, or privilege_level=domain_admin)
+If these prerequisites are NOT met, REDUCE confidence to below 0.3 for persistence techniques. \
+Premature persistence increases detection risk without tactical benefit.
+
 ## Output Contract
 Respond with ONLY valid JSON (no markdown, no extra text). The JSON must match this schema exactly:
 {{
@@ -427,6 +451,13 @@ Next Logical Stage: {next_stage}
 
 ## 7.8. AVAILABLE MCP TOOLS (stateless query tools)
 {mcp_tools_summary}
+
+## 7.8.1. AD DOMAIN INTELLIGENCE TOOLS (MCP)
+Available AD/credential MCP tools for engine="mcp":
+{ad_mcp_tools_summary}
+
+## 7.8.2. AD DOMAIN INTELLIGENCE SUMMARY
+{ad_domain_summary}
 
 ## 7.9. INFRASTRUCTURE (SPEC-054 relay awareness)
 {relay_infrastructure}
@@ -961,6 +992,41 @@ class OrientEngine:
             persist_info = "No persistence established yet."
         lateral_str = lateral_str + f"\n\nPersistence status: {persist_info}"
 
+        # Q12.4: Generate AD MCP tool summary from engine_router routing table
+        # (auto-generated to prevent drift between router and Orient prompt)
+        try:
+            from app.services.engine_router import _AD_TECHNIQUE_TO_MCP
+            ad_mcp_lines = []
+            seen_tools: set[str] = set()
+            for tech_id, (server, tool) in _AD_TECHNIQUE_TO_MCP.items():
+                qualified = f"{server}:{tool}"
+                if qualified not in seen_tools:
+                    seen_tools.add(qualified)
+                    ad_mcp_lines.append(f"- {qualified} (routes {tech_id})")
+            ad_mcp_tools_summary = "\n".join(ad_mcp_lines) if ad_mcp_lines else "(no AD MCP tools)"
+        except ImportError:
+            ad_mcp_tools_summary = "(AD MCP tools unavailable)"
+
+        # Q12.5: AD domain intelligence summary
+        # Exclude invalidated credentials (%.invalidated) to avoid confusing the LLM
+        ad_facts = await db.fetch(
+            "SELECT trait, value FROM facts "
+            "WHERE operation_id = $1 AND ("
+            "  trait LIKE 'ad.%%' OR trait LIKE 'credential.ntlm%%' "
+            "  OR trait LIKE 'credential.krbtgt%%' OR trait LIKE 'credential.kerberos%%' "
+            "  OR trait LIKE 'credential.service_hash%%' OR trait LIKE 'credential.ntds%%'"
+            ") AND trait NOT LIKE '%%.invalidated' "
+            "ORDER BY collected_at DESC LIMIT 20",
+            operation_id,
+        )
+        if ad_facts:
+            ad_lines = []
+            for r in ad_facts:
+                ad_lines.append(f"  - {r['trait']}: {r['value'][:120]}")
+            ad_domain_summary = "\n".join(ad_lines)
+        else:
+            ad_domain_summary = "No AD domain intelligence collected yet."
+
         # Q13: MCP tool inventory
         mcp_tools_summary = "(MCP disabled)"
         if settings.MCP_ENABLED:
@@ -1040,6 +1106,8 @@ class OrientEngine:
             playbook_summary=playbook_summary,
             lateral_opportunities=lateral_str,
             mcp_tools_summary=mcp_tools_summary,
+            ad_mcp_tools_summary=ad_mcp_tools_summary,
+            ad_domain_summary=ad_domain_summary,
             relay_infrastructure=_format_relay_infrastructure(),
             attack_graph_summary=attack_graph_summary or "Not available.",
             known_vulnerabilities=known_vulnerabilities_str,

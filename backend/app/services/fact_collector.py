@@ -172,6 +172,15 @@ class FactCollector:
             return FactCategory.CREDENTIAL
         if trait.startswith("cloud."):
             return FactCategory.CREDENTIAL
+        # AD domain intelligence -> HOST (domain-level context)
+        if trait.startswith("ad."):
+            return FactCategory.HOST
+        # Kerberos ticket/TGT artifacts -> CREDENTIAL
+        if any(kw in trait for kw in ("ticket", "tgt", "kerberos")):
+            return FactCategory.CREDENTIAL
+        # NTLM relay / coercion -> NETWORK
+        if any(kw in trait for kw in ("relay", "coerce")):
+            return FactCategory.NETWORK
         if trait.startswith("web."):
             return FactCategory.WEB
         if "network" in trait or "ip" in trait:

@@ -1143,3 +1143,274 @@ rules:
     platforms:
       - "windows"
     description: "Permission Groups Discovery: Domain Groups"
+
+  # =========================================================================
+  # AD Attack Chain — Enumeration, Credential, Ticket, Persistence
+  # (SPEC-060/061 OODA integration)
+  # =========================================================================
+
+  # --- AD Enumeration ---
+  - technique_id: "T1482"
+    tactic_id: "TA0007"
+    required_facts:
+      - "credential.domain_user"
+      - "host.ad_domain"
+    produced_facts:
+      - "ad.domain_trusts"
+    risk_level: "low"
+    base_confidence: 0.85
+    information_gain: 0.6
+    effort: 1
+    enables:
+      - "T1550.003"
+    alternatives: []
+    platforms:
+      - "windows"
+    description: "Domain Trust Discovery"
+
+  # --- Coercion -> Relay Chain ---
+  - technique_id: "T1187"
+    tactic_id: "TA0006"
+    required_facts:
+      - "network.host.ip"
+    produced_facts:
+      - "ad.coerced_auth"
+    risk_level: "medium"
+    base_confidence: 0.7
+    information_gain: 0.75
+    effort: 2
+    enables:
+      - "T1557.001"
+    alternatives: []
+    platforms:
+      - "windows"
+    description: "Forced Authentication (PetitPotam/PrinterBug)"
+
+  - technique_id: "T1557.001"
+    tactic_id: "TA0006"
+    required_facts:
+      - "ad.coerced_auth"
+    produced_facts:
+      - "credential.ntlmv2_hash"
+    risk_level: "high"
+    base_confidence: 0.65
+    information_gain: 0.8
+    effort: 3
+    enables:
+      - "T1550.002"
+    alternatives: []
+    platforms:
+      - "windows"
+    description: "Adversary-in-the-Middle: LLMNR/NBT-NS Poisoning and SMB Relay"
+
+  # --- Hash Cracking ---
+  - technique_id: "T1110.002"
+    tactic_id: "TA0006"
+    required_facts:
+      - "credential.service_hash"
+    produced_facts:
+      - "credential.cleartext"
+    risk_level: "low"
+    base_confidence: 0.6
+    information_gain: 0.7
+    effort: 2
+    enables:
+      - "T1550.003"
+      - "T1558.001"
+    alternatives: []
+    platforms:
+      - "windows"
+      - "linux"
+    description: "Brute Force: Password Cracking (Hashcat)"
+
+  # --- AD Privilege Escalation ---
+  - technique_id: "T1222.001"
+    tactic_id: "TA0004"
+    required_facts:
+      - "credential.domain_user"
+      - "host.ad_domain"
+      - "ad.bloodhound_data"
+    produced_facts:
+      - "ad.acl_edge"
+    risk_level: "high"
+    base_confidence: 0.55
+    information_gain: 0.85
+    effort: 3
+    enables:
+      - "T1003.006"
+      - "T1484.001"
+    alternatives: []
+    platforms:
+      - "windows"
+    description: "File and Directory Permissions Modification: ACL Abuse (WriteDACL/GenericAll)"
+
+  - technique_id: "T1484.001"
+    tactic_id: "TA0004"
+    required_facts:
+      - "ad.acl_edge"
+      - "host.ad_domain"
+    produced_facts:
+      - "ad.gpo_modified"
+    risk_level: "high"
+    base_confidence: 0.5
+    information_gain: 0.8
+    effort: 3
+    enables:
+      - "T1556.001"
+    alternatives: []
+    platforms:
+      - "windows"
+    description: "Domain Policy Modification: Group Policy Modification"
+
+  # --- AD Certificate Services ---
+  - technique_id: "T1649"
+    tactic_id: "TA0006"
+    required_facts:
+      - "credential.domain_user"
+      - "host.ad_domain"
+    produced_facts:
+      - "ad.adcs_vuln"
+    risk_level: "medium"
+    base_confidence: 0.7
+    information_gain: 0.8
+    effort: 2
+    enables:
+      - "T1550.003"
+    alternatives: []
+    platforms:
+      - "windows"
+    description: "Steal or Forge Authentication Certificates (AD CS)"
+
+  # --- AD Credential Dumping (MCP variants) ---
+  - technique_id: "T1003.002"
+    tactic_id: "TA0006"
+    required_facts:
+      - "credential.domain_admin"
+    produced_facts:
+      - "credential.ntlm_hash"
+    risk_level: "high"
+    base_confidence: 0.85
+    information_gain: 0.7
+    effort: 1
+    enables:
+      - "T1550.002"
+    alternatives:
+      - "T1003.001"
+    platforms:
+      - "windows"
+    description: "OS Credential Dumping: Security Account Manager (SAM)"
+
+  - technique_id: "T1003.004"
+    tactic_id: "TA0006"
+    required_facts:
+      - "credential.domain_admin"
+    produced_facts:
+      - "credential.lsa_secrets"
+    risk_level: "high"
+    base_confidence: 0.8
+    information_gain: 0.75
+    effort: 1
+    enables:
+      - "T1550.002"
+    alternatives:
+      - "T1003.001"
+    platforms:
+      - "windows"
+    description: "OS Credential Dumping: LSA Secrets"
+
+  # --- AD Persistence (requires domain admin or equivalent) ---
+  - technique_id: "T1556.001"
+    tactic_id: "TA0003"
+    required_facts:
+      - "credential.domain_admin"
+      - "host.ad_domain"
+    produced_facts:
+      - "host.persistence"
+      - "ad.skeleton_key"
+    risk_level: "critical"
+    base_confidence: 0.8
+    information_gain: 0.3
+    effort: 2
+    enables: []
+    alternatives:
+      - "T1547.005"
+    platforms:
+      - "windows"
+    description: "Modify Authentication Process: Domain Controller Authentication (Skeleton Key)"
+
+  - technique_id: "T1547.005"
+    tactic_id: "TA0003"
+    required_facts:
+      - "credential.domain_admin"
+      - "host.ad_domain"
+    produced_facts:
+      - "host.persistence"
+      - "ad.custom_ssp"
+    risk_level: "critical"
+    base_confidence: 0.75
+    information_gain: 0.3
+    effort: 2
+    enables: []
+    alternatives:
+      - "T1556.001"
+    platforms:
+      - "windows"
+    description: "Boot or Logon Autostart Execution: Security Support Provider (Custom SSP)"
+
+  - technique_id: "T1547.008"
+    tactic_id: "TA0003"
+    required_facts:
+      - "ad.acl_edge"
+      - "host.ad_domain"
+    produced_facts:
+      - "host.persistence"
+    risk_level: "high"
+    base_confidence: 0.6
+    information_gain: 0.25
+    effort: 2
+    enables: []
+    alternatives:
+      - "T1556.001"
+    platforms:
+      - "windows"
+    description: "Boot or Logon Autostart Execution: DNSAdmins DLL Injection"
+
+  # --- Password Spray (via NetExec) ---
+  - technique_id: "T1110.003"
+    tactic_id: "TA0001"
+    required_facts:
+      - "host.ad_users"
+      - "host.ad_domain"
+    produced_facts:
+      - "credential.domain_user"
+    risk_level: "medium"
+    base_confidence: 0.5
+    information_gain: 0.65
+    effort: 2
+    enables:
+      - "T1087.002"
+      - "T1558.003"
+    alternatives:
+      - "T1110.001"
+    platforms:
+      - "windows"
+    description: "Brute Force: Password Spraying (NetExec)"
+
+  # --- SID History Injection ---
+  - technique_id: "T1134.005"
+    tactic_id: "TA0004"
+    required_facts:
+      - "credential.domain_admin"
+      - "ad.domain_trusts"
+    produced_facts:
+      - "ad.sid_history"
+    risk_level: "critical"
+    base_confidence: 0.7
+    information_gain: 0.8
+    effort: 3
+    enables:
+      - "T1550.003"
+    alternatives: []
+    platforms:
+      - "windows"
+    description: "Access Token Manipulation: SID-History Injection"

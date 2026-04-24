@@ -1,0 +1,19 @@
+# Athena MCP Tool Metadata
+tool_id: "hashcat-crack"
+name: "Hashcat Cracker"
+description: "Hash cracking with Hashcat: AS-REP Roasting, Kerberoasting, NTLM hash cracking, session status monitoring"
+category: "credential_access"
+risk_level: "high"
+mitre_techniques: ["T1110.002"]
+output_traits: ["credential.cracked_password", "credential.crack_progress"]
+
+mcp:
+  transport: "stdio"
+  command: "python"
+  args: ["-m", "server"]
+  http_url: "http://mcp-hashcat-crack:8080/mcp"
+  tool_prefix: "hashcat"
+
+docker:
+  port: 58113
+  environment: {}

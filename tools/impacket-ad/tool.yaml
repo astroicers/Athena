@@ -1,0 +1,19 @@
+# Athena MCP Tool Metadata
+tool_id: "impacket-ad"
+name: "Impacket AD Kerberos"
+description: "Kerberos ticket attacks: Golden/Silver Ticket forgery, Over-Pass-the-Hash, S4U delegation abuse, SID lookup"
+category: "credential_access"
+risk_level: "critical"
+mitre_techniques: ["T1558.001", "T1558.002", "T1550.003"]
+output_traits: ["credential.golden_ticket", "credential.silver_ticket", "credential.tgt", "credential.service_ticket", "ad.delegation_abuse", "ad.domain_sid", "ad.domain_account"]
+
+mcp:
+  transport: "stdio"
+  command: "python"
+  args: ["-m", "server"]
+  http_url: "http://mcp-impacket-ad:8080/mcp"
+  tool_prefix: "impacket_ad"
+
+docker:
+  port: 58108
+  environment: {}

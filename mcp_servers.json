@@ -220,6 +220,84 @@
       "enabled": true,
       "description": "Multi-cloud security compliance audit (AWS/Azure/GCP/Alibaba/Oracle)",
       "tool_prefix": "scoutsuite-audit"
+    },
+    "impacket-ad": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "server"
+      ],
+      "env": {},
+      "http_url": "http://mcp-impacket-ad:8080/mcp",
+      "enabled": true,
+      "description": "Kerberos ticket attacks: Golden/Silver Ticket forgery, Over-Pass-the-Hash, S4U delegation abuse",
+      "tool_prefix": "impacket_ad"
+    },
+    "ad-exploiter": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "server"
+      ],
+      "env": {},
+      "http_url": "http://mcp-ad-exploiter:8080/mcp",
+      "enabled": true,
+      "description": "AD ACL/GPO/Delegation exploitation: WriteDACL, GenericAll, RBCD, GPO abuse, SID-History, AdminSDHolder",
+      "tool_prefix": "ad_exploit"
+    },
+    "coercion-tools": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "server"
+      ],
+      "env": {},
+      "http_url": "http://mcp-coercion-tools:8080/mcp",
+      "enabled": true,
+      "description": "Authentication coercion attacks: PetitPotam, PrinterBug, DFSCoerce, coercion scanning",
+      "tool_prefix": "coercion"
+    },
+    "ad-persistence": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "server"
+      ],
+      "env": {},
+      "http_url": "http://mcp-ad-persistence:8080/mcp",
+      "enabled": true,
+      "description": "AD persistence techniques: Skeleton Key, DNSAdmins DLL abuse, DSRM backdoor, custom SSP",
+      "tool_prefix": "ad_persist"
+    },
+    "ntlm-relay": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "server"
+      ],
+      "env": {},
+      "http_url": "http://mcp-ntlm-relay:8080/mcp",
+      "enabled": true,
+      "description": "NTLM relay attacks: relay to LDAP (RBCD delegation), relay to SMB (command exec), listener lifecycle",
+      "tool_prefix": "ntlm_relay"
+    },
+    "hashcat-crack": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "server"
+      ],
+      "env": {},
+      "http_url": "http://mcp-hashcat-crack:8080/mcp",
+      "enabled": true,
+      "description": "Hash cracking with Hashcat: AS-REP Roasting, Kerberoasting, NTLM hash cracking",
+      "tool_prefix": "hashcat"
     }
   }
 }

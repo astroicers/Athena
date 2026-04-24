@@ -1,0 +1,19 @@
+# Athena MCP Tool Metadata
+tool_id: "ad-persistence"
+name: "AD Persistence Suite"
+description: "AD persistence techniques: Skeleton Key, DNSAdmins DLL abuse, DSRM backdoor, custom SSP registration"
+category: "persistence"
+risk_level: "critical"
+mitre_techniques: ["T1556.001", "T1547.005", "T1098"]
+output_traits: ["ad.skeleton_key", "ad.dnsadmins_dll", "ad.dsrm_enabled", "ad.custom_ssp"]
+
+mcp:
+  transport: "stdio"
+  command: "python"
+  args: ["-m", "server"]
+  http_url: "http://mcp-ad-persistence:8080/mcp"
+  tool_prefix: "ad_persist"
+
+docker:
+  port: 58111
+  environment: {}

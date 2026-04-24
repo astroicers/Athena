@@ -5,7 +5,8 @@ description = "Athena MCP tool server: Responder LLMNR/NBT-NS poisoning and hash
 requires-python = ">=3.11"
 dependencies = [
     "mcp>=1.6.0",
-    "netifaces>=0.11.0",
+    # Responder itself is invoked as subprocess (RESPONDER_PATH="/opt/Responder/Responder.py"),
+    # this tool's server.py is just a subprocess wrapper; no netifaces binding needed here.
 ]
 
 [project.optional-dependencies]

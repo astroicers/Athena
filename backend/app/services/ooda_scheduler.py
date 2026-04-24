@@ -79,7 +79,16 @@ async def start_auto_loop(
         logger.warning("OODA auto-cycle %d for operation %s", meta["iteration_count"], operation_id)
         try:
             async with db_manager.connection() as db:
-                await controller.trigger_cycle(db, operation_id)
+                result = await controller.trigger_cycle(db, operation_id)
+            # Auto-halt: if Orient failed due to LLM unavailable, stop the loop
+            # instead of burning quota on identical failing cycles.
+            if isinstance(result, dict) and result.get("status") == "halted":
+                logger.error(
+                    "OODA auto-cycle halted for operation %s (reason=%s) -- stopping auto loop",
+                    operation_id, result.get("reason"),
+                )
+                await stop_auto_loop(operation_id)
+                return
         except Exception:
             logger.exception("OODA auto-cycle failed for operation %s", operation_id)
 

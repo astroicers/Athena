@@ -48,14 +48,16 @@ async def _run_command(cmd: list[str], timeout: int = 120) -> tuple[str, str, in
 
 @mcp.tool()
 async def responder_start(
-    interface: str = "eth0",
+    interface: str = "",
     analyze_mode: bool = True,
     timeout: int = 120,
 ) -> str:
     """Start Responder for LLMNR/NBT-NS poisoning (default: analyze-only mode).
 
     Args:
-        interface: Network interface to listen on
+        interface: Network interface to listen on. Empty string falls back to
+            ATHENA_LISTEN_IFACE env var, then "eth0". Set ATHENA_LISTEN_IFACE
+            in host-network deployments (e.g. "loopback0" for WSL2 mirrored mode).
         analyze_mode: If True, run in analyze-only mode (passive, no poisoning)
         timeout: Maximum runtime in seconds before auto-stop
 
@@ -64,8 +66,10 @@ async def responder_start(
     """
     facts: list[dict[str, str]] = []
 
+    iface = interface or os.environ.get("ATHENA_LISTEN_IFACE", "eth0")
+
     try:
-        cmd = ["python3", RESPONDER_PATH, "-I", interface]
+        cmd = ["python3", RESPONDER_PATH, "-I", iface]
         if analyze_mode:
             cmd.append("-A")
 
@@ -96,7 +100,7 @@ async def responder_start(
             "value": json.dumps({
                 "session_id": session_id,
                 "pid": proc.pid,
-                "interface": interface,
+                "interface": iface,
                 "analyze_mode": analyze_mode,
                 "status": "running",
             }),
@@ -114,7 +118,7 @@ async def responder_start(
 
         return json.dumps({
             "facts": facts,
-            "raw_output": f"Responder started on {interface} (PID: {proc.pid}, analyze={analyze_mode})",
+            "raw_output": f"Responder started on {iface} (PID: {proc.pid}, analyze={analyze_mode})",
         })
 
     except Exception as exc:

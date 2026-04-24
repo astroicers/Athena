@@ -109,14 +109,23 @@ async def _rdp_handler(
 @_register("winrm")
 async def _winrm_handler(
     target: str, username: str, password: str, port: int, timeout: int,
+    domain: str = "",
 ) -> dict:
+    # NTLM auth: if a domain is given, prefix the username unless caller already did so.
+    if domain and "\\" not in username and "@" not in username:
+        ntlm_user = f"{domain}\\{username}"
+        fact_user = f"{domain}\\{username}"
+    else:
+        ntlm_user = username
+        fact_user = username
+
     def _check():
         import winrm  # noqa: deferred import — pywinrm is sync
         scheme = "https" if port == 5986 else "http"
         session = winrm.Session(
             f"{scheme}://{target}:{port}/wsman",
-            auth=(username, password), transport="ntlm",
-            read_timeout_sec=timeout, operation_timeout_sec=timeout,
+            auth=(ntlm_user, password), transport="ntlm",
+            read_timeout_sec=timeout + 5, operation_timeout_sec=timeout,
         )
         result = session.run_ps("whoami")
         return result.status_code, result.std_out.decode(errors="ignore").strip()
@@ -127,14 +136,17 @@ async def _winrm_handler(
             loop.run_in_executor(None, _check), timeout=timeout + 5,
         )
         if status_code == 0 and whoami:
+            # Extract trait fact. If domain auth succeeded, mark as domain_user fact
+            # so Orient can route to AD techniques (T1087.002, T1558.004, ...).
+            trait = "credential.domain_user" if domain else "credential.winrm"
             return {
                 "facts": [{
-                    "trait": "credential.winrm",
-                    "value": f"{username}:{password}@{target}:{port}",
+                    "trait": trait,
+                    "value": f"{fact_user}:{password}@{target}:{port}",
                 }],
-                "raw_output": f"WinRM auth success: {username}@{target}:{port} (whoami: {whoami})",
+                "raw_output": f"WinRM auth success: {fact_user}@{target}:{port} (whoami: {whoami})",
             }
-        return {"facts": [], "raw_output": f"WinRM auth_failure: {username}@{target}:{port} (status={status_code})"}
+        return {"facts": [], "raw_output": f"WinRM auth_failure: {fact_user}@{target}:{port} (status={status_code})"}
     except asyncio.TimeoutError:
         return {"facts": [], "raw_output": f"WinRM timeout: {target}:{port}"}
     except Exception as exc:

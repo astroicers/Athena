@@ -5,7 +5,8 @@ description = "Athena MCP tool server: NetExec multi-protocol AD enumeration and
 requires-python = ">=3.11"
 dependencies = [
     "mcp>=1.6.0",
-    "netexec>=1.2.0",
+    # NetExec is invoked as `nxc` subprocess; install from git in Dockerfile
+    # because pypi has no `netexec` package (the project is only on GitHub).
 ]
 
 [project.optional-dependencies]

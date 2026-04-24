@@ -111,3 +111,13 @@ Makefile.pre-asp-upgrade
 
 # Design archive (old .pen files)
 design/archive/
+
+attack Active Directory.pdf
+# Lab binaries (download separately, too large for git)
+lab/windows/sql/SQLEXPR*.exe
+lab/windows/sql/SQL2019-SSEI-Expr.exe
+lab/windows/sql/media/
+lab/windows/sql/extracted/
+lab/windows/prereq/*.msu
+# Offline domain join blobs (generated per-install, include machine credentials)
+lab/windows/*.blob

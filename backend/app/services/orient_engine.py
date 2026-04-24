@@ -85,29 +85,39 @@ def _dict_to_camel_case(d: dict) -> dict:
 
 logger = logging.getLogger(__name__)
 
-# Mock recommendation matching SPEC-007 edge case requirements
+
+class LLMUnavailableError(Exception):
+    """Raised when the Orient LLM backend returns nothing (rate-limit, network,
+    auth). OODA controller catches this to halt the iteration instead of
+    silently falling back to a mock recommendation that mis-directs attacks."""
+
+
+# Mock recommendation used when LLM is unavailable.
+# IMPORTANT: Must not hardcode a specific OS/target (previously was Metasploitable
+# which mis-directed Windows/AD operations). Default to a cheap, always-useful
+# recon technique that refreshes facts for the next iteration.
 _MOCK_RECOMMENDATION = {
     "situation_assessment": (
-        "Target Linux host with multiple services exposed (SSH, HTTP, FTP, Telnet, SMB, MySQL, PostgreSQL). "
-        "No initial access yet. SSH brute force with common default credentials is the highest-confidence "
-        "initial access vector for Metasploitable targets."
+        "LLM backend unavailable. Falling back to safe recon — re-running nmap "
+        "service-version scan to refresh facts. A human operator should intervene "
+        "and either restore LLM connectivity or manually queue a technique."
     ),
-    "recommended_technique_id": "T1110.001",
-    "confidence": 0.92,
+    "recommended_technique_id": "T1046",
+    "confidence": 0.55,
     "reasoning_text": (
-        "Multiple services detected on target. SSH (port 22) is open and Metasploitable "
-        "uses well-known default credentials (msfadmin:msfadmin). Brute force with "
-        "default credential list is the fastest path to initial access."
+        "Without LLM guidance, prefer non-destructive service discovery over "
+        "any credential/exploit attempt. T1046 is safe to re-run and surfaces "
+        "service.open_port facts for the next OODA cycle."
     ),
     "options": [
         {
-            "technique_id": "T1110.001",
-            "technique_name": "Brute Force: Password Guessing",
-            "reasoning": "SSH service open, default credentials likely on Metasploitable target.",
+            "technique_id": "T1046",
+            "technique_name": "Network Service Discovery",
+            "reasoning": "Safe default when LLM is unavailable. Refresh service facts.",
             "risk_level": "low",
-            "recommended_engine": "mcp_credential_checker",
-            "confidence": 0.92,
-            "prerequisites": ["SSH service detected (port 22)"],
+            "recommended_engine": "mcp_nmap",
+            "confidence": 0.55,
+            "prerequisites": [],
         },
         {
             "technique_id": "T1190",
@@ -548,25 +558,27 @@ class OrientEngine:
             else:
                 await self._ws.broadcast(operation_id, "orient.error",
                     {"error": "LLM returned non-JSON"})
-                return {}
+                raise LLMUnavailableError(
+                    f"LLM returned non-JSON response: {llm_response[:200]}"
+                )
 
         # Validate required fields
         _required = ("situation_assessment", "recommended_technique_id", "confidence", "options")
         if not all(k in parsed for k in _required):
-            logger.error(
-                "Orient LLM response missing required fields: %s",
-                [k for k in _required if k not in parsed],
-            )
+            missing = [k for k in _required if k not in parsed]
+            logger.error("Orient LLM response missing required fields: %s", missing)
             if settings.MOCK_LLM:
                 parsed = _MOCK_RECOMMENDATION
             else:
-                return {}
+                raise LLMUnavailableError(
+                    f"LLM response missing required fields: {missing}"
+                )
         elif not isinstance(parsed.get("options"), list) or len(parsed["options"]) < 1:
             logger.error("Orient LLM response has no valid options")
             if settings.MOCK_LLM:
                 parsed = _MOCK_RECOMMENDATION
             else:
-                return {}
+                raise LLMUnavailableError("LLM response has empty/invalid options list")
 
         # SPEC-046: Filter options exceeding mission noise limit
         parsed = await self._filter_options_by_noise(db, parsed, mission_code)
@@ -1185,19 +1197,32 @@ class OrientEngine:
         return system_prompt, user_prompt
 
     async def _call_llm(self, system_prompt: str, user_prompt: str) -> str:
-        """LLM API call via shared LLMClient (API Key / OAuth / OpenAI / mock)."""
+        """LLM API call via shared LLMClient (API Key / OAuth / OpenAI / mock).
+
+        Raises LLMUnavailableError when no backend responds — OODA controller
+        captures this to halt the iteration with a clear error, instead of
+        silently falling back to mock recommendations that mis-direct the
+        attack chain (previously hardcoded Metasploitable SSH).
+
+        Only returns the mock when settings.MOCK_LLM is explicitly true
+        (used by unit tests). Production MUST fail loud.
+        """
         from app.services.llm_client import get_llm_client
 
         result = await get_llm_client().call(system_prompt, user_prompt, task_type="orient_analysis")
         if not result:
             if settings.MOCK_LLM:
-                logger.info("No LLM backend available, using mock recommendation")
-            else:
-                logger.warning(
-                    "LLM backend unavailable (rate-limit / network) — "
-                    "falling back to mock recommendation for auto_full resilience"
-                )
-            return json.dumps(_MOCK_RECOMMENDATION)
+                logger.info("No LLM backend available, MOCK_LLM=true -> using mock recommendation")
+                return json.dumps(_MOCK_RECOMMENDATION)
+            # Fail loud: OODA controller will halt the iteration
+            logger.error(
+                "LLM backend unavailable (rate-limit / network). "
+                "OODA iteration will halt. Fix LLM connectivity and resume."
+            )
+            raise LLMUnavailableError(
+                "LLM backend returned empty response - "
+                "check ANTHROPIC_API_KEY / OPENAI_API_KEY / rate limits"
+            )
         return result
 
     async def _store_recommendation(

@@ -279,18 +279,39 @@ class OODAController:
         # -- 2. ORIENT --
         await self._update_phase(db, operation_id, ooda_id, OODAPhase.ORIENT)
         logger.info("OODA[%s] Orient phase -- calling PentestGPT", ooda_id[:8])
-        recommendation = await self._orient.analyze(
-            db, operation_id, observe_summary,
-            attack_graph_summary=graph_summary,
-        )
+        from app.services.orient_engine import LLMUnavailableError
+        try:
+            recommendation = await self._orient.analyze(
+                db, operation_id, observe_summary,
+                attack_graph_summary=graph_summary,
+            )
+        except LLMUnavailableError as exc:
+            err_msg = f"LLM_UNAVAILABLE: {exc}"
+            logger.warning("OODA[%s] Orient halted: %s", ooda_id[:8], err_msg)
+            await self._write_log(db, operation_id, "error",
+                f"Orient halted -- {err_msg}. Fix LLM connectivity then resume OODA.")
+            await db.execute(
+                "UPDATE ooda_iterations "
+                "SET phase = 'orient', orient_summary = $1, completed_at = NOW() "
+                "WHERE id = $2",
+                err_msg[:1000], ooda_id,
+            )
+            # Broadcast so UI shows red halted state
+            try:
+                await self._ws.broadcast(operation_id, "orient.halted",
+                    {"iteration_id": ooda_id, "error": str(exc)})
+            except Exception:
+                pass
+            return {"status": "halted", "reason": "llm_unavailable", "error": str(exc)}
+
         if not recommendation:
             await self._write_log(db, operation_id, "warning",
-                "Orient phase aborted: LLM unavailable or returned invalid response")
+                "Orient phase aborted: empty recommendation")
             await db.execute(
                 "UPDATE ooda_iterations SET phase = 'orient', completed_at = NOW() WHERE id = $1",
                 ooda_id,
             )
-            return {"status": "aborted", "reason": "orient_llm_unavailable"}
+            return {"status": "aborted", "reason": "orient_empty_recommendation"}
         orient_summary = recommendation.get("situation_assessment", "")
         await db.execute(
             "UPDATE ooda_iterations SET orient_summary = $1 WHERE id = $2",

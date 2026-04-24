@@ -6,4 +6,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN pip install --no-cache-dir "mcp>=1.6.0" "httpx>=0.27" "dnspython>=2.4"
 
+# Enable OpenSSL 3 legacy provider so tools using MD4 (NTLM via pywinrm,
+# impacket against legacy Windows, etc.) don't fail with "unsupported hash type md4".
+RUN printf '%s\n' \
+    'openssl_conf = openssl_init' \
+    '[openssl_init]' \
+    'providers = provider_sect' \
+    '[provider_sect]' \
+    'default = default_sect' \
+    'legacy = legacy_sect' \
+    '[default_sect]' \
+    'activate = 1' \
+    '[legacy_sect]' \
+    'activate = 1' \
+    > /etc/ssl/openssl-legacy.cnf
+ENV OPENSSL_CONF=/etc/ssl/openssl-legacy.cnf
+
 WORKDIR /app

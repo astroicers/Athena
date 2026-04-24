@@ -280,12 +280,13 @@ class MCPClientManager:
             mode = getattr(settings, "MCP_TRANSPORT_MODE", "auto")
             if mode == "auto":
                 if not await self._probe_http(http_url):
-                    # Fallback to stdio in auto mode
-                    if config.command:
-                        await self._connect_stdio(config)
-                        return
+                    # Do NOT fallback to stdio: these MCP tools are designed to run
+                    # as their own container with HTTP transport. Falling back
+                    # tries to spawn `python -m server` inside the backend
+                    # container which doesn't have the tool's deps.
+                    # Better to raise and let the health check retry later.
                     raise ConnectionError(
-                        f"HTTP unreachable and no stdio command for '{config.name}'"
+                        f"MCP HTTP probe failed for '{config.name}' at {http_url}"
                     )
 
             await self._connect_http(config, http_url)
@@ -315,39 +316,91 @@ class MCPClientManager:
         await self._discover_tools(config.name, session)
 
     async def _connect_http(self, config: MCPServerConfig, url: str) -> None:
-        """Connect via HTTP (streamable-http) transport."""
+        """Connect via HTTP (streamable-http) transport.
+
+        MCP SDK's streamablehttp_client uses anyio task groups internally with
+        cancel scopes that MUST be entered/exited in the same task. Our caller
+        (`_connect`) wraps this in asyncio.wait_for which creates a *different*
+        cancel scope on cancellation, and the two collide when the async
+        context manager is exited on a different task than it was entered on.
+
+        Workaround: run the entire transport/session lifetime in a dedicated
+        background task, and signal back via an event when the session is ready.
+        The task owns the context managers for their full lifetime, so cancel
+        scopes stay in the task where they were created.
+        """
+        import anyio
         from mcp import ClientSession
         from mcp.client.streamable_http import streamablehttp_client
 
-        transport_ctx = streamablehttp_client(url=url)
-        try:
-            streams = await transport_ctx.__aenter__()
-            read_stream, write_stream = streams[0], streams[1]
+        ready = asyncio.Event()
+        stop = asyncio.Event()
+        state: dict = {"session": None, "error": None}
 
-            session = ClientSession(read_stream, write_stream)
-            await session.__aenter__()
-            await session.initialize()
-
-            self._transports[config.name] = transport_ctx
-            self._sessions[config.name] = session
-            await self._discover_tools(config.name, session)
-        except Exception:
-            # Clean up transport context on failure; ignore cleanup errors
-            # (anyio cancel-scope RuntimeError can occur during cleanup)
+        async def _lifetime():
             try:
-                await transport_ctx.__aexit__(None, None, None)
-            except Exception:
-                pass
+                async with streamablehttp_client(url=url) as (read_stream, write_stream, _get_session_id):
+                    async with ClientSession(read_stream, write_stream) as session:
+                        await session.initialize()
+                        state["session"] = session
+                        ready.set()
+                        # Hold the contexts open until disconnect is requested.
+                        await stop.wait()
+            except Exception as exc:  # noqa: BLE001
+                state["error"] = exc
+                ready.set()  # unblock caller even on failure
+
+        task = asyncio.create_task(_lifetime(), name=f"mcp-lifetime-{config.name}")
+
+        # Wait for initialize to complete OR fail, bounded.
+        try:
+            await asyncio.wait_for(ready.wait(), timeout=10.0)
+        except asyncio.TimeoutError:
+            stop.set()
+            task.cancel()
+            raise ConnectionError(
+                f"MCP server '{config.name}' did not initialize within 10s"
+            )
+
+        if state["error"] is not None or state["session"] is None:
+            # Lifetime task already exited; don't set stop (would deadlock).
+            raise state["error"] or ConnectionError(
+                f"MCP server '{config.name}' session failed to initialize"
+            )
+
+        self._sessions[config.name] = state["session"]
+        # Keep references to the lifetime-owning task and its stop event so
+        # _disconnect can cleanly shut down the async context managers in the
+        # same task they were entered in.
+        self._transports[config.name] = {"task": task, "stop": stop}
+
+        try:
+            await self._discover_tools(config.name, state["session"])
+        except Exception:
+            # Discovery failed -- shut down the lifetime task
+            stop.set()
+            try:
+                await asyncio.wait_for(task, timeout=5.0)
+            except (asyncio.TimeoutError, Exception):
+                task.cancel()
+            self._sessions.pop(config.name, None)
+            self._transports.pop(config.name, None)
             raise
 
     async def _probe_http(self, url: str) -> bool:
-        """Probe if an HTTP MCP endpoint is reachable (1s timeout)."""
+        """Probe if an HTTP MCP endpoint is reachable.
+
+        Uses a 5s timeout -- 1s is not enough for DNS lookup + TCP handshake
+        in some container networks, which causes anyio/httpx cancel-scope
+        violations during getaddrinfo.
+        """
         try:
             import httpx
-            async with httpx.AsyncClient(timeout=1.0) as client:
+            async with httpx.AsyncClient(timeout=5.0) as client:
                 resp = await client.get(url)
                 return resp.status_code < 500
-        except Exception:
+        except Exception as exc:
+            logger.debug("MCP probe %s failed: %s", url, exc)
             return False
 
     async def _discover_tools(self, server_name: str, session: Any) -> None:
@@ -374,7 +427,13 @@ class MCPClientManager:
     # ------------------------------------------------------------------
 
     async def _disconnect(self, name: str) -> None:
-        """Disconnect a single MCP server session."""
+        """Disconnect a single MCP server session.
+
+        Supports two transport storage formats:
+          1. Legacy: the transport context manager directly (stdio, or old HTTP)
+          2. New HTTP: dict with {"task": <lifetime task>, "stop": <Event>}
+             — lifetime task owns the async context; we signal stop and join it.
+        """
         session = self._sessions.pop(name, None)
         transport = self._transports.pop(name, None)
         self._tools.pop(name, None)
@@ -383,10 +442,33 @@ class MCPClientManager:
             del self._tool_index[k]
 
         try:
-            if session:
-                await session.__aexit__(None, None, None)
-            if transport:
-                await transport.__aexit__(None, None, None)
+            if isinstance(transport, dict) and "task" in transport:
+                # New HTTP lifetime-task model: signal stop + wait for task to exit.
+                # The task will exit its own async context managers in the correct
+                # task, avoiding anyio cancel-scope cross-task violations.
+                stop_ev = transport.get("stop")
+                task = transport.get("task")
+                if stop_ev is not None:
+                    stop_ev.set()
+                if task is not None:
+                    try:
+                        await asyncio.wait_for(task, timeout=5.0)
+                    except asyncio.TimeoutError:
+                        task.cancel()
+                    except Exception:
+                        pass
+            else:
+                # Legacy model: exit session then transport in this task
+                if session:
+                    try:
+                        await session.__aexit__(None, None, None)
+                    except Exception:
+                        pass
+                if transport is not None:
+                    try:
+                        await transport.__aexit__(None, None, None)
+                    except Exception:
+                        pass
         except Exception:
             logger.warning("Error disconnecting MCP server '%s'", name, exc_info=True)
 

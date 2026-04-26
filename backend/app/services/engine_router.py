@@ -924,7 +924,7 @@ class EngineRouter:
             operation_id, result,
         )
         if final.get("status") == "success":
-            await self._mark_target_compromised(db, target_id, result.output)
+            await self._mark_target_compromised(db, target_id, result.output, protocol=protocol)
         if settings.PERSISTENCE_ENABLED and final.get("status") == "success" and cred_row:
             from app.services.persistence_engine import PersistenceEngine  # noqa: PLC0415
             from app.database import get_pool  # noqa: PLC0415
@@ -1031,14 +1031,25 @@ class EngineRouter:
         db: asyncpg.Connection,
         target_id: str,
         output: "str | None",
+        protocol: str = "",
     ) -> None:
-        """SSH success -> update target is_compromised and privilege_level."""
-        privilege = "user"
-        if output:
-            if "uid=0" in output or "root" in output:
-                privilege = "root"
-            elif "sudo" in output.lower():
-                privilege = "sudo"
+        """SSH/WinRM success -> update target is_compromised and privilege_level."""
+        _LINUX_ROOT = ["uid=0", "root@", "# ", "sudo"]
+        _WIN_ADMIN = [
+            "\\Administrator", "\\administrator",
+            "Domain Admins", "NT AUTHORITY\\SYSTEM",
+            "S-1-5-32-544", "BUILTIN\\Administrators",
+        ]
+        out = output or ""
+        if any(x in out for x in _LINUX_ROOT):
+            privilege = "Root"
+        elif any(x in out for x in _WIN_ADMIN):
+            privilege = "Administrator"
+        elif protocol.lower() == "winrm":
+            # WinRM connection itself proves admin-level access
+            privilege = "Administrator"
+        else:
+            privilege = "User"
 
         await db.execute(
             "UPDATE targets SET is_compromised = TRUE, privilege_level = $1, "

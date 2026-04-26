@@ -14,12 +14,24 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useTerminal } from "@/hooks/useTerminal";
 
+type TerminalMode = "winrm" | "ssh" | "msf" | "psql";
+
+const MODE_LABEL: Record<TerminalMode, string> = {
+  winrm: "WinRM",
+  ssh: "SSH",
+  msf: "MSF",
+  psql: "PSQL",
+};
+
 interface TerminalPanelProps {
   operationId: string;
   targetId: string;
   targetName: string;
   targetIp: string;
   onClose: () => void;
+  terminalMode?: TerminalMode;
+  credentialUser?: string;
+  privilegeLevel?: string;
 }
 
 export function TerminalPanel({
@@ -28,6 +40,9 @@ export function TerminalPanel({
   targetName,
   targetIp,
   onClose,
+  terminalMode,
+  credentialUser,
+  privilegeLevel,
 }: TerminalPanelProps) {
   const t = useTranslations("Terminal");
   const tCommon = useTranslations("Common");
@@ -84,13 +99,34 @@ export function TerminalPanel({
     >
       {/* Header bar */}
       <div className="h-9 bg-[var(--color-bg-surface)] border-b border-[var(--color-border)] flex items-center justify-between px-3 shrink-0">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <span className="w-2.5 h-2.5 bg-[var(--color-success)] rounded-full shrink-0" />
-          <span className="text-athena-floor font-mono text-[var(--color-text-primary)]">
-            {t("title")} {targetName} ({targetIp})
+          <span className="text-athena-floor font-mono text-[var(--color-text-primary)] truncate">
+            {t("title")} — {targetName} ({targetIp})
           </span>
+          {terminalMode && (
+            <span className="text-athena-floor font-mono px-1 border border-[var(--color-accent)] text-[var(--color-accent)] rounded shrink-0">
+              {MODE_LABEL[terminalMode]}
+            </span>
+          )}
+          {credentialUser && (
+            <span className="text-athena-floor font-mono px-1 border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded shrink-0">
+              {credentialUser}
+            </span>
+          )}
+          {privilegeLevel && privilegeLevel !== "none" && (
+            <span
+              className={`text-athena-floor font-mono px-1 border rounded shrink-0 ${
+                ["administrator", "root", "system"].includes(privilegeLevel.toLowerCase())
+                  ? "border-[var(--color-error)] text-[var(--color-error)]"
+                  : "border-[var(--color-border)] text-[var(--color-text-tertiary)]"
+              }`}
+            >
+              {privilegeLevel}
+            </span>
+          )}
           {!isConnected && (
-            <span className="text-athena-floor font-mono text-[var(--color-error)]">{tCommon("disconnected")}</span>
+            <span className="text-athena-floor font-mono text-[var(--color-error)] shrink-0">{tCommon("disconnected")}</span>
           )}
         </div>
         <div className="flex items-center gap-2">

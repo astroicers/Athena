@@ -27,7 +27,6 @@ services:
       - "0.0.0.0:58000:8000"
     volumes:
       - backend-data:/app/data
-      - ~/.claude/.credentials.json:/root/.claude/.credentials.json:ro
       - ./mcp_servers.json:/app/mcp_servers.json:ro
     env_file:
       - .env
@@ -36,6 +35,8 @@ services:
       - C2_ENGINE_URL=http://c2-engine:8888
       - C2_ENGINE_API_KEY=${C2_ENGINE_API_KEY:-ADMIN123456}
       - MSF_RPC_HOST=msf-rpc
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8000/api/health"]
       interval: 30s

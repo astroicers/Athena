@@ -34,6 +34,7 @@ interface TargetDetailPanelProps {
   onActivate: () => void;
   onDelete: () => void;
   onOpenTerminal?: () => void;
+  terminalMode?: "winrm" | "ssh" | "msf" | "psql";
 }
 
 /* ── Markdown component overrides ── */
@@ -74,6 +75,13 @@ const MD_COMPONENTS = {
 
 /* ── Component ── */
 
+const MODE_LABEL: Record<string, string> = {
+  winrm: "WinRM",
+  ssh:   "SSH",
+  msf:   "MSF",
+  psql:  "PSQL",
+};
+
 export function TargetDetailPanel({
   target,
   facts,
@@ -82,6 +90,7 @@ export function TargetDetailPanel({
   onActivate,
   onDelete,
   onOpenTerminal,
+  terminalMode,
 }: TargetDetailPanelProps) {
   const t = useTranslations("WarRoom");
   const tHostCard = useTranslations("HostCard");
@@ -195,9 +204,15 @@ export function TargetDetailPanel({
         {target.isCompromised && onOpenTerminal && (
           <button
             onClick={onOpenTerminal}
-            className="px-3 py-1 rounded-[var(--radius)] border border-[var(--color-accent)]/[0.25] bg-[var(--color-accent)]/[0.12] text-[var(--color-accent)] text-athena-floor font-mono font-semibold hover:bg-[var(--color-accent)]/20 transition-colors"
+            title={terminalMode ? `via ${MODE_LABEL[terminalMode]}` : undefined}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-[var(--radius)] border border-[var(--color-accent)]/[0.25] bg-[var(--color-accent)]/[0.12] text-[var(--color-accent)] text-athena-floor font-mono font-semibold hover:bg-[var(--color-accent)]/20 transition-colors"
           >
             {t("terminal")}
+            {terminalMode && (
+              <span className="text-[10px] opacity-60 font-normal tracking-widest">
+                [{MODE_LABEL[terminalMode]}]
+              </span>
+            )}
           </button>
         )}
       </div>

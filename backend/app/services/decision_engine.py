@@ -102,9 +102,20 @@ class DecisionEngine:
         )
         engine = (selected_option or {}).get("recommended_engine", "ssh")
 
-        # Priority: explicit active target > heuristic fallback
+        # Priority: least-recently-executed active target (round-robin across targets)
         target_row = await db.fetchrow(
-            "SELECT id FROM targets WHERE operation_id = $1 AND is_active = TRUE LIMIT 1",
+            """
+            SELECT t.id FROM targets t
+            LEFT JOIN (
+                SELECT te.target_id, MAX(te.created_at) AS last_exec
+                FROM technique_executions te
+                WHERE te.operation_id = $1
+                GROUP BY te.target_id
+            ) recent ON recent.target_id = t.id
+            WHERE t.operation_id = $1 AND t.is_active = TRUE
+            ORDER BY recent.last_exec ASC NULLS FIRST, t.id
+            LIMIT 1
+            """,
             operation_id,
         )
         if not target_row:

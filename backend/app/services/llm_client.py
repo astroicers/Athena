@@ -14,7 +14,8 @@ Fallback order:
 1. Claude API Key (ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN)
 2. Claude OAuth (Claude Code login credentials)
 3. OpenAI (OPENAI_API_KEY)
-4. Returns empty string (caller decides how to handle)
+4. Gemini (GEMINI_API_KEY)
+5. Returns empty string (caller decides how to handle)
 """
 
 import logging
@@ -123,6 +124,24 @@ class LLMClient:
             except Exception as e:
                 logger.warning("OpenAI API failed: %s", e)
 
+        # Fallback to Gemini
+        if settings.GEMINI_API_KEY:
+            try:
+                return await self._call_gemini(
+                    system_prompt, user_prompt, max_tokens, temperature, timeout
+                )
+            except Exception as e:
+                logger.warning("Gemini API failed: %s", e)
+
+        # Fallback to Groq
+        if settings.GROQ_API_KEY:
+            try:
+                return await self._call_groq(
+                    system_prompt, user_prompt, max_tokens, temperature, timeout
+                )
+            except Exception as e:
+                logger.warning("Groq API failed: %s", e)
+
         logger.info("No LLM backend available")
         return ""
 
@@ -223,4 +242,90 @@ class LLMClient:
             choices = data.get("choices", [])
             if not choices:
                 raise ValueError("Empty choices in OpenAI response")
+            return choices[0]["message"]["content"]
+
+    async def _call_gemini(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        max_tokens: int,
+        temperature: float,
+        timeout: float,
+    ) -> str:
+        model = settings.GEMINI_MODEL
+        url = (
+            f"https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{model}:generateContent?key={settings.GEMINI_API_KEY}"
+        )
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            resp = await client.post(
+                url,
+                headers={"Content-Type": "application/json"},
+                json={
+                    "system_instruction": {"parts": [{"text": system_prompt}]},
+                    "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
+                    "generationConfig": {
+                        "maxOutputTokens": max_tokens,
+                        "temperature": temperature,
+                    },
+                },
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            candidates = data.get("candidates", [])
+            if not candidates:
+                raise ValueError("Empty candidates in Gemini response")
+            parts = candidates[0].get("content", {}).get("parts", [])
+            if not parts:
+                raise ValueError("Empty parts in Gemini response")
+            return parts[0].get("text", "")
+
+    async def _call_groq(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        max_tokens: int,
+        temperature: float,
+        timeout: float,
+    ) -> str:
+        # Groq free tier has ~6k token input limit; truncate prompts to avoid 413.
+        MAX_CHARS = 12000
+        if len(system_prompt) + len(user_prompt) > MAX_CHARS:
+            keep_system = min(len(system_prompt), MAX_CHARS // 3)
+            keep_user = MAX_CHARS - keep_system
+            system_prompt = system_prompt[:keep_system]
+            user_prompt = user_prompt[:keep_user]
+
+        # Inject JSON instruction so json_object mode is satisfied.
+        # Include required orient schema fields so truncation doesn't lose them.
+        json_instruction = (
+            "\nIMPORTANT: Your response MUST be valid JSON only. No markdown, no prose outside JSON. "
+            'Return a JSON object with at minimum these fields: '
+            '"situation_assessment" (string), "recommended_technique_id" (string, MITRE ATT&CK T-ID), '
+            '"confidence" (float 0.0-1.0), "options" (array of objects with "technique_id", "name", "rationale", "risk" keys).'
+        )
+        groq_system = system_prompt + json_instruction
+
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            resp = await client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {settings.GROQ_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": settings.GROQ_MODEL,
+                    "max_tokens": min(max_tokens, 2048),
+                    "temperature": temperature,
+                    "messages": [
+                        {"role": "system", "content": groq_system},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                },
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            choices = data.get("choices", [])
+            if not choices:
+                raise ValueError("Empty choices in Groq response")
             return choices[0]["message"]["content"]

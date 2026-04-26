@@ -57,10 +57,11 @@ async def ssh_terminal(
     async with db_manager.connection() as db:
 
         # Verify target exists and is compromised
+        # operation_id from frontend may be empty string; look up by id only.
         target = await db.fetchrow(
             "SELECT id, hostname, ip_address, is_compromised FROM targets "
-            "WHERE id = $1 AND operation_id = $2",
-            target_id, operation_id,
+            "WHERE id = $1",
+            target_id,
         )
         if not target:
             await websocket.send_text(json.dumps({"error": "Target not found"}))
@@ -75,35 +76,33 @@ async def ssh_terminal(
         ip_address = target["ip_address"]
         hostname = target["hostname"] or ip_address
 
-        # Look up SSH credential from facts table
-        cred_row = await db.fetchrow(
-            "SELECT value FROM facts "
-            "WHERE operation_id = $1 AND source_target_id = $2 "
-            "AND trait = 'credential.ssh' "
-            "ORDER BY collected_at DESC LIMIT 1",
-            operation_id, target_id,
-        )
+        # Credential lookup helper — searches by source_target_id first,
+        # then falls back to ip_address in the value string so the terminal
+        # works regardless of which operation_id the frontend sends.
+        async def _find_cred(trait: str, value_like: str | None = None) -> "asyncpg.Record | None":
+            extra = f"AND value LIKE '{value_like}'" if value_like else ""
+            row = await db.fetchrow(
+                f"SELECT value FROM facts "
+                f"WHERE source_target_id = $1 AND trait = $2 {extra} "
+                f"ORDER BY collected_at DESC LIMIT 1",
+                target_id, trait,
+            )
+            if row:
+                return row
+            # Fallback: match ip_address inside the value column
+            return await db.fetchrow(
+                f"SELECT value FROM facts "
+                f"WHERE trait = $1 AND value LIKE $2 {extra} "
+                f"ORDER BY collected_at DESC LIMIT 1",
+                trait, f"%{ip_address}%",
+            )
 
-        # Check for Metasploit root shell as fallback
-        msf_row = await db.fetchrow(
-            "SELECT value FROM facts "
-            "WHERE operation_id = $1 AND source_target_id = $2 "
-            "AND trait = 'credential.root_shell' "
-            "ORDER BY collected_at DESC LIMIT 1",
-            operation_id, target_id,
-        )
+        cred_row    = await _find_cred("credential.ssh")
+        msf_row     = await _find_cred("credential.root_shell")
+        winrm_row   = await _find_cred("credential.winrm")
+        pg_shell_row = await _find_cred("credential.shell", "postgresql%")
 
-        # Check for PostgreSQL shell (COPY TO PROGRAM) as additional fallback
-        pg_shell_row = await db.fetchrow(
-            "SELECT value FROM facts "
-            "WHERE operation_id = $1 AND source_target_id = $2 "
-            "AND trait = 'credential.shell' "
-            "AND value LIKE 'postgresql%%' "
-            "ORDER BY collected_at DESC LIMIT 1",
-            operation_id, target_id,
-        )
-
-    # Decide backend: SSH or Metasploit
+    # Decide backend: SSH > WinRM > PostgreSQL > Metasploit
     use_msf = False
 
     if cred_row:
@@ -160,12 +159,17 @@ async def ssh_terminal(
                 "SSH failed after %d attempts, checking Metasploit fallback", _MAX_RETRIES
             )
 
-    # Fallback 1: PostgreSQL COPY TO PROGRAM shell
+    # Fallback 1: WinRM (Windows targets)
+    if winrm_row:
+        await _run_winrm_terminal(websocket, winrm_row["value"], hostname, ip_address)
+        return
+
+    # Fallback 2: PostgreSQL COPY TO PROGRAM shell
     if pg_shell_row:
         await _run_pg_terminal(websocket, pg_shell_row["value"], hostname, ip_address)
         return
 
-    # Fallback 2: Metasploit shell session
+    # Fallback 3: Metasploit shell session
     if msf_row:
         use_msf = True
     else:
@@ -230,6 +234,101 @@ async def _run_ssh_terminal(
         except Exception:
             pass
         logger.info("SSH terminal session closed for %s", hostname)
+
+
+async def _run_winrm_terminal(
+    websocket: WebSocket, cred_value: str, hostname: str, ip_address: str
+) -> None:
+    """Run interactive terminal via WinRM (Windows targets).
+
+    Credential format: user:password@host:port
+    Each command is sent as a one-shot WinRM run_cmd call.
+    Not a persistent PTY — suitable for Windows admin shells.
+    """
+    import winrm  # noqa: PLC0415
+
+    # Parse: user:password@host:port
+    try:
+        at_idx = cred_value.rfind("@")
+        user_pass = cred_value[:at_idx]
+        host_port = cred_value[at_idx + 1:]
+        colon_idx = user_pass.find(":")
+        username = user_pass[:colon_idx]
+        password = user_pass[colon_idx + 1:]
+        if ":" in host_port:
+            host, port_s = host_port.rsplit(":", 1)
+            port = int(port_s)
+        else:
+            host = host_port
+            port = 5985
+    except Exception as exc:
+        await websocket.send_text(json.dumps({"error": f"Invalid WinRM credential: {exc}"}))
+        await websocket.close()
+        return
+
+    if not host:
+        host = ip_address
+
+    await websocket.send_text(json.dumps({
+        "output": (
+            f"Connected to {hostname} ({host}) via WinRM as {username}\r\n"
+            f"[athena] Mode: WinRM one-shot exec (non-persistent PTY)\r\n"
+            f"[athena] Each command is a fresh WinRM run_cmd call.\r\n"
+        ),
+        "exit_code": 0,
+        "prompt": f"PS {hostname}> ",
+    }))
+
+    try:
+        async for message in websocket.iter_text():
+            try:
+                data = json.loads(message)
+                cmd = str(data.get("cmd", "")).strip()
+            except (json.JSONDecodeError, AttributeError):
+                await websocket.send_text(json.dumps({"error": "Invalid JSON"}))
+                continue
+
+            if not cmd:
+                continue
+            if len(cmd) > MAX_CMD_LEN:
+                await websocket.send_text(json.dumps({"error": "Command too long (max 1024 chars)"}))
+                continue
+            if _is_dangerous(cmd):
+                await websocket.send_text(json.dumps({"error": "Command refused: potentially destructive operation"}))
+                continue
+
+            try:
+                loop = asyncio.get_running_loop()
+
+                def _winrm_exec():
+                    s = winrm.Session(
+                        f"http://{host}:{port}/wsman",
+                        auth=(username, password),
+                        transport="ntlm",
+                    )
+                    # Try PowerShell first, fall back to cmd
+                    try:
+                        r = s.run_ps(cmd)
+                        out = r.std_out.decode(errors="replace")
+                        err = r.std_err.decode(errors="replace")
+                    except Exception:
+                        r = s.run_cmd(cmd)
+                        out = r.std_out.decode(errors="replace")
+                        err = r.std_err.decode(errors="replace")
+                    return out or err or "(no output)\r\n", r.status_code
+
+                output, exit_code = await loop.run_in_executor(None, _winrm_exec)
+                await websocket.send_text(json.dumps({
+                    "output": output,
+                    "exit_code": exit_code,
+                    "prompt": f"PS {hostname}> ",
+                }))
+            except Exception as exc:
+                await websocket.send_text(json.dumps({"error": f"WinRM error: {exc}"}))
+    except WebSocketDisconnect:
+        pass
+    finally:
+        logger.info("WinRM terminal session closed for %s", hostname)
 
 
 def _parse_pg_shell_credential(value: str) -> tuple[str, str, str, int]:

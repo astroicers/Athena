@@ -702,6 +702,15 @@ function WarRoomContent() {
                 onActivate={() => handleSetActive(selectedTarget.id, true)}
                 onDelete={() => handleDeleteRequest(selectedTarget.id)}
                 onOpenTerminal={selectedTarget?.isCompromised ? () => setTerminalTarget(selectedTarget) : undefined}
+                terminalMode={
+                  selectedTarget?.isCompromised
+                    ? targetFacts.some((f) => f.trait === "credential.winrm") ? "winrm"
+                    : targetFacts.some((f) => f.trait === "credential.ssh") ? "ssh"
+                    : targetFacts.some((f) => f.trait === "credential.shell" && f.value?.startsWith("postgresql")) ? "psql"
+                    : targetFacts.some((f) => f.trait === "credential.root_shell") ? "msf"
+                    : undefined
+                    : undefined
+                }
               />
             ) : (
               <div className="flex items-center justify-center h-full">
@@ -731,15 +740,36 @@ function WarRoomContent() {
             onCancel={() => setShowAddTarget(false)}
           />
 
-          {terminalTarget && (
-            <TerminalPanel
-              operationId={operationId}
-              targetId={terminalTarget.id}
-              targetName={terminalTarget.hostname || terminalTarget.ipAddress}
-              targetIp={terminalTarget.ipAddress}
-              onClose={() => setTerminalTarget(null)}
-            />
-          )}
+          {terminalTarget && (() => {
+            const tMode =
+              targetFacts.some((f) => f.trait === "credential.winrm") ? "winrm" as const
+              : targetFacts.some((f) => f.trait === "credential.ssh") ? "ssh" as const
+              : targetFacts.some((f) => f.trait === "credential.shell" && f.value?.startsWith("postgresql")) ? "psql" as const
+              : targetFacts.some((f) => f.trait === "credential.root_shell") ? "msf" as const
+              : undefined;
+            const credUser = (() => {
+              const wf = targetFacts.find((f) => f.trait === "credential.winrm");
+              if (wf) return wf.value?.split(":")?.[0];
+              const sf = targetFacts.find((f) => f.trait === "credential.ssh");
+              if (sf) return sf.value?.split(":")?.[0];
+              if (targetFacts.some((f) => f.trait === "credential.root_shell")) return "root";
+              const pg = targetFacts.find((f) => f.trait === "credential.shell" && f.value?.startsWith("postgresql"));
+              if (pg) return pg.value?.split(":")?.[1] ?? "postgres";
+              return undefined;
+            })();
+            return (
+              <TerminalPanel
+                operationId={operationId}
+                targetId={terminalTarget.id}
+                targetName={terminalTarget.hostname || terminalTarget.ipAddress}
+                targetIp={terminalTarget.ipAddress}
+                onClose={() => setTerminalTarget(null)}
+                terminalMode={tMode}
+                credentialUser={credUser}
+                privilegeLevel={terminalTarget.privilegeLevel ?? undefined}
+              />
+            );
+          })()}
         </div>
       )}
 

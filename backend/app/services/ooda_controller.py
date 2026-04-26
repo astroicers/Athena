@@ -253,6 +253,32 @@ class OODAController:
         except Exception as auto_recon_exc:
             logger.warning("Auto-recon step failed: %s", auto_recon_exc)
 
+        # -- PRE-ORIENT: Mission complete check --
+        # Halt the cycle if every active target is already compromised at a
+        # high-privilege level — there is nothing left to do.
+        _all_targets = await db.fetch(
+            "SELECT is_compromised, privilege_level FROM targets "
+            "WHERE operation_id = $1 AND is_active = TRUE",
+            operation_id,
+        )
+        if _all_targets and all(
+            row["is_compromised"] and
+            (row["privilege_level"] or "").lower() in ("root", "administrator", "system", "domain_admin")
+            for row in _all_targets
+        ):
+            await db.execute(
+                "UPDATE ooda_iterations SET phase = 'complete', "
+                "act_summary = 'Mission complete: all targets compromised with elevated privileges', "
+                "completed_at = NOW() WHERE id = $1",
+                ooda_id,
+            )
+            logger.info("OODA mission complete — all targets at high privilege, halting cycle")
+            return {
+                "status": "complete",
+                "reason": "mission_complete_all_targets_high_privilege",
+                "iteration_id": ooda_id,
+            }
+
         # -- PRE-ORIENT: Evaluate constraints (SPEC-047) --
         op_row = await db.fetchrow(
             "SELECT mission_profile FROM operations WHERE id = $1", operation_id,
@@ -452,7 +478,7 @@ class OODAController:
                         if has_access:
                             await db.execute(
                                 "UPDATE targets SET is_compromised = TRUE, "
-                                "privilege_level = CASE WHEN privilege_level = 'Root' THEN 'Root' ELSE 'User' END, "
+                                "privilege_level = CASE WHEN privilege_level IN ('Root', 'Administrator', 'System', 'Domain_Admin') THEN privilege_level ELSE 'User' END, "
                                 "access_status = 'active' "
                                 "WHERE id = $1 AND operation_id = $2",
                                 st.target_id, operation_id,
@@ -542,7 +568,7 @@ class OODAController:
                     if has_access:
                         await db.execute(
                             "UPDATE targets SET is_compromised = TRUE, "
-                            "privilege_level = CASE WHEN privilege_level = 'Root' THEN 'Root' ELSE 'User' END, "
+                            "privilege_level = CASE WHEN privilege_level IN ('Root', 'Administrator', 'System', 'Domain_Admin') THEN privilege_level ELSE 'User' END, "
                             "access_status = 'active' "
                             "WHERE id = $1 AND operation_id = $2",
                             decision["target_id"], operation_id,

@@ -28,6 +28,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/tools", tags=["Tools"])
 
 
+def _safe_json(value: str | None, default):
+    if not value:
+        return default
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError:
+        logger.warning("Corrupted JSON in tool record, using default: %.80s", value)
+        return default
+
+
 def _row_to_tool(row: asyncpg.Record) -> dict:
     return {
         "id": row["id"],
@@ -39,10 +49,10 @@ def _row_to_tool(row: asyncpg.Record) -> dict:
         "version": row["version"],
         "enabled": bool(row["enabled"]),
         "source": row["source"],
-        "config_json": json.loads(row["config_json"] or "{}"),
-        "mitre_techniques": json.loads(row["mitre_techniques"] or "[]"),
+        "config_json": _safe_json(row["config_json"], {}),
+        "mitre_techniques": _safe_json(row["mitre_techniques"], []),
         "risk_level": row["risk_level"],
-        "output_traits": json.loads(row["output_traits"] or "[]"),
+        "output_traits": _safe_json(row["output_traits"], []),
         "created_at": row["created_at"].isoformat() if hasattr(row["created_at"], "isoformat") else row["created_at"],
         "updated_at": row["updated_at"].isoformat() if hasattr(row["updated_at"], "isoformat") else row["updated_at"],
     }

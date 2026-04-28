@@ -101,8 +101,8 @@ async def _run_ooda_background(iteration_id: str, op_id: str) -> None:
             try:
                 await db.execute(
                     "UPDATE ooda_iterations SET phase = 'failed' "
-                    "WHERE id = $1 OR (operation_id = $2 AND completed_at IS NULL)",
-                    iteration_id, op_id,
+                    "WHERE id = $1",
+                    iteration_id,
                 )
             except Exception:
                 logger.exception(

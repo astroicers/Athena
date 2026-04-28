@@ -1,4 +1,57 @@
 @import "tailwindcss";
+@config "../../tailwind.config.ts";
+
+/* Tailwind v4: map CSS vars → utility classes via @theme */
+@theme {
+  --color-athena-bg: var(--color-bg-primary);
+  --color-athena-surface: var(--color-bg-surface);
+  --color-athena-elevated: var(--color-bg-elevated);
+  --color-athena-surface-hover: var(--color-bg-surface-hover);
+  --color-athena-overlay: var(--color-bg-overlay);
+  --color-athena-white-5: var(--color-white-5);
+  --color-athena-white-8: var(--color-white-8);
+  --color-athena-white-10: var(--color-white-10);
+  --color-athena-accent: var(--color-accent);
+  --color-athena-accent-hover: var(--color-accent-hover);
+  --color-athena-accent-bg: var(--color-accent-bg);
+  --color-athena-text: var(--color-text-primary);
+  --color-athena-text-light: var(--color-text-light);
+  --color-athena-text-secondary: var(--color-text-secondary);
+  --color-athena-text-tertiary: var(--color-text-tertiary);
+  --color-athena-text-ghost: var(--color-text-ghost);
+  --color-athena-text-faint: var(--color-text-faint);
+  --color-athena-text-muted: var(--color-text-muted);
+  --color-athena-text-dim: var(--color-text-dim);
+  --color-athena-text-soft: var(--color-text-soft);
+  --color-athena-text-subtle: var(--color-text-subtle);
+  --color-athena-border: var(--color-border);
+  --color-athena-success: var(--color-success);
+  --color-athena-success-bg: var(--color-success-bg);
+  --color-athena-warning: var(--color-warning);
+  --color-athena-warning-bg: var(--color-warning-bg);
+  --color-athena-error: var(--color-error);
+  --color-athena-error-bg: var(--color-error-bg);
+  --color-athena-critical: var(--color-critical);
+  --color-athena-info: var(--color-info);
+  --color-athena-phase-observe: var(--color-phase-observe);
+  --color-athena-phase-orient: var(--color-phase-orient);
+  --color-athena-phase-decide: var(--color-phase-decide);
+  --color-athena-phase-act: var(--color-phase-act);
+  --font-size-athena-floor: var(--fs-floor);
+  --font-size-athena-caption: var(--fs-caption);
+  --font-size-athena-body: var(--fs-body);
+  --font-size-athena-heading-card: var(--fs-heading-card);
+  --font-size-athena-heading-section: var(--fs-heading-section);
+  --font-size-athena-heading-panel: var(--fs-heading-panel);
+  --font-size-athena-metric-display: var(--fs-metric-display);
+  --font-size-athena-metric-hero: var(--fs-metric-hero);
+  --font-size-athena-heading-page: var(--fs-heading-page);
+  --font-size-athena-metric: var(--fs-metric);
+  --font-size-athena-metric-label: var(--fs-metric-label);
+  --font-family-mono: var(--font-mono);
+  --font-family-sans: var(--font-sans);
+  --border-radius-athena: var(--radius);
+}
 
 /* ============================================
    Athena Design Tokens — Deep Gemstone Palette v3

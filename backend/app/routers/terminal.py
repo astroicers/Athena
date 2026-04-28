@@ -80,20 +80,34 @@ async def ssh_terminal(
         # then falls back to ip_address in the value string so the terminal
         # works regardless of which operation_id the frontend sends.
         async def _find_cred(trait: str, value_like: str | None = None) -> "asyncpg.Record | None":
-            extra = f"AND value LIKE '{value_like}'" if value_like else ""
-            row = await db.fetchrow(
-                f"SELECT value FROM facts "
-                f"WHERE source_target_id = $1 AND trait = $2 {extra} "
-                f"ORDER BY collected_at DESC LIMIT 1",
-                target_id, trait,
-            )
+            if value_like:
+                row = await db.fetchrow(
+                    "SELECT value FROM facts "
+                    "WHERE source_target_id = $1 AND trait = $2 AND value LIKE $3 "
+                    "ORDER BY collected_at DESC LIMIT 1",
+                    target_id, trait, value_like,
+                )
+            else:
+                row = await db.fetchrow(
+                    "SELECT value FROM facts "
+                    "WHERE source_target_id = $1 AND trait = $2 "
+                    "ORDER BY collected_at DESC LIMIT 1",
+                    target_id, trait,
+                )
             if row:
                 return row
             # Fallback: match ip_address inside the value column
+            if value_like:
+                return await db.fetchrow(
+                    "SELECT value FROM facts "
+                    "WHERE trait = $1 AND value LIKE $2 AND value LIKE $3 "
+                    "ORDER BY collected_at DESC LIMIT 1",
+                    trait, f"%{ip_address}%", value_like,
+                )
             return await db.fetchrow(
-                f"SELECT value FROM facts "
-                f"WHERE trait = $1 AND value LIKE $2 {extra} "
-                f"ORDER BY collected_at DESC LIMIT 1",
+                "SELECT value FROM facts "
+                "WHERE trait = $1 AND value LIKE $2 "
+                "ORDER BY collected_at DESC LIMIT 1",
                 trait, f"%{ip_address}%",
             )
 

@@ -218,5 +218,5 @@ class SwarmExecutor:
                     for t in tasks
                 ]},
             )
-        except Exception:
-            pass  # fire-and-forget
+        except Exception as _exc:
+            logger.warning("SwarmExecutor broadcast failed (non-fatal): %s", _exc)

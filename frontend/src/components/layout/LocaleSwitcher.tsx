@@ -20,8 +20,9 @@ export function LocaleSwitcher() {
 
   function handleSwitch() {
     const next = currentLocale === "en" ? "zh-TW" : "en";
-    startTransition(() => {
-      setLocale(next);
+    startTransition(async () => {
+      await setLocale(next);
+      window.location.reload();
     });
   }
 

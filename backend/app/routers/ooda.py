@@ -130,11 +130,11 @@ async def get_ooda_dashboard(
     )
     rows = await db.fetch(
         "SELECT * FROM ooda_iterations WHERE operation_id = $1 "
-        "ORDER BY iteration_number DESC LIMIT 10",
+        "ORDER BY iteration_number ASC",
         operation_id,
     )
     iterations = [_row_to_ooda(r) for r in rows]
-    latest = iterations[0] if iterations else None
+    latest = iterations[-1] if iterations else None
     return OodaDashboardResponse(
         current_phase=latest.phase if latest else "idle",
         iteration_count=total,

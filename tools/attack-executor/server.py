@@ -171,7 +171,7 @@ WINRM_TECHNIQUE_EXECUTORS: dict[str, str] = {
     "T1087.001": "Get-LocalUser | Select-Object Name,Enabled,LastLogon",
     "T1033": "whoami /all | Select-Object -First 20",
     "T1057": "Get-Process | Select-Object -First 20 Id,ProcessName,Path",
-    "T1082": "Get-ComputerInfo -ErrorAction SilentlyContinue | Select-Object CsName,WindowsVersion,OsArchitecture,CsTotalPhysicalMemory",
+    "T1082": "Get-ComputerInfo -ErrorAction SilentlyContinue | Select-Object CsName,WindowsVersion,OsArchitecture,CsTotalPhysicalMemory; Get-Service -Name 'MSSQLSERVER','MySQL','postgresql*' -ErrorAction SilentlyContinue | Select-Object Name,Status; if (Get-Command sqlcmd -ErrorAction SilentlyContinue) { sqlcmd -Q \"SELECT name FROM sys.databases ORDER BY name;\" -S localhost -l 20 2>&1 | Select-Object -First 20 }",
     "T1016": "Get-NetIPAddress -ErrorAction SilentlyContinue | Select-Object IPAddress,InterfaceAlias,PrefixLength",
     "T1049": "Get-NetTCPConnection -State Established -ErrorAction SilentlyContinue | Select-Object -First 15 LocalAddress,LocalPort,RemoteAddress,RemotePort,OwningProcess",
     "T1135": "Get-SmbShare -ErrorAction SilentlyContinue | Select-Object Name,Path,Description",
@@ -181,7 +181,11 @@ WINRM_TECHNIQUE_EXECUTORS: dict[str, str] = {
     "T1021.001": "whoami; hostname; ipconfig /all | Select-String 'IPv4'",
     "T1021.002": "Get-SmbMapping -ErrorAction SilentlyContinue; net use 2>$null",
     "T1021.003": "Get-WmiObject Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq 'mstsc.exe' } | Select-Object Name,ProcessId",
+    "T1021.006": "whoami; hostname; $env:COMPUTERNAME; Get-WmiObject Win32_OperatingSystem | Select-Object Caption,Version; whoami /groups | Select-String 'Administrators|SYSTEM'",
     "T1570": "Get-SmbShare -ErrorAction SilentlyContinue | Where-Object { $_.Name -notmatch '\\$' } | Select-Object Name,Path",
+    # --- DB Discovery + Collection (T1505.001 / T1213) ---
+    "T1505.001": "Get-Service -Name 'MSSQLSERVER','SQLSERVERAGENT','MSSQLServerOLAPService' -ErrorAction SilentlyContinue | Select-Object Name,Status,DisplayName; Get-Command sqlcmd -ErrorAction SilentlyContinue | Select-Object Name,Source",
+    "T1213": "sqlcmd -Q \"SELECT name FROM sys.databases ORDER BY name; SELECT DB_NAME() AS current_db;\" -S localhost -l 30 2>&1; sqlcmd -Q \"USE master; SELECT table_catalog, table_schema, table_name FROM information_schema.tables ORDER BY table_catalog, table_name;\" -S localhost -l 30 2>&1 | Select-Object -First 50",
     # --- Collection ---
     "T1560.001": "Compress-Archive -Path $env:USERPROFILE\\Documents -DestinationPath $env:TEMP\\docs.zip -Force -ErrorAction SilentlyContinue; if (Test-Path $env:TEMP\\docs.zip) { 'ARCHIVED' } else { 'ARCHIVE_FAILED' }",
     "T1005": "Get-ChildItem C:\\Users -Recurse -Include *.docx,*.xlsx,*.pdf,*.sql,*.bak -ErrorAction SilentlyContinue | Select-Object -First 15 FullName,Length,LastWriteTime",
@@ -289,6 +293,8 @@ TECHNIQUE_FACT_TRAITS: dict[str, list[str]] = {
     "T1021.001": ["host.os", "host.network"],
     "T1021.002": ["host.session"],
     "T1021.003": ["host.session"],
+    "T1505.001": ["service.database", "host.service"],
+    "T1213": ["database.query_result", "service.database"],
     # --- Collection ---
     "T1560.001": ["host.file"],
     "T1005": ["host.file"],
@@ -608,7 +614,7 @@ async def _execute_winrm(
             auth=(username, password),
             transport="ntlm",
             read_timeout_sec=60,
-            operation_timeout_sec=60,
+            operation_timeout_sec=55,
         )
         loop = asyncio.get_running_loop()
         response = await loop.run_in_executor(None, lambda: session.run_ps(command))

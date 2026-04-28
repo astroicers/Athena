@@ -312,23 +312,91 @@ class OODAController:
                 attack_graph_summary=graph_summary,
             )
         except LLMUnavailableError as exc:
-            err_msg = f"LLM_UNAVAILABLE: {exc}"
-            logger.warning("OODA[%s] Orient halted: %s", ooda_id[:8], err_msg)
-            await self._write_log(db, operation_id, "error",
-                f"Orient halted -- {err_msg}. Fix LLM connectivity then resume OODA.")
-            await db.execute(
-                "UPDATE ooda_iterations "
-                "SET phase = 'orient', orient_summary = $1, completed_at = NOW() "
-                "WHERE id = $2",
-                err_msg[:1000], ooda_id,
+            logger.warning("OODA[%s] LLM unavailable (%s) — using rule-based orient fallback", ooda_id[:8], exc)
+            await self._write_log(db, operation_id, "warning",
+                f"LLM unavailable ({exc}). Using rule-based orient to continue OODA.")
+            # Rule-based fallback: inspect facts and propose next action
+            all_facts = await db.fetch(
+                "SELECT trait, value, source_target_id FROM facts WHERE operation_id = $1",
+                operation_id,
             )
-            # Broadcast so UI shows red halted state
-            try:
-                await self._ws.broadcast(operation_id, "orient.halted",
-                    {"iteration_id": ooda_id, "error": str(exc)})
-            except Exception:
-                pass
-            return {"status": "halted", "reason": "llm_unavailable", "error": str(exc)}
+            targets_row = await db.fetch(
+                "SELECT id, ip_address, is_compromised, privilege_level FROM targets WHERE operation_id = $1 AND is_active = TRUE",
+                operation_id,
+            )
+            # Check if WinRM was recently executed successfully
+            recent_winrm_success = await db.fetch(
+                "SELECT te.target_id FROM technique_executions te "
+                "WHERE te.operation_id = $1 AND te.technique_id = 'T1021.006' "
+                "AND te.status = 'success' AND te.result_summary NOT LIKE '%\"success\": false%' "
+                "ORDER BY te.created_at DESC LIMIT 10",
+                operation_id,
+            )
+            # Check if DB query has already succeeded
+            db_query_done = await db.fetchval(
+                "SELECT COUNT(*) FROM facts WHERE operation_id = $1 AND trait = 'database.query_result'",
+                operation_id,
+            )
+            # Check if T1213 already ran on any target
+            t1213_done = await db.fetch(
+                "SELECT te.target_id FROM technique_executions te "
+                "WHERE te.operation_id = $1 AND te.technique_id = 'T1213' AND te.status = 'success'",
+                operation_id,
+            )
+            t1213_done_targets = {row["target_id"] for row in t1213_done}
+            winrm_success_targets = {row["target_id"] for row in recent_winrm_success}
+            has_winrm = any(f["trait"] == "credential.winrm" for f in all_facts)
+            compromised = [t for t in targets_row if t["is_compromised"]]
+            uncompromised = [t for t in targets_row if not t["is_compromised"]]
+            # Priority 1: DB query already done → all complete
+            if db_query_done:
+                situation = "Rule-based: database.query_result already captured — mission objective achieved"
+                next_technique = "T1082"  # benign wrap-up discovery
+                recommended_engine = "winrm"
+            # Priority 2: DB access on targets with WinRM success, not yet queried
+            elif compromised and winrm_success_targets:
+                db_targets_pending = [t for t in compromised
+                                      if t["id"] in winrm_success_targets and t["id"] not in t1213_done_targets]
+                if db_targets_pending:
+                    db_target = db_targets_pending[0]
+                    situation = f"Rule-based: WinRM confirmed on {db_target['ip_address']}, executing DB collection (T1213)"
+                    next_technique = "T1213"
+                    recommended_engine = "winrm"
+                else:
+                    # T1213 done but no fact recorded — fallback to T1082 wrap-up
+                    situation = f"Rule-based: T1213 attempted on all compromised WinRM targets, running wrap-up discovery"
+                    next_technique = "T1082"
+                    recommended_engine = "winrm"
+            # Priority 3: Credentials available — attempt WinRM on uncompromised targets
+            elif has_winrm and uncompromised:
+                next_ip = uncompromised[0]["ip_address"]
+                situation = f"Rule-based: credential.winrm available, attempting WinRM access to {next_ip}"
+                next_technique = "T1021.006"
+                recommended_engine = "winrm"
+            # Priority 4: No credentials — recon
+            elif uncompromised:
+                next_ip = uncompromised[0]["ip_address"]
+                situation = f"Rule-based: no credentials yet, initiating recon on {next_ip}"
+                next_technique = "T1046"
+                recommended_engine = "ssh"
+            else:
+                situation = "Rule-based: all targets compromised, running final DB collection"
+                next_technique = "T1213"
+                recommended_engine = "winrm"
+            recommendation = {
+                "situation_assessment": situation,
+                "recommended_technique_id": next_technique,
+                "options": [{"technique_id": next_technique, "rationale": situation,
+                              "priority": 1, "action": "execute", "risk_level": "medium",
+                              "recommended_engine": recommended_engine}],
+                "selected_option": {"technique_id": next_technique, "rationale": situation,
+                                    "action": "execute"},
+                "confidence": 0.5,
+            }
+            await db.execute(
+                "UPDATE ooda_iterations SET orient_summary = $1 WHERE id = $2",
+                situation[:1000], ooda_id,
+            )
 
         if not recommendation:
             await self._write_log(db, operation_id, "warning",
@@ -534,7 +602,7 @@ class OODAController:
 
         elif decision.get("auto_approved") and decision.get("technique_id") and decision.get("target_id"):
             # -- SINGLE PATH (existing, unchanged) --
-            logger.info("OODA[%s] Act phase -- executing %s", ooda_id[:8], decision["technique_id"])
+            logger.warning("OODA[%s] Act phase -- executing %s (auto_approved=%s, target=%s)", ooda_id[:8], decision["technique_id"], decision.get("auto_approved"), decision.get("target_id"))
             execution_result = await self._router.execute(
                 db,
                 technique_id=decision["technique_id"],
@@ -623,7 +691,7 @@ class OODAController:
         else:
             # -- MANUAL APPROVAL (existing, unchanged) --
             act_summary = f"Awaiting commander approval: {decision.get('reason', 'manual required')}"
-            logger.info("OODA[%s] Act phase -- needs approval: %s", ooda_id[:8], act_summary)
+            logger.warning("OODA[%s] Act phase -- MANUAL APPROVAL: auto_approved=%s, tech=%s, target=%s, reason=%s", ooda_id[:8], decision.get("auto_approved"), decision.get("technique_id"), decision.get("target_id"), decision.get("reason"))
             await self._write_log(db, operation_id, "warning",
                 f"OODA #{next_num} Act: awaiting commander approval -- {decision.get('reason', 'manual required')}")
 

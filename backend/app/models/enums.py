@@ -17,6 +17,7 @@ class OODAPhase(str, Enum):
     DECIDE = "decide"
     ACT = "act"
     FAILED = "failed"
+    COMPLETE = "complete"
 
 
 class OperationStatus(str, Enum):

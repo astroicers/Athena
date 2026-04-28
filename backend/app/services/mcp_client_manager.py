@@ -522,7 +522,7 @@ class MCPClientManager:
             if breaker.state == CircuitState.OPEN:
                 asyncio.create_task(self._soft_delete_server_tools(server_name))
             raise
-        except Exception:
+        except Exception as _exc:
             breaker.record_failure(settings.MCP_MAX_RETRIES)
             logger.warning(
                 "MCP_AUDIT event=call_tool server=%s tool=%s ERROR circuit=%s",
@@ -531,6 +531,12 @@ class MCPClientManager:
             )
             if breaker.state == CircuitState.OPEN:
                 asyncio.create_task(self._soft_delete_server_tools(server_name))
+            # Session terminated means the transport is dead — drop session so
+            # the next call triggers an immediate reconnect instead of waiting
+            # for the periodic health-check cycle.
+            if "Session terminated" in str(_exc) or "Session" in type(_exc).__name__:
+                logger.info("MCP '%s' session terminated — dropping session for reconnect", server_name)
+                self._sessions.pop(server_name, None)
             raise
 
         duration_ms = int((time.monotonic() - t0) * 1000)

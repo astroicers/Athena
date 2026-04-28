@@ -61,6 +61,17 @@ for SETTINGS_FILE in "${SETTINGS_FILES[@]}"; do
         && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
 done
 
-echo "🔒 ASP: 權限已設定 — allow: Bash(*), deny: $(echo "$DENY_JSON" | jq length) 條危險指令" >&2
+# Step 4: 清理上次 session 遺留的動態 deny（session-audit.sh 會重新評估）
+# 動態 deny patterns（由 session-audit.sh 注入，需每次 session 重新評估）
+DYNAMIC_PATTERNS='Bash\(git commit'
+for SETTINGS_FILE in "${SETTINGS_FILES[@]}"; do
+    [ -f "$SETTINGS_FILE" ] || continue
+    jq --arg dp "$DYNAMIC_PATTERNS" '
+        .permissions.deny = [.permissions.deny[]? | select(test($dp) | not)]
+    ' "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" 2>/dev/null \
+        && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE" || true
+done
+
+echo "🔒 ASP: 權限已設定 — allow: Bash(*), deny: $(echo "$DENY_JSON" | jq length) 條危險指令（動態 deny 已清理，待 session-audit 重新評估）" >&2
 
 exit 0

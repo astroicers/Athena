@@ -121,3 +121,8 @@ lab/windows/sql/extracted/
 lab/windows/prereq/*.msu
 # Offline domain join blobs (generated per-install, include machine credentials)
 lab/windows/*.blob
+.asp-session-briefing.json
+.asp-gate-state.json
+.asp-test-result.json
+.asp-bypass-log.json
+.coverage.*

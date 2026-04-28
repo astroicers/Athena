@@ -1,6 +1,6 @@
 # AI-SOP-Protocol — ASP Targets (included by project Makefile)
 # 勿直接編輯此檔案，升級 ASP 時會自動覆蓋
-# ASP_MAKEFILE_VERSION=3.3.0
+# ASP_MAKEFILE_VERSION=3.4.0
 
 # --- 條件載入：讀取 .ai_profile 的 type 欄位 ---
 # content 類型專案隱藏 Docker/Test/Lint/Deploy targets
@@ -20,7 +20,9 @@ ASP_TYPE := $(shell grep '^type:' .ai_profile 2>/dev/null | awk '{print $$2}')
         audit-health audit-quick doc-audit tech-debt-list \
         task-start task-status task-report \
         profile-validate \
-        agent-memory-init agent-session-init audit-baseline-init
+        agent-memory-init agent-session-init audit-baseline-init \
+        asp-unlock-commit asp-refresh asp-enforcement-status \
+        runbook-list runbook-view
 
 #---------------------------------------------------------------------------
 # Help
@@ -47,10 +49,12 @@ endif
 	@echo "🧠 RAG:         rag-index | rag-search Q=... | rag-stats | rag-rebuild"
 	@echo "🛡  Guardrail:   guardrail-log | guardrail-reset"
 	@echo "🏥 Audit:       audit-health | audit-quick | doc-audit | tech-debt-list"
+	@echo "🔒 Enforce:     asp-unlock-commit | asp-refresh | asp-enforcement-status"
 	@echo "📌 Task:        task-start DESC=... | task-status | task-report"
 	@echo "🔍 Profile:     profile-validate"
 	@echo "🚀 Autopilot:   autopilot-init | autopilot-validate | autopilot-status | autopilot-reset"
 	@echo "📝 Documents:   srs-new | sds-new | uiux-spec-new | deploy-spec-new"
+	@echo "📚 Runbook:     runbook-list | runbook-view SCENARIO=..."
 	@echo ""
 
 #---------------------------------------------------------------------------
@@ -240,6 +244,24 @@ postmortem-list:
 	done || echo "  (無 Postmortem)"
 
 #---------------------------------------------------------------------------
+# Runbooks
+#---------------------------------------------------------------------------
+
+runbook-list: ## 列出可用的場景 Runbook
+	@echo "📚 Runbook 列表（docs/runbooks/）："; \
+	ls docs/runbooks/*.md 2>/dev/null | while read f; do \
+		TITLE=$$(head -1 $$f | sed 's/# //'); \
+		MODE=$$(grep -m1 '^\*\*模式\*\*' $$f | sed 's/.*：//;s/ |.*//' | tr -d ' '); \
+		echo "  $$(basename $$f .md)  $$TITLE"; \
+	done || echo "  (無 Runbook)"
+
+runbook-view: ## 檢視 Runbook (SCENARIO=startup-mvp|incident-response|enterprise-feature)
+	@if [ -z "$(SCENARIO)" ]; then echo "用法: make runbook-view SCENARIO=startup-mvp"; exit 1; fi
+	@FILE="docs/runbooks/$(SCENARIO).md"; \
+	if [ ! -f "$$FILE" ]; then echo "❌ 找不到 $$FILE。可用場景："; make runbook-list; exit 1; fi; \
+	cat "$$FILE"
+
+#---------------------------------------------------------------------------
 # Multi-Agent
 #---------------------------------------------------------------------------
 
@@ -404,7 +426,7 @@ audit-baseline-init: ## 初始化審計基線
 	SPC=$$(ls docs/specs/SPEC-*.md 2>/dev/null | wc -l | tr -d ' '); \
 	ADR=$$(ls docs/adr/ADR-*.md 2>/dev/null | wc -l | tr -d ' '); \
 	TD=$$(grep -rn "TODO[^(]\|FIXME" --include="*.go" --include="*.ts" --include="*.py" --include="*.java" --include="*.js" . 2>/dev/null | grep -v node_modules | grep -v .git | wc -l | tr -d ' '); \
-	if [ $$SRC -gt 0 ]; then R=$$(echo "scale=2; $$TST / $$SRC" | bc 2>/dev/null | sed 's/^\./0./' || echo "0"); else R="0"; fi; \
+	if [ $$SRC -gt 0 ]; then R=$$(echo "scale=2; $$TST / $$SRC" | bc 2>/dev/null || echo "0"); else R="0"; fi; \
 	printf '{"last_audit":"%s","test_coverage_ratio":%s,"spec_count":%s,"adr_count":%s,"blockers":0,"warnings":0,"info":0,"lint_warning_count":0,"todo_fixme_count":%s,"side_effects_unverified":0,"rollback_untested_count":0}\n' \
 		"$$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$$R" "$$SPC" "$$ADR" "$$TD" | python3 -m json.tool > .asp-audit-baseline.json 2>/dev/null; \
 	echo "✅ .asp-audit-baseline.json 已建立"; \
@@ -467,6 +489,184 @@ guardrail-reset:
 	@echo "🧹 護欄紀錄已清除"
 
 #---------------------------------------------------------------------------
+# 強制力管理（Enforcement）
+#---------------------------------------------------------------------------
+
+asp-unlock-commit: ## 解除動態 commit 阻擋（修復 ADR/測試問題後使用）
+	@SETTINGS=".claude/settings.json"; \
+	if [ ! -f "$$SETTINGS" ]; then echo "❌ $$SETTINGS 不存在"; exit 1; fi; \
+	BEFORE=$$(jq '.permissions.deny | length' "$$SETTINGS"); \
+	jq '.permissions.deny = [.permissions.deny[]? | select(test("git commit") | not)]' \
+		"$$SETTINGS" > "$${SETTINGS}.tmp" && mv "$${SETTINGS}.tmp" "$$SETTINGS"; \
+	AFTER=$$(jq '.permissions.deny | length' "$$SETTINGS"); \
+	echo "🔓 動態 deny 已解除（deny rules: $$BEFORE → $$AFTER）"; \
+	echo "   ⚠️  下次 session 啟動時會重新評估"
+
+asp-refresh: ## 重新執行 session 審計（修復問題後使用）
+	@echo "🔄 重新執行 session 審計..."; \
+	CLAUDE_PROJECT_DIR="$$(pwd)" bash .asp/hooks/clean-allow-list.sh 2>&1; \
+	CLAUDE_PROJECT_DIR="$$(pwd)" bash .asp/hooks/session-audit.sh 2>&1; \
+	echo ""; \
+	echo "✅ 審計完成，briefing 已更新"
+
+asp-enforcement-status: ## 顯示當前強制力狀態
+	@echo ""; \
+	echo "🔒 ASP 強制力狀態"; \
+	echo "================================="; \
+	echo ""; \
+	echo "── Deny List（硬性阻擋）──"; \
+	if [ -f ".claude/settings.json" ]; then \
+		jq -r '.permissions.deny[]?' ".claude/settings.json" | while read -r rule; do \
+			echo "  🚫 $$rule"; \
+		done; \
+	fi; \
+	echo ""; \
+	echo "── Session Briefing ──"; \
+	if [ -f ".asp-session-briefing.json" ]; then \
+		BLOCKERS=$$(jq '.blockers | length' ".asp-session-briefing.json"); \
+		WARNS=$$(jq '.warnings | length' ".asp-session-briefing.json"); \
+		DYNCOUNT=$$(jq '.dynamic_deny | length' ".asp-session-briefing.json"); \
+		echo "  Blockers: $$BLOCKERS | Warnings: $$WARNS | Dynamic deny: $$DYNCOUNT patterns"; \
+		if [ "$$BLOCKERS" -gt 0 ]; then \
+			jq -r '.blockers[]' ".asp-session-briefing.json" | while read -r b; do \
+				echo "  🔴 $$b"; \
+			done; \
+		fi; \
+	else \
+		echo "  (尚未執行 session 審計)"; \
+	fi; \
+	echo ""; \
+	echo "── Gate State ──"; \
+	if [ -f ".asp-gate-state.json" ]; then \
+		jq -r '.gates | to_entries[] | "  \(.key): \(.value.status)"' ".asp-gate-state.json"; \
+	else \
+		echo "  (尚未初始化)"; \
+	fi; \
+	echo ""; \
+	echo "── Bypass Log（近 7 天）──"; \
+	if [ -f ".asp-bypass-log.json" ]; then \
+		TOTAL=$$(jq 'length' ".asp-bypass-log.json" 2>/dev/null || echo 0); \
+		RECENT=$$(jq --arg d "$$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-7d +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)" \
+			'[.[] | select(.timestamp >= $$d)] | length' ".asp-bypass-log.json" 2>/dev/null || echo 0); \
+		echo "  Total: $$TOTAL | Last 7 days: $$RECENT （檢視：make asp-bypass-review）"; \
+	else \
+		echo "  (無記錄)"; \
+	fi; \
+	echo ""
+
+asp-bypass-review: ## 檢視 bypass 記錄（AI 繞過 skill 的歷史）
+	@if [ ! -f ".asp-bypass-log.json" ]; then \
+		echo "📋 .asp-bypass-log.json 不存在 — 尚未有任何 bypass 記錄"; \
+		exit 0; \
+	fi; \
+	TOTAL=$$(jq 'length' ".asp-bypass-log.json"); \
+	echo ""; \
+	echo "📋 ASP Bypass Log"; \
+	echo "================================="; \
+	echo "Total entries: $$TOTAL"; \
+	echo ""; \
+	LIMIT=$${LIMIT:-20}; \
+	echo "── 最近 $$LIMIT 筆 ──"; \
+	jq -r ".[-$$LIMIT:] | reverse | .[] | \
+		\"[\(.timestamp)] \(.skill) / \(.step)\n  reason: \(.reason)\n  actor: \(.actor // \"unknown\")\n\"" \
+		".asp-bypass-log.json" 2>/dev/null || echo "  (jq 解析失敗 — 檔案可能損壞)"; \
+	echo ""; \
+	echo "── 按 skill 分組 ──"; \
+	jq -r 'group_by(.skill) | .[] | "  \(.[0].skill): \(length) 次"' ".asp-bypass-log.json"; \
+	echo ""; \
+	echo "💡 若某 skill bypass 次數過高，考慮：(1) 補強 skill 文件 (2) 在 CLAUDE.md 加入對應鐵則"
+
+asp-level-check: ## 檢查當前 ASP 成熟度等級與 graduation 進度
+	@LEVEL=$$(grep -E '^level:' .ai_profile 2>/dev/null | awk '{print $$2}'); \
+	if [ -z "$$LEVEL" ]; then \
+		echo "⚠️  .ai_profile 無 level 欄位 — 使用 Level 推斷規則"; \
+		if grep -q 'autopilot: enabled\|autonomous: enabled' .ai_profile 2>/dev/null; then LEVEL=5; \
+		elif grep -q 'mode: multi-agent' .ai_profile 2>/dev/null; then LEVEL=4; \
+		elif grep -q 'openapi: enabled' .ai_profile 2>/dev/null; then LEVEL=3; \
+		elif grep -q 'guardrail: enabled\|coding_style: enabled' .ai_profile 2>/dev/null; then LEVEL=2; \
+		else LEVEL=1; fi; \
+		echo "   推斷等級：L$$LEVEL（建議在 .ai_profile 中補上 \`level: $$LEVEL\`）"; \
+	fi; \
+	LEVEL_FILE=".asp/levels/level-$$LEVEL.yaml"; \
+	if [ ! -f "$$LEVEL_FILE" ]; then echo "❌ $$LEVEL_FILE 不存在"; exit 1; fi; \
+	echo ""; \
+	echo "🎯 ASP Level Check"; \
+	echo "=================="; \
+	echo ""; \
+	NAME=$$(grep -E '^name:' "$$LEVEL_FILE" | head -1 | sed 's/name: *//'); \
+	TAGLINE=$$(grep -E '^tagline:' "$$LEVEL_FILE" | sed 's/tagline: *//'); \
+	echo "Current: L$$LEVEL ($$NAME)"; \
+	echo "         $$TAGLINE"; \
+	echo ""; \
+	echo "已啟用 profile (從 .asp/levels/level-$$LEVEL.yaml)："; \
+	awk '/^profiles:/{flag=1; next} /^[a-z]/{flag=0} flag && /^  -/{print "  "$$0}' "$$LEVEL_FILE"; \
+	echo ""; \
+	NEXT_LEVEL=$$(grep -E '^next_level:' "$$LEVEL_FILE" | awk '{print $$2}'); \
+	if [ "$$NEXT_LEVEL" = "null" ] || [ -z "$$NEXT_LEVEL" ]; then \
+		echo "✅ 已在最高等級 (L5)"; \
+	else \
+		NEXT_FILE=".asp/levels/level-$$NEXT_LEVEL.yaml"; \
+		NEXT_NAME=$$(grep -E '^name:' "$$NEXT_FILE" | head -1 | sed 's/name: *//'); \
+		echo "Next Level: L$$NEXT_LEVEL ($$NEXT_NAME)"; \
+		echo ""; \
+		echo "📋 L$$LEVEL Graduation Checklist（shell 可驗證的項目）："; \
+		awk '/^graduation_checklist:/{flag=1; next} /^[a-z]/{flag=0} flag' "$$LEVEL_FILE" | \
+			awk '/- id:/{id=$$3} /description:/{desc=$$0; sub(/[^"]*"/,"",desc); sub(/".*/,"",desc); print "  ["id"] "desc}'; \
+		echo ""; \
+		echo "💡 執行 skill /asp-level 獲得逐項驗證與升級建議"; \
+	fi; \
+	echo ""
+
+asp-level-upgrade: ## 升級到下一個 ASP 等級（需先通過 asp-level-check）
+	@CURRENT=$$(grep -E '^level:' .ai_profile 2>/dev/null | awk '{print $$2}'); \
+	if [ -z "$$CURRENT" ]; then echo "❌ .ai_profile 無 level 欄位，先執行 make asp-level-check"; exit 1; fi; \
+	LEVEL_FILE=".asp/levels/level-$$CURRENT.yaml"; \
+	NEXT=$$(grep -E '^next_level:' "$$LEVEL_FILE" | awk '{print $$2}'); \
+	if [ "$$NEXT" = "null" ] || [ -z "$$NEXT" ]; then echo "✅ 已在最高等級 (L$$CURRENT)"; exit 0; fi; \
+	NEXT_FILE=".asp/levels/level-$$NEXT.yaml"; \
+	if [ ! -f "$$NEXT_FILE" ]; then echo "❌ $$NEXT_FILE 不存在"; exit 1; fi; \
+	NEXT_NAME=$$(grep -E '^name:' "$$NEXT_FILE" | head -1 | sed 's/name: *//'); \
+	echo "🚀 升級 L$$CURRENT → L$$NEXT ($$NEXT_NAME)"; \
+	echo ""; \
+	cp .ai_profile ".ai_profile.backup-L$$CURRENT"; \
+	echo "✅ 已備份 .ai_profile → .ai_profile.backup-L$$CURRENT"; \
+	echo ""; \
+	echo "📋 請用 skill /asp-level 完成以下步驟："; \
+	echo "   1. 根據 $$NEXT_FILE 的 ai_profile_hint 更新 .ai_profile"; \
+	echo "   2. 執行 make asp-refresh"; \
+	echo "   3. 跑 make asp-level-check 確認新等級"
+
+asp-level-list: ## 列出所有 ASP 等級
+	@echo ""; \
+	echo "🎯 ASP Maturity Levels"; \
+	echo "======================"; \
+	for f in .asp/levels/level-*.yaml; do \
+		if [ -f "$$f" ]; then \
+			LV=$$(grep -E '^level:' "$$f" | awk '{print $$2}'); \
+			NM=$$(grep -E '^name:' "$$f" | head -1 | sed 's/name: *//'); \
+			TG=$$(grep -E '^tagline:' "$$f" | sed 's/tagline: *//'); \
+			echo "  L$$LV  $$NM — $$TG"; \
+		fi; \
+	done; \
+	echo ""; \
+	echo "詳細資訊：cat .asp/levels/level-N.yaml"; \
+	echo "等級檢查：make asp-level-check"
+
+asp-bypass-record: ## 寫入 bypass 記錄（內部使用，或手動記錄：SKILL=asp-ship STEP=5 REASON="..."）
+	@if [ -z "$(SKILL)" ] || [ -z "$(STEP)" ] || [ -z "$(REASON)" ]; then \
+		echo "❌ 用法：make asp-bypass-record SKILL=asp-ship STEP=Step5 REASON=\"...\" [ACTOR=ai|user]"; \
+		exit 1; \
+	fi; \
+	ACTOR="$${ACTOR:-ai}"; \
+	TS=$$(date -u +%Y-%m-%dT%H:%M:%SZ); \
+	ENTRY=$$(jq -n --arg t "$$TS" --arg s "$(SKILL)" --arg st "$(STEP)" --arg r "$(REASON)" --arg a "$$ACTOR" \
+		'{timestamp:$$t, skill:$$s, step:$$st, reason:$$r, actor:$$a}'); \
+	if [ ! -f ".asp-bypass-log.json" ]; then echo "[]" > ".asp-bypass-log.json"; fi; \
+	jq ". + [$$ENTRY]" ".asp-bypass-log.json" > ".asp-bypass-log.json.tmp" && \
+		mv ".asp-bypass-log.json.tmp" ".asp-bypass-log.json"; \
+	echo "✅ Bypass 記錄已寫入 (.asp-bypass-log.json)"
+
+#---------------------------------------------------------------------------
 # 專案健康審計
 #---------------------------------------------------------------------------
 
@@ -503,7 +703,7 @@ audit-health:
 	[ -d "frontend" ] && HAS_FE=1; \
 	([ -d "backend" ] || [ -d "api" ] || [ -d "server" ]) && HAS_BE=1; \
 	if [ $$HAS_FE -eq 1 ] && [ $$HAS_BE -eq 1 ]; then \
-		if [ ! -f "playwright.config.ts" ] && [ ! -f "playwright.config.js" ] && [ ! -f "frontend/playwright.config.ts" ] && [ ! -f "frontend/playwright.config.js" ]; then \
+		if [ ! -f "playwright.config.ts" ] && [ ! -f "playwright.config.js" ]; then \
 			echo "  🔴 BLOCKER: 全端專案缺少 Playwright 設定"; \
 			BLOCKERS=$$((BLOCKERS + 1)); \
 		else \

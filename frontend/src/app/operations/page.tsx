@@ -12,7 +12,6 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useToast } from "@/contexts/ToastContext";
 import { useOperationContext } from "@/contexts/OperationContext";
@@ -41,7 +40,7 @@ interface Operation {
   activeAgents: number;
   automationMode: string;
   riskThreshold: "low" | "medium" | "high" | "critical";
-  missionProfile: "SR" | "CO" | "SP";
+  missionProfile: "SR" | "CO" | "SP" | "FA";
   operatorId: string;
   createdAt: string;
   updatedAt: string;
@@ -57,6 +56,7 @@ const STATUS_BADGE_CLASSES: Record<string, string> = {
   paused:    "bg-[#B4530920] border-[#B4530940] text-[var(--color-warning)]",
   completed: "bg-[#71717A20] border-[#71717A40] text-[var(--color-text-secondary)]",
   failed:    "bg-[#B91C1C20] border-[#B91C1C40] text-[var(--color-error)]",
+  aborted:   "bg-[#B91C1C20] border-[#B91C1C40] text-[var(--color-error)]",
 };
 
 const STATUS_DOT_CLASSES: Record<string, string> = {
@@ -65,6 +65,7 @@ const STATUS_DOT_CLASSES: Record<string, string> = {
   paused:    "bg-[#B45309]",
   completed: "bg-[#71717A]",
   failed:    "bg-[#B91C1C]",
+  aborted:   "bg-[#B91C1C]",
 };
 
 const STATUS_BORDER_CLASSES: Record<string, string> = {
@@ -73,12 +74,14 @@ const STATUS_BORDER_CLASSES: Record<string, string> = {
   paused:    "border-[#B4530940]",
   completed: "border-[#71717A40]",
   failed:    "border-[#B91C1C40]",
+  aborted:   "border-[#B91C1C40]",
 };
 
 const PROFILE_BADGE_CLASSES: Record<string, string> = {
   SR: "bg-[#1E609120] border-[#1E609140] text-[var(--color-accent)]",
   CO: "bg-[#7C3AED20] border-[#7C3AED40] text-[var(--color-phase-orient)]",
   SP: "bg-[#B91C1C20] border-[#B91C1C40] text-[var(--color-error)]",
+  FA: "bg-[#B91C1C20] border-[#B91C1C40] text-[var(--color-error)]",
 };
 
 /* ------------------------------------------------------------------ */
@@ -95,7 +98,6 @@ export default function OperationsPage() {
 
 function OperationsContent() {
   const t = useTranslations("Operations");
-  const router = useRouter();
   const { addToast } = useToast();
   const { setOperationId } = useOperationContext();
 
@@ -115,7 +117,8 @@ function OperationsContent() {
     } finally {
       setLoading(false);
     }
-  }, [addToast, t]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     fetchOperations();
@@ -124,7 +127,7 @@ function OperationsContent() {
   /* -- Select operation & navigate --------------------------------- */
   function handleSelect(op: Operation) {
     setOperationId(op.id);
-    router.push("/warroom");
+    window.location.href = "/warroom";
   }
 
   /* -- Delete operation --------------------------------------------- */

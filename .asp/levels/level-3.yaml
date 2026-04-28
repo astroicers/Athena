@@ -1,0 +1,49 @@
+level: 3
+name: Test-First
+tagline: TDD 與 Pipeline Gate — 品質門檻自動化
+description: |
+  L3 把「測試先於代碼」從預設行為升級為硬性門檻，並啟用完整的
+  G1-G6 pipeline gate。適合對品質要求高、願意投入測試基礎建設的團隊。
+  如有 API 會同時啟用 openapi profile。目標：每一個 commit 都有可驗證的品質證據。
+
+profiles:
+  - global_core
+  - system_dev
+  - guardrail
+  - coding_style
+  - pipeline
+  # openapi 由 .ai_profile 的 openapi: enabled 顯式啟用（非所有專案都有 API）
+
+ai_profile_hint: |
+  type: system
+  level: 3
+  guardrail: enabled
+  coding_style: enabled
+  openapi: enabled   # 若專案有 API 合約
+  name: your-project
+
+prerequisites:
+  - level: 2
+    reason: "必須先完成 L2 的 graduation_checklist"
+
+graduation_checklist:
+  - id: gate-state-exists
+    description: ".asp-gate-state.json 存在且 G1-G4 至少曾達 PASSED"
+    check: "test -f .asp-gate-state.json"
+  - id: test-coverage-target
+    description: "有 make coverage target 可執行"
+    check: "make -n coverage >/dev/null 2>&1"
+  - id: tdd-evidence
+    description: "近 10 個 commit 中，test 檔案的修改時間早於或等於對應 impl 檔案（近似 TDD）"
+    check: "true"  # soft check, verified in asp-level skill
+  - id: bypass-log-healthy
+    description: "asp-bypass-log 中 SkippedGate 事件 < 5 次（過去 30 天）"
+    check: "true"  # computed by asp-level skill
+
+benefits_of_upgrading: |
+  升到 L4 (Collaborative) 後，你會獲得：
+  - multi_agent: 10 個專業角色可並行執行
+  - task_orchestrator: 自動任務分類與團隊組合
+  - escalation: P0-P3 嚴重度路由
+
+next_level: 4

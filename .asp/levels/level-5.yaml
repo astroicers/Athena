@@ -1,0 +1,65 @@
+level: 5
+name: Autonomous
+tagline: 全自動治理 — ROADMAP 驅動、跨 session 續接
+description: |
+  L5 是 ASP 的最終形態。AI 根據 ROADMAP 自主執行任務，跨 session 續接，
+  並用 RAG 查詢專案知識庫。適合已有完整 ADR 歷史、測試文化成熟、
+  團隊信任 AI 在明確邊界內自主決策的專案。目標：治理本身成為 AI 的內建約束，
+  人類只需要設定 ROADMAP 與驗收。
+
+profiles:
+  - global_core
+  - system_dev
+  - guardrail
+  - coding_style
+  - pipeline
+  - multi_agent
+  - task_orchestrator
+  - escalation
+  - dev_qa_loop
+  - reality_checker
+  - agent_memory
+  - autonomous_dev
+  - autopilot
+  - rag_context
+
+ai_profile_hint: |
+  type: system
+  level: 5
+  mode: multi-agent
+  autonomous: enabled
+  autopilot: enabled
+  rag: enabled
+  guardrail: enabled
+  coding_style: enabled
+  name: your-project
+
+prerequisites:
+  - level: 4
+    reason: "必須先完成 L4 的 graduation_checklist"
+  - required_profiles_working:
+      - multi_agent
+      - reality_checker
+    reason: "L5 依賴 multi_agent 與 reality_checker 的獨立驗證能力"
+
+graduation_checklist:
+  - id: roadmap-exists
+    description: "docs/ROADMAP.md 存在且格式符合 autopilot 要求"
+    check: "test -f docs/ROADMAP.md"
+  - id: autopilot-state
+    description: "曾成功跑過 autopilot-init（.asp-autopilot-state.json 存在）"
+    check: "test -f .asp-autopilot-state.json"
+  - id: rag-index-built
+    description: "RAG 索引已建立"
+    check: "make -n rag-stats >/dev/null 2>&1"
+  - id: zero-p1-escalation
+    description: "過去 30 天無未解決的 P0/P1 escalation"
+    check: "true"  # soft check
+
+benefits_of_upgrading: |
+  你已經在 ASP 最高等級。接下來可以：
+  - 擴充 .asp/advanced/ 中的整合（例如 Spectra、Linear）
+  - 自訂 profile 以符合團隊特殊需求
+  - 貢獻 profile 或 skill 回上游
+
+next_level: null

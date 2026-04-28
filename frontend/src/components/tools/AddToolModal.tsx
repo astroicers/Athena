@@ -28,6 +28,14 @@ const CATEGORY_OPTIONS = [
   "credential_access",
   "exploitation",
   "execution",
+  "discovery",
+  "persistence",
+  "privilege_escalation",
+  "lateral_movement",
+  "collection",
+  "exfiltration",
+  "command_and_control",
+  "impact",
 ];
 
 const RISK_OPTIONS = ["low", "medium", "high", "critical"];

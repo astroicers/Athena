@@ -145,6 +145,25 @@ FUNCTION evaluate_G2(artifacts):
     ELSE:
       checks.append("Observability 已定義 ✅")
 
+  // v3.7: Done When 數量下限（quality-thresholds.yaml G2_specification.min_acceptance_criteria）
+  IF severity != TRIVIAL:
+    thresholds = load(".asp/config/quality-thresholds.yaml")
+    min_ac = thresholds.gates.G2_specification.min_acceptance_criteria  // 預設 3
+    IF LEN(artifacts.spec.done_when) < min_ac:
+      issues.append("🔴 Done When 數量不足：{LEN(artifacts.spec.done_when)} 條 < 最低要求 {min_ac} 條")
+    ELSE:
+      checks.append("Done When 數量 {LEN(artifacts.spec.done_when)} ≥ {min_ac} ✅")
+
+  // v3.7: [UNVERIFIED] 標注檢查（quality-thresholds.yaml fact_verification.max_unverified_facts_in_spec）
+  unverified_count = count_pattern("[UNVERIFIED]", artifacts.spec.content)
+  IF unverified_count > 0:
+    issues.append("🔴 SPEC 含 {unverified_count} 個 [UNVERIFIED] 標注——必須先完成 Fact Verification Gate 再提交 G2")
+  ELSE:
+    checks.append("無 [UNVERIFIED] 未驗證事實 ✅")
+
+  IF issues:
+    RETURN GATE_FAIL(issues)
+
   RETURN GATE_PASS(evidence=checks)
 ```
 
@@ -433,6 +452,37 @@ FUNCTION execute_pipeline(task, team, phases):
 
   RETURN artifacts
 ```
+
+---
+
+## 量化閾值（v3.7）
+
+> 借鑒來源：huashu-design 5-10-2-8 量化閘門模式。
+> Gate 評分必須對照具體數字，不得使用「基本達標」等主觀描述。
+
+完整閾值定義在 `.asp/config/quality-thresholds.yaml`。Gate 評分時必須輸出以下格式：
+
+```
+GATE G[N] 量化摘要
+指標              | 閾值             | 實際值    | 狀態
+------------------|------------------|-----------|------
+SPEC 欄位數       | = 7              | 7         | ✅ PASS
+Done When 數量    | ≥ 3              | 2         | ❌ FAIL
+Gherkin 場景      | ≥ 2              | 3         | ✅ PASS
+Draft ADR 數      | = 0              | 0         | ✅ PASS
+[UNVERIFIED] 標注 | = 0              | 1         | ❌ BLOCKER
+```
+
+**核心閾值快速參考（詳見 quality-thresholds.yaml）：**
+
+| Gate | 關鍵閾值 |
+|------|---------|
+| G1 | Draft ADR = 0；依賴圖無環 |
+| G2 | SPEC 7 欄位；≥3 Done When；≥2 Gherkin 場景；[UNVERIFIED] = 0 |
+| G3 | 所有測試實作前 FAIL；無編譯錯誤 |
+| G4 | 覆蓋率 ≥ 80%；認知複雜度 ≤ 10；Lint 錯誤 = 0 |
+| G5 | ≥1 E2E 場景；頁面載入 ≤ 3000ms；a11y critical = 0 |
+| G6 | 文件新鮮度 ≤ 7 天；P0 tech debt = 0；健康分數不退步 |
 
 ---
 

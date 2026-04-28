@@ -1,56 +1,63 @@
 @import "tailwindcss";
 @config "../../tailwind.config.ts";
 
-/* Tailwind v4: map CSS vars → utility classes via @theme */
+/* Tailwind v4: @theme must use literal values (var() references don't resolve here) */
 @theme {
-  --color-athena-bg: var(--color-bg-primary);
-  --color-athena-surface: var(--color-bg-surface);
-  --color-athena-elevated: var(--color-bg-elevated);
-  --color-athena-surface-hover: var(--color-bg-surface-hover);
-  --color-athena-overlay: var(--color-bg-overlay);
-  --color-athena-white-5: var(--color-white-5);
-  --color-athena-white-8: var(--color-white-8);
-  --color-athena-white-10: var(--color-white-10);
-  --color-athena-accent: var(--color-accent);
-  --color-athena-accent-hover: var(--color-accent-hover);
-  --color-athena-accent-bg: var(--color-accent-bg);
-  --color-athena-text: var(--color-text-primary);
-  --color-athena-text-light: var(--color-text-light);
-  --color-athena-text-secondary: var(--color-text-secondary);
-  --color-athena-text-tertiary: var(--color-text-tertiary);
-  --color-athena-text-ghost: var(--color-text-ghost);
-  --color-athena-text-faint: var(--color-text-faint);
-  --color-athena-text-muted: var(--color-text-muted);
-  --color-athena-text-dim: var(--color-text-dim);
-  --color-athena-text-soft: var(--color-text-soft);
-  --color-athena-text-subtle: var(--color-text-subtle);
-  --color-athena-border: var(--color-border);
-  --color-athena-success: var(--color-success);
-  --color-athena-success-bg: var(--color-success-bg);
-  --color-athena-warning: var(--color-warning);
-  --color-athena-warning-bg: var(--color-warning-bg);
-  --color-athena-error: var(--color-error);
-  --color-athena-error-bg: var(--color-error-bg);
-  --color-athena-critical: var(--color-critical);
-  --color-athena-info: var(--color-info);
-  --color-athena-phase-observe: var(--color-phase-observe);
-  --color-athena-phase-orient: var(--color-phase-orient);
-  --color-athena-phase-decide: var(--color-phase-decide);
-  --color-athena-phase-act: var(--color-phase-act);
-  --font-size-athena-floor: var(--fs-floor);
-  --font-size-athena-caption: var(--fs-caption);
-  --font-size-athena-body: var(--fs-body);
-  --font-size-athena-heading-card: var(--fs-heading-card);
-  --font-size-athena-heading-section: var(--fs-heading-section);
-  --font-size-athena-heading-panel: var(--fs-heading-panel);
-  --font-size-athena-metric-display: var(--fs-metric-display);
-  --font-size-athena-metric-hero: var(--fs-metric-hero);
-  --font-size-athena-heading-page: var(--fs-heading-page);
-  --font-size-athena-metric: var(--fs-metric);
-  --font-size-athena-metric-label: var(--fs-metric-label);
-  --font-family-mono: var(--font-mono);
-  --font-family-sans: var(--font-sans);
-  --border-radius-athena: var(--radius);
+  /* Backgrounds */
+  --color-athena-bg: #09090B;
+  --color-athena-surface: #18181B;
+  --color-athena-elevated: #27272A;
+  --color-athena-surface-hover: rgba(255,255,255,0.03);
+  --color-athena-overlay: rgba(0,0,0,0.60);
+  --color-athena-white-5: rgba(255,255,255,0.02);
+  --color-athena-white-8: rgba(255,255,255,0.03);
+  --color-athena-white-10: rgba(255,255,255,0.06);
+  /* Accent */
+  --color-athena-accent: #1E6091;
+  --color-athena-accent-hover: #1A5276;
+  --color-athena-accent-bg: rgba(30,96,145,0.12);
+  /* Text */
+  --color-athena-text: #D4D4D8;
+  --color-athena-text-light: #D4D4D8;
+  --color-athena-text-secondary: #A1A1AA;
+  --color-athena-text-tertiary: #71717A;
+  --color-athena-text-ghost: rgba(212,212,216,0.125);
+  --color-athena-text-faint: rgba(212,212,216,0.19);
+  --color-athena-text-muted: rgba(212,212,216,0.25);
+  --color-athena-text-dim: rgba(212,212,216,0.375);
+  --color-athena-text-soft: rgba(212,212,216,0.50);
+  --color-athena-text-subtle: rgba(212,212,216,0.63);
+  /* Border */
+  --color-athena-border: #3F3F46;
+  /* Status */
+  --color-athena-success: #059669;
+  --color-athena-success-bg: rgba(5,150,105,0.12);
+  --color-athena-warning: #B45309;
+  --color-athena-warning-bg: rgba(180,83,9,0.12);
+  --color-athena-error: #B91C1C;
+  --color-athena-error-bg: rgba(185,28,28,0.12);
+  --color-athena-critical: #991B1B;
+  --color-athena-info: #1E6091;
+  /* OODA phases */
+  --color-athena-phase-observe: #1E6091;
+  --color-athena-phase-orient: #7C3AED;
+  --color-athena-phase-decide: #B45309;
+  --color-athena-phase-act: #059669;
+  /* Typography */
+  --font-size-athena-floor: 12px;
+  --font-size-athena-caption: 10px;
+  --font-size-athena-body: 14px;
+  --font-size-athena-heading-card: 13px;
+  --font-size-athena-heading-section: 18px;
+  --font-size-athena-heading-panel: 16px;
+  --font-size-athena-metric-display: 20px;
+  --font-size-athena-metric-hero: 24px;
+  --font-size-athena-heading-page: 28px;
+  --font-size-athena-metric: 32px;
+  --font-size-athena-metric-label: 11px;
+  --font-family-mono: "JetBrains Mono", "Fira Code", monospace;
+  --font-family-sans: "Inter", system-ui, sans-serif;
+  --border-radius-athena: 4px;
 }
 
 /* ============================================

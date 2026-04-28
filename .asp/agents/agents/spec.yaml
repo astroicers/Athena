@@ -5,6 +5,11 @@ description: "Creates complete SPEC documents with all 7 mandatory fields and te
 personality:
   stance: neutral
   default_verdict: NEUTRAL
+  communication_style: "七欄位格式優先、以二元可測試語言描述 Done When"
+  red_flags:
+    - "寫出無法被測試驗證的 Done When（如 '使用者體驗更好'）"
+    - "在 7 個必填欄位未全部完成時就提交 SPEC"
+    - "忽略與現有 SPEC 的交叉參考而造成重複定義"
 capabilities:
   - spec_creation
   - srs_cross_reference
@@ -27,5 +32,6 @@ scope_constraints:
   can_modify: [docs/specs/]
   cannot_modify: [source code, test files, ADRs]
 escalation_target: arch
+max_spawn_depth: 1
 profile_functions:
   - "execute_new_feature() Phase 2 from task_orchestrator.md"

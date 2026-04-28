@@ -1,0 +1,77 @@
+# ASP Quality Thresholds v3.7
+# 靈感來源：huashu-design 5-10-2-8 量化閘門模式
+# 把定性品質標準（「基本達標」）轉換為具體數字閾值
+#
+# 使用方式：Gate 評分時對照此檔，必須輸出 "閾值 vs 實際值" 比對，
+# 不得使用主觀描述。格式見 reality_checker.md「量化驗收報告」。
+
+gates:
+
+  G1_architecture:
+    # SPECIFY → PLAN
+    max_draft_adrs_blocking: 0        # Draft ADR 數量必須為 0 才能繼續
+    dependency_cycle_allowed: false   # 依賴圖不得有循環
+
+  G2_specification:
+    # PLAN → FOUNDATION
+    required_spec_sections: 7        # SPEC 必填七欄位（Goal/Inputs/Output/SideEffects/EdgeCases/DoneWhen/Traceability）
+    min_acceptance_criteria: 3       # Done When 最少 3 條（非 trivial）
+    max_open_questions: 0            # 無未解問題才能過關
+    min_gherkin_scenarios: 2         # 至少 2 個 Gherkin 場景（非 trivial）
+    min_test_matrix_positive: 1      # 測試矩陣至少 1 個正向案例
+    min_test_matrix_negative: 1      # 測試矩陣至少 1 個負向案例
+    observability_required: true     # 使用者面向功能 / API / 資料處理必須定義 Observability
+
+  G3_tdd_red:
+    # FOUNDATION → BUILD
+    must_fail_before_impl: true      # 所有測試必須在實作前 FAIL（紅燈）
+    compilation_error_allowed: false # 測試不得有編譯錯誤（只允許斷言失敗）
+
+  G4_implementation:
+    # BUILD → HARDEN
+    min_unit_coverage_pct: 80        # 單元測試覆蓋率下限（%）
+    max_cognitive_complexity: 10     # 認知複雜度上限（Cognitive Complexity，per function）
+    lint_errors_allowed: 0           # Lint 錯誤數上限
+    all_done_when_tested: true       # 每條 Done When 必須有對應測試
+
+  G5_integration:
+    # HARDEN → DELIVER
+    min_e2e_scenarios: 1             # 至少 1 個 E2E happy path（全端專案）
+    performance_budget_ms: 3000      # 頁面載入預算（毫秒）
+    a11y_violations_critical: 0      # 無 critical a11y 違規（axe-core 標準）
+    security_scan_critical: 0        # 無 critical 安全漏洞（OWASP Top 10）
+
+  G6_delivery:
+    # DELIVER → DONE
+    doc_freshness_days: 7            # 文件同步時效（天）— SPEC Traceability 最後驗證日期
+    tech_debt_p0_allowed: 0          # 無 P0（HIGH 超期）tech debt
+    postmortem_required_if_p0: true  # P0 事件必須建立 Postmortem
+    health_score_regression: false   # 健康分數不得退步（audit-quick blockers 不增加）
+
+# ─── 外部解方採用標準（借鑒 huashu 5-10-2-8 模式）────────────────────────
+# 採用外部函式庫、框架、服務前的評估閾值
+external_solution_adoption:
+  min_reference_sources: 5          # 至少搜尋 5 個參考來源（官方文件、Issue、社群）
+  min_candidate_options: 2          # 至少評估 2 個候選方案後再決定
+  min_quality_score: 8              # 採用閾值：10 分制評分，8 分以上才採用
+  quality_dimensions:               # 評分維度（各自 0-10，取平均）
+    - maintenance_active            # 近 6 個月有更新
+    - community_size                # Stars/下載量 / 社群活躍度
+    - security_record               # 無未修復 CVE
+    - api_stability                 # 無近期 breaking change
+    - license_compatible            # 授權相容專案（MIT/Apache/BSD 優先）
+
+# ─── ADR 流程閾值 ─────────────────────────────────────────────────────────
+adr:
+  max_draft_age_days: 3             # ADR 草稿超過 3 天未 Accept → 自動升為 BLOCKER
+  required_fields:
+    - Status
+    - Context
+    - Decision
+    - Consequences
+  min_alternatives_considered: 2    # 至少評估 2 個替代方案
+
+# ─── 事實驗證閘閾值（Fact Verification Gate，v3.7）─────────────────────────
+fact_verification:
+  max_unverified_facts_in_spec: 0   # SPEC 中 [UNVERIFIED] 標注數量上限（過閘前必須為 0）
+  fact_check_log_required: true     # 有外部依賴時必須存在 .asp-fact-check.md

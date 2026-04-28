@@ -9,14 +9,11 @@
 // For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use client";
-
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 
 export default function OpsecRedirect() {
-  const router = useRouter();
   useEffect(() => {
-    router.replace("/warroom");
-  }, [router]);
+    window.location.replace("/warroom");
+  }, []);
   return null;
 }

@@ -1,0 +1,57 @@
+level: 4
+name: Collaborative
+tagline: 多代理協作 — 並行執行與獨立驗證
+description: |
+  L4 啟用 multi-agent 模式。10 個專業 agent 角色（arch/spec/impl/tdd/qa/sec/doc/
+  dep-analyst/reality/integ）可並行處理複雜任務。適合中大型專案、跨模組變更、
+  需要獨立 QA 驗證的場景。目標：用結構化分工取代單 agent 的序列化處理。
+
+profiles:
+  - global_core
+  - system_dev
+  - guardrail
+  - coding_style
+  - pipeline
+  - multi_agent
+  - task_orchestrator
+  - escalation
+  - dev_qa_loop
+  - reality_checker
+  - agent_memory
+
+ai_profile_hint: |
+  type: system
+  level: 4
+  mode: multi-agent
+  guardrail: enabled
+  coding_style: enabled
+  name: your-project
+
+prerequisites:
+  - level: 3
+    reason: "必須先完成 L3 的 graduation_checklist"
+
+graduation_checklist:
+  - id: agent-handoff-works
+    description: "曾成功執行過 agent handoff（.asp/handoffs/ 目錄有記錄）"
+    check: "test -d .asp/handoffs && ls .asp/handoffs/*.md 2>/dev/null | head -1"
+  - id: reality-check-invoked
+    description: "reality-checker subagent 曾被召喚（asp-bypass-log 或 session log 有記錄）"
+    check: "true"  # soft check
+  - id: team-recommendation-used
+    description: "曾執行過 make agent-team-recommend"
+    check: "true"  # soft check
+  - id: escalation-handled
+    description: "escalation log 中無未處理的 P0/P1 項目"
+    check: "make -n agent-escalation-log >/dev/null 2>&1"
+
+benefits_of_upgrading: |
+  升到 L5 (Autonomous) 後，你會獲得：
+  - autonomous_dev: AI 自主決策邊界
+  - autopilot: ROADMAP 驅動連續執行、跨 session 續接
+  - rag_context: 本地知識庫檢索（強烈建議同時啟用）
+
+  ⚠️ L5 需要完善的測試覆蓋與 reality-checker 流程，
+  請確認 L4 的 graduation_checklist 全部通過再升級。
+
+next_level: 5

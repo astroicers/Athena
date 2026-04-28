@@ -10,7 +10,7 @@
 
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { OpsecAlert } from "@/hooks/useGlobalAlerts";
 import type { ConstraintAlert } from "@/hooks/useGlobalAlerts";
@@ -57,6 +57,14 @@ export function NotificationCenter({
 }: NotificationCenterProps) {
   const t = useTranslations("Notifications");
 
+  const [mountTime] = useState(() =>
+    new Date().toLocaleTimeString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
+  );
+
   const displayAlerts = useMemo(
     () => opsecAlerts.slice(-MAX_DISPLAY).reverse(),
     [opsecAlerts],
@@ -83,11 +91,11 @@ export function NotificationCenter({
     }
   }, []);
 
-  if (!isOpen) return null;
-
   const hasConstraint = constraintAlert.active && constraintAlert.messages.length > 0;
   const hasOpsec = displayAlerts.length > 0;
   const isEmpty = !hasConstraint && !hasOpsec;
+
+  if (!isOpen) return null;
 
   return (
     <>
@@ -175,11 +183,7 @@ export function NotificationCenter({
                         <span
                           className="text-athena-floor font-mono text-[var(--color-text-tertiary)]"
                         >
-                          {new Date().toLocaleTimeString(undefined, {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            second: "2-digit",
-                          })}
+                          {mountTime}
                         </span>
                       </div>
                       {/* Message */}

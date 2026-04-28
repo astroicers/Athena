@@ -17,12 +17,24 @@ import { ToolExecuteModal } from "@/components/tools/ToolExecuteModal";
 import type { ToolRegistryEntry } from "@/types/tool";
 
 /* ── Badge color maps (hex with alpha suffixes) ── */
+// Hardcoded hex values used in dynamic style={{}} — cannot use Tailwind classes for dynamic props.
+// Colors correspond to design tokens: accent-blue, purple, green, red, orange, teal, indigo, amber, dark-red, cyan, violet, copper, deep-purple, scarlet.
 
 const CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  recon:      { bg: "#1E609120", border: "#1E609140", text: "#1E6091" },
-  execution:  { bg: "#7C3AED20", border: "#7C3AED40", text: "#7C3AED" },
-  vuln_scan:  { bg: "#05966920", border: "#05966940", text: "#059669" },
-  credential: { bg: "#B91C1C20", border: "#B91C1C40", text: "#B91C1C" },
+  reconnaissance:        { bg: "#1E609120", border: "#1E609140", text: "#1E6091" },
+  enumeration:           { bg: "#7C3AED20", border: "#7C3AED40", text: "#7C3AED" },
+  vulnerability_scanning:{ bg: "#05966920", border: "#05966940", text: "#059669" },
+  credential_access:     { bg: "#B91C1C20", border: "#B91C1C40", text: "#B91C1C" },
+  exploitation:          { bg: "#EA580C20", border: "#EA580C40", text: "#EA580C" },
+  execution:             { bg: "#0891B220", border: "#0891B240", text: "#0891B2" },
+  discovery:             { bg: "#4F46E520", border: "#4F46E540", text: "#4F46E5" },
+  persistence:           { bg: "#D9770620", border: "#D9770640", text: "#D97706" },
+  privilege_escalation:  { bg: "#991B1B20", border: "#991B1B40", text: "#991B1B" },
+  lateral_movement:      { bg: "#0D948820", border: "#0D948840", text: "#0D9488" },
+  collection:            { bg: "#C2410C20", border: "#C2410C40", text: "#C2410C" },
+  exfiltration:          { bg: "#9333EA20", border: "#9333EA40", text: "#9333EA" },
+  command_and_control:   { bg: "#7C3AED20", border: "#7C3AED40", text: "#7C3AED" },
+  impact:                { bg: "#B91C1C20", border: "#B91C1C40", text: "#B91C1C" },
 };
 
 const RISK_COLORS: Record<string, { bg: string; border: string; text: string }> = {

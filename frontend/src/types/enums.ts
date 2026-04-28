@@ -13,6 +13,8 @@ export enum OODAPhase {
   ORIENT = "orient",
   DECIDE = "decide",
   ACT = "act",
+  FAILED = "failed",
+  COMPLETE = "complete",
 }
 
 export enum OperationStatus {
@@ -54,6 +56,7 @@ export enum ExecutionEngine {
   MOCK = "mock",
   METASPLOIT = "metasploit",
   WINRM = "winrm",
+  MCP = "mcp",
 }
 
 export enum C5ISRDomain {
@@ -83,6 +86,10 @@ export enum FactCategory {
   SERVICE = "service",
   VULNERABILITY = "vulnerability",
   FILE = "file",
+  OSINT = "osint",
+  POC = "poc",
+  WEB = "web",
+  DEFENSE = "defense",
 }
 
 export enum LogSeverity {
@@ -113,4 +120,5 @@ export enum RiskLevel {
 export enum AutomationMode {
   MANUAL = "manual",
   SEMI_AUTO = "semi_auto",
+  AUTO_FULL = "auto_full",
 }

@@ -101,3 +101,36 @@ chmod +x .git/hooks/post-commit
 ```bash
 chmod +x .git/hooks/post-commit
 ```
+
+---
+
+## .asp-fact-check.md 整合（v3.7）
+
+> `.asp-fact-check.md` 是 Fact Verification Gate（見 `global_core.md`）的驗證日誌，
+> 記錄每次外部事實查證的來源與結果。
+
+### 自動餵入 RAG
+
+當 `rag: enabled` 時，`.asp-fact-check.md` 應納入 RAG 索引，供後續查詢複用：
+
+```bash
+# 確認 fact-check log 已加入索引範圍
+make rag-index   # 自動掃描所有 .asp-*.md（含 fact-check log）
+```
+
+**查詢用途：**
+- `make rag-search Q="axios 版本"` → 找出之前驗證過的版本記錄，避免重複查證
+- `make rag-search Q="GDPR 第 17 條"` → 查詢是否已有法規驗證記錄（含驗證日期）
+
+### 過期清理策略
+
+| 條件 | 處置 |
+|------|------|
+| 驗證日期超過 30 天 | 重新查證（技術文件更新速度快）|
+| 驗證日期超過 90 天 | 標注 `[STALE]`，下次用到時強制重新驗證 |
+| 驗證結果為 ⚠️ 或 ❌ | 保留至問題解決，不納入自動清理 |
+
+```bash
+# 查詢需要重新驗證的項目
+make rag-search Q="fact-check STALE"
+```

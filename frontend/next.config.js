@@ -3,13 +3,22 @@ const withNextIntl = createNextIntlPlugin();
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: "standalone",
   transpilePackages: ["three", "react-force-graph-3d"],
   async redirects() {
     return [
       { source: "/c5isr", destination: "/warroom", permanent: true },
       { source: "/navigator", destination: "/planner", permanent: true },
       { source: "/monitor", destination: "/warroom", permanent: true },
+    ];
+  },
+  async headers() {
+    return [
+      {
+        source: "/_next/static/chunks/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000" },
+        ],
+      },
     ];
   },
   async rewrites() {

@@ -833,6 +833,10 @@ function WarRoomContent() {
                         <option value={ExecutionEngine.SSH}>{t("engineSsh")}</option>
                         <option value={ExecutionEngine.PERSISTENT_SSH}>{t("enginePersistentSsh")}</option>
                         <option value={ExecutionEngine.C2}>{t("engineC2")}</option>
+                        <option value={ExecutionEngine.WINRM}>{t("engineWinrm")}</option>
+                        <option value={ExecutionEngine.METASPLOIT}>{t("engineMetasploit")}</option>
+                        <option value={ExecutionEngine.MOCK}>{t("engineMock")}</option>
+                        <option value={ExecutionEngine.MCP}>{t("engineMcp")}</option>
                       </select>
                     </div>
                   </div>

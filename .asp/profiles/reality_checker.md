@@ -108,6 +108,41 @@ FUNCTION reality_check(artifacts, gate_id):
 
 ---
 
+## 量化驗收報告格式（v3.7）
+
+> 借鑒來源：huashu-design 5-10-2-8 量化閘門模式。
+> 所有 Gate 評分必須輸出此格式，不得使用主觀描述。
+
+```
+REALITY CHECK — 量化摘要（Gate G[N]）
+閾值來源：.asp/config/quality-thresholds.yaml
+
+指標                  | 閾值             | 實際值    | 狀態
+----------------------|------------------|-----------|------
+單元測試覆蓋率        | ≥ 80%            | 73%       | ❌ FAIL
+認知複雜度（最高）    | ≤ 10             | 8         | ✅ PASS
+Lint 錯誤             | = 0              | 0         | ✅ PASS
+Done When 覆蓋        | = 100%           | 100%      | ✅ PASS
+Draft ADR 數          | = 0              | 1         | ❌ BLOCKER
+[UNVERIFIED] 標注     | = 0              | 0         | ✅ PASS
+文件新鮮度            | ≤ 7 天           | 3 天      | ✅ PASS
+健康分數 blocker 數   | ≤ 基準值         | +1        | ❌ FAIL
+
+整體判定：NEEDS_WORK
+反面證據：
+  1. 覆蓋率 73% < 80%（閾值 G4.min_unit_coverage_pct）
+  2. Draft ADR 存在（ADR-007 尚未 Accept）→ BLOCKER
+  3. 健康分數退步（新增 1 個 blocker）
+```
+
+**輸出規則：**
+- READY 時：列出所有 ✅ 項目 + 整體判定 READY
+- NEEDS_WORK 時：列出所有 ❌/BLOCKER 項目 + 修復建議
+- 若某閾值不適用（如純後端無 E2E），標注「N/A — [豁免原因]」
+- 數字必須來自實際執行（`make test`、`make coverage`、`make audit-quick`），不得猜測
+
+---
+
 ## 與其他 Profile 的關係
 
 ```

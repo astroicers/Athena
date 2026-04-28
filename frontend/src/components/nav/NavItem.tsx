@@ -11,7 +11,6 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
 
 interface NavItemProps {
   href: string;
@@ -22,7 +21,7 @@ interface NavItemProps {
 
 export function NavItem({ href, icon: Icon, label, isActive }: NavItemProps) {
   return (
-    <Link
+    <a
       href={href}
       title={label}
       className={`flex items-center gap-2.5 h-9 w-full px-2 rounded-[var(--radius)] transition-colors
@@ -34,6 +33,6 @@ export function NavItem({ href, icon: Icon, label, isActive }: NavItemProps) {
     >
       <Icon />
       <span className="text-athena-floor font-mono truncate">{label}</span>
-    </Link>
+    </a>
   );
 }

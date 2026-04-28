@@ -1,0 +1,40 @@
+level: 1
+name: Starter
+tagline: 最小可用 — 建立基本治理習慣
+description: |
+  L1 是 ASP 的入門等級。只載入最核心的鐵則與 ADR/SPEC 流程，
+  不啟用額外護欄、多代理、autopilot。適合剛採用 ASP 的小型專案
+  或個人開發。目標：讓「寫 ADR、寫 SPEC、跑測試」成為肌肉記憶。
+
+profiles:
+  - global_core
+  - system_dev
+
+ai_profile_hint: |
+  type: system
+  level: 1
+  name: your-project
+
+prerequisites: []
+
+graduation_checklist:
+  - id: has-test-target
+    description: "Makefile 有 `test` target 且可執行"
+    check: "make -n test >/dev/null 2>&1"
+  - id: has-at-least-one-adr
+    description: "docs/adr/ 至少有 1 個 Accepted ADR"
+    check: "ls docs/adr/ADR-*.md 2>/dev/null | head -1"
+  - id: has-at-least-one-spec
+    description: "docs/specs/ 至少有 1 個 SPEC"
+    check: "ls docs/specs/SPEC-*.md 2>/dev/null | head -1"
+  - id: ran-ship-successfully
+    description: "曾成功跑過 /asp-ship 並通過（.asp-test-result.json 存在且 passed=true）"
+    check: "test -f .asp-test-result.json"
+
+benefits_of_upgrading: |
+  升到 L2 (Disciplined) 後，你會獲得：
+  - guardrail: 自動偵測敏感資料與 scope 越界
+  - coding_style: 統一命名與格式慣例
+  - 更完整的 pre-commit 掃描
+
+next_level: 2

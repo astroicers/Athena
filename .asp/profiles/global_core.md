@@ -16,6 +16,90 @@
 
 ---
 
+## 工作目錄紀律（v3.5.1 新增）
+
+> ASP 專案常有多個 additional working directories，AI 在錯誤目錄執行 `make` / `git commit` / 檔案寫入可能汙染其他專案。
+
+- **工作目錄模糊時先確認**：以下情境必須先以 Bash 的 description 欄位或 `pwd` 明確標示當前路徑：
+  - Session 內曾切換過多個 root directory
+  - Subagent 接手任務（subagent 的 cwd 可能與主 agent 不同）
+  - 使用者請求中有相對路徑（`./`、`../`、無前綴的檔名）
+- **存取專案根目錄外的檔案**：若操作涉及專案根目錄**之外**的路徑，必須在回覆中明確告知「此操作涉及 `{絕對路徑}`，位於專案外」並等待使用者確認後才執行
+- **跨專案複製/移動檔案**：必須列出來源與目的地的**完整絕對路徑**，不可用相對路徑模糊化
+- **副作用寫入目錄外**：寫入 `/tmp`、`$HOME`、其他專案目錄等位置時，主動說明「此檔案將寫入 `{絕對路徑}`」
+
+**繞過藉口與反駁：**
+| 藉口 | 反駁 |
+|------|------|
+| 「使用者說的 file.txt 一定是在當前目錄」 | 使用者的「當前目錄」可能與你的 cwd 不同。先 `pwd` 或讀取 `<env>` 區塊的 working directory |
+| 「relative path 比較短，省事」 | 跨 root 操作時，相對路徑是 bug 溫床。絕對路徑冗長但可審計 |
+
+---
+
+## 外部事實驗證閘（Fact Verification Gate）（v3.7 升級，原 v3.5.1 外部資料校對）
+
+> LLM 幻覺 API 簽章、函式行為是常見問題。ASP evidence-based 精神延伸至外部資料：不可引用訓練資料記憶作為「事實」。
+> 借鑒來源：huashu-design Checkpoint #0 — "Before any work involving specific products/technologies, you must WebSearch to verify..."
+
+### 觸發條件
+
+任何任務涉及以下資訊時，必須先執行驗證，不得依賴 AI 訓練資料：
+
+- 第三方函式庫的 API 簽章、參數、回傳格式
+- Framework 的最新用法（尤其 AI/ML、Web framework 更新頻繁）
+- 官方文件中的預設值、deprecation 狀態、版本相容性
+- 協定規範（HTTP status code 含義、JSON Schema 語法細節）
+- **（v3.7 新增）** 外部服務的存在性、定價、功能集
+- **（v3.7 新增）** 法規條文、標準規範編號
+
+### 執行程序（嵌入 G1 Gate 前）
+
+```
+FACT_VERIFICATION_CHECKLIST:
+□ 識別任務中涉及的所有外部事實點（版本、API、規範）
+□ 對每個事實點執行以下查證（優先順序由上而下）：
+    1. 專案內 rag_context（若 rag: enabled）
+    2. context7 MCP（若可用）
+    3. WebFetch 官方文件 URL
+    4. WebSearch（多來源交叉驗證）
+□ 將驗證結果記錄在 .asp-fact-check.md（格式見下）
+□ 若驗證失敗（資訊無法確認），在 SPEC 中標注 [UNVERIFIED]
+□ 通過後才進入 ADR/SPEC 撰寫
+```
+
+**.asp-fact-check.md 記錄格式**（每次查證後追加）：
+
+```markdown
+| 事實點 | 聲稱值 | 驗證來源 | 驗證結果 | 日期 |
+|--------|--------|---------|---------|------|
+| axios 版本 | 1.6.x | package.json | ✅ 確認 1.6.8 | 2026-04-28 |
+| OpenAI Chat endpoint | /v1/chat/completions | 官方文件 | ✅ 確認 | 2026-04-28 |
+| GDPR 第 17 條 | 被遺忘權 | EUR-Lex | ⚠️ 需法務確認 | 2026-04-28 |
+```
+
+**豁免**：純內部實作（無任何外部依賴）、trivial 修改
+
+### 人事時地物 5 元素校對
+
+查證時同時確認：
+- **人**：作者 / 維護者 / 官方組織是誰
+- **事**：函式 / API 的實際行為（不只是簽章）
+- **時**：文件日期 vs 今天日期 — 警覺版本差異
+- **地**：官方文件 URL（非第三方部落格或 Stack Overflow 答案的二手資訊）
+- **物**：版本號是否符合專案 `package.json` / `requirements.txt` / `Cargo.toml` 鎖定版本
+
+若無法查證：必須明確標注「（根據訓練資料，可能過時，請驗證）」而非偽裝成事實
+
+**繞過藉口與反駁：**
+| 藉口 | 反駁 |
+|------|------|
+| 「這個 API 很穩定，憑記憶寫就好」 | 「穩定 API」仍有 deprecated 警告、新參數、行為變更。引用記憶 = 押注沒變 |
+| 「查證太慢，先寫再說」 | 寫錯再 debug 更慢。查證 30 秒 vs debug 15 分鐘 |
+| 「官方文件 404，用 Stack Overflow 答案」 | SO 答案通常版本過期。先嘗試 GitHub repo 的 README 或 source code |
+| 「這只是小功能，不需要查證」 | 事實點的重要性與任務大小無關。一個錯誤的版本號可以讓整個 build 失敗 |
+
+---
+
 ## 破壞性操作防護
 
 以下操作由 Claude Code 內建權限系統確認，`git push` 前另需列出變更摘要並等待人類明確同意：
@@ -282,3 +366,39 @@ Postmortem 不是懲罰，是學習工具。重點是「系統為什麼沒有防
 - Shell 指令超過 3 行 → 移入 Makefile，只輸出 `make xxx`
 - 重複性操作 → 禁止每次重新輸出完整指令
 - `type: content` 的專案 → 跳過所有 Docker、測試、CI/CD 邏輯
+
+---
+
+## Assumption Checkpoint Protocol（v3.7）
+
+> 借鑒來源：huashu-design Checkpoint #3 "Early show" + enforcement rule
+> "🛑 At each checkpoint: Stop, tell user what you've done, confirm next steps. Don't proceed silently."
+
+實作任何非 trivial 任務前，必須先輸出假設清單，等待使用者確認後才繼續：
+
+```
+🧩 ASSUMPTIONS（在實作前確認）
+- [ ] 假設 1：...
+- [ ] 假設 2：...
+- [ ] 技術選擇：... （因為 ...）
+- [ ] 範圍邊界：不含 ...
+
+🛑 Stop Point：以上假設是否正確？確認後再繼續。
+```
+
+**觸發條件**（滿足任一即觸發）：
+- 任務涉及 2+ 個模組或檔案
+- 需要新增 ADR 或 SPEC
+- 使用者要求「設計」「規劃」「架構」任何功能
+- 實作前需要選擇技術方案或資料結構
+
+**豁免**（無需 checkpoint）：
+- trivial（單行/typo/config 修改，符合 `classify_bug_severity()` 的 trivial 標準）
+- 使用者明確說「直接做」或「不用問」
+
+**繞過藉口與反駁：**
+| 藉口 | 反駁 |
+|------|------|
+| 「需求很清楚，不需要確認假設」 | 清楚的需求仍有實作假設（技術方案、邊界）。確認假設 ≠ 確認需求 |
+| 「先做了再修比較快」 | 方向錯誤的實作要整段打掉，假設確認 30 秒 vs 重做 30 分鐘 |
+| 「使用者說「直接做」」 | 僅在使用者**此次**明確說「直接做」時豁免，不延續至下一個任務 |

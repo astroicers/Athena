@@ -10,12 +10,10 @@
 
 "use client";
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 
 export default function PocRedirect() {
-  const router = useRouter();
   useEffect(() => {
-    router.replace("/vulns");
-  }, [router]);
+    window.location.replace("/vulns");
+  }, []);
   return null;
 }

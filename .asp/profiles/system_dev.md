@@ -183,6 +183,10 @@ hotfix/描述        緊急修復，從 main 建立，修復後合併回 main
 
 修改原始碼（非 trivial）前，執行此檢查：
 
+> **🛑 Assumption Checkpoint（v3.7）**：進入以下步驟前，先輸出「假設清單」並等待使用者確認。
+> 格式見 `global_core.md` 的「Assumption Checkpoint Protocol」節。
+> 僅 trivial 修改可豁免。
+
 ```
 1. SPEC 確認
    └── make spec-list
@@ -191,6 +195,7 @@ hotfix/描述        緊急修復，從 main 建立，修復後合併回 main
            └── 至少填寫：Goal、Inputs、Expected Output、Done When（含測試條件）、Edge Cases
 
 2. ADR 確認（僅架構變更時）
+   └── 🛑 ADR Checkpoint：撰寫 ADR 前先輸出「問題假設清單」，等使用者確認方向後再展開 ADR 正文
    └── make adr-list → 有相關 ADR 且為 Accepted → 繼續
        └── 無相關 ADR → make adr-new TITLE="..."
 

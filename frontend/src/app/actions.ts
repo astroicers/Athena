@@ -9,8 +9,8 @@
 // For commercial licensing, contact: azz093093.830330@gmail.com
 
 "use server";
-import { cookies } from "next/headers";
-import { revalidatePath } from "next/cache";
+import { cookies, headers } from "next/headers";
+import { redirect } from "next/navigation";
 
 export async function setLocale(locale: string) {
   const cookieStore = await cookies();
@@ -19,5 +19,9 @@ export async function setLocale(locale: string) {
     maxAge: 60 * 60 * 24 * 365,
     sameSite: "lax",
   });
-  revalidatePath("/");
+  const headerStore = await headers();
+  const referer = headerStore.get("referer");
+  const url = referer ? new URL(referer) : null;
+  const pathname = url ? url.pathname + url.search : "/";
+  redirect(pathname);
 }

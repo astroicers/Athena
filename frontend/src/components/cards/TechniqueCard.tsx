@@ -10,7 +10,6 @@
 
 "use client";
 
-import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/atoms/Badge";
 import type { TechniqueWithStatus } from "@/types/technique";
@@ -50,6 +49,7 @@ export function TechniqueCard({ technique, relatedTools }: TechniqueCardProps) {
   const tStatus = useTranslations("Status");
   const tRisk = useTranslations("Risk");
 
+
   return (
     <div className="bg-athena-surface border border-[var(--color-border)] rounded-[var(--radius)] p-4">
       <div className="flex items-center justify-between mb-2">
@@ -84,10 +84,11 @@ export function TechniqueCard({ technique, relatedTools }: TechniqueCardProps) {
           </span>
           <div className="mt-1.5 space-y-1">
             {relatedTools.map((tool) => (
-              <Link
+              <a
                 key={tool.toolId}
                 href={`/tools#${tool.toolId}`}
-                className="flex items-center justify-between gap-2 px-2 py-1 rounded-[var(--radius)] hover:bg-athena-elevated transition-colors group"
+                onClick={(e) => { e.preventDefault(); window.location.href = `/tools#${tool.toolId}`; }}
+                className="flex items-center justify-between gap-2 px-2 py-1 rounded-[var(--radius)] hover:bg-athena-elevated transition-colors group cursor-pointer"
               >
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span
@@ -100,7 +101,7 @@ export function TechniqueCard({ technique, relatedTools }: TechniqueCardProps) {
                 <Badge variant={TOOL_RISK_VARIANT[tool.riskLevel] || "info"}>
                   {tool.riskLevel}
                 </Badge>
-              </Link>
+              </a>
             ))}
           </div>
         </div>

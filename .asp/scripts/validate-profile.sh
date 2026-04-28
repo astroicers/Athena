@@ -29,6 +29,7 @@ get_field() {
 }
 
 TYPE=$(get_field "type")
+LEVEL=$(get_field "level")
 MODE=$(get_field "mode")
 WORKFLOW=$(get_field "workflow")
 HITL=$(get_field "hitl")
@@ -43,6 +44,7 @@ CODING_STYLE=$(get_field "coding_style")
 
 echo "── 已設定欄位 ──"
 [ -n "$TYPE" ]            && echo "  type:             $TYPE"
+[ -n "$LEVEL" ]           && echo "  level:            L$LEVEL"
 [ -n "$MODE" ]            && echo "  mode:             $MODE"
 [ -n "$WORKFLOW" ]        && echo "  workflow:         $WORKFLOW"
 [ -n "$HITL" ]            && echo "  hitl:             $HITL"
@@ -64,6 +66,24 @@ if [ -z "$TYPE" ]; then
   ERRORS=$((ERRORS + 1))
 else
   echo "  ✅ type: $TYPE"
+fi
+
+# 規則 1a：level 值範圍（v3.5）
+if [ -n "$LEVEL" ]; then
+  if ! echo "$LEVEL" | grep -qE '^[1-5]$'; then
+    echo "  🔴 ERROR: level 值無效：「$LEVEL」（允許值：1 | 2 | 3 | 4 | 5）"
+    ERRORS=$((ERRORS + 1))
+  else
+    LEVEL_FILE=".asp/levels/level-$LEVEL.yaml"
+    if [ -f "$LEVEL_FILE" ]; then
+      LEVEL_NAME=$(grep -E '^name:' "$LEVEL_FILE" | head -1 | sed 's/name: *//')
+      echo "  ✅ level: L$LEVEL ($LEVEL_NAME)"
+    else
+      echo "  ✅ level: L$LEVEL"
+    fi
+  fi
+else
+  echo "  🟢 INFO: level 未設定（建議補上 level: 1 以明確成熟度）"
 fi
 
 # 規則 2：design: enabled → frontend_quality 必須也是 enabled

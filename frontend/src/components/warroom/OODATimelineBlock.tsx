@@ -52,6 +52,8 @@ const PHASE_COLORS: Record<OODAPhase, string> = {
   [OODAPhase.ORIENT]: "#7C3AED",
   [OODAPhase.DECIDE]: "var(--color-warning)",
   [OODAPhase.ACT]: "var(--color-success)",
+  [OODAPhase.FAILED]: "var(--color-error)",
+  [OODAPhase.COMPLETE]: "var(--color-success)",
 };
 
 const PHASE_KEYS: Record<OODAPhase, string> = {
@@ -59,6 +61,8 @@ const PHASE_KEYS: Record<OODAPhase, string> = {
   [OODAPhase.ORIENT]: "orient",
   [OODAPhase.DECIDE]: "decide",
   [OODAPhase.ACT]: "act",
+  [OODAPhase.FAILED]: "failed",
+  [OODAPhase.COMPLETE]: "complete",
 };
 
 function getSummary(
@@ -74,6 +78,8 @@ function getSummary(
       return iteration.decideSummary ?? null;
     case OODAPhase.ACT:
       return iteration.actSummary ?? null;
+    default:
+      return null;
   }
 }
 

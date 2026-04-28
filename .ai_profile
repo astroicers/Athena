@@ -12,3 +12,4 @@ openapi: disabled
 frontend_quality: enabled
 autopilot: disabled
 orchestrator: disabled
+level: 1

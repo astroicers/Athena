@@ -1,0 +1,46 @@
+level: 2
+name: Disciplined
+tagline: 加入品質護欄 — 讓規則自動生效
+description: |
+  L2 在 L1 之上加入 guardrail（敏感資料 + scope 防護）與 coding_style
+  （一致性規則）。適合已經熟悉 ADR/SPEC 流程、想把品質護欄自動化的專案。
+  目標：減少人工審查負擔，讓 AI 協作時自動遵守 style 與 security 規範。
+
+profiles:
+  - global_core
+  - system_dev
+  - guardrail
+  - coding_style
+
+ai_profile_hint: |
+  type: system
+  level: 2
+  guardrail: enabled
+  coding_style: enabled
+  name: your-project
+
+prerequisites:
+  - level: 1
+    reason: "必須先完成 L1 的 graduation_checklist"
+
+graduation_checklist:
+  - id: lint-clean
+    description: "最近 5 個 commit 均通過 make lint（無 error）"
+    check: "make lint >/dev/null 2>&1"
+  - id: guardrail-log-exists
+    description: ".asp/logs/guardrail.log 存在或 guardrail-reset 可執行（代表 guardrail 已生效過）"
+    check: "test -d .asp/logs || make -n guardrail-log >/dev/null 2>&1"
+  - id: no-hardcoded-secrets
+    description: "近 30 次 commit 中無被 asp-ship Step 9 攔截的硬編碼密碼事件"
+    check: "! grep -l 'BLOCK.*password=\\|BLOCK.*api_key=' .asp-bypass-log.json 2>/dev/null"
+  - id: spec-has-done-when
+    description: "所有 SPEC 的 Done When 欄位均已填寫（可二元測試）"
+    check: "! grep -L 'Done When' docs/specs/SPEC-*.md 2>/dev/null"
+
+benefits_of_upgrading: |
+  升到 L3 (Test-First) 後，你會獲得：
+  - TDD 強制流程：測試先於代碼
+  - G1-G6 品質門檻完整啟用
+  - 如有 API：openapi profile 自動驗證 request/response 合約
+
+next_level: 3

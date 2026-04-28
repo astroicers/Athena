@@ -100,6 +100,9 @@ backend/data/*.db
 docs/session-log.md
 CLAUDE.md.pre-asp
 CLAUDE.md.pre-upgrade
+.claude/settings.local.json
+.claude/settings.local.json.corrupt.bak
+.claude/projects/
 .asp-tmp/
 *.out
 *.zip

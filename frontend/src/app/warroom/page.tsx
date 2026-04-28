@@ -579,9 +579,25 @@ function WarRoomContent() {
               </div>
             )}
 
-            {/* OODA Iteration Blocks */}
+            {/* Mission Objective — pinned at top so it's always visible */}
+            {objectives.length > 0 && (
+              <MissionObjective
+                objective={objectives[0].objective}
+                targetsCompromised={targets.filter((tgt) => tgt.isCompromised).length}
+                targetsTotal={targets.length}
+              />
+            )}
+
+            {/* Connector from Mission to latest iteration */}
+            {iterations.length > 0 && objectives.length > 0 && (
+              <div className="flex justify-center py-1">
+                <div className="w-px h-4 bg-athena-border" />
+              </div>
+            )}
+
+            {/* OODA Iteration Blocks — newest first (idx=0 is most recent) */}
             {iterations.map((iter, idx) => {
-              const isCurrent = idx === iterations.length - 1 && !iter.completedAt;
+              const isCurrent = idx === 0 && !iter.completedAt;
               return (
                 <div key={iter.id}>
                   {/* Connector line */}
@@ -600,27 +616,9 @@ function WarRoomContent() {
                     timelineEntries={timeline}
                     pivotInfo={pivotIterations[iter.iterationNumber]}
                   />
-
-                  {/* SPEC-052: Directive input moved to CommandBar at bottom */}
                 </div>
               );
             })}
-
-            {/* Connector to Mission */}
-            {iterations.length > 0 && (
-              <div className="flex justify-center py-1">
-                <div className="w-px h-4 bg-athena-border" />
-              </div>
-            )}
-
-            {/* Mission Objective — only shown when objectives exist */}
-            {objectives.length > 0 && (
-              <MissionObjective
-                objective={objectives[0].objective}
-                targetsCompromised={targets.filter((tgt) => tgt.isCompromised).length}
-                targetsTotal={targets.length}
-              />
-            )}
           </div>
 
           {/* Right: Status Panel */}

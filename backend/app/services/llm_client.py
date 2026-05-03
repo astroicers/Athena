@@ -103,6 +103,16 @@ class LLMClient:
                 return await self._call_claude_oauth(
                     system_prompt, user_prompt, effective_model, max_tokens, temperature, timeout
                 )
+            except anthropic.RateLimitError as e:
+                # 429 from OAuth → immediately retry with API key if available
+                logger.warning("Claude OAuth 429 rate limit, falling back to API key: %s", e)
+                if settings.ANTHROPIC_API_KEY or settings.ANTHROPIC_AUTH_TOKEN:
+                    try:
+                        return await self._call_claude(
+                            system_prompt, user_prompt, effective_model, max_tokens, temperature, timeout
+                        )
+                    except Exception as e2:
+                        logger.warning("Claude API Key fallback also failed: %s", e2)
             except Exception as e:
                 logger.warning("Claude OAuth failed: %s, trying fallback", e)
                 if backend == "oauth" and (
@@ -193,8 +203,10 @@ class LLMClient:
 
         token = await self._oauth_manager.get_access_token()
 
+        # Use api_key= (x-api-key header) instead of auth_token= (Authorization: Bearer)
+        # so the OAuth token hits the same rate-limit bucket as direct API key calls.
         client = anthropic.AsyncAnthropic(
-            auth_token=token,
+            api_key=token,
             max_retries=2,
             default_headers={"anthropic-beta": OAUTH_BETA_HEADER},
         )

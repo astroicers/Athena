@@ -242,3 +242,5 @@ T1190 的觸發條件被窄化到「HTTP services with known vulnerabilities (CV
   - [SPEC-041] Metasploit Stabilization and Access Recovery Completion
   - [SPEC-052] OODA-Native Recon and Initial Access
   - **[SPEC-053]** Orient-Driven Pivot and Metasploit One-Shot Exploit（本 ADR 的實作 SPEC）
+  - **[SPEC-065]** failure_category 枚舉與 ooda.pivot 決策流（pivot 觸發機制完整規格）
+  - **[SPEC-067]** exploitable_banners 結構與 MetasploitClient probe_cmd（exploit 選擇資料來源）

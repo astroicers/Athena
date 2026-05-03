@@ -21,7 +21,7 @@ mcp = FastMCP("athena-nmap-scanner", transport_security=_security)
 # Default port list matching Athena's ReconEngine
 _DEFAULT_PORTS = (
     "21,22,23,25,53,80,110,135,139,143,443,445,"
-    "1433,3000,3306,3389,3500,5432,5900,6379,"
+    "1433,3000,3306,3389,3500,5432,5900,5985,5986,6379,"
     "8080,8443,8888,9090,27017"
 )
 

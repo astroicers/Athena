@@ -116,14 +116,23 @@ Makefile.pre-asp-upgrade
 design/archive/
 
 attack Active Directory.pdf
-# Lab binaries (download separately, too large for git)
-lab/windows/sql/SQLEXPR*.exe
-lab/windows/sql/SQL2019-SSEI-Expr.exe
-lab/windows/sql/media/
-lab/windows/sql/extracted/
-lab/windows/prereq/*.msu
-# Offline domain join blobs (generated per-install, include machine credentials)
-lab/windows/*.blob
+# ====================================
+# Lab 靶機環境（本地使用，不進版本控制）
+# ====================================
+lab/
+
+# ====================================
+# 行動腳本與本地環境工具
+# ====================================
+scripts/athena_attack_chain.py
+scripts/auto_ooda_campaign.py
+scripts/verify-lab.sh
+scripts/wsl-vmnet19-up.sh
+
+# ====================================
+# 演講 / 簡報素材
+# ====================================
+docs/fancy-lemur-briefing.md
 .asp-session-briefing.json
 .asp-gate-state.json
 .asp-test-result.json

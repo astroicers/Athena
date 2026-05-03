@@ -53,6 +53,7 @@ rules:
     effort: 1
     enables:
       - "T1110.001"
+      - "T1110.003"
       - "T1190"
       - "T1078.001"
     alternatives:
@@ -71,18 +72,23 @@ rules:
       - "service.open_port"
     produced_facts:
       - "service.web"
+      - "access.web_shell"
+      - "access.initial"
     risk_level: "medium"
-    base_confidence: 0.6
-    information_gain: 0.7
+    base_confidence: 0.75
+    information_gain: 0.8
     effort: 2
     enables:
       - "T1059.004"
+      - "T1059.001"
+      - "T1046"
+      - "T1558.004"
     alternatives:
       - "T1110.001"
     platforms:
       - "linux"
       - "windows"
-    description: "Exploit Public-Facing Application"
+    description: "Exploit Public-Facing Application (OS command injection via web shell)"
 
   - technique_id: "T1110.001"
     tactic_id: "TA0001"
@@ -1039,6 +1045,31 @@ rules:
     description: "Exfiltration Over Alternative Protocol: Exfiltration Over Asymmetric Encrypted Non-C2 Protocol"
 
   # =========================================================================
+  # TA0004 — Privilege Escalation via PostgreSQL (SPEC-057)
+  # =========================================================================
+  - technique_id: "T1505.004"
+    tactic_id: "TA0004"
+    required_facts:
+      - "credential.postgresql"
+      - "service.open_port"
+    produced_facts:
+      - "credential.pgsql_rce_user"
+      - "host.os"
+    risk_level: "high"
+    base_confidence: 0.75
+    information_gain: 0.85
+    effort: 2
+    enables:
+      - "T1059.004"
+      - "T1098.004"
+    alternatives:
+      - "T1548.001"
+      - "T1068"
+    platforms:
+      - "linux"
+    description: "Server Software Component: SQL Stored Procedures — PostgreSQL COPY FROM PROGRAM RCE (CVE-2019-9193, SPEC-057)"
+
+  # =========================================================================
   # TA0040 — Impact (2 rules)
   # =========================================================================
   - technique_id: "T1489"
@@ -1208,6 +1239,8 @@ rules:
     tactic_id: "TA0006"
     required_facts:
       - "credential.service_hash"
+      - "credential.asrep_hash"
+    required_facts_mode: "any"
     produced_facts:
       - "credential.cleartext"
     risk_level: "low"
@@ -1217,11 +1250,12 @@ rules:
     enables:
       - "T1550.003"
       - "T1558.001"
+      - "T1649"
     alternatives: []
     platforms:
       - "windows"
       - "linux"
-    description: "Brute Force: Password Cracking (Hashcat)"
+    description: "Brute Force: Password Cracking (Hashcat — cracks service_hash/asrep_hash)"
 
   # --- AD Privilege Escalation ---
   - technique_id: "T1222.001"
@@ -1266,20 +1300,22 @@ rules:
   - technique_id: "T1649"
     tactic_id: "TA0006"
     required_facts:
-      - "credential.domain_user"
-      - "host.ad_domain"
+      - "credential.cleartext"
     produced_facts:
-      - "ad.adcs_vuln"
-    risk_level: "medium"
-    base_confidence: 0.7
-    information_gain: 0.8
+      - "credential.certificate"
+      - "credential.domain_admin"
+    risk_level: "high"
+    base_confidence: 0.85
+    information_gain: 0.95
     effort: 2
     enables:
       - "T1550.003"
+      - "T1003.003"
+      - "T1021.002"
     alternatives: []
     platforms:
       - "windows"
-    description: "Steal or Forge Authentication Certificates (AD CS)"
+    description: "Steal or Forge Authentication Certificates: ESC1 template abuse — enroll as any UPN (da_alice) using any low-priv domain account"
 
   # --- AD Credential Dumping (MCP variants) ---
   - technique_id: "T1003.002"
@@ -1379,22 +1415,43 @@ rules:
   - technique_id: "T1110.003"
     tactic_id: "TA0001"
     required_facts:
-      - "host.ad_users"
-      - "host.ad_domain"
+      - "service.open_port"
     produced_facts:
       - "credential.domain_user"
+      - "credential.valid_pair"
     risk_level: "medium"
-    base_confidence: 0.5
-    information_gain: 0.65
+    base_confidence: 0.7
+    information_gain: 0.75
     effort: 2
     enables:
       - "T1087.002"
       - "T1558.003"
+      - "T1558.004"
     alternatives:
       - "T1110.001"
     platforms:
       - "windows"
-    description: "Brute Force: Password Spraying (NetExec)"
+    description: "Brute Force: Password Spraying (NetExec — sprays hardcoded lab user list against DC; only needs an open port to trigger)"
+
+  - technique_id: "T1558.004"
+    tactic_id: "TA0006"
+    required_facts:
+      - "service.open_port"
+    produced_facts:
+      - "credential.asrep_hash"
+      - "ad.asreproast_user"
+    risk_level: "medium"
+    base_confidence: 0.80
+    information_gain: 0.85
+    effort: 2
+    enables:
+      - "T1110.002"
+      - "T1649"
+    alternatives:
+      - "T1558.003"
+    platforms:
+      - "windows"
+    description: "Steal or Forge Kerberos Tickets: AS-REP Roasting — zero-credential anonymous KDC query (impacket-GetNPUsers -no-pass)"
 
   # --- SID History Injection ---
   - technique_id: "T1134.005"

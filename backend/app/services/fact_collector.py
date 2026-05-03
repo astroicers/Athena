@@ -112,16 +112,20 @@ class FactCollector:
 
             category = self._category_from_trait(trait)
             fact_id = str(uuid.uuid4())
+            _HASH_TRAITS = ("credential.asrep_hash", "credential.kerberos_hash",
+                            "credential.service_hash", "credential.ntlm_hash",
+                            "credential.ntds_hash", "credential.krbtgt_hash")
+            _vlimit = 1000 if trait in _HASH_TRAITS else 500
             await db.execute(
                 "INSERT INTO facts (id, trait, value, category, source_technique_id, "
                 "source_target_id, operation_id, score, collected_at) "
                 "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) "
                 "ON CONFLICT DO NOTHING",
-                fact_id, trait, str(value)[:500], category.value,
+                fact_id, trait, str(value)[:_vlimit], category.value,
                 technique_id, target_id, operation_id, 1, now,
             )
             new_facts.append({
-                "id": fact_id, "trait": trait, "value": str(value)[:500],
+                "id": fact_id, "trait": trait, "value": str(value)[:_vlimit],
                 "category": category.value, "operation_id": operation_id,
             })
 

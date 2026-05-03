@@ -239,6 +239,7 @@ async def web_http_fetch(
   - [SPEC-053] Orient-Driven Pivot and Metasploit One-Shot Exploit
   - [SPEC-054] Relay-Aware Exploit Selection
   - [SPEC-055] Cloud SSRF-to-IMDS Credential Exfiltration
+  - [SPEC-064] Orient Engine 14 條規則規格（Rule #10 SSRF-to-IMDS Cloud Pivot、Rule #11 Cloud Credential Lateral Movement 完整說明）
 
 ---
 

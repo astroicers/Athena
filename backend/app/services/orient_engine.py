@@ -172,13 +172,8 @@ analyze intelligence, recommend tactics, explain reasoning. You NEVER execute at
 
 Apply these 11 rules to every analysis:
 
-### 1. Kill Chain Reasoning (MITRE ATT&CK Progression)
-Determine the current position in the ATT&CK kill chain:
-TA0043 Reconnaissance -> TA0042 Resource Development -> TA0001 Initial Access -> \
-TA0002 Execution -> TA0003 Persistence -> TA0004 Privilege Escalation -> \
-TA0005 Defense Evasion -> TA0006 Credential Access -> TA0007 Discovery -> \
-TA0008 Lateral Movement -> TA0009 Collection -> TA0011 C2 -> TA0010 Exfiltration -> TA0040 Impact.
-Identify where we are and what the logical next stage is. Do NOT skip stages without justification.
+### 1. Kill Chain Position
+Refer to Section 3 for current ATT&CK stage and next logical stage. Do NOT skip stages without justification.
 
 ### 2. Dead Branch Pruning
 When a technique has failed, infer the likely reason (e.g., EDR detected, privilege insufficient, \
@@ -253,25 +248,10 @@ databases with root no-password, FTP anonymous login)
 This is the natural Kill Chain progression from Reconnaissance (TA0043) to Initial Access (TA0001).
 Do NOT skip this step — establishing initial access is prerequisite for all post-exploitation techniques.
 
-**Relay-aware exploit selection (SPEC-054, ADR-047):** Before recommending any reverse-shell
-exploit, consult Section 7.9 "INFRASTRUCTURE". If `relay_available: false`, AVOID the following
-reverse-shell exploits because the target cannot call back to Athena across the network boundary:
-
-  - `exploit/unix/irc/unreal_ircd_3281_backdoor` (UnrealIRCd)
-  - `exploit/multi/samba/usermap_script` (Samba usermap)
-  - `exploit/unix/misc/distcc_exec` (distccd)
-  - Any Metasploit module whose payload is `cmd/unix/reverse` or variants
-
-When `relay_available: false`, prefer instead:
-
-  - **Bind shell exploits**: `exploit/unix/ftp/vsftpd_234_backdoor` (vsftpd 2.3.4) — target opens
-    a listener on port 6200, Athena connects outbound
-  - **Credential-based techniques**: T1110.001 (Brute Force), T1078.001 (Valid Accounts), etc.
-  - **Discovery techniques**: T1046, T1018, T1087 to enumerate alternative attack surfaces
-
-When `relay_available: true` with a specific `Relay LHOST` set, reverse-shell exploits become
-viable — Metasploit's LHOST is injected from `settings.RELAY_IP` automatically, so you may
-recommend them normally.
+**Relay-aware exploit selection (SPEC-054):** Consult Section 7.9 "INFRASTRUCTURE". \
+If `relay_available: false`, avoid reverse-shell payloads (UnrealIRCd, Samba usermap, distccd); \
+prefer bind-shell (vsftpd 2.3.4) or credential techniques (T1110.001, T1078.001). \
+If `relay_available: true`, reverse-shell exploits are viable — LHOST is injected automatically.
 
 ### 9. Initial Access Exhausted → Exploit Pivot (SPEC-053, ADR-046, extended by SPEC-054)
 When Section 7 "Failed Techniques" contains an entry with the `[auth_failure]` category for
@@ -354,9 +334,17 @@ When the intelligence shows:
 - `ad.bloodhound_data` or `ad.attack_path` facts exist
 Then:
 - PRIORITIZE the next technique along the attack_path (e.g. T1003.006 DCSync if path shows domain admin reachable)
-- If no bloodhound data exists AND target OS is Windows or facts indicate AD domain (host.ad_domain), \
-recommend T1087.002 (Account Discovery: Domain Account) first, then bloodhound_collect
-- Engine: "mcp" for AD MCP tools (bloodhound-collector, credential-dumper, etc.)
+- If no bloodhound data exists AND target OS is Windows or facts indicate AD domain (host.ad_domain):
+  - **PREREQUISITE CHECK**: T1087.002 (bloodhound_collect) requires `credential.winrm`, `credential.domain_user`, or `credential.domain_admin` facts. If NONE of these exist, do NOT recommend T1087.002 — it will fail with tool_error.
+  - Without credentials: recommend T1110.003 (Password Spray via netexec) targeting SMB (port 445) with domain usernames, engine="mcp". netexec_password_spray only needs target IP and a username/password list — no prior credential required.
+  - With credentials (credential.winrm or credential.domain_user exists): recommend T1087.002 to enumerate the domain.
+- Engine: "mcp" for AD MCP tools (bloodhound-collector, credential-dumper, netexec-suite, etc.)
+
+### 12a. SMB/Kerberoast without credentials (Windows-specific)
+When target has SMB (port 445) open, no credentials harvested yet, and T1110.001/T1078.001 failed with auth_failure:
+- T1110.003 (netexec_password_spray) can spray against SMB with a list of domain user candidates — recommend this to test weak domain accounts (bob, svc_sql, kevin, steve, legacy_kev, svc_backup, administrator).
+- T1558.003 (Kerberoast) can run WITHOUT valid credentials using AS-REP roasting against the DC if the DC IP is known — but requires knowing DC IP from facts. If DC IP not yet in facts, use T1046 on the domain segment first.
+- If T1110.003 succeeds and yields a credential, immediately chain to T1087.002 (BloodHound) in the next iteration.
 
 ### 13. Kerberos Ticket Forge Priority
 When the intelligence shows:
@@ -387,6 +375,7 @@ Respond with ONLY valid JSON (no markdown, no extra text). The JSON must match t
       "reasoning": "why this technique NOW, citing prerequisites and intelligence",
       "risk_level": "low|medium|high|critical",
       "recommended_engine": "ssh|c2|mcp|metasploit",
+      "mcp_tool": "server-name:tool_name",
       "confidence": 0.0-1.0,
       "prerequisites": ["list of prerequisites with verification status"]
     }}
@@ -471,6 +460,11 @@ Available AD/credential MCP tools for engine="mcp":
 
 ## 7.9. INFRASTRUCTURE (SPEC-054 relay awareness)
 {relay_infrastructure}
+
+## 7.10. FEASIBLE TECHNIQUES (Rule #3 — prerequisites confirmed)
+The following techniques have ALL required_facts satisfied by current intelligence.
+Only recommend techniques from this list unless you have a compelling reason to deviate.
+{feasible_techniques_str}
 
 ## 8. LATEST OBSERVE SUMMARY
 {observe_summary}
@@ -905,6 +899,16 @@ class OrientEngine:
         )
         categorized_facts_str = self._format_categorized_facts(facts)
 
+        # Q10.5: Feasible techniques — prerequisites satisfied by current facts (Rule #3)
+        # Uses attack_graph_engine module-level _RULE_BY_TECHNIQUE (loaded from technique_rules.yaml).
+        from app.services.attack_graph_engine import AttackGraphEngine
+        current_fact_traits: set[str] = {r["trait"] for r in facts}
+        feasible_technique_ids = AttackGraphEngine.get_feasible_techniques(current_fact_traits)
+        if feasible_technique_ids:
+            feasible_techniques_str = ", ".join(feasible_technique_ids)
+        else:
+            feasible_techniques_str = "(none — no facts collected yet; run T1595.001 or T1046 first)"
+
         # Q11: Harvested credentials for chaining context
         cred_rows = await db.fetch(
             "SELECT trait, value FROM facts "
@@ -1121,6 +1125,7 @@ class OrientEngine:
             ad_mcp_tools_summary=ad_mcp_tools_summary,
             ad_domain_summary=ad_domain_summary,
             relay_infrastructure=_format_relay_infrastructure(),
+            feasible_techniques_str=feasible_techniques_str,
             attack_graph_summary=attack_graph_summary or "Not available.",
             known_vulnerabilities=known_vulnerabilities_str,
             opsec_detection_risk=opsec_detection_risk,
@@ -1181,7 +1186,12 @@ class OrientEngine:
             _mcp_or_note = " or MCP"
             _mcp_engine_guide = (
                 '- "mcp": Run MCP reconnaissance/enumeration tools '
-                "(nmap, vuln-lookup, credential-checker)"
+                "(nmap, vuln-lookup, credential-checker). "
+                'When engine="mcp", also set "mcp_tool" to the exact "server:tool_name" '
+                "from the AD DOMAIN INTELLIGENCE TOOLS list in Section 7.8.1 — "
+                "e.g. \"impacket-ad:asrep_roast\", \"certipy-ad:certipy_request\", "
+                "\"web-scanner:web_rce_execute\". This lets the engine route directly "
+                "without any hardcoded lookup table."
             )
         else:
             _mcp_engine_section = ""

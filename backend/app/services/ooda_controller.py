@@ -348,6 +348,19 @@ class OODAController:
             has_winrm = any(f["trait"] == "credential.winrm" for f in all_facts)
             compromised = [t for t in targets_row if t["is_compromised"]]
             uncompromised = [t for t in targets_row if not t["is_compromised"]]
+            # AD attack chain facts
+            has_domain_admin = any(f["trait"] == "credential.domain_admin" for f in all_facts)
+            has_certificate = any(f["trait"] == "credential.certificate" for f in all_facts)
+            has_cleartext = any(f["trait"] == "credential.cleartext" for f in all_facts)
+            has_asrep_hash = any(f["trait"] == "credential.asrep_hash" for f in all_facts)
+            # Check which AD techniques have already run successfully
+            ad_executed = await db.fetch(
+                "SELECT technique_id FROM technique_executions "
+                "WHERE operation_id = $1 AND status = 'success' "
+                "AND technique_id IN ('T1003.003','T1550.003','T1649','T1110.002')",
+                operation_id,
+            )
+            ad_executed_ids = {row["technique_id"] for row in ad_executed}
             # Priority 1: DB query already done → all complete
             if db_query_done:
                 situation = "Rule-based: database.query_result already captured — mission objective achieved"
@@ -373,6 +386,26 @@ class OODAController:
                 situation = f"Rule-based: credential.winrm available, attempting WinRM access to {next_ip}"
                 next_technique = "T1021.006"
                 recommended_engine = "winrm"
+            # Priority 3a: Domain Admin obtained → DCSync (T1003.003)
+            elif has_domain_admin and "T1003.003" not in ad_executed_ids:
+                situation = "Rule-based: credential.domain_admin available — executing DCSync (T1003.003)"
+                next_technique = "T1003.003"
+                recommended_engine = "mcp"
+            # Priority 3b: Certificate obtained → PKINIT auth (T1550.003)
+            elif has_certificate and "T1550.003" not in ad_executed_ids:
+                situation = "Rule-based: credential.certificate available — executing certipy auth PKINIT (T1550.003)"
+                next_technique = "T1550.003"
+                recommended_engine = "mcp"
+            # Priority 3c: Cleartext credential → ESC1 certificate request (T1649)
+            elif has_cleartext and "T1649" not in ad_executed_ids:
+                situation = "Rule-based: credential.cleartext available — exploiting ADCS ESC1 for certificate (T1649)"
+                next_technique = "T1649"
+                recommended_engine = "mcp"
+            # Priority 3d: AS-REP hash obtained → crack it (T1110.002)
+            elif has_asrep_hash and "T1110.002" not in ad_executed_ids:
+                situation = "Rule-based: credential.asrep_hash available — cracking AS-REP hash (T1110.002)"
+                next_technique = "T1110.002"
+                recommended_engine = "mcp"
             # Priority 4: No credentials — recon
             elif uncompromised:
                 next_ip = uncompromised[0]["ip_address"]
@@ -523,9 +556,20 @@ class OODAController:
         parallel_tasks = decision.get("parallel_tasks", [])
 
         if self._swarm and parallel_tasks and len(parallel_tasks) > 1:
-            # -- SWARM PATH (SPEC-030) --
-            logger.info("OODA[%s] Act phase -- swarm executing %d parallel tasks", ooda_id[:8], len(parallel_tasks))
-            swarm_result = await self._swarm.execute_swarm(db_manager.pool, operation_id, ooda_id, parallel_tasks)
+            # -- SWARM PATH (SPEC-030 + SPEC-058 prerequisite ordering) --
+            from app.services.prerequisite_ordering import order_parallel_tasks
+            ordered_batches = order_parallel_tasks(parallel_tasks)
+            if len(ordered_batches) > 1:
+                logger.info(
+                    "OODA[%s] SPEC-058: reordered %d tasks into %d sequential batches",
+                    ooda_id[:8], len(parallel_tasks), len(ordered_batches),
+                )
+            # Flatten back for swarm (swarm already runs its list in parallel internally).
+            # We emit batches sequentially: execute batch 0, await, then batch 1, etc.
+            # For now flatten into ordered list so swarm sees dependency-safe ordering.
+            ordered_tasks = [task for batch in ordered_batches for task in batch]
+            logger.info("OODA[%s] Act phase -- swarm executing %d parallel tasks", ooda_id[:8], len(ordered_tasks))
+            swarm_result = await self._swarm.execute_swarm(db_manager.pool, operation_id, ooda_id, ordered_tasks)
             act_summary = swarm_result.act_summary
 
             for st in swarm_result.tasks:
@@ -588,11 +632,14 @@ class OODAController:
                 and decision.get("target_id")
             ):
                 logger.info("OODA[%s] Act phase -- executing primary %s (not in swarm)", ooda_id[:8], primary_tid)
+                _primary_engine = decision.get("engine", "ssh")
+                if decision.get("mcp_tool") and _primary_engine == "mcp":
+                    _primary_engine = f"mcp_direct:{decision['mcp_tool']}"
                 primary_result = await self._router.execute(
                     db,
                     technique_id=primary_tid,
                     target_id=decision["target_id"],
-                    engine=decision.get("engine", "ssh"),
+                    engine=_primary_engine,
                     operation_id=operation_id,
                     ooda_iteration_id=ooda_id,
                 )
@@ -603,11 +650,14 @@ class OODAController:
         elif decision.get("auto_approved") and decision.get("technique_id") and decision.get("target_id"):
             # -- SINGLE PATH (existing, unchanged) --
             logger.warning("OODA[%s] Act phase -- executing %s (auto_approved=%s, target=%s)", ooda_id[:8], decision["technique_id"], decision.get("auto_approved"), decision.get("target_id"))
+            _single_engine = decision.get("engine", "ssh")
+            if decision.get("mcp_tool") and _single_engine == "mcp":
+                _single_engine = f"mcp_direct:{decision['mcp_tool']}"
             execution_result = await self._router.execute(
                 db,
                 technique_id=decision["technique_id"],
                 target_id=decision["target_id"],
-                engine=decision.get("engine", "ssh"),
+                engine=_single_engine,
                 operation_id=operation_id,
                 ooda_iteration_id=ooda_id,
             )

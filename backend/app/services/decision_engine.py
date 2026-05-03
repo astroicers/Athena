@@ -101,6 +101,7 @@ class DecisionEngine:
             (selected_option or {}).get("risk_level", "medium")
         )
         engine = (selected_option or {}).get("recommended_engine", "ssh")
+        mcp_tool = (selected_option or {}).get("mcp_tool")
 
         # Priority: least-recently-executed active target (round-robin across targets)
         target_row = await db.fetchrow(
@@ -288,6 +289,7 @@ class DecisionEngine:
                     "technique_id": opt.get("technique_id"),
                     "target_id": opt_target,
                     "engine": opt.get("recommended_engine", "ssh"),
+                    "mcp_tool": opt.get("mcp_tool"),
                     "risk_level": opt_risk.value,
                 })
             # Deduplicate
@@ -325,6 +327,7 @@ class DecisionEngine:
             "technique_id": rec_technique_id,
             "target_id": target_id,
             "engine": engine,
+            "mcp_tool": mcp_tool,
             "risk_level": technique_risk.value,
             "noise_level": technique_noise,
             "composite_confidence": composite,

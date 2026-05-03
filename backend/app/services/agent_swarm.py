@@ -96,11 +96,14 @@ class SwarmExecutor:
 
         swarm_tasks: list[SwarmTask] = []
         for task_spec in parallel_tasks:
+            _engine = task_spec.get("engine", "ssh")
+            if task_spec.get("mcp_tool") and _engine == "mcp":
+                _engine = f"mcp_direct:{task_spec['mcp_tool']}"
             st = SwarmTask(
                 task_id=str(uuid.uuid4()),
                 technique_id=task_spec["technique_id"],
                 target_id=task_spec["target_id"],
-                engine=task_spec.get("engine", "ssh"),
+                engine=_engine,
             )
             swarm_tasks.append(st)
 

@@ -223,6 +223,28 @@ class AttackGraphEngine:
         """Load persisted graph from SQLite. Returns None if no graph exists."""
         return await self.load_from_db(db, operation_id)
 
+    @staticmethod
+    def get_feasible_techniques(current_facts: set[str]) -> list[str]:
+        """Return technique IDs whose required_facts are all satisfied by current_facts.
+
+        Uses the module-level _RULE_BY_TECHNIQUE lookup (loaded from technique_rules.yaml).
+        Called by OrientEngine._build_prompt() to populate Section 7.10 so that
+        Rule #3 (Prerequisite Verification) has concrete data to reason against.
+
+        Args:
+            current_facts: Set of fact trait strings currently known
+                           (e.g. {"network.host.ip", "service.open_port"}).
+
+        Returns:
+            Sorted list of technique_ids whose prerequisites are all confirmed.
+            Empty required_facts means the technique is always feasible.
+        """
+        feasible = []
+        for technique_id, rule in _RULE_BY_TECHNIQUE.items():
+            if all(req in current_facts for req in rule.required_facts):
+                feasible.append(technique_id)
+        return sorted(feasible)
+
     def build_orient_summary(self, graph: AttackGraph) -> str:
         """Build a human-readable summary for the Orient phase prompt.
 

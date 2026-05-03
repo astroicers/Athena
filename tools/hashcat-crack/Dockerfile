@@ -1,7 +1,7 @@
 FROM athena-mcp-base:latest
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    hashcat && rm -rf /var/lib/apt/lists/*
+    hashcat john && rm -rf /var/lib/apt/lists/*
 
 # Download rockyou.txt wordlist
 RUN mkdir -p /usr/share/wordlists && \

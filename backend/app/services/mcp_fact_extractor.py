@@ -29,6 +29,12 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 _VALUE_MAX_LEN = 500
+_HASH_TRAITS = frozenset({
+    "credential.asrep_hash", "credential.kerberos_hash",
+    "credential.service_hash", "credential.ntlm_hash",
+    "credential.ntds_hash", "credential.krbtgt_hash",
+})
+_HASH_VALUE_MAX_LEN = 1000
 
 
 class MCPFactExtractor:
@@ -95,9 +101,11 @@ class MCPFactExtractor:
                     validated = []
                     for f in raw_facts:
                         if isinstance(f, dict) and "trait" in f and "value" in f:
+                            t = str(f["trait"])
+                            vlim = _HASH_VALUE_MAX_LEN if t in _HASH_TRAITS else _VALUE_MAX_LEN
                             validated.append({
-                                "trait": str(f["trait"]),
-                                "value": str(f["value"])[:_VALUE_MAX_LEN],
+                                "trait": t,
+                                "value": str(f["value"])[:vlim],
                             })
                     if validated:
                         return validated

@@ -78,3 +78,8 @@ Athena 的 OODA 循環引擎（ADR-003）定義了 Observe → Orient → Decide
 - ADR-003（OODA Engine）— Observe 階段職責擴展
 - ADR-006（Execution Engine Routing）— 新增 T1110/T1078 路由
 - ADR-040（C5ISR Reverse Influence）— ISR 域新增偵察覆蓋率指標
+
+**實作規格（雙向追溯）：**
+- SPEC-052（OODA-Native Recon and Initial Access — 本 ADR 的完整實作規格）
+- SPEC-064（Orient Engine 規格 — Rule #8 Recon-to-Initial Access Transition 對應本 ADR 決策邏輯）
+- SPEC-058（Swarm Prerequisite Ordering — 防止 T1046/T1110 並行 race condition）

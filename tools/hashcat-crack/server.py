@@ -21,7 +21,8 @@ _security = TransportSecuritySettings(
 
 mcp = FastMCP("athena-hashcat-crack", transport_security=_security)
 
-DEFAULT_WORDLIST = "/usr/share/wordlists/rockyou.txt"
+DEFAULT_WORDLIST = "/wordlists/hashcat-custom.txt"
+_FALLBACK_WORDLIST = "/usr/share/wordlists/rockyou.txt"
 HASHCAT_OUTPUT_DIR = "/tmp/hashcat-output"
 
 _active_sessions: dict[str, dict] = {}
@@ -46,6 +47,100 @@ async def _run_command(cmd: list[str], timeout: int = 120) -> tuple[str, str, in
     )
 
 
+def _md4(data: bytes) -> bytes:
+    """Pure-Python MD4 (needed because OpenSSL 3 disabled MD4 in hashlib)."""
+    import struct
+
+    def _lrot(x: int, n: int) -> int:
+        return ((x << n) | (x >> (32 - n))) & 0xFFFFFFFF
+
+    F = lambda x, y, z: (x & y) | (~x & z)
+    G = lambda x, y, z: (x & y) | (x & z) | (y & z)
+    H = lambda x, y, z: x ^ y ^ z
+
+    msg = bytearray(data)
+    orig_bit_len = len(data) * 8
+    msg.append(0x80)
+    while len(msg) % 64 != 56:
+        msg.append(0)
+    msg += struct.pack("<Q", orig_bit_len)
+
+    A, B, C, D = 0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476
+
+    for i in range(0, len(msg), 64):
+        X = list(struct.unpack("<16I", msg[i:i + 64]))
+        a, b, c, d = A, B, C, D
+
+        # Round 1 — s values: 3,7,11,19
+        for k, s in zip(range(16), [3,7,11,19,3,7,11,19,3,7,11,19,3,7,11,19]):
+            A = _lrot((A + F(B, C, D) + X[k]) & 0xFFFFFFFF, s)
+            A, B, C, D = D, A, B, C
+
+        # Round 2 — s values: 3,5,9,13; index order 0,4,8,12,1,5,9,13,2,6,10,14,3,7,11,15
+        for idx, k in enumerate([0,4,8,12,1,5,9,13,2,6,10,14,3,7,11,15]):
+            s = [3,5,9,13][idx % 4]
+            A = _lrot((A + G(B, C, D) + X[k] + 0x5A827999) & 0xFFFFFFFF, s)
+            A, B, C, D = D, A, B, C
+
+        # Round 3 — s values: 3,9,11,15; index order 0,8,4,12,2,10,6,14,1,9,5,13,3,11,7,15
+        for idx, k in enumerate([0,8,4,12,2,10,6,14,1,9,5,13,3,11,7,15]):
+            s = [3,9,11,15][idx % 4]
+            A = _lrot((A + H(B, C, D) + X[k] + 0x6ED9EBA1) & 0xFFFFFFFF, s)
+            A, B, C, D = D, A, B, C
+
+        A = (A + a) & 0xFFFFFFFF
+        B = (B + b) & 0xFFFFFFFF
+        C = (C + c) & 0xFFFFFFFF
+        D = (D + d) & 0xFFFFFFFF
+
+    return struct.pack("<4I", A, B, C, D)
+
+
+def _python_crack_asrep(hash_line: str, wordlist_path: str) -> str | None:
+    """Pure-Python AS-REP hash cracker (fallback when hashcat has no GPU/OpenCL).
+    Supports $krb5asrep$23$ format only — sufficient for lab use with small wordlists.
+    """
+    import hmac, hashlib, struct
+    # Parse: $krb5asrep$23$user@DOMAIN:checksum$enc_part
+    m = re.match(r"\$krb5asrep\$23\$[^:]+:([0-9a-fA-F]+)\$([0-9a-fA-F]+)", hash_line)
+    if not m:
+        return None
+    checksum = bytes.fromhex(m.group(1))
+    enc_part = bytes.fromhex(m.group(2))
+
+    def _rc4_hmac_decrypt(key: bytes, data: bytes) -> bytes:
+        k1 = hmac.new(key, struct.pack("<I", 8), hashlib.md5).digest()
+        k3 = hmac.new(k1, data[:16], hashlib.md5).digest()
+        S = list(range(256))
+        j = 0
+        for i in range(256):
+            j = (j + S[i] + k3[i % 16]) % 256
+            S[i], S[j] = S[j], S[i]
+        i = j = 0
+        out = []
+        for byte in data[16:]:
+            i = (i + 1) % 256
+            j = (j + S[i]) % 256
+            S[i], S[j] = S[j], S[i]
+            out.append(byte ^ S[(S[i] + S[j]) % 256])
+        return bytes(out)
+
+    data = checksum + enc_part
+    try:
+        with open(wordlist_path, errors="replace") as fh:
+            for candidate in fh:
+                candidate = candidate.rstrip("\n\r")
+                nt_hash = _md4(candidate.encode("utf-16-le"))
+                decrypted = _rc4_hmac_decrypt(nt_hash, data)
+                k1 = hmac.new(nt_hash, struct.pack("<I", 8), hashlib.md5).digest()
+                verify = hmac.new(k1, decrypted, hashlib.md5).digest()
+                if verify == checksum:
+                    return candidate
+    except Exception:
+        pass
+    return None
+
+
 async def _run_hashcat(
     hash_mode: int,
     hash_file: str,
@@ -55,6 +150,9 @@ async def _run_hashcat(
     timeout: int = 600,
 ) -> tuple[list[dict[str, str]], str]:
     """Common hashcat execution logic."""
+    # Prefer custom wordlist; fall back to rockyou if custom not mounted
+    if wordlist == DEFAULT_WORDLIST and not os.path.exists(DEFAULT_WORDLIST):
+        wordlist = _FALLBACK_WORDLIST
     facts: list[dict[str, str]] = []
     os.makedirs(HASHCAT_OUTPUT_DIR, exist_ok=True)
     output_file = os.path.join(HASHCAT_OUTPUT_DIR, f"{session_name}.pot")
@@ -114,6 +212,29 @@ async def _run_hashcat(
                             }),
                         })
 
+    # Python fallback: if hashcat produced nothing (no GPU/OpenCL), use pure-Python RC4-HMAC
+    if not facts and hash_mode == 18200 and ("ATTENTION" in combined or "No devices found" in combined or rc != 0):
+        try:
+            with open(hash_file) as fhash:
+                hash_lines = [l.strip() for l in fhash if l.strip().startswith("$krb5asrep$")]
+
+            for hash_line in hash_lines:
+                principal_m = re.search(r"\$krb5asrep\$\d+\$([^:]+):", hash_line)
+                principal = principal_m.group(1) if principal_m else "unknown"
+                cracked_pw = _python_crack_asrep(hash_line, wordlist)
+                if cracked_pw:
+                    facts.append({
+                        "trait": "credential.cracked_password",
+                        "value": json.dumps({
+                            "hash": hash_line[:80] + "...",
+                            "password": cracked_pw,
+                            "mode": hash_mode,
+                        }),
+                    })
+                    combined += f"\n[python-fallback] Cracked {principal}: {cracked_pw}"
+        except Exception as py_exc:
+            combined += f"\n[python-fallback] Error: {py_exc}"
+
     return facts, combined
 
 
@@ -160,7 +281,8 @@ async def hashcat_crack_asrep(
 
 @mcp.tool()
 async def hashcat_crack_kerberoast(
-    hash_file: str,
+    hash_file: str = "",
+    hash_value: str = "",
     wordlist: str = DEFAULT_WORDLIST,
     rules: str = "",
     timeout: int = 600,
@@ -168,7 +290,10 @@ async def hashcat_crack_kerberoast(
     """Crack Kerberoasting hashes (hashcat mode 13100).
 
     Args:
-        hash_file: Path to file containing Kerberos TGS hashes ($krb5tgs$...)
+        hash_file: Path to file containing Kerberos TGS hashes ($krb5tgs$...).
+                   Either hash_file or hash_value must be provided.
+        hash_value: Inline hash string (written to a temp file automatically).
+                    Use this when passing a hash directly instead of a file path.
         wordlist: Path to wordlist file (default: rockyou.txt)
         rules: Optional hashcat rules file path
         timeout: Maximum runtime in seconds (default: 600)
@@ -177,14 +302,36 @@ async def hashcat_crack_kerberoast(
         JSON with facts: credential.cracked_password
     """
     try:
+        tmp_path = None
+        if not hash_file and hash_value:
+            import tempfile
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+                f.write(hash_value.strip() + "\n")
+                tmp_path = f.name
+            hash_file = tmp_path
+
+        if not hash_file:
+            return json.dumps({"facts": [], "raw_output": "", "error": {"type": "ValueError", "message": "Either hash_file or hash_value must be provided"}})
+
+        # Auto-detect hash mode: AS-REP ($krb5asrep$) = 18200, Kerberoast ($krb5tgs$) = 13100
+        detected_mode = 13100
+        detected_hash = hash_value or ""
+        if not detected_hash and os.path.exists(hash_file):
+            with open(hash_file) as fh:
+                detected_hash = fh.read(100)
+        if "$krb5asrep$" in detected_hash:
+            detected_mode = 18200
+
         facts, combined = await _run_hashcat(
-            hash_mode=13100,
+            hash_mode=detected_mode,
             hash_file=hash_file,
             wordlist=wordlist,
             rules=rules,
             session_name="kerberoast-crack",
             timeout=timeout,
         )
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
         return json.dumps({
             "facts": facts,

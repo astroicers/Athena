@@ -296,7 +296,14 @@ class ReconEngine:
 
         t_start = time.monotonic()
         result = await manager.call_tool(
-            "nmap-scanner", "nmap_scan", {"target": ip_address}
+            "nmap-scanner", "nmap_scan", {
+                "target": ip_address,
+                "ports": (
+                    "21,22,23,25,53,80,110,135,139,143,443,445,"
+                    "1433,3000,3306,3389,3500,5432,5900,5985,5986,6379,"
+                    "8080,8443,8888,9090,27017"
+                ),
+            }
         )
         scan_duration = time.monotonic() - t_start
 

@@ -144,3 +144,4 @@ risk: critical   | 指揮官決定     | 指揮官決定      | 幾乎不做    
 - 取代：無
 - 被取代：無
 - 參考：ADR-040（C5ISR 閾值隨任務類型變動）、SPEC-046（實作規格）
+- 參考：SPEC-064（Orient Engine 規格 — mission_profile 噪音過濾機制 `_filter_options_by_noise` 完整說明）

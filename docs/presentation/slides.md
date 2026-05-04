@@ -2848,22 +2848,26 @@ Slide 3 — C5ISR Extended | 1:30 (1:45 - 3:15)
 
 ---
 transition: fade
+zoom: 0.92
 ---
 
 <!--
 Slide 4 — Cloud OODA Tested | 2:00 (3:15 - 5:15) ⭐ 核心 1
 
-替換為真實 SSRF demo recap。flAWS.cloud Level 5 跑通的 log。
-這是全場唯一「跑過的真實證據」— 必須用真截圖 + 真 Orient JSON。
+flAWS.cloud Level 5 真實跑通的 log — Orient JSON 從 Athena log 撈出（rec_id 00e38a61, 2026-04-16）。
+全場唯一可 fact-check 的真實證據。
 
-TODO（演講前要補的素材）：
-- 在 Orient JSON 區塊上方加 War Room timeline 截圖
-- 確認 Orient JSON 是 log 撈出來的真實內容（不是改寫的）
+開講節奏：
+- 30s 鋪 kill-chain（nmap → SSRF → web_http_fetch → AWS cred）
+- 60s 念 JSON：「Athena 看到三條路 — T1190 0.95, T1046 0.75, T1592.004 0.65」
+- 30s 收尾："不是更快，是更聰明" — 0.95 自信值的決定
+
+TODO（可選）：War Room timeline 截圖 — 但 deck 空間有限，目前 JSON 已是強證據。
 -->
 
-<div class="slide-eyebrow">From the Lab · flAWS.cloud</div>
+<div class="slide-eyebrow">From the Lab · flAWS.cloud · OPERATION CLOUDSTRIKE</div>
 <div class="slide-h1">AI's first cloud decision</div>
-<div class="slide-sub">Real Orient log from a lab run. Not a slide mock-up.</div>
+<div class="slide-sub">Excerpt from Athena Orient log · <code>rec_id 00e38a61</code> · 2026-04-16 16:11Z</div>
 
 <div class="kill-chain compact" style="margin: 1.4rem 0;">
 
@@ -2897,18 +2901,23 @@ TODO（演講前要補的素材）：
 
 ```json
 {
-  "situation_assessment": "Web app exposes /proxy/ endpoint with
-    IMDS canary confirmed. SSH is key-only — brute force will fail.
-    Cloud pivot offers higher strategic value.",
-  "recommended_technique": "T1190",
-  "reasoning": "Rule #10 (SSRF→IMDS) triggered.
-    SSH dead-branched via Rule #2.",
-  "confidence": 0.87
+  "situation_assessment": "TA0043 → TA0001. Multiple SSRF vulns
+    discovered (web.vuln.ssrf). IAM role 'flaws' identified via
+    cloud.aws.imds_role. Per Rule #10, SSRF→IMDS pivot required.",
+  "recommended_technique_id": "T1190",
+  "confidence": 0.95,
+  "options": [
+    {"technique": "T1190", "confidence": 0.95},
+    {"technique": "T1046", "confidence": 0.75},
+    {"technique": "T1592.004", "confidence": 0.65}
+  ],
+  "reasoning": "Must complete IMDS credential extraction via T1190
+    before T1078.004 or T1530. web_http_fetch auto-extracts AWS creds."
 }
 ```
 
 <div class="alert-box" style="margin-top: 1rem;">
-小兵看到 SSH:22 就 brute force。指揮官看到 SSH 是 key-only — 自動跳過，選擇 SSRF。<strong>不是更快，是更聰明。</strong>
+小兵看到三個選項都試一遍。指揮官看到 SSRF 確認 + IAM role 已 enum — 選 <span class="status elevated">0.95</span>，跳過 0.75 / 0.65。<strong>不是更快，是更聰明。</strong>
 </div>
 
 ---

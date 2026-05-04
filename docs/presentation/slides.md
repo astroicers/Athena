@@ -2747,7 +2747,7 @@ clicks:
 <div class="dot orange"></div>
 <div>
 <div class="label">Or just the boarding pass?</div>
-<div class="desc">The real castle is hybrid identity.</div>
+<div class="desc">The next control plane is hybrid identity.</div>
 </div>
 </div>
 
@@ -2767,13 +2767,14 @@ transition: fade
 <!--
 Slide 2 — Terrain Shift | 1:00 (0:45 - 1:45)
 
-讓觀眾意識到：DA 在 2026 年現代企業 = 跨進雲端的入場券。
-台灣 80%+ 企業是 hybrid。Entra Connect 是雙向通道。
+讓觀眾意識到：DA 在 2026 現代企業 = 跨進雲端的入場券。
+台灣多數中型以上企業跑 hybrid identity（Entra Connect / AD FS / PTA）。
+DA 不會自動拿到雲端全控，但它常是通往雲端的起點。
 -->
 
 <div class="slide-eyebrow">Section A · Terrain Shift</div>
 <div class="slide-h1">DA is not the summit — it's the bridge</div>
-<div class="slide-sub">85% of Taiwan mid-size enterprises run hybrid identity in 2026.</div>
+<div class="slide-sub">Hybrid identity is the modern enterprise default — DA touches it.</div>
 
 <div class="compare-2" style="margin-top: 2rem;">
 
@@ -2792,7 +2793,7 @@ Slide 2 — Terrain Shift | 1:00 (0:45 - 1:45)
 </div>
 
 <div class="bridge-bottom" style="margin-top: 2rem;">
-<strong>Entra Connect 是雙向通道</strong> — 你拿到 DA，就拿到通往雲端的橋。
+<strong>Entra Connect / AD FS / PTA</strong> 是 hybrid identity 控制面 — DA 不等於雲端全控，但常是通往雲端的起點。
 </div>
 
 ---
@@ -2827,12 +2828,12 @@ Slide 3 — C5ISR Extended | 1:30 (1:45 - 3:15)
 <tr>
 <td><strong>Computers</strong></td>
 <td>IP · Hostname · Service</td>
-<td>IAM Role · Resource ARN · Tenant ID</td>
+<td>Cloud resource ID · Principal / role · Tenant / account ID</td>
 </tr>
 <tr>
 <td><strong>Comms</strong></td>
 <td>SSH · SMB · Kerberos · LDAP</td>
-<td>OAuth Token · PRT · SAS Token · API key</td>
+<td>Access token · Refresh token / PRT · SAS / API key</td>
 </tr>
 <tr>
 <td><strong>Cyber</strong></td>
@@ -2848,7 +2849,7 @@ Slide 3 — C5ISR Extended | 1:30 (1:45 - 3:15)
 
 ---
 transition: fade
-zoom: 0.92
+zoom: 0.88
 ---
 
 <!--
@@ -2901,9 +2902,13 @@ TODO（可選）：War Room timeline 截圖 — 但 deck 空間有限，目前 J
 
 ```json
 {
-  "situation_assessment": "TA0043 → TA0001. Multiple SSRF vulns
-    discovered (web.vuln.ssrf). IAM role 'flaws' identified via
-    cloud.aws.imds_role. Per Rule #10, SSRF→IMDS pivot required.",
+  "rec_id": "00e38a61-0afe-407f",
+  "ooda_iteration_id": "c3255b5e-bc3e-464d",
+  "operation_id": "5d21782a (FLAWS-DEMO)",
+  "timestamp": "2026-04-16T16:11:11.286Z",
+  "tool": "web_http_fetch",
+  "evidence_refs": ["web.vuln.ssrf", "cloud.aws.imds_role"],
+  "situation_assessment": "TA0043 → TA0001. SSRF confirmed. IAM role 'flaws' enum'd. Per Rule #10, SSRF→IMDS pivot required.",
   "recommended_technique_id": "T1190",
   "confidence": 0.95,
   "options": [
@@ -2911,8 +2916,7 @@ TODO（可選）：War Room timeline 截圖 — 但 deck 空間有限，目前 J
     {"technique": "T1046", "confidence": 0.75},
     {"technique": "T1592.004", "confidence": 0.65}
   ],
-  "reasoning": "Must complete IMDS credential extraction via T1190
-    before T1078.004 or T1530. web_http_fetch auto-extracts AWS creds."
+  "reasoning": "Must complete IMDS cred extraction before T1078.004 or T1530."
 }
 ```
 
@@ -2995,7 +2999,7 @@ Slide 5 — Blast Radius | 1:30 (5:15 - 6:45) ⭐ 核心 2
 </div>
 
 <div class="danger-box" style="margin-top: 1.2rem;">
-一個邊界漏洞的 blast radius 跨 <strong>5 個域 · 2 朵雲</strong>。傳統 CVSS 算不出來這種當量。
+一個邊界漏洞的 blast radius 跨 <strong>AD、hybrid identity、Azure/M365、secrets、供應鏈</strong>。傳統 CVSS 算不出來這種當量。
 </div>
 
 ---
@@ -3021,12 +3025,12 @@ Slide 6 — In the Wild | 1:00 (6:45 - 7:45)
 
 <div class="side red-border">
 <div class="head">Midnight Blizzard<br/><span style="font-size: 0.78rem; color: var(--fg-dim); font-weight: 400;">2024</span></div>
-<div class="body">Test tenant → Microsoft corporate + customer tenants. Full scope still undisclosed today.</div>
+<div class="body">Legacy test tenant → Microsoft corporate email / source / internal systems. Customer-facing compromise not publicly evidenced.</div>
 </div>
 
 <div class="side red-border">
 <div class="head">Volt Typhoon<br/><span style="font-size: 0.78rem; color: var(--fg-dim); font-weight: 400;">2024–25</span></div>
-<div class="body">On-prem persistence + cloud lateral. Critical infrastructure (incl. Taiwan power, telco).</div>
+<div class="body">On-prem LOTL persistence in U.S./Guam critical infrastructure. Taiwan-conflict relevance assessed by CISA.</div>
 </div>
 
 </div>
@@ -3058,7 +3062,7 @@ Slide 7 — Three Questions | 1:30 (7:45 - 9:15)
 
 <div class="numbered-line">
 <div class="n">2</div>
-<div class="body">Does your SOC know <strong>on-prem credentials can pivot to cloud</strong>? And vice versa?</div>
+<div class="body">Does your SOC <strong>model credential and token paths across AD, Entra ID, M365, and cloud secrets</strong>?</div>
 </div>
 
 <div class="numbered-line">
@@ -3084,7 +3088,7 @@ Slide 8 — Closing | 0:45 (9:15 - 10:00)
 <div class="slide-eyebrow" style="margin-bottom: 2rem;">One Last Thing</div>
 
 <div style="font-size: 2.2rem; font-weight: 700; line-height: 1.5; max-width: 52rem; text-align: center;">
-From toolbox to nuclear weapon —<br/>
+From toolbox to command system —<br/>
 the distance isn't <span style="color: var(--fg-dim);">tool progress</span>.
 </div>
 

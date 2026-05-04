@@ -622,3 +622,193 @@ code, pre, .mono {
 /* Force shiki tokens to readable colors on light bg */
 .shiki, .shiki span { background: transparent !important; }
 .shiki .line { color: var(--fg); }
+
+/* ===== OPS LOG sidebar (military-aesthetic right-rail terminal log) =====
+ * Usage:
+ *   <div class="op-layout">
+ *     <div class="op-content"> ...slide content... </div>
+ *     <div class="ops-log">
+ *       <div class="ops-header">// OPS LOG · ATHENA</div>
+ *       ```bash {1|2|3|all}
+ *       [18:42:01] ● SCAN INITIATED
+ *       [18:42:15] ● PORT 445 OPEN
+ *       ```
+ *     </div>
+ *   </div>
+ */
+
+.op-layout {
+  display: grid;
+  grid-template-columns: 2.1fr 1fr;
+  gap: 1.4rem;
+  height: 100%;
+  align-items: start;
+}
+
+.op-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ops-log {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent-orange);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  align-self: stretch;
+}
+
+.ops-log .ops-header {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent-orange);
+  padding: 0.55rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(236, 142, 8, 0.10);
+  font-weight: 700;
+}
+
+.ops-log .slidev-code,
+.ops-log pre {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  font-size: 0.62rem !important;
+  line-height: 1.7 !important;
+  padding: 0.65rem 0.8rem !important;
+  margin: 0 !important;
+  flex: 1;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--fg) !important;
+}
+
+/* Force OPS LOG text to readable colors on cream bg
+ * (Shiki light theme washes out — override every token to fg) */
+.ops-log .shiki,
+.ops-log .shiki span,
+.ops-log .slidev-code span,
+.ops-log code,
+.ops-log code span {
+  color: var(--fg) !important;
+}
+.ops-log .shiki .line {
+  color: var(--fg) !important;
+}
+
+/* Status badges (●ACTIVE / ●SCANNING / ●COMPROMISED / ●ELEVATED / ●DUMPED / ●OK) */
+.status {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.status::before {
+  content: "●";
+  margin-right: 0.35rem;
+  font-size: 0.8rem;
+  vertical-align: -0.05em;
+}
+.status.active      { color: var(--accent-blue); }
+.status.scanning    { color: var(--accent-amber); }
+.status.compromised { color: var(--accent-red); }
+.status.elevated    { color: var(--accent-orange); }
+.status.dumped      { color: var(--accent-purple); }
+.status.ok          { color: var(--accent-green); }
+
+/* OPERATION header — inline classified-style banner */
+.op-header {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent-orange);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 0.4rem 0;
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  opacity: 0.85;
+}
+.op-header .classified { color: var(--accent-red); font-weight: 700; }
+
+/* ===== Density overrides for Harry's PPT-converted content =====
+ * Mirror of deck-dark — keep parity. */
+
+.op-layout {
+  gap: 1.1rem;
+}
+.op-layout .ops-log .slidev-code,
+.op-layout .ops-log pre {
+  line-height: 1.55 !important;
+  font-size: 0.6rem !important;
+  padding: 0.55rem 0.75rem !important;
+}
+.op-layout .ops-log .ops-header {
+  padding: 0.45rem 0.75rem;
+  font-size: 0.58rem;
+}
+
+.op-layout .alert-box,
+.op-layout .danger-box {
+  padding: 0.5rem 0.85rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.op-content .slide-h1 {
+  font-size: 1.55rem;
+  margin-bottom: 0.45rem;
+}
+.op-content .slide-sub {
+  font-size: 0.92rem;
+  margin-bottom: 0.7rem;
+}
+
+.bridge-bottom {
+  margin-top: 0.7rem;
+  padding: 0.55rem 0.95rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+.op-layout .bridge-bottom,
+.op-content .bridge-bottom {
+  margin-top: 0.5rem;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.8rem;
+}
+
+.op-header {
+  padding: 0.32rem 0;
+  margin-bottom: 0.7rem;
+  font-size: 0.6rem;
+}
+
+.op-content .kill-chain,
+.op-content .kill-chain.compact {
+  margin: 0.7rem 0;
+}
+.op-content .kill-chain.compact .kc-node {
+  padding: 0.4rem 0.6rem;
+  min-width: 5.2rem;
+}
+.op-content .kill-chain.compact .kc-node .label { font-size: 0.74rem; }
+.op-content .kill-chain.compact .kc-node .sub { font-size: 0.58rem; }
+
+.op-content .slide-eyebrow {
+  font-size: 0.62rem;
+  margin-bottom: 0.3rem;
+}
+
+.op-content .cmd-list { gap: 0.35rem; }
+.op-content .cmd-row { padding: 0.35rem 0.55rem; font-size: 0.78rem; }

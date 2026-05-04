@@ -2753,11 +2753,6 @@ clicks:
 
 </div>
 
-<div class="cover-footer">
-<div class="speaker">Alex Chih · Cheehoo Labs · CYBERSEC 2026</div>
-<div class="tagline">DA is the trigger. Hybrid identity is the payload.</div>
-</div>
-
 </div>
 
 ---
@@ -3094,10 +3089,6 @@ the distance isn't <span style="color: var(--fg-dim);">tool progress</span>.
 
 <div style="font-size: 2.6rem; font-weight: 700; line-height: 1.4; margin-top: 1.6rem; color: var(--accent-red);">
 是視野的擴張。
-</div>
-
-<div style="margin-top: 3rem; color: var(--fg-dim); font-size: 1rem;">
-Alex Chih · Cheehoo Labs · CYBERSEC 2026
 </div>
 
 </div>

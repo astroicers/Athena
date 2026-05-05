@@ -2738,16 +2738,16 @@ clicks:
 <div class="annotation" v-click="1">
 <div class="dot red"></div>
 <div>
-<div class="label">Castle key acquired</div>
-<div class="desc">End credits, in the classic narrative.</div>
+<div class="label">拿到城堡鑰匙</div>
+<div class="desc">傳統腳本到這裡就 end credits。</div>
 </div>
 </div>
 
 <div class="annotation" v-click="2">
 <div class="dot orange"></div>
 <div>
-<div class="label">Or just the boarding pass?</div>
-<div class="desc">The next control plane is hybrid identity.</div>
+<div class="label">還是只是登機證？</div>
+<div class="desc">下一個控制面 — 混合身分認證。</div>
 </div>
 </div>
 
@@ -2767,22 +2767,22 @@ Slide 2 — Terrain Shift | 1:00 (0:45 - 1:45)
 DA 不會自動拿到雲端全控，但它常是通往雲端的起點。
 -->
 
-<div class="slide-eyebrow">Section A · Terrain Shift</div>
-<div class="slide-h1">DA is not the summit — it's the bridge</div>
-<div class="slide-sub">Hybrid identity is the modern enterprise default — DA touches it.</div>
+<div class="slide-eyebrow">Section A · 地形轉換</div>
+<div class="slide-h1">DA 不是終點 — 是入場券</div>
+<div class="slide-sub">混合身分認證是現代企業的預設架構 — DA 直接接到它。</div>
 
 <div class="compare-2" style="margin-top: 2rem;">
 
 <div class="side green-border">
-<div class="head">On-prem AD</div>
-<div class="body">The world you just watched fall.<br/>Domain Admin = control of the machine room.</div>
+<div class="head">地端 AD</div>
+<div class="body">你剛看到陷落的戰場。<br/>Domain Admin = 機房的控制權。</div>
 </div>
 
 <div class="center">↔</div>
 
 <div class="side red-border">
 <div class="head">Entra ID · Azure · M365</div>
-<div class="body">Where the real assets live now.<br/>Customer data · executive mail · API keys · production secrets.</div>
+<div class="body">真正的資產住在這裡。<br/>客戶資料 · 高層信箱 · API 金鑰 · 正式環境密鑰。</div>
 </div>
 
 </div>
@@ -2802,16 +2802,16 @@ Slide 3 — C5ISR Extended | 1:30 (1:45 - 3:15)
 同一套指揮架構，戰場從機房延伸到雲端。
 -->
 
-<div class="slide-eyebrow">Section B · Command Extended</div>
-<div class="slide-h1">Same command, different theatre</div>
-<div class="slide-sub">The C5ISR framework you just saw — applied to the cloud front.</div>
+<div class="slide-eyebrow">Section B · 指揮架構延伸</div>
+<div class="slide-h1">同一套指揮 — 不同戰場</div>
+<div class="slide-sub">剛剛看到的 C5ISR 框架 — 套到雲端前線。</div>
 
 <table class="matrix" style="margin-top: 1.6rem;">
 <thead>
 <tr>
-<th style="width: 14%">Domain</th>
-<th style="width: 43%">On-prem (what you just saw)</th>
-<th style="width: 43%">Cloud (what comes next)</th>
+<th style="width: 14%">面向</th>
+<th style="width: 43%">地端（剛剛看到的）</th>
+<th style="width: 43%">雲端（接下來看到的）</th>
 </tr>
 </thead>
 <tbody>
@@ -2861,35 +2861,35 @@ flAWS.cloud Level 5 真實跑通的 log — Orient JSON 從 Athena log 撈出（
 TODO（可選）：War Room timeline 截圖 — 但 deck 空間有限，目前 JSON 已是強證據。
 -->
 
-<div class="slide-eyebrow">From the Lab · flAWS.cloud · OPERATION CLOUDSTRIKE</div>
-<div class="slide-h1">AI's first cloud decision</div>
-<div class="slide-sub">Excerpt from Athena Orient log · <code>rec_id 00e38a61</code> · 2026-04-16 16:11Z</div>
+<div class="slide-eyebrow">實驗室實戰 · flAWS.cloud · OPERATION CLOUDSTRIKE</div>
+<div class="slide-h1">AI 的第一個雲端決策</div>
+<div class="slide-sub">Athena Orient log 摘要 · <code>rec_id 00e38a61</code> · 2026-04-16 16:11Z</div>
 
 <div class="kill-chain compact" style="margin: 1.4rem 0;">
 
 <div class="kc-node recon">
 <div class="label">nmap + web probe</div>
-<div class="sub">discover /proxy/</div>
+<div class="sub">發現 /proxy/</div>
 </div>
 
 <div class="kc-arrow">→</div>
 
 <div class="kc-node recon">
-<div class="label">SSRF probe</div>
-<div class="sub">IMDS canary confirmed</div>
+<div class="label">SSRF 探測</div>
+<div class="sub">IMDS canary 確認</div>
 </div>
 
 <div class="kc-arrow">→</div>
 
 <div class="kc-node exploit">
 <div class="label">web_http_fetch</div>
-<div class="sub">via /proxy/ → IMDS</div>
+<div class="sub">透過 /proxy/ → IMDS</div>
 </div>
 
 <div class="kc-arrow">→</div>
 
 <div class="kc-node attacker">
-<div class="label">AWS credential</div>
+<div class="label">AWS 憑證</div>
 <div class="sub">AccessKey · Secret · Token</div>
 </div>
 
@@ -2929,36 +2929,36 @@ Slide 5 — Blast Radius | 1:30 (5:15 - 6:45) ⭐ 核心 2
 從一個入口到全戰場 — 視覺化「核彈」當量。
 -->
 
-<div class="slide-eyebrow">Blast Radius</div>
-<div class="slide-h1">One entry. Multiple theatres.</div>
-<div class="slide-sub">His AD compromise. My SSRF. Different entries — same explosion.</div>
+<div class="slide-eyebrow">核爆當量</div>
+<div class="slide-h1">一個入口。多個戰場。</div>
+<div class="slide-sub">他的 AD 入侵。我的 SSRF。不同入口 — 同一場爆炸。</div>
 
 <div class="kill-chain compact" style="margin: 1.4rem 0; gap: 0.4rem;">
 
 <div class="kc-node benign">
-<div class="label">Initial breach</div>
-<div class="sub">previous segment</div>
+<div class="label">初始入侵</div>
+<div class="sub">前段示範</div>
 </div>
 
 <div class="kc-arrow">→</div>
 
 <div class="kc-node recon">
-<div class="label">AD foothold</div>
-<div class="sub">on-prem domain</div>
+<div class="label">AD 立足點</div>
+<div class="sub">地端網域</div>
 </div>
 
 <div class="kc-arrow">→</div>
 
 <div class="kc-node exploit">
 <div class="label">Domain Admin</div>
-<div class="sub">machine room</div>
+<div class="sub">機房</div>
 </div>
 
 <div class="kc-arrow">→</div>
 
 <div class="kc-node exploit">
-<div class="label">Hybrid Identity</div>
-<div class="sub">junction layer</div>
+<div class="label">混合身分</div>
+<div class="sub">介接層</div>
 </div>
 
 </div>
@@ -2966,29 +2966,29 @@ Slide 5 — Blast Radius | 1:30 (5:15 - 6:45) ⭐ 核心 2
 <div class="kill-chain compact" style="margin: 0.4rem 0; gap: 0.4rem;">
 
 <div class="kc-node attacker">
-<div class="label">Azure tenant</div>
-<div class="sub">tenant takeover</div>
+<div class="label">Azure 租戶</div>
+<div class="sub">租戶接管</div>
 </div>
 
 <div class="kc-arrow">→</div>
 
 <div class="kc-node attacker">
-<div class="label">M365 mailbox</div>
-<div class="sub">executive mail</div>
+<div class="label">M365 信箱</div>
+<div class="sub">高層郵件</div>
 </div>
 
 <div class="kc-arrow">→</div>
 
 <div class="kc-node attacker">
 <div class="label">Key Vault</div>
-<div class="sub">production secrets</div>
+<div class="sub">正式環境密鑰</div>
 </div>
 
 <div class="kc-arrow">→</div>
 
 <div class="kc-node attacker">
-<div class="label">Cross-cloud · supply chain</div>
-<div class="sub">customer tenants</div>
+<div class="label">跨雲 · 供應鏈</div>
+<div class="sub">客戶租戶</div>
 </div>
 
 </div>
@@ -3007,25 +3007,25 @@ Slide 6 — In the Wild | 1:00 (6:45 - 7:45)
 證明這不是 lab 演練，是 2023-2025 真實發生的事。
 -->
 
-<div class="slide-eyebrow">In the Wild · 2023–2025</div>
-<div class="slide-h1">Not a lab exercise — real threats</div>
-<div class="slide-sub">Hybrid identity attacks observed in the wild.</div>
+<div class="slide-eyebrow">真實事件 · 2023–2025</div>
+<div class="slide-h1">不是實驗室劇本 — 是真實威脅</div>
+<div class="slide-sub">混合身分攻擊已在真實世界被觀測到。</div>
 
 <div class="compare-2" style="grid-template-columns: 1fr 1fr 1fr; gap: 1.2rem; margin-top: 1.6rem;">
 
 <div class="side red-border">
 <div class="head">Storm-0558<br/><span style="font-size: 0.78rem; color: var(--fg-dim); font-weight: 400;">2023</span></div>
-<div class="body">MSA signing key theft → forged tokens → cross-tenant mail access. Multiple government agencies impacted.</div>
+<div class="body">MSA 簽章金鑰外洩 → 偽造 token → 跨租戶郵件存取。多個政府機關受害。</div>
 </div>
 
 <div class="side red-border">
 <div class="head">Midnight Blizzard<br/><span style="font-size: 0.78rem; color: var(--fg-dim); font-weight: 400;">2024</span></div>
-<div class="body">Legacy test tenant → Microsoft corporate email / source / internal systems. Customer-facing compromise not publicly evidenced.</div>
+<div class="body">舊測試租戶 → Microsoft 企業信箱 / 原始碼 / 內部系統。對外客戶端入侵尚無公開證據。</div>
 </div>
 
 <div class="side red-border">
 <div class="head">Volt Typhoon<br/><span style="font-size: 0.78rem; color: var(--fg-dim); font-weight: 400;">2024–25</span></div>
-<div class="body">On-prem LOTL persistence in U.S./Guam critical infrastructure. Taiwan-conflict relevance assessed by CISA.</div>
+<div class="body">在美國 / 關島關鍵基礎設施使用 LOTL 持續潛伏。CISA 評估與台海衝突相關。</div>
 </div>
 
 </div>
@@ -3044,25 +3044,25 @@ Slide 7 — Three Questions | 1:30 (7:45 - 9:15)
 給防禦方三個 takeaway，呼應演講主題的戰略高度。
 -->
 
-<div class="slide-eyebrow">Three Questions</div>
-<div class="slide-h1">Three questions for your next exercise</div>
-<div class="slide-sub">If the answer is "no" — you're still using a toolbox, not a command system.</div>
+<div class="slide-eyebrow">三個提問</div>
+<div class="slide-h1">下一場演練該問的三個問題</div>
+<div class="slide-sub">如果答案是 no — 你還在用工具箱，不是指揮系統。</div>
 
 <div class="numbered-lines" style="margin-top: 2rem;">
 
 <div class="numbered-line">
 <div class="n">1</div>
-<div class="body">Can your red team see <strong>cloud + on-prem at once</strong>? Or two separate teams looking at half each?</div>
+<div class="body">你的紅隊能<strong>同時看到雲端 + 地端</strong>嗎？還是兩支隊伍各看一半？</div>
 </div>
 
 <div class="numbered-line">
 <div class="n">2</div>
-<div class="body">Does your SOC <strong>model credential and token paths across AD, Entra ID, M365, and cloud secrets</strong>?</div>
+<div class="body">你的 SOC 是否把 <strong>AD、Entra ID、M365、雲端密鑰</strong>的憑證與 token 路徑當作同一張圖？</div>
 </div>
 
 <div class="numbered-line">
 <div class="n">3</div>
-<div class="body">AI attacker speed. Does your <strong>incident response keep up</strong>?</div>
+<div class="body">AI 攻擊者的速度 — 你的<strong>事件應變跟得上</strong>嗎？</div>
 </div>
 
 </div>
@@ -3080,11 +3080,11 @@ Slide 8 — Closing | 0:45 (9:15 - 10:00)
 
 <div style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 4rem;">
 
-<div class="slide-eyebrow" style="margin-bottom: 2rem;">One Last Thing</div>
+<div class="slide-eyebrow" style="margin-bottom: 2rem;">最後一件事</div>
 
 <div style="font-size: 2.2rem; font-weight: 700; line-height: 1.5; max-width: 52rem; text-align: center;">
-From toolbox to command system —<br/>
-the distance isn't <span style="color: var(--fg-dim);">tool progress</span>.
+從工具箱到指揮系統 —<br/>
+距離不在 <span style="color: var(--fg-dim);">工具進化</span>。
 </div>
 
 <div style="font-size: 2.6rem; font-weight: 700; line-height: 1.4; margin-top: 1.6rem; color: var(--accent-red);">

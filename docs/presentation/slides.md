@@ -242,10 +242,6 @@ transition: fade
 
 </div>
 
-<div class="bridge-bottom" style="font-style: italic;">
-接下來 50 張投影片，每一頁都在敲這三個鼓點。
-</div>
-
 <!--
 **Slide 4 · 三條信條** | doctrines prologue · 2:00 – 3:30
 
@@ -273,6 +269,7 @@ transition: fade
 
 [transition] 「先看一下我們今天的攻擊路徑。」
 -->
+
 ---
 transition: fade
 ---
@@ -285,11 +282,10 @@ transition: fade
 <table class="matrix" style="margin-top: 1.4rem;">
 <thead>
 <tr>
-<th style="width: 6%">#</th>
-<th style="width: 18%">Chapter</th>
-<th style="width: 25%">主題</th>
-<th style="width: 41%">內容</th>
-<th style="width: 10%">時長</th>
+<th style="width: 8%">#</th>
+<th style="width: 20%">Chapter</th>
+<th style="width: 28%">主題</th>
+<th style="width: 44%">內容</th>
 </tr>
 </thead>
 <tbody>
@@ -298,48 +294,42 @@ transition: fade
 <td><strong>TRADITION</strong></td>
 <td>傳統紅隊的瓶頸</td>
 <td>為什麼 nmap × 經驗值已經不夠 · 5 張</td>
-<td><span style="color: var(--fg-dim); font-family: 'JetBrains Mono', monospace;">~5 min</span></td>
 </tr>
 <tr>
 <td><strong style="color: var(--accent-green); font-family: 'JetBrains Mono', monospace;">02</strong></td>
 <td><strong>DOCTRINE</strong></td>
 <td>軍事理論的紅隊化</td>
 <td>C5ISR · OODA · Boyd 的 30 倍交換比 · 4 張</td>
-<td><span style="color: var(--fg-dim); font-family: 'JetBrains Mono', monospace;">~6 min</span></td>
 </tr>
 <tr>
 <td><strong style="color: var(--accent-green); font-family: 'JetBrains Mono', monospace;">03</strong></td>
 <td><strong>ARCHITECTURE</strong></td>
 <td>Athena 的引擎</td>
 <td>Orient JSON / 17 個 MCP / fact-driven · 6 張</td>
-<td><span style="color: var(--fg-dim); font-family: 'JetBrains Mono', monospace;">~10 min</span></td>
 </tr>
 <tr>
 <td><strong style="color: var(--accent-green); font-family: 'JetBrains Mono', monospace;">04</strong></td>
 <td><strong>FRAMEWORK</strong></td>
 <td>作戰準則五階段</td>
 <td>OBSERVE / ORIENT / DECIDE / ACT / TEMPO · 7 張</td>
-<td><span style="color: var(--fg-dim); font-family: 'JetBrains Mono', monospace;">~8 min</span></td>
 </tr>
 <tr>
 <td><strong style="color: var(--accent-green); font-family: 'JetBrains Mono', monospace;">05</strong></td>
 <td><strong>OPERATION</strong></td>
 <td>實戰 — 三個 stage 的 kill chain</td>
 <td>WEB01 → DC-01 → ACCT-DB · 24 張</td>
-<td><span style="color: var(--fg-dim); font-family: 'JetBrains Mono', monospace;">~15 min</span></td>
 </tr>
 <tr>
 <td><strong style="color: var(--accent-green); font-family: 'JetBrains Mono', monospace;">06</strong></td>
 <td><strong>AFTER ACTION</strong></td>
 <td>戰場心得 + 下一步</td>
 <td>三個收穫 · roadmap · 對比同類 · 5 張</td>
-<td><span style="color: var(--fg-dim); font-family: 'JetBrains Mono', monospace;">~6 min</span></td>
 </tr>
 </tbody>
 </table>
 
 <div class="bridge-bottom">
-總長 ~50 分鐘 · <strong>重點不在工具，在三條信條。</strong>
+<strong>重點不在工具，在三條信條。</strong>
 </div>
 
 <!--

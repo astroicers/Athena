@@ -2767,6 +2767,8 @@ zoom: 0.93
 寫入 PostgreSQL Facts DB · 等待 LLM Orient
 </div>
 
+<img src="/image3.png" alt="WEB01 War Room — recon" style="margin-top: 0.6rem; max-width: 100%; max-height: 220px; object-fit: contain; border: 1px solid var(--border); border-radius: 4px;" />
+
 </div>
 
 <div class="ops-log">
@@ -2908,6 +2910,8 @@ zoom: 0.93
 寫入 facts: <code>access.web_shell · vector=T1190</code> — 第一台攻陷，預備 lateral 到 DC-01。
 </div>
 
+<img src="/image4.png" alt="WEB01 War Room — compromised credentials" style="margin-top: 0.6rem; max-width: 100%; max-height: 220px; object-fit: contain; border: 1px solid var(--border); border-radius: 4px;" />
+
 </div>
 
 <div class="ops-log">
@@ -2966,6 +2970,8 @@ zoom: 0.93
 <div class="alert-box">
 DoesNotRequirePreAuth=True 已被偵測 — AS-REP roasting 路徑可行。
 </div>
+
+<img src="/image5.png" alt="DC-01 War Room — AS-REP ready" style="margin-top: 0.6rem; max-width: 100%; max-height: 220px; object-fit: contain; border: 1px solid var(--border); border-radius: 4px;" />
 
 </div>
 
@@ -3313,6 +3319,8 @@ zoom: 0.93
 寫入 facts: <code>access.kerberos_ticket.da_alice</code> · NT hash dumped · 下一步 → ACCT-DB01
 </div>
 
+<img src="/image7.png" alt="da_alice TGT — credential.certificate_auth" style="margin-top: 0.6rem; max-width: 100%; max-height: 220px; object-fit: contain; border: 1px solid var(--border); border-radius: 4px;" />
+
 </div>
 
 <div class="ops-log">
@@ -3363,6 +3371,8 @@ zoom: 0.93
 <div class="alert-box">
 Kill chain: <code>T1558.004</code> → <code>T1110.002</code> → <code>T1649</code> · 三段全自動串接，無人類批准。
 </div>
+
+<img src="/image8.png" alt="DC-01 War Room — domain admin compromised" style="margin-top: 0.6rem; max-width: 100%; max-height: 220px; object-fit: contain; border: 1px solid var(--border); border-radius: 4px;" />
 
 </div>
 
@@ -3422,6 +3432,8 @@ zoom: 0.93
 <div class="alert-box">
 Admin path: ✓ DA in 手 / ✓ SMB on 445 → secretsdump 計畫已成形。
 </div>
+
+<img src="/image9.png" alt="ACCT-DB01 War Room — pivot ready" style="margin-top: 0.6rem; max-width: 100%; max-height: 220px; object-fit: contain; border: 1px solid var(--border); border-radius: 4px;" />
 
 </div>
 
@@ -3522,6 +3534,8 @@ mssql_svc:<plaintext_password>   ← 服務帳號明文
 寫入 facts: <code>access.local_admin · service.mssql_pass</code>
 </div>
 
+<img src="/image9.png" alt="ACCT-DB01 War Room — secretsdump complete" style="margin-top: 0.6rem; max-width: 100%; max-height: 220px; object-fit: contain; border: 1px solid var(--border); border-radius: 4px;" />
+
 </div>
 
 <div class="ops-log">
@@ -3557,7 +3571,7 @@ zoom: 0.93
 
 <div class="slide-eyebrow">STAGE 2 / ACCT-DB01 · DONE</div>
 <div class="slide-h1">ACCT-DB01 — 攻陷 <span class="status compromised">COMPROMISED</span></div>
-<div class="slide-sub">**ALL TARGETS** <span class="status compromised">COMPROMISED</span> · 全程 < 20 分鐘</div>
+<div class="slide-sub">ALL TARGETS <span class="status compromised">COMPROMISED</span> · 全程 < 20 分鐘</div>
 
 ![War Room — OODA #26](/image2.png)
 

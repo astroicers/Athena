@@ -68,9 +68,7 @@ class MCPEngineClient(BaseEngineClient):
 
         # Build arguments — honor per-tool shape override when present
         shaper = _TOOL_ARG_SHAPES.get(tool_name)
-        arguments: dict[str, Any] = (
-            shaper(target) if shaper else {"target": target}
-        )
+        arguments: dict[str, Any] = shaper(target) if shaper else {"target": target}
         if params:
             arguments.update(params)
 
@@ -126,7 +124,4 @@ class MCPEngineClient(BaseEngineClient):
 
     async def is_available(self) -> bool:
         """Return True if at least one MCP server is connected."""
-        return any(
-            s["connected"]
-            for s in self._manager.list_servers()
-        )
+        return any(s["connected"] for s in self._manager.list_servers())

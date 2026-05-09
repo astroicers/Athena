@@ -9,6 +9,7 @@
 # For commercial licensing, contact: azz093093.830330@gmail.com
 
 """Tool registry Pydantic models for CRUD operations."""
+
 from __future__ import annotations
 
 from pydantic import BaseModel

@@ -37,9 +37,7 @@ async def test_list_facts_with_data(client: AsyncClient, seeded_db: asyncpg.Conn
     assert data[0]["value"] == "80"
 
 
-async def test_list_facts_filter_by_target_id(
-    client: AsyncClient, seeded_db: asyncpg.Connection
-):
+async def test_list_facts_filter_by_target_id(client: AsyncClient, seeded_db: asyncpg.Connection):
     """GET /api/operations/test-op-1/facts?target_id=test-target-1 returns only
     facts whose source_target_id matches the query parameter."""
     # Insert a second target so we can test the filter
@@ -61,9 +59,7 @@ async def test_list_facts_filter_by_target_id(
         "VALUES ('fact-t2', 'test-op-1', 'test-target-2', 'host.user', 'www-data', 'host', 70)"
     )
 
-    resp = await client.get(
-        "/api/operations/test-op-1/facts?target_id=test-target-1"
-    )
+    resp = await client.get("/api/operations/test-op-1/facts?target_id=test-target-1")
     assert resp.status_code == 200
     data = resp.json()
     assert len(data) == 1

@@ -13,10 +13,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from httpx import AsyncClient
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_mock_graph() -> MagicMock:
     """Return a MagicMock that satisfies AttackGraph's interface for _to_response()."""
@@ -36,6 +36,7 @@ def _make_mock_graph() -> MagicMock:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 async def test_get_attack_graph(client: AsyncClient):
     """GET /api/operations/test-op-1/attack-graph -> 200 with engine mocked."""

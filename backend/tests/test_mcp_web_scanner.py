@@ -22,8 +22,8 @@ All external commands (httpx, nuclei) are mocked via asyncio.create_subprocess_e
 """
 
 import json
-import sys
 import os
+import sys
 import textwrap
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -39,17 +39,15 @@ if _WEB_SCANNER_DIR not in sys.path:
 
 import server as web_scanner_server
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _mock_subprocess(stdout: str = "", stderr: str = "", returncode: int = 0):
     """Create a mock for asyncio.create_subprocess_exec."""
     mock_proc = AsyncMock()
-    mock_proc.communicate = AsyncMock(
-        return_value=(stdout.encode(), stderr.encode())
-    )
+    mock_proc.communicate = AsyncMock(return_value=(stdout.encode(), stderr.encode()))
     mock_proc.returncode = returncode
     mock_proc.kill = MagicMock()
     return mock_proc
@@ -81,33 +79,42 @@ def make_ip_row(ip: str = "192.168.1.100"):
 # Tool 1: web_http_probe
 # ===========================================================================
 
+
 class TestWebHttpProbe:
     """Tests for the web_http_probe MCP tool."""
 
     async def test_probe_success(self):
         """httpx returns JSON lines with service info, technologies, and WAF."""
-        httpx_output = "\n".join([
-            json.dumps({
-                "url": "http://192.168.1.100:80",
-                "status_code": 200,
-                "title": "Apache Default",
-                "webserver": "Apache/2.4.6",
-                "tech": ["Apache", "PHP/7.4", "jQuery"],
-                "waf": "Cloudflare",
-            }),
-            json.dumps({
-                "url": "https://192.168.1.100:443",
-                "status_code": 200,
-                "title": "Secure Site",
-                "webserver": "nginx/1.18",
-                "tech": ["nginx"],
-            }),
-        ])
+        httpx_output = "\n".join(
+            [
+                json.dumps(
+                    {
+                        "url": "http://192.168.1.100:80",
+                        "status_code": 200,
+                        "title": "Apache Default",
+                        "webserver": "Apache/2.4.6",
+                        "tech": ["Apache", "PHP/7.4", "jQuery"],
+                        "waf": "Cloudflare",
+                    }
+                ),
+                json.dumps(
+                    {
+                        "url": "https://192.168.1.100:443",
+                        "status_code": 200,
+                        "title": "Secure Site",
+                        "webserver": "nginx/1.18",
+                        "tech": ["nginx"],
+                    }
+                ),
+            ]
+        )
 
         mock_proc = _mock_subprocess(stdout=httpx_output)
 
-        with patch("server.shutil.which", return_value="/usr/local/bin/httpx"), \
-             patch("server.asyncio.create_subprocess_exec", return_value=mock_proc):
+        with (
+            patch("server.shutil.which", return_value="/usr/local/bin/httpx"),
+            patch("server.asyncio.create_subprocess_exec", return_value=mock_proc),
+        ):
             result = await web_scanner_server.web_http_probe("192.168.1.100")
 
         data = _parse_result(result)
@@ -128,8 +135,10 @@ class TestWebHttpProbe:
         """When no ports specified, defaults to [80, 443, 8080, 8443]."""
         mock_proc = _mock_subprocess(stdout="")
 
-        with patch("server.shutil.which", return_value="/usr/local/bin/httpx"), \
-             patch("server.asyncio.create_subprocess_exec", return_value=mock_proc) as mock_exec:
+        with (
+            patch("server.shutil.which", return_value="/usr/local/bin/httpx"),
+            patch("server.asyncio.create_subprocess_exec", return_value=mock_proc) as mock_exec,
+        ):
             await web_scanner_server.web_http_probe("192.168.1.100")
 
         # Verify the command includes default ports
@@ -141,8 +150,10 @@ class TestWebHttpProbe:
         """Custom ports are passed to httpx correctly."""
         mock_proc = _mock_subprocess(stdout="")
 
-        with patch("server.shutil.which", return_value="/usr/local/bin/httpx"), \
-             patch("server.asyncio.create_subprocess_exec", return_value=mock_proc) as mock_exec:
+        with (
+            patch("server.shutil.which", return_value="/usr/local/bin/httpx"),
+            patch("server.asyncio.create_subprocess_exec", return_value=mock_proc) as mock_exec,
+        ):
             await web_scanner_server.web_http_probe("192.168.1.100", ports=[8000, 9000])
 
         call_args = mock_exec.call_args[0]
@@ -151,8 +162,10 @@ class TestWebHttpProbe:
 
     async def test_probe_connection_error(self):
         """httpx fails to run → CONNECTION_ERROR."""
-        with patch("server.shutil.which", return_value="/usr/local/bin/httpx"), \
-             patch("server.asyncio.create_subprocess_exec", side_effect=OSError("No such file")):
+        with (
+            patch("server.shutil.which", return_value="/usr/local/bin/httpx"),
+            patch("server.asyncio.create_subprocess_exec", side_effect=OSError("No such file")),
+        ):
             result = await web_scanner_server.web_http_probe("192.168.1.100")
 
         data = _parse_result(result)
@@ -162,8 +175,10 @@ class TestWebHttpProbe:
         """httpx times out → TIMEOUT error."""
         import asyncio
 
-        with patch("server.shutil.which", return_value="/usr/local/bin/httpx"), \
-             patch("server.asyncio.create_subprocess_exec") as mock_exec:
+        with (
+            patch("server.shutil.which", return_value="/usr/local/bin/httpx"),
+            patch("server.asyncio.create_subprocess_exec") as mock_exec,
+        ):
             mock_proc = AsyncMock()
             mock_proc.communicate = AsyncMock(side_effect=asyncio.TimeoutError)
             mock_proc.kill = MagicMock()
@@ -176,17 +191,21 @@ class TestWebHttpProbe:
 
     async def test_probe_waf_detection(self):
         """WAF field produces web.http.waf fact."""
-        httpx_output = json.dumps({
-            "url": "http://target.com",
-            "status_code": 403,
-            "title": "Forbidden",
-            "webserver": "",
-            "waf": "ModSecurity",
-        })
+        httpx_output = json.dumps(
+            {
+                "url": "http://target.com",
+                "status_code": 403,
+                "title": "Forbidden",
+                "webserver": "",
+                "waf": "ModSecurity",
+            }
+        )
         mock_proc = _mock_subprocess(stdout=httpx_output)
 
-        with patch("server.shutil.which", return_value="/usr/local/bin/httpx"), \
-             patch("server.asyncio.create_subprocess_exec", return_value=mock_proc):
+        with (
+            patch("server.shutil.which", return_value="/usr/local/bin/httpx"),
+            patch("server.asyncio.create_subprocess_exec", return_value=mock_proc),
+        ):
             result = await web_scanner_server.web_http_probe("target.com")
 
         data = _parse_result(result)
@@ -208,39 +227,48 @@ class TestWebHttpProbe:
 # Tool 2: web_vuln_scan
 # ===========================================================================
 
+
 class TestWebVulnScan:
     """Tests for the web_vuln_scan MCP tool."""
 
     async def test_vuln_scan_success(self):
         """Nuclei finds vulnerabilities → mapped to correct traits."""
-        nuclei_output = "\n".join([
-            json.dumps({
-                "template-id": "sqli-error-based",
-                "info": {
-                    "name": "SQL Injection Error Based",
-                    "severity": "high",
-                    "description": "Error-based SQL injection found",
-                    "tags": ["sqli", "owasp-top-10"],
-                },
-                "matched-at": "http://target.com/search?q=test",
-            }),
-            json.dumps({
-                "template-id": "xss-reflected",
-                "info": {
-                    "name": "Reflected XSS",
-                    "severity": "medium",
-                    "description": "Reflected cross-site scripting",
-                    "tags": ["xss", "owasp-top-10"],
-                },
-                "matched-at": "http://target.com/page?input=test",
-            }),
-        ])
+        nuclei_output = "\n".join(
+            [
+                json.dumps(
+                    {
+                        "template-id": "sqli-error-based",
+                        "info": {
+                            "name": "SQL Injection Error Based",
+                            "severity": "high",
+                            "description": "Error-based SQL injection found",
+                            "tags": ["sqli", "owasp-top-10"],
+                        },
+                        "matched-at": "http://target.com/search?q=test",
+                    }
+                ),
+                json.dumps(
+                    {
+                        "template-id": "xss-reflected",
+                        "info": {
+                            "name": "Reflected XSS",
+                            "severity": "medium",
+                            "description": "Reflected cross-site scripting",
+                            "tags": ["xss", "owasp-top-10"],
+                        },
+                        "matched-at": "http://target.com/page?input=test",
+                    }
+                ),
+            ]
+        )
 
         mock_proc = _mock_subprocess(stdout=nuclei_output)
 
-        with patch("server.shutil.which", return_value="/usr/local/bin/nuclei"), \
-             patch("server.asyncio.create_subprocess_exec", return_value=mock_proc), \
-             patch("server.Path.is_dir", return_value=True):
+        with (
+            patch("server.shutil.which", return_value="/usr/local/bin/nuclei"),
+            patch("server.asyncio.create_subprocess_exec", return_value=mock_proc),
+            patch("server.Path.is_dir", return_value=True),
+        ):
             result = await web_scanner_server.web_vuln_scan("http://target.com")
 
         data = _parse_result(result)
@@ -256,9 +284,11 @@ class TestWebVulnScan:
         """Nuclei finds nothing → empty facts list."""
         mock_proc = _mock_subprocess(stdout="")
 
-        with patch("server.shutil.which", return_value="/usr/local/bin/nuclei"), \
-             patch("server.asyncio.create_subprocess_exec", return_value=mock_proc), \
-             patch("server.Path.is_dir", return_value=True):
+        with (
+            patch("server.shutil.which", return_value="/usr/local/bin/nuclei"),
+            patch("server.asyncio.create_subprocess_exec", return_value=mock_proc),
+            patch("server.Path.is_dir", return_value=True),
+        ):
             result = await web_scanner_server.web_vuln_scan("http://target.com")
 
         data = _parse_result(result)
@@ -272,12 +302,12 @@ class TestWebVulnScan:
             stderr="could not find template 'nonexistent'",
         )
 
-        with patch("server.shutil.which", return_value="/usr/local/bin/nuclei"), \
-             patch("server.asyncio.create_subprocess_exec", return_value=mock_proc), \
-             patch("server.Path.is_dir", return_value=True):
-            result = await web_scanner_server.web_vuln_scan(
-                "http://target.com", templates=["nonexistent"]
-            )
+        with (
+            patch("server.shutil.which", return_value="/usr/local/bin/nuclei"),
+            patch("server.asyncio.create_subprocess_exec", return_value=mock_proc),
+            patch("server.Path.is_dir", return_value=True),
+        ):
+            result = await web_scanner_server.web_vuln_scan("http://target.com", templates=["nonexistent"])
 
         data = _parse_result(result)
         assert data["error"]["type"] == "TEMPLATE_ERROR"
@@ -286,9 +316,11 @@ class TestWebVulnScan:
         """Nuclei times out → TIMEOUT error."""
         import asyncio
 
-        with patch("server.shutil.which", return_value="/usr/local/bin/nuclei"), \
-             patch("server.asyncio.create_subprocess_exec") as mock_exec, \
-             patch("server.Path.is_dir", return_value=True):
+        with (
+            patch("server.shutil.which", return_value="/usr/local/bin/nuclei"),
+            patch("server.asyncio.create_subprocess_exec") as mock_exec,
+            patch("server.Path.is_dir", return_value=True),
+        ):
             mock_proc = AsyncMock()
             mock_proc.communicate = AsyncMock(side_effect=asyncio.TimeoutError)
             mock_proc.kill = MagicMock()
@@ -303,12 +335,12 @@ class TestWebVulnScan:
         """Severity parameter is passed to nuclei correctly."""
         mock_proc = _mock_subprocess(stdout="")
 
-        with patch("server.shutil.which", return_value="/usr/local/bin/nuclei"), \
-             patch("server.asyncio.create_subprocess_exec", return_value=mock_proc) as mock_exec, \
-             patch("server.Path.is_dir", return_value=True):
-            await web_scanner_server.web_vuln_scan(
-                "http://target.com", severity="medium"
-            )
+        with (
+            patch("server.shutil.which", return_value="/usr/local/bin/nuclei"),
+            patch("server.asyncio.create_subprocess_exec", return_value=mock_proc) as mock_exec,
+            patch("server.Path.is_dir", return_value=True),
+        ):
+            await web_scanner_server.web_vuln_scan("http://target.com", severity="medium")
 
         call_args = mock_exec.call_args[0]
         sev_idx = list(call_args).index("-severity")
@@ -343,47 +375,54 @@ class TestWebVulnScan:
         }
 
         for tag, expected_trait in tag_expectations.items():
-            nuclei_output = json.dumps({
-                "template-id": f"test-{tag}",
-                "info": {
-                    "name": f"Test {tag}",
-                    "severity": "high",
-                    "description": "test",
-                    "tags": [tag],
-                },
-                "matched-at": "http://target.com",
-            })
+            nuclei_output = json.dumps(
+                {
+                    "template-id": f"test-{tag}",
+                    "info": {
+                        "name": f"Test {tag}",
+                        "severity": "high",
+                        "description": "test",
+                        "tags": [tag],
+                    },
+                    "matched-at": "http://target.com",
+                }
+            )
             mock_proc = _mock_subprocess(stdout=nuclei_output)
 
-            with patch("server.shutil.which", return_value="/usr/local/bin/nuclei"), \
-                 patch("server.asyncio.create_subprocess_exec", return_value=mock_proc), \
-                 patch("server.Path.is_dir", return_value=True):
+            with (
+                patch("server.shutil.which", return_value="/usr/local/bin/nuclei"),
+                patch("server.asyncio.create_subprocess_exec", return_value=mock_proc),
+                patch("server.Path.is_dir", return_value=True),
+            ):
                 result = await web_scanner_server.web_vuln_scan("http://target.com")
 
             data = _parse_result(result)
             assert len(data["facts"]) == 1, f"Expected 1 fact for tag '{tag}'"
             assert data["facts"][0]["trait"] == expected_trait, (
-                f"Tag '{tag}' should map to '{expected_trait}', "
-                f"got '{data['facts'][0]['trait']}'"
+                f"Tag '{tag}' should map to '{expected_trait}', got '{data['facts'][0]['trait']}'"
             )
 
     async def test_vuln_scan_unknown_tag_maps_to_generic(self):
         """Unknown Nuclei tags map to web.vuln.generic."""
-        nuclei_output = json.dumps({
-            "template-id": "test-unknown",
-            "info": {
-                "name": "Unknown Vuln",
-                "severity": "high",
-                "description": "test",
-                "tags": ["some-unknown-tag"],
-            },
-            "matched-at": "http://target.com",
-        })
+        nuclei_output = json.dumps(
+            {
+                "template-id": "test-unknown",
+                "info": {
+                    "name": "Unknown Vuln",
+                    "severity": "high",
+                    "description": "test",
+                    "tags": ["some-unknown-tag"],
+                },
+                "matched-at": "http://target.com",
+            }
+        )
         mock_proc = _mock_subprocess(stdout=nuclei_output)
 
-        with patch("server.shutil.which", return_value="/usr/local/bin/nuclei"), \
-             patch("server.asyncio.create_subprocess_exec", return_value=mock_proc), \
-             patch("server.Path.is_dir", return_value=True):
+        with (
+            patch("server.shutil.which", return_value="/usr/local/bin/nuclei"),
+            patch("server.asyncio.create_subprocess_exec", return_value=mock_proc),
+            patch("server.Path.is_dir", return_value=True),
+        ):
             result = await web_scanner_server.web_vuln_scan("http://target.com")
 
         data = _parse_result(result)
@@ -394,28 +433,34 @@ class TestWebVulnScan:
 # Tool 3: web_dir_enum
 # ===========================================================================
 
+
 class TestWebDirEnum:
     """Tests for the web_dir_enum MCP tool."""
 
     async def test_dir_enum_success(self):
         """httpx discovers directories → web.dir.found facts."""
-        httpx_output = "\n".join([
-            json.dumps({"url": "http://target.com/admin", "status_code": 200}),
-            json.dumps({"url": "http://target.com/login", "status_code": 302}),
-            json.dumps({"url": "http://target.com/api", "status_code": 200}),
-        ])
+        httpx_output = "\n".join(
+            [
+                json.dumps({"url": "http://target.com/admin", "status_code": 200}),
+                json.dumps({"url": "http://target.com/login", "status_code": 302}),
+                json.dumps({"url": "http://target.com/api", "status_code": 200}),
+            ]
+        )
 
         # Create a temp wordlist
         import tempfile
+
         with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tf:
             tf.write("admin\nlogin\napi\n")
             wordlist_path = tf.name
 
         mock_proc = _mock_subprocess(stdout=httpx_output)
 
-        with patch("server.shutil.which", return_value="/usr/local/bin/httpx"), \
-             patch("server.asyncio.create_subprocess_exec", return_value=mock_proc), \
-             patch.dict(web_scanner_server._WORDLIST_MAP, {"common": wordlist_path}):
+        with (
+            patch("server.shutil.which", return_value="/usr/local/bin/httpx"),
+            patch("server.asyncio.create_subprocess_exec", return_value=mock_proc),
+            patch.dict(web_scanner_server._WORDLIST_MAP, {"common": wordlist_path}),
+        ):
             result = await web_scanner_server.web_dir_enum("http://target.com")
 
         os.unlink(wordlist_path)
@@ -431,23 +476,28 @@ class TestWebDirEnum:
 
     async def test_dir_enum_sensitive_detection(self):
         """Sensitive paths (.git/, .env, .bak) are flagged as web.dir.sensitive."""
-        httpx_output = "\n".join([
-            json.dumps({"url": "http://target.com/.git/config", "status_code": 200}),
-            json.dumps({"url": "http://target.com/.env", "status_code": 200}),
-            json.dumps({"url": "http://target.com/backup.bak", "status_code": 200}),
-            json.dumps({"url": "http://target.com/index.html", "status_code": 200}),
-        ])
+        httpx_output = "\n".join(
+            [
+                json.dumps({"url": "http://target.com/.git/config", "status_code": 200}),
+                json.dumps({"url": "http://target.com/.env", "status_code": 200}),
+                json.dumps({"url": "http://target.com/backup.bak", "status_code": 200}),
+                json.dumps({"url": "http://target.com/index.html", "status_code": 200}),
+            ]
+        )
 
         import tempfile
+
         with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tf:
             tf.write("test\n")
             wordlist_path = tf.name
 
         mock_proc = _mock_subprocess(stdout=httpx_output)
 
-        with patch("server.shutil.which", return_value="/usr/local/bin/httpx"), \
-             patch("server.asyncio.create_subprocess_exec", return_value=mock_proc), \
-             patch.dict(web_scanner_server._WORDLIST_MAP, {"common": wordlist_path}):
+        with (
+            patch("server.shutil.which", return_value="/usr/local/bin/httpx"),
+            patch("server.asyncio.create_subprocess_exec", return_value=mock_proc),
+            patch.dict(web_scanner_server._WORDLIST_MAP, {"common": wordlist_path}),
+        ):
             result = await web_scanner_server.web_dir_enum("http://target.com")
 
         os.unlink(wordlist_path)
@@ -464,22 +514,29 @@ class TestWebDirEnum:
         # Generate 600 results
         lines = []
         for i in range(600):
-            lines.append(json.dumps({
-                "url": f"http://target.com/page{i}",
-                "status_code": 200,
-            }))
+            lines.append(
+                json.dumps(
+                    {
+                        "url": f"http://target.com/page{i}",
+                        "status_code": 200,
+                    }
+                )
+            )
         httpx_output = "\n".join(lines)
 
         import tempfile
+
         with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tf:
             tf.write("test\n")
             wordlist_path = tf.name
 
         mock_proc = _mock_subprocess(stdout=httpx_output)
 
-        with patch("server.shutil.which", return_value="/usr/local/bin/httpx"), \
-             patch("server.asyncio.create_subprocess_exec", return_value=mock_proc), \
-             patch.dict(web_scanner_server._WORDLIST_MAP, {"common": wordlist_path}):
+        with (
+            patch("server.shutil.which", return_value="/usr/local/bin/httpx"),
+            patch("server.asyncio.create_subprocess_exec", return_value=mock_proc),
+            patch.dict(web_scanner_server._WORDLIST_MAP, {"common": wordlist_path}),
+        ):
             result = await web_scanner_server.web_dir_enum("http://target.com")
 
         os.unlink(wordlist_path)
@@ -490,17 +547,17 @@ class TestWebDirEnum:
     async def test_dir_enum_invalid_wordlist(self):
         """Unknown wordlist name → INVALID_WORDLIST error."""
         with patch("server.shutil.which", return_value="/usr/local/bin/httpx"):
-            result = await web_scanner_server.web_dir_enum(
-                "http://target.com", wordlist="nonexistent"
-            )
+            result = await web_scanner_server.web_dir_enum("http://target.com", wordlist="nonexistent")
 
         data = _parse_result(result)
         assert data["error"]["type"] == "INVALID_WORDLIST"
 
     async def test_dir_enum_wordlist_file_missing(self):
         """Wordlist file does not exist → INVALID_WORDLIST error."""
-        with patch("server.shutil.which", return_value="/usr/local/bin/httpx"), \
-             patch.dict(web_scanner_server._WORDLIST_MAP, {"common": "/nonexistent/path.txt"}):
+        with (
+            patch("server.shutil.which", return_value="/usr/local/bin/httpx"),
+            patch.dict(web_scanner_server._WORDLIST_MAP, {"common": "/nonexistent/path.txt"}),
+        ):
             result = await web_scanner_server.web_dir_enum("http://target.com")
 
         data = _parse_result(result)
@@ -519,29 +576,38 @@ class TestWebDirEnum:
 # Tool 4: web_screenshot
 # ===========================================================================
 
+
 class TestWebScreenshot:
     """Tests for the web_screenshot MCP tool."""
 
     async def test_screenshot_with_chrome(self):
         """Chrome available → screenshot mode used, web.screenshot fact produced."""
-        httpx_output = json.dumps({
-            "url": "http://target.com",
-            "status_code": 200,
-        })
+        httpx_output = json.dumps(
+            {
+                "url": "http://target.com",
+                "status_code": 200,
+            }
+        )
         mock_proc = _mock_subprocess(stdout=httpx_output)
 
         # Create a fake screenshot file
         import tempfile as _tempfile
+
         screenshot_dir = _tempfile.mkdtemp()
         fake_png = Path(screenshot_dir) / "screenshot.png"
         fake_png.write_bytes(b"fake png data")
 
-        with patch("server.shutil.which", side_effect=lambda x: {
-                 "httpx": "/usr/local/bin/httpx",
-                 "chromium": "/usr/bin/chromium",
-             }.get(x)), \
-             patch("server.asyncio.create_subprocess_exec", return_value=mock_proc), \
-             patch("tempfile.mkdtemp", return_value=screenshot_dir):
+        with (
+            patch(
+                "server.shutil.which",
+                side_effect=lambda x: {
+                    "httpx": "/usr/local/bin/httpx",
+                    "chromium": "/usr/bin/chromium",
+                }.get(x),
+            ),
+            patch("server.asyncio.create_subprocess_exec", return_value=mock_proc),
+            patch("tempfile.mkdtemp", return_value=screenshot_dir),
+        ):
             result = await web_scanner_server.web_screenshot("http://target.com")
 
         data = _parse_result(result)
@@ -556,17 +622,24 @@ class TestWebScreenshot:
 
     async def test_screenshot_fallback_title(self):
         """No Chrome → falls back to title-only mode."""
-        httpx_output = json.dumps({
-            "url": "http://target.com",
-            "status_code": 200,
-            "title": "Example Web App",
-        })
+        httpx_output = json.dumps(
+            {
+                "url": "http://target.com",
+                "status_code": 200,
+                "title": "Example Web App",
+            }
+        )
         mock_proc = _mock_subprocess(stdout=httpx_output)
 
-        with patch("server.shutil.which", side_effect=lambda x: {
-                 "httpx": "/usr/local/bin/httpx",
-             }.get(x)), \
-             patch("server.asyncio.create_subprocess_exec", return_value=mock_proc):
+        with (
+            patch(
+                "server.shutil.which",
+                side_effect=lambda x: {
+                    "httpx": "/usr/local/bin/httpx",
+                }.get(x),
+            ),
+            patch("server.asyncio.create_subprocess_exec", return_value=mock_proc),
+        ):
             result = await web_scanner_server.web_screenshot("http://target.com")
 
         data = _parse_result(result)
@@ -578,10 +651,15 @@ class TestWebScreenshot:
         """httpx returns no output for unreachable target → CONNECTION_ERROR."""
         mock_proc = _mock_subprocess(stdout="")
 
-        with patch("server.shutil.which", side_effect=lambda x: {
-                 "httpx": "/usr/local/bin/httpx",
-             }.get(x)), \
-             patch("server.asyncio.create_subprocess_exec", return_value=mock_proc):
+        with (
+            patch(
+                "server.shutil.which",
+                side_effect=lambda x: {
+                    "httpx": "/usr/local/bin/httpx",
+                }.get(x),
+            ),
+            patch("server.asyncio.create_subprocess_exec", return_value=mock_proc),
+        ):
             result = await web_scanner_server.web_screenshot("http://unreachable.invalid")
 
         data = _parse_result(result)
@@ -599,6 +677,7 @@ class TestWebScreenshot:
 # ===========================================================================
 # Helper function tests
 # ===========================================================================
+
 
 class TestHelpers:
     """Tests for internal helper functions."""
@@ -636,13 +715,14 @@ class TestHelpers:
 # recon_engine Step 8b integration
 # ===========================================================================
 
+
 class TestReconEngineStep8b:
     """Tests for the recon_engine Step 8b web reconnaissance integration."""
 
     async def test_step_8b_triggers_for_http_services(self):
         """When MCP web-scanner is connected and http services found, Step 8b triggers."""
-        from app.services.recon_engine import ReconEngine
         from app.models.recon import ServiceInfo
+        from app.services.recon_engine import ReconEngine
 
         row = make_ip_row("192.168.1.100")
         db = make_mock_db()
@@ -653,12 +733,14 @@ class TestReconEngineStep8b:
             "content": [
                 {
                     "type": "text",
-                    "text": json.dumps({
-                        "facts": [
-                            {"trait": "service.open_port", "value": "80/tcp/http/Apache_2.4.6"},
-                        ],
-                        "raw_output": "",
-                    }),
+                    "text": json.dumps(
+                        {
+                            "facts": [
+                                {"trait": "service.open_port", "value": "80/tcp/http/Apache_2.4.6"},
+                            ],
+                            "raw_output": "",
+                        }
+                    ),
                 }
             ],
             "is_error": False,
@@ -668,23 +750,30 @@ class TestReconEngineStep8b:
             "content": [
                 {
                     "type": "text",
-                    "text": json.dumps({
-                        "facts": [
-                            {"trait": "web.http.service", "value": "http://192.168.1.100:80|200|Apache|Apache/2.4.6"},
-                            {"trait": "web.http.technology", "value": "http://192.168.1.100:80|Apache"},
-                        ],
-                        "raw_output": "",
-                    }),
+                    "text": json.dumps(
+                        {
+                            "facts": [
+                                {
+                                    "trait": "web.http.service",
+                                    "value": "http://192.168.1.100:80|200|Apache|Apache/2.4.6",
+                                },
+                                {"trait": "web.http.technology", "value": "http://192.168.1.100:80|Apache"},
+                            ],
+                            "raw_output": "",
+                        }
+                    ),
                 }
             ],
             "is_error": False,
         }
 
         mock_manager = MagicMock()
-        mock_manager.is_connected = MagicMock(side_effect=lambda name: {
-            "nmap-scanner": True,
-            "web-scanner": True,
-        }.get(name, False))
+        mock_manager.is_connected = MagicMock(
+            side_effect=lambda name: {
+                "nmap-scanner": True,
+                "web-scanner": True,
+            }.get(name, False)
+        )
 
         ssrf_probe_result = {
             "content": [
@@ -697,14 +786,13 @@ class TestReconEngineStep8b:
         }
 
         # call_tool returns nmap result first, then web probe, then SSRF probe
-        mock_manager.call_tool = AsyncMock(
-            side_effect=[mock_mcp_result, web_probe_result, ssrf_probe_result]
-        )
+        mock_manager.call_tool = AsyncMock(side_effect=[mock_mcp_result, web_probe_result, ssrf_probe_result])
 
-        with patch("app.services.recon_engine.settings") as mock_settings, \
-             patch("app.services.recon_engine.ws_manager") as mock_ws, \
-             patch("app.services.mcp_client_manager.get_mcp_manager", return_value=mock_manager):
-
+        with (
+            patch("app.services.recon_engine.settings") as mock_settings,
+            patch("app.services.recon_engine.ws_manager") as mock_ws,
+            patch("app.services.mcp_client_manager.get_mcp_manager", return_value=mock_manager),
+        ):
             mock_settings.MOCK_C2_ENGINE = False
             mock_settings.MCP_ENABLED = True
             mock_settings.NMAP_SCAN_TIMEOUT_SEC = 60
@@ -732,12 +820,14 @@ class TestReconEngineStep8b:
             "content": [
                 {
                     "type": "text",
-                    "text": json.dumps({
-                        "facts": [
-                            {"trait": "service.open_port", "value": "22/tcp/ssh/OpenSSH_7.4"},
-                        ],
-                        "raw_output": "",
-                    }),
+                    "text": json.dumps(
+                        {
+                            "facts": [
+                                {"trait": "service.open_port", "value": "22/tcp/ssh/OpenSSH_7.4"},
+                            ],
+                            "raw_output": "",
+                        }
+                    ),
                 }
             ],
             "is_error": False,
@@ -747,10 +837,11 @@ class TestReconEngineStep8b:
         mock_manager.is_connected = MagicMock(return_value=True)
         mock_manager.call_tool = AsyncMock(return_value=mock_mcp_result)
 
-        with patch("app.services.recon_engine.settings") as mock_settings, \
-             patch("app.services.recon_engine.ws_manager") as mock_ws, \
-             patch("app.services.mcp_client_manager.get_mcp_manager", return_value=mock_manager):
-
+        with (
+            patch("app.services.recon_engine.settings") as mock_settings,
+            patch("app.services.recon_engine.ws_manager") as mock_ws,
+            patch("app.services.mcp_client_manager.get_mcp_manager", return_value=mock_manager),
+        ):
             mock_settings.MOCK_C2_ENGINE = False
             mock_settings.MCP_ENABLED = True
             mock_settings.NMAP_SCAN_TIMEOUT_SEC = 60
@@ -776,32 +867,35 @@ class TestReconEngineStep8b:
             "content": [
                 {
                     "type": "text",
-                    "text": json.dumps({
-                        "facts": [
-                            {"trait": "service.open_port", "value": "80/tcp/http/Apache_2.4.6"},
-                        ],
-                        "raw_output": "",
-                    }),
+                    "text": json.dumps(
+                        {
+                            "facts": [
+                                {"trait": "service.open_port", "value": "80/tcp/http/Apache_2.4.6"},
+                            ],
+                            "raw_output": "",
+                        }
+                    ),
                 }
             ],
             "is_error": False,
         }
 
         mock_manager = MagicMock()
-        mock_manager.is_connected = MagicMock(side_effect=lambda name: {
-            "nmap-scanner": True,
-            "web-scanner": True,
-        }.get(name, False))
-
-        # First call (nmap) succeeds, second call (web probe) fails
-        mock_manager.call_tool = AsyncMock(
-            side_effect=[mock_mcp_result, ConnectionError("web-scanner down")]
+        mock_manager.is_connected = MagicMock(
+            side_effect=lambda name: {
+                "nmap-scanner": True,
+                "web-scanner": True,
+            }.get(name, False)
         )
 
-        with patch("app.services.recon_engine.settings") as mock_settings, \
-             patch("app.services.recon_engine.ws_manager") as mock_ws, \
-             patch("app.services.mcp_client_manager.get_mcp_manager", return_value=mock_manager):
+        # First call (nmap) succeeds, second call (web probe) fails
+        mock_manager.call_tool = AsyncMock(side_effect=[mock_mcp_result, ConnectionError("web-scanner down")])
 
+        with (
+            patch("app.services.recon_engine.settings") as mock_settings,
+            patch("app.services.recon_engine.ws_manager") as mock_ws,
+            patch("app.services.mcp_client_manager.get_mcp_manager", return_value=mock_manager),
+        ):
             mock_settings.MOCK_C2_ENGINE = False
             mock_settings.MCP_ENABLED = True
             mock_settings.NMAP_SCAN_TIMEOUT_SEC = 60
@@ -826,12 +920,14 @@ class TestReconEngineStep8b:
             "content": [
                 {
                     "type": "text",
-                    "text": json.dumps({
-                        "facts": [
-                            {"trait": "service.open_port", "value": "80/tcp/http/Apache_2.4.6"},
-                        ],
-                        "raw_output": "",
-                    }),
+                    "text": json.dumps(
+                        {
+                            "facts": [
+                                {"trait": "service.open_port", "value": "80/tcp/http/Apache_2.4.6"},
+                            ],
+                            "raw_output": "",
+                        }
+                    ),
                 }
             ],
             "is_error": False,
@@ -839,16 +935,19 @@ class TestReconEngineStep8b:
 
         mock_manager = MagicMock()
         # nmap connected but web-scanner not connected
-        mock_manager.is_connected = MagicMock(side_effect=lambda name: {
-            "nmap-scanner": True,
-            "web-scanner": False,
-        }.get(name, False))
+        mock_manager.is_connected = MagicMock(
+            side_effect=lambda name: {
+                "nmap-scanner": True,
+                "web-scanner": False,
+            }.get(name, False)
+        )
         mock_manager.call_tool = AsyncMock(return_value=mock_mcp_result)
 
-        with patch("app.services.recon_engine.settings") as mock_settings, \
-             patch("app.services.recon_engine.ws_manager") as mock_ws, \
-             patch("app.services.mcp_client_manager.get_mcp_manager", return_value=mock_manager):
-
+        with (
+            patch("app.services.recon_engine.settings") as mock_settings,
+            patch("app.services.recon_engine.ws_manager") as mock_ws,
+            patch("app.services.mcp_client_manager.get_mcp_manager", return_value=mock_manager),
+        ):
             mock_settings.MOCK_C2_ENGINE = False
             mock_settings.MCP_ENABLED = True
             mock_settings.NMAP_SCAN_TIMEOUT_SEC = 60
@@ -870,14 +969,16 @@ class TestReconEngineStep8b:
             "content": [
                 {
                     "type": "text",
-                    "text": json.dumps({
-                        "facts": [
-                            {"trait": "web.http.service", "value": "http://target:80|200|Title|Apache"},
-                            {"trait": "web.http.technology", "value": "http://target:80|PHP"},
-                            {"trait": "web.http.waf", "value": "http://target:80|Cloudflare"},
-                        ],
-                        "raw_output": "raw",
-                    }),
+                    "text": json.dumps(
+                        {
+                            "facts": [
+                                {"trait": "web.http.service", "value": "http://target:80|200|Title|Apache"},
+                                {"trait": "web.http.technology", "value": "http://target:80|PHP"},
+                                {"trait": "web.http.waf", "value": "http://target:80|Cloudflare"},
+                            ],
+                            "raw_output": "raw",
+                        }
+                    ),
                 }
             ],
         }
@@ -894,10 +995,7 @@ class TestReconEngineStep8b:
 
         assert count == 3
         # Verify db.execute was called for each fact INSERT
-        insert_calls = [
-            call for call in db.execute.call_args_list
-            if call[0] and "INSERT" in str(call[0][0])
-        ]
+        insert_calls = [call for call in db.execute.call_args_list if call[0] and "INSERT" in str(call[0][0])]
         assert len(insert_calls) == 3
 
     async def test_write_web_facts_waf_category(self):
@@ -918,14 +1016,16 @@ class TestReconEngineStep8b:
             "content": [
                 {
                     "type": "text",
-                    "text": json.dumps({
-                        "facts": [
-                            {"trait": "web.http.waf", "value": "http://target|Cloudflare"},
-                            {"trait": "web.vuln.sqli", "value": "http://target|sqli-test|high|SQLi|desc"},
-                            {"trait": "web.http.service", "value": "http://target|200|Title|Server"},
-                        ],
-                        "raw_output": "",
-                    }),
+                    "text": json.dumps(
+                        {
+                            "facts": [
+                                {"trait": "web.http.waf", "value": "http://target|Cloudflare"},
+                                {"trait": "web.vuln.sqli", "value": "http://target|sqli-test|high|SQLi|desc"},
+                                {"trait": "web.http.service", "value": "http://target|200|Title|Server"},
+                            ],
+                            "raw_output": "",
+                        }
+                    ),
                 }
             ],
         }

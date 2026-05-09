@@ -11,18 +11,21 @@
 """Unit tests for ReportGenerator — A.5 acceptance criteria."""
 
 import json
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from app.services.report_generator import ReportGenerator, _cvss_to_severity
-from app.models.report import PentestReport, Finding
+import pytest
 
+from app.models.report import Finding, PentestReport
+from app.services.report_generator import ReportGenerator, _cvss_to_severity
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def make_mock_db(op_row=None, eng_row=None, targets=None, facts=None, ooda_rows=None, rec_rows=None, mitre_rows=None, recon_rows=None):
+
+def make_mock_db(
+    op_row=None, eng_row=None, targets=None, facts=None, ooda_rows=None, rec_rows=None, mitre_rows=None, recon_rows=None
+):
     """Build a mock DB that returns predetermined rows for asyncpg direct methods.
 
     The generate() method uses sequential db.fetchrow() and db.fetch() calls.
@@ -93,6 +96,7 @@ def make_mock_db(op_row=None, eng_row=None, targets=None, facts=None, ooda_rows=
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_generate_returns_pentest_report():
@@ -178,9 +182,7 @@ def test_parse_vuln_fact_correct_format():
         "source_target_id": "tgt-001",
     }[k]
 
-    targets_by_id = {
-        "tgt-001": {"ip_address": "10.0.0.1", "hostname": "victim", "role": "server"}
-    }
+    targets_by_id = {"tgt-001": {"ip_address": "10.0.0.1", "hostname": "victim", "role": "server"}}
 
     findings = generator._parse_vuln_facts([row], targets_by_id)
 

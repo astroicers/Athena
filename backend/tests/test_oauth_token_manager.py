@@ -12,9 +12,10 @@
 
 import json
 import time
-import pytest
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from app.services.oauth_token_manager import OAuthTokenManager
 
@@ -44,13 +45,17 @@ def test_is_available_returns_false_when_file_malformed_json(tmp_path):
 def test_is_available_returns_true_when_valid_token(tmp_path):
     """is_available() returns True when credentials file has a valid accessToken."""
     creds_file = tmp_path / "credentials.json"
-    creds_file.write_text(json.dumps({
-        "claudeAiOauth": {
-            "accessToken": "tok_test_123",
-            "refreshToken": "ref_test_456",
-            "expiresAt": int((time.time() + 3600) * 1000),
-        }
-    }))
+    creds_file.write_text(
+        json.dumps(
+            {
+                "claudeAiOauth": {
+                    "accessToken": "tok_test_123",
+                    "refreshToken": "ref_test_456",
+                    "expiresAt": int((time.time() + 3600) * 1000),
+                }
+            }
+        )
+    )
     mgr = OAuthTokenManager(credentials_path=creds_file)
     assert mgr.is_available() is True
 
@@ -69,13 +74,17 @@ async def test_get_access_token_refreshes_within_5min_buffer(tmp_path):
     """get_access_token() does NOT return cached token when within 5-minute buffer."""
     future_expiry = int((time.time() + 3600) * 1000)
     creds_file = tmp_path / "credentials.json"
-    creds_file.write_text(json.dumps({
-        "claudeAiOauth": {
-            "accessToken": "file_token_fresh",
-            "refreshToken": "ref_token",
-            "expiresAt": future_expiry,
-        }
-    }))
+    creds_file.write_text(
+        json.dumps(
+            {
+                "claudeAiOauth": {
+                    "accessToken": "file_token_fresh",
+                    "refreshToken": "ref_token",
+                    "expiresAt": future_expiry,
+                }
+            }
+        )
+    )
     mgr = OAuthTokenManager(credentials_path=creds_file)
     # Set cached token to expire in 60 seconds (within 5-min buffer)
     mgr._access_token = "about_to_expire"
@@ -92,13 +101,17 @@ async def test_get_access_token_loads_from_file_when_cache_empty(tmp_path):
     """get_access_token() reads token from file when cache is empty."""
     future_expiry = int((time.time() + 3600) * 1000)
     creds_file = tmp_path / "credentials.json"
-    creds_file.write_text(json.dumps({
-        "claudeAiOauth": {
-            "accessToken": "file_token",
-            "refreshToken": "ref_token",
-            "expiresAt": future_expiry,
-        }
-    }))
+    creds_file.write_text(
+        json.dumps(
+            {
+                "claudeAiOauth": {
+                    "accessToken": "file_token",
+                    "refreshToken": "ref_token",
+                    "expiresAt": future_expiry,
+                }
+            }
+        )
+    )
     mgr = OAuthTokenManager(credentials_path=creds_file)
 
     token = await mgr.get_access_token()
@@ -109,12 +122,16 @@ async def test_get_access_token_raises_when_no_refresh_token(tmp_path):
     """get_access_token() raises ValueError when token is expired and no refresh token."""
     past_expiry = int((time.time() - 3600) * 1000)  # expired 1 hour ago
     creds_file = tmp_path / "credentials.json"
-    creds_file.write_text(json.dumps({
-        "claudeAiOauth": {
-            "accessToken": "expired_token",
-            "expiresAt": past_expiry,
-        }
-    }))
+    creds_file.write_text(
+        json.dumps(
+            {
+                "claudeAiOauth": {
+                    "accessToken": "expired_token",
+                    "expiresAt": past_expiry,
+                }
+            }
+        )
+    )
     mgr = OAuthTokenManager(credentials_path=creds_file)
 
     with pytest.raises(ValueError, match="No refresh token available"):

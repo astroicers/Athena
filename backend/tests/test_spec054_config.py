@@ -19,10 +19,12 @@ import pytest
 
 from app.config import Settings
 
-
 _RELAY_ENV_VARS = (
-    "RELAY_IP", "RELAY_SSH_USER", "RELAY_SSH_PORT",
-    "RELAY_LPORT", "RELAY_ATHENA_HOST",
+    "RELAY_IP",
+    "RELAY_SSH_USER",
+    "RELAY_SSH_PORT",
+    "RELAY_LPORT",
+    "RELAY_ATHENA_HOST",
 )
 
 

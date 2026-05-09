@@ -9,6 +9,7 @@
 # For commercial licensing, contact: azz093093.830330@gmail.com
 
 """Unit tests: lateral movement — SSH key-based auth + credential priority."""
+
 import base64
 import uuid
 from datetime import datetime, timezone
@@ -77,8 +78,9 @@ async def test_ssh_key_fact_prioritized_over_password(seeded_db):
 async def test_mcp_executor_marks_target_compromised(seeded_db):
     """MCP executor success should mark target as compromised with root privilege."""
     from unittest.mock import AsyncMock, MagicMock
-    from app.services.engine_router import EngineRouter
+
     from app.clients import ExecutionResult
+    from app.services.engine_router import EngineRouter
 
     await seeded_db.execute(
         "INSERT INTO facts (id, operation_id, source_target_id, trait, value, category, score) "
@@ -119,9 +121,7 @@ async def test_mcp_executor_marks_target_compromised(seeded_db):
         ooda_iteration_id=None,
     )
 
-    row = await seeded_db.fetchrow(
-        "SELECT is_compromised, privilege_level FROM targets WHERE id = 'test-target-1'"
-    )
+    row = await seeded_db.fetchrow("SELECT is_compromised, privilege_level FROM targets WHERE id = 'test-target-1'")
     assert row["is_compromised"] is True
     assert row["privilege_level"] == "root"
 
@@ -129,8 +129,9 @@ async def test_mcp_executor_marks_target_compromised(seeded_db):
 async def test_failed_mcp_executor_does_not_mark_compromised(seeded_db):
     """MCP executor failure should not change target.is_compromised."""
     from unittest.mock import AsyncMock, MagicMock
-    from app.services.engine_router import EngineRouter
+
     from app.clients import ExecutionResult
+    from app.services.engine_router import EngineRouter
 
     await seeded_db.execute(
         "INSERT INTO facts (id, operation_id, source_target_id, trait, value, category, score) "
@@ -172,7 +173,5 @@ async def test_failed_mcp_executor_does_not_mark_compromised(seeded_db):
         ooda_iteration_id=None,
     )
 
-    row = await seeded_db.fetchrow(
-        "SELECT is_compromised FROM targets WHERE id = 'test-target-1'"
-    )
+    row = await seeded_db.fetchrow("SELECT is_compromised FROM targets WHERE id = 'test-target-1'")
     assert row["is_compromised"] is False

@@ -14,16 +14,18 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # POST /operations/{op_id}/recon/scan -> 202 Accepted (async / queued)
 # ---------------------------------------------------------------------------
 
+
 async def test_recon_scan_returns_202_queued(client):
     """POST recon/scan returns 202 with status='queued' immediately."""
-    with patch("app.routers.recon.asyncio.create_task") as mock_create_task, \
-         patch("app.routers.recon.ReconEngine"), \
-         patch("app.routers.recon.InitialAccessEngine"):
+    with (
+        patch("app.routers.recon.asyncio.create_task") as mock_create_task,
+        patch("app.routers.recon.ReconEngine"),
+        patch("app.routers.recon.InitialAccessEngine"),
+    ):
         # create_task must not raise; background work is irrelevant for this test
         mock_create_task.return_value = None
 
@@ -42,9 +44,11 @@ async def test_recon_scan_returns_202_queued(client):
 
 async def test_recon_scan_enqueues_background_task(client):
     """POST recon/scan calls asyncio.create_task exactly once."""
-    with patch("app.routers.recon.asyncio.create_task") as mock_create_task, \
-         patch("app.routers.recon.ReconEngine"), \
-         patch("app.routers.recon.InitialAccessEngine"):
+    with (
+        patch("app.routers.recon.asyncio.create_task") as mock_create_task,
+        patch("app.routers.recon.ReconEngine"),
+        patch("app.routers.recon.InitialAccessEngine"),
+    ):
         mock_create_task.return_value = None
 
         resp = await client.post(
@@ -69,9 +73,7 @@ async def test_recon_scan_inserts_queued_row(client, seeded_db):
     assert resp.status_code == 202
     scan_id = resp.json()["scan_id"]
 
-    row = await seeded_db.fetchrow(
-        "SELECT status FROM recon_scans WHERE id = $1", scan_id
-    )
+    row = await seeded_db.fetchrow("SELECT status FROM recon_scans WHERE id = $1", scan_id)
     assert row is not None
     # Row may have been updated to 'running'/'completed' by background if it ran,
     # but since create_task is mocked, it should remain 'queued'.
@@ -105,10 +107,11 @@ async def test_recon_scan_op_not_found_returns_404(client):
 # Background function: _run_scan_background
 # ---------------------------------------------------------------------------
 
+
 async def test_run_scan_background_marks_completed(tmp_db):
     """_run_scan_background happy path: DB row ends as 'completed'."""
     from app.models.recon import ReconResult, ServiceInfo
-    from app.routers.recon import _run_scan_background, ReconScanRequest
+    from app.routers.recon import ReconScanRequest, _run_scan_background
 
     # Seed minimal data into tmp_db
     await tmp_db.execute(
@@ -129,9 +132,7 @@ async def test_run_scan_background_marks_completed(tmp_db):
         operation_id="op-bg-1",
         ip_address="10.0.0.99",
         os_guess="Linux_2.6.x",
-        services=[
-            ServiceInfo(port=22, protocol="tcp", service="ssh", version="OpenSSH 8.9", state="open")
-        ],
+        services=[ServiceInfo(port=22, protocol="tcp", service="ssh", version="OpenSSH 8.9", state="open")],
         facts_written=3,
         scan_duration_sec=0.1,
         raw_xml=None,
@@ -147,23 +148,20 @@ async def test_run_scan_background_marks_completed(tmp_db):
     mock_ctx.__aenter__ = AsyncMock(return_value=tmp_db)
     mock_ctx.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("app.routers.recon.db_manager") as mock_db_mgr, \
-         patch("app.routers.recon.ReconEngine") as MockReconEngine, \
-         patch("app.routers.recon.asyncio.sleep", new_callable=AsyncMock), \
-         patch("app.ws_manager.ws_manager") as mock_ws:
-
+    with (
+        patch("app.routers.recon.db_manager") as mock_db_mgr,
+        patch("app.routers.recon.ReconEngine") as MockReconEngine,
+        patch("app.routers.recon.asyncio.sleep", new_callable=AsyncMock),
+        patch("app.ws_manager.ws_manager") as mock_ws,
+    ):
         mock_db_mgr.connection.return_value = mock_ctx
 
         MockReconEngine.return_value.scan = AsyncMock(return_value=mock_recon_result)
         mock_ws.broadcast = AsyncMock()
 
-        await _run_scan_background(
-            "scan-bg-1", "op-bg-1", "tgt-bg-1", "10.0.0.99", body
-        )
+        await _run_scan_background("scan-bg-1", "op-bg-1", "tgt-bg-1", "10.0.0.99", body)
 
-    row = await tmp_db.fetchrow(
-        "SELECT status FROM recon_scans WHERE id = 'scan-bg-1'"
-    )
+    row = await tmp_db.fetchrow("SELECT status FROM recon_scans WHERE id = 'scan-bg-1'")
     assert row is not None
     assert row["status"] == "completed"
 
@@ -174,7 +172,7 @@ async def test_run_scan_background_marks_completed(tmp_db):
 
 async def test_run_scan_background_marks_failed_on_exception(tmp_db):
     """_run_scan_background: DB row ends as 'failed' when ReconEngine raises."""
-    from app.routers.recon import _run_scan_background, ReconScanRequest
+    from app.routers.recon import ReconScanRequest, _run_scan_background
 
     await tmp_db.execute(
         "INSERT INTO operations (id, code, name, codename, strategic_intent) "
@@ -198,25 +196,20 @@ async def test_run_scan_background_marks_failed_on_exception(tmp_db):
     mock_ctx.__aenter__ = AsyncMock(return_value=tmp_db)
     mock_ctx.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("app.routers.recon.db_manager") as mock_db_mgr, \
-         patch("app.routers.recon.ReconEngine") as MockReconEngine, \
-         patch("app.routers.recon.asyncio.sleep", new_callable=AsyncMock), \
-         patch("app.ws_manager.ws_manager") as mock_ws:
-
+    with (
+        patch("app.routers.recon.db_manager") as mock_db_mgr,
+        patch("app.routers.recon.ReconEngine") as MockReconEngine,
+        patch("app.routers.recon.asyncio.sleep", new_callable=AsyncMock),
+        patch("app.ws_manager.ws_manager") as mock_ws,
+    ):
         mock_db_mgr.connection.return_value = mock_ctx
 
-        MockReconEngine.return_value.scan = AsyncMock(
-            side_effect=RuntimeError("nmap timeout")
-        )
+        MockReconEngine.return_value.scan = AsyncMock(side_effect=RuntimeError("nmap timeout"))
         mock_ws.broadcast = AsyncMock()
 
-        await _run_scan_background(
-            "scan-bg-2", "op-bg-2", "tgt-bg-2", "10.0.0.98", body
-        )
+        await _run_scan_background("scan-bg-2", "op-bg-2", "tgt-bg-2", "10.0.0.98", body)
 
-    row = await tmp_db.fetchrow(
-        "SELECT status FROM recon_scans WHERE id = 'scan-bg-2'"
-    )
+    row = await tmp_db.fetchrow("SELECT status FROM recon_scans WHERE id = 'scan-bg-2'")
     assert row is not None
     assert row["status"] == "failed"
 
@@ -228,6 +221,7 @@ async def test_run_scan_background_marks_failed_on_exception(tmp_db):
 # ---------------------------------------------------------------------------
 # POST /operations/{op_id}/osint/discover -> 202 Accepted (async / queued)
 # ---------------------------------------------------------------------------
+
 
 async def test_osint_discover_returns_202_queued(client):
     """POST osint/discover returns 202 with status='queued' immediately."""
@@ -278,6 +272,7 @@ async def test_osint_discover_op_not_found_returns_404(client):
 # Background function: _run_osint_background
 # ---------------------------------------------------------------------------
 
+
 async def test_run_osint_background_broadcasts_completed(tmp_db):
     """_run_osint_background happy path: broadcasts osint.completed."""
     from app.models.osint import OSINTResult
@@ -304,10 +299,11 @@ async def test_run_osint_background_broadcasts_completed(tmp_db):
     mock_ctx.__aenter__ = AsyncMock(return_value=tmp_db)
     mock_ctx.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("app.routers.recon.db_manager") as mock_db_mgr, \
-         patch("app.routers.recon.OSINTEngine") as MockOSINTEngine, \
-         patch("app.ws_manager.ws_manager") as mock_ws:
-
+    with (
+        patch("app.routers.recon.db_manager") as mock_db_mgr,
+        patch("app.routers.recon.OSINTEngine") as MockOSINTEngine,
+        patch("app.ws_manager.ws_manager") as mock_ws,
+    ):
         mock_db_mgr.connection.return_value = mock_ctx
 
         MockOSINTEngine.return_value.discover = AsyncMock(return_value=mock_result)
@@ -338,15 +334,14 @@ async def test_run_osint_background_broadcasts_failed_on_exception(tmp_db):
     mock_ctx.__aenter__ = AsyncMock(return_value=tmp_db)
     mock_ctx.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("app.routers.recon.db_manager") as mock_db_mgr, \
-         patch("app.routers.recon.OSINTEngine") as MockOSINTEngine, \
-         patch("app.ws_manager.ws_manager") as mock_ws:
-
+    with (
+        patch("app.routers.recon.db_manager") as mock_db_mgr,
+        patch("app.routers.recon.OSINTEngine") as MockOSINTEngine,
+        patch("app.ws_manager.ws_manager") as mock_ws,
+    ):
         mock_db_mgr.connection.return_value = mock_ctx
 
-        MockOSINTEngine.return_value.discover = AsyncMock(
-            side_effect=RuntimeError("crt.sh timeout")
-        )
+        MockOSINTEngine.return_value.discover = AsyncMock(side_effect=RuntimeError("crt.sh timeout"))
         mock_ws.broadcast = AsyncMock()
 
         await _run_osint_background("op-osint-2", "example.com", 100)

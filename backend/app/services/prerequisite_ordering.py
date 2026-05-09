@@ -82,9 +82,7 @@ def topological_sort(graph: dict[str, list[str]]) -> list[list[str]]:
             in_degree[successor] += 1
 
     # Start with nodes that have no prerequisites
-    queue: deque[str] = deque(
-        node for node in graph if in_degree[node] == 0
-    )
+    queue: deque[str] = deque(node for node in graph if in_degree[node] == 0)
 
     batches: list[list[str]] = []
     visited = 0
@@ -106,9 +104,7 @@ def topological_sort(graph: dict[str, list[str]]) -> list[list[str]]:
 
     if visited != len(graph):
         cycle_nodes = [n for n in graph if in_degree[n] > 0]
-        raise ValueError(
-            f"Cycle detected in technique dependency graph: {cycle_nodes}"
-        )
+        raise ValueError(f"Cycle detected in technique dependency graph: {cycle_nodes}")
 
     return batches
 
@@ -134,7 +130,8 @@ def validate_execution_order(completed: set[str], next_technique: str) -> bool:
         if next_technique in rule.enables and tid not in completed:
             logger.debug(
                 "SPEC-058: %s blocked — prerequisite enabler %s not yet completed",
-                next_technique, tid,
+                next_technique,
+                tid,
             )
             return False
     return True

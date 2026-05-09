@@ -14,6 +14,7 @@
 # 1. Health
 # ---------------------------------------------------------------------------
 
+
 async def test_health_endpoint(client):
     resp = await client.get("/api/health")
     assert resp.status_code == 200
@@ -33,6 +34,7 @@ async def test_health_services_keys(client):
 # 2. Operations CRUD
 # ---------------------------------------------------------------------------
 
+
 async def test_list_operations(client):
     resp = await client.get("/api/operations")
     assert resp.status_code == 200
@@ -42,12 +44,15 @@ async def test_list_operations(client):
 
 
 async def test_create_operation(client):
-    resp = await client.post("/api/operations", json={
-        "code": "OP-NEW-001",
-        "name": "New Op",
-        "codename": "TEST-NEW",
-        "strategic_intent": "Testing",
-    })
+    resp = await client.post(
+        "/api/operations",
+        json={
+            "code": "OP-NEW-001",
+            "name": "New Op",
+            "codename": "TEST-NEW",
+            "strategic_intent": "Testing",
+        },
+    )
     assert resp.status_code == 201
     data = resp.json()
     assert data["code"] == "OP-NEW-001"
@@ -66,9 +71,12 @@ async def test_get_operation_not_found(client):
 
 
 async def test_update_operation(client):
-    resp = await client.patch("/api/operations/test-op-1", json={
-        "status": "paused",
-    })
+    resp = await client.patch(
+        "/api/operations/test-op-1",
+        json={
+            "status": "paused",
+        },
+    )
     assert resp.status_code == 200
     assert resp.json()["status"] == "paused"
 
@@ -76,6 +84,7 @@ async def test_update_operation(client):
 # ---------------------------------------------------------------------------
 # 3. Techniques
 # ---------------------------------------------------------------------------
+
 
 async def test_list_techniques(client):
     resp = await client.get("/api/techniques")
@@ -89,6 +98,7 @@ async def test_list_techniques(client):
 # 4. Targets
 # ---------------------------------------------------------------------------
 
+
 async def test_list_targets(client):
     resp = await client.get("/api/operations/test-op-1/targets")
     assert resp.status_code == 200
@@ -101,6 +111,7 @@ async def test_list_targets(client):
 # 5. Agents
 # ---------------------------------------------------------------------------
 
+
 async def test_list_agents(client):
     resp = await client.get("/api/operations/test-op-1/agents")
     assert resp.status_code == 200
@@ -112,6 +123,7 @@ async def test_list_agents(client):
 # 6. Facts (empty since no executions)
 # ---------------------------------------------------------------------------
 
+
 async def test_list_facts(client):
     resp = await client.get("/api/operations/test-op-1/facts")
     assert resp.status_code == 200
@@ -121,6 +133,7 @@ async def test_list_facts(client):
 # ---------------------------------------------------------------------------
 # 7. C5ISR
 # ---------------------------------------------------------------------------
+
 
 async def test_get_c5isr(client):
     resp = await client.get("/api/operations/test-op-1/c5isr")
@@ -132,6 +145,7 @@ async def test_get_c5isr(client):
 # ---------------------------------------------------------------------------
 # 8. Logs (empty, but endpoint works)
 # ---------------------------------------------------------------------------
+
 
 async def test_get_logs(client):
     resp = await client.get("/api/operations/test-op-1/logs")
@@ -145,6 +159,7 @@ async def test_get_logs(client):
 # 9. Recommendations (none yet)
 # ---------------------------------------------------------------------------
 
+
 async def test_get_recommendations_latest(client):
     resp = await client.get("/api/operations/test-op-1/recommendations/latest")
     assert resp.status_code == 200
@@ -155,6 +170,7 @@ async def test_get_recommendations_latest(client):
 # ---------------------------------------------------------------------------
 # 10. Operation Summary (composite endpoint)
 # ---------------------------------------------------------------------------
+
 
 async def test_get_operation_summary(client):
     resp = await client.get("/api/operations/test-op-1/summary")

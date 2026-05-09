@@ -30,9 +30,9 @@ logger = logging.getLogger(__name__)
 # Mock data — returned when settings.MOCK_C2_ENGINE is True
 # ---------------------------------------------------------------------------
 _MOCK_SERVICES = [
-    ServiceInfo(port=22,  protocol="tcp", service="ssh",  version="OpenSSH 7.4",  state="open"),
-    ServiceInfo(port=80,  protocol="tcp", service="http", version="Apache 2.4.6",  state="open"),
-    ServiceInfo(port=21,  protocol="tcp", service="ftp",  version="vsftpd 3.0.2", state="open"),
+    ServiceInfo(port=22, protocol="tcp", service="ssh", version="OpenSSH 7.4", state="open"),
+    ServiceInfo(port=80, protocol="tcp", service="http", version="Apache 2.4.6", state="open"),
+    ServiceInfo(port=21, protocol="tcp", service="ftp", version="vsftpd 3.0.2", state="open"),
 ]
 
 
@@ -62,12 +62,11 @@ class ReconEngine:
         # ------------------------------------------------------------------
         row = await db.fetchrow(
             "SELECT ip_address, hostname FROM targets WHERE id = $1 AND operation_id = $2",
-            target_id, operation_id,
+            target_id,
+            operation_id,
         )
         if row is None:
-            raise ValueError(
-                f"Target {target_id!r} not found in operation {operation_id!r}"
-            )
+            raise ValueError(f"Target {target_id!r} not found in operation {operation_id!r}")
         ip_address: str = row["ip_address"]
         hostname: str | None = row["hostname"]
 
@@ -75,15 +74,12 @@ class ReconEngine:
         # Step 1b: Scope validation — check engagement ROE
         # ------------------------------------------------------------------
         from app.services.scope_validator import ScopeValidator, ScopeViolationError
+
         validator = ScopeValidator()
         scope_result = await validator.validate_target(db, operation_id, ip_address)
         if not scope_result.in_scope:
-            logger.warning(
-                "Scope violation blocked recon: %s — %s", ip_address, scope_result.reason
-            )
-            raise ScopeViolationError(
-                f"Target {ip_address!r} is out of scope: {scope_result.reason}"
-            )
+            logger.warning("Scope violation blocked recon: %s — %s", ip_address, scope_result.reason)
+            raise ScopeViolationError(f"Target {ip_address!r} is out of scope: {scope_result.reason}")
 
         # ------------------------------------------------------------------
         # Step 2: Mock mode — skip real nmap
@@ -100,9 +96,7 @@ class ReconEngine:
         # Step 3: MCP-only nmap (no direct execution)
         # ------------------------------------------------------------------
         if not settings.MCP_ENABLED:
-            raise ConnectionError(
-                "MCP is required for nmap scanning (MCP_ENABLED=false)"
-            )
+            raise ConnectionError("MCP is required for nmap scanning (MCP_ENABLED=false)")
 
         try:
             services, os_guess, raw_xml, scan_duration = await asyncio.wait_for(
@@ -110,9 +104,7 @@ class ReconEngine:
                 timeout=settings.NMAP_SCAN_TIMEOUT_SEC,
             )
         except asyncio.TimeoutError:
-            raise ConnectionError(
-                f"MCP nmap_scan timed out after {settings.NMAP_SCAN_TIMEOUT_SEC}s"
-            )
+            raise ConnectionError(f"MCP nmap_scan timed out after {settings.NMAP_SCAN_TIMEOUT_SEC}s")
 
         if not services:
             logger.warning(
@@ -140,7 +132,8 @@ class ReconEngine:
         if os_guess:
             await db.execute(
                 "UPDATE targets SET os = $1 WHERE id = $2",
-                os_guess, target_id,
+                os_guess,
+                target_id,
             )
 
         # ------------------------------------------------------------------
@@ -150,30 +143,33 @@ class ReconEngine:
         if settings.VULN_LOOKUP_ENABLED and services:
             try:
                 from app.services.vuln_lookup import VulnLookupService
-                vuln_findings = await VulnLookupService().enrich_services(
-                    db=db,
-                    services=services,
-                    operation_id=operation_id,
-                    target_id=target_id,
-                ) or []
+
+                vuln_findings = (
+                    await VulnLookupService().enrich_services(
+                        db=db,
+                        services=services,
+                        operation_id=operation_id,
+                        target_id=target_id,
+                    )
+                    or []
+                )
             except Exception:
                 logger.warning("CVE enrichment failed, continuing without vulnerability data")
 
         # ------------------------------------------------------------------
         # Step 8b: Web reconnaissance (graceful fallback — never breaks recon)
         # ------------------------------------------------------------------
-        http_services = [
-            s for s in services
-            if s.service in ("http", "https", "http-proxy", "http-alt")
-        ]
+        http_services = [s for s in services if s.service in ("http", "https", "http-proxy", "http-alt")]
         if http_services and settings.MCP_ENABLED:
             try:
                 from app.services.mcp_client_manager import get_mcp_manager
+
                 manager = get_mcp_manager()
                 if manager and manager.is_connected("web-scanner"):
                     http_ports = [s.port for s in http_services]
                     probe_result = await manager.call_tool(
-                        "web-scanner", "web_http_probe",
+                        "web-scanner",
+                        "web_http_probe",
                         {"target": ip_address, "ports": http_ports},
                     )
                     await self._write_web_facts(
@@ -187,7 +183,8 @@ class ReconEngine:
                     ssrf_url = f"http://{ssrf_target}"
                     try:
                         ssrf_result = await manager.call_tool(
-                            "web-scanner", "web_ssrf_probe",
+                            "web-scanner",
+                            "web_ssrf_probe",
                             {"target_url": ssrf_url},
                         )
                         await self._write_web_facts(
@@ -212,10 +209,12 @@ class ReconEngine:
             # Probe ports 80/443 directly using the hostname.
             try:
                 from app.services.mcp_client_manager import get_mcp_manager
+
                 manager = get_mcp_manager()
                 if manager and manager.is_connected("web-scanner"):
                     probe_result = await manager.call_tool(
-                        "web-scanner", "web_http_probe",
+                        "web-scanner",
+                        "web_http_probe",
                         {"target": hostname, "ports": [80, 443]},
                     )
                     await self._write_web_facts(
@@ -226,7 +225,8 @@ class ReconEngine:
                     )
                     try:
                         ssrf_result = await manager.call_tool(
-                            "web-scanner", "web_ssrf_probe",
+                            "web-scanner",
+                            "web_ssrf_probe",
                             {"target_url": f"http://{hostname}"},
                         )
                         await self._write_web_facts(
@@ -252,6 +252,7 @@ class ReconEngine:
         if settings.EXPLOIT_VALIDATION_ENABLED and settings.VULN_LOOKUP_ENABLED:
             try:
                 from app.services.exploit_validator import ExploitValidator
+
                 if vuln_findings:
                     await ExploitValidator().validate(
                         db=db,
@@ -260,9 +261,7 @@ class ReconEngine:
                         target_id=target_id,
                     )
             except Exception:
-                logger.warning(
-                    "Exploit validation failed, continuing without validation data"
-                )
+                logger.warning("Exploit validation failed, continuing without validation data")
 
         # ------------------------------------------------------------------
         # Step 9: Return result
@@ -282,9 +281,7 @@ class ReconEngine:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    async def _scan_via_mcp(
-        self, ip_address: str
-    ) -> "tuple[list[ServiceInfo], str | None, str | None, float]":
+    async def _scan_via_mcp(self, ip_address: str) -> "tuple[list[ServiceInfo], str | None, str | None, float]":
         """Delegate nmap scan to MCP nmap-scanner server."""
         import json as _json
 
@@ -296,14 +293,16 @@ class ReconEngine:
 
         t_start = time.monotonic()
         result = await manager.call_tool(
-            "nmap-scanner", "nmap_scan", {
+            "nmap-scanner",
+            "nmap_scan",
+            {
                 "target": ip_address,
                 "ports": (
                     "21,22,23,25,53,80,110,135,139,143,443,445,"
                     "1433,3000,3306,3389,3500,5432,5900,5985,5986,6379,"
                     "8080,8443,8888,9090,27017"
                 ),
-            }
+            },
         )
         scan_duration = time.monotonic() - t_start
 
@@ -334,13 +333,15 @@ class ReconEngine:
             if trait == "service.open_port" and "/" in value:
                 parts = value.split("/", 3)
                 if len(parts) >= 4:
-                    services.append(ServiceInfo(
-                        port=int(parts[0]),
-                        protocol=parts[1],
-                        service=parts[2],
-                        version=parts[3].replace("_", " "),
-                        state="open",
-                    ))
+                    services.append(
+                        ServiceInfo(
+                            port=int(parts[0]),
+                            protocol=parts[1],
+                            service=parts[2],
+                            version=parts[3].replace("_", " "),
+                            state="open",
+                        )
+                    )
             elif trait == "host.os":
                 os_guess = value
 
@@ -378,12 +379,16 @@ class ReconEngine:
         )
 
     async def _write_technique_execution(
-        self, db: asyncpg.Connection, operation_id: str,
-        target_id: str, facts_written: int,
+        self,
+        db: asyncpg.Connection,
+        operation_id: str,
+        target_id: str,
+        facts_written: int,
     ) -> None:
         """Write T1046 record so KillChainEnforcer sees TA0043 complete."""
         import uuid as _uuid
         from datetime import datetime, timezone
+
         now = datetime.now(timezone.utc)
         await db.execute(
             "INSERT INTO technique_executions "
@@ -391,9 +396,13 @@ class ReconEngine:
             " result_summary, facts_collected_count, started_at, completed_at) "
             "VALUES ($1, $2, $3, $4, 'mcp', 'success', $5, $6, $7, $7) "
             "ON CONFLICT DO NOTHING",
-            str(_uuid.uuid4()), "T1046", target_id, operation_id,
+            str(_uuid.uuid4()),
+            "T1046",
+            target_id,
+            operation_id,
             f"MCP nmap scan: {facts_written} facts collected",
-            facts_written, now,
+            facts_written,
+            now,
         )
 
     async def _write_web_facts(
@@ -443,7 +452,13 @@ class ReconEngine:
                 "(id, trait, value, category, source_technique_id, "
                 "source_target_id, operation_id, score, collected_at) "
                 "VALUES ($1, $2, $3, $4, NULL, $5, $6, 1, $7) ON CONFLICT DO NOTHING",
-                fact_id, trait, value, category, target_id, operation_id, now,
+                fact_id,
+                trait,
+                value,
+                category,
+                target_id,
+                operation_id,
+                now,
             )
             fact_payload = {
                 "id": fact_id,
@@ -472,7 +487,11 @@ class ReconEngine:
         facts_written = 0
 
         async def _insert_fact(trait: str, value: str, category: str | FactCategory) -> None:
-            category = ensure_enum_value(FactCategory, category if isinstance(category, str) else category.value, fallback_member=FactCategory.HOST)
+            category = ensure_enum_value(
+                FactCategory,
+                category if isinstance(category, str) else category.value,
+                fallback_member=FactCategory.HOST,
+            )
             nonlocal facts_written
             fact_id = str(uuid.uuid4())
             await db.execute(
@@ -480,7 +499,13 @@ class ReconEngine:
                 "(id, trait, value, category, source_technique_id, "
                 "source_target_id, operation_id, score, collected_at) "
                 "VALUES ($1, $2, $3, $4, NULL, $5, $6, 1, $7) ON CONFLICT DO NOTHING",
-                fact_id, trait, value, category, target_id, operation_id, now,
+                fact_id,
+                trait,
+                value,
+                category,
+                target_id,
+                operation_id,
+                now,
             )
             # Broadcast unconditionally — DB-level UNIQUE index handles dedup
             fact_payload = {

@@ -7,9 +7,10 @@ it an integration test that belongs in a separate suite.
 This file covers the unit-testable pure functions extracted from
 app/routers/terminal.py.
 """
+
 import pytest
 
-from app.routers.terminal import _is_dangerous, MAX_CMD_LEN
+from app.routers.terminal import MAX_CMD_LEN, _is_dangerous
 
 
 class TestIsDangerous:

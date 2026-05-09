@@ -6,6 +6,7 @@ Create Date: 2026-04-09
 
 Stores the auto-generated Operation Brief markdown after each OODA cycle.
 """
+
 from alembic import op
 
 revision = "003"

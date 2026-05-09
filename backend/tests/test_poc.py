@@ -1,6 +1,9 @@
 """Tests for PoC Auto Generation (SPEC-043 B1)."""
+
 import json
+
 import pytest
+
 from app.models.poc_record import PoCRecord
 
 

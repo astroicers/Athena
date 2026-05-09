@@ -23,6 +23,7 @@ Usage:
     if not passed:
         raise ScopeViolationError(results[-1].reason)
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

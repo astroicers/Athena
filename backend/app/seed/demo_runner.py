@@ -92,6 +92,7 @@ BANNER = r"""
 # Low-level HTTP helpers
 # ---------------------------------------------------------------------------
 
+
 async def _request(
     client: httpx.AsyncClient,
     method: str,
@@ -106,36 +107,17 @@ async def _request(
             if resp.status_code < 400:
                 return resp
             if attempt == 1:
-                print(
-                    yellow(
-                        f"  [retry] {method} {path} → HTTP {resp.status_code} "
-                        f"(attempt {attempt}/2)"
-                    )
-                )
+                print(yellow(f"  [retry] {method} {path} → HTTP {resp.status_code} (attempt {attempt}/2)"))
                 await asyncio.sleep(1)
             else:
-                print(
-                    red(
-                        f"  [skip]  {method} {path} → HTTP {resp.status_code} "
-                        f"after retry — skipping step"
-                    )
-                )
+                print(red(f"  [skip]  {method} {path} → HTTP {resp.status_code} after retry — skipping step"))
                 return resp
         except httpx.RequestError as exc:
             if attempt == 1:
-                print(
-                    yellow(
-                        f"  [retry] {method} {path} — connection error: {exc} "
-                        f"(attempt {attempt}/2)"
-                    )
-                )
+                print(yellow(f"  [retry] {method} {path} — connection error: {exc} (attempt {attempt}/2)"))
                 await asyncio.sleep(1)
             else:
-                print(
-                    red(
-                        f"  [skip]  {method} {path} — connection error after retry: {exc}"
-                    )
-                )
+                print(red(f"  [skip]  {method} {path} — connection error after retry: {exc}"))
                 # Return a synthetic 503 response so callers can inspect .is_error
                 return httpx.Response(503, text=str(exc))
     # Should not reach here, but satisfy type checker
@@ -153,6 +135,7 @@ async def post(client: httpx.AsyncClient, path: str, **kwargs: Any) -> httpx.Res
 # ---------------------------------------------------------------------------
 # Pretty-printing helpers
 # ---------------------------------------------------------------------------
+
 
 def _print_step_header(step: int, title: str, phase: str) -> None:
     sep = "─" * 60
@@ -193,12 +176,12 @@ def _print_result(resp: httpx.Response, extract_fn=None) -> None:
 # Step implementations
 # ---------------------------------------------------------------------------
 
+
 async def step1_observe(client: httpx.AsyncClient, op_id: str) -> None:
     """OBSERVE — Trigger first OODA cycle via POST /ooda/trigger."""
     _print_step_header(1, "Trigger first OODA cycle", "OBSERVE")
     _print_expected(
-        "API triggers Observe → Orient → Decide → Act; "
-        "returns new ooda_iteration record with iteration_number ≥ 2"
+        "API triggers Observe → Orient → Decide → Act; returns new ooda_iteration record with iteration_number ≥ 2"
     )
     resp = await post(client, f"/operations/{op_id}/ooda/trigger")
 
@@ -207,10 +190,7 @@ async def step1_observe(client: httpx.AsyncClient, op_id: str) -> None:
             phase = body.get("phase", body.get("current_phase", "?"))
             iter_num = body.get("iteration_number", body.get("ooda_iteration_count", "?"))
             summary = body.get("observe_summary") or body.get("summary") or ""
-            return (
-                f"phase={phase}  iteration={iter_num}  "
-                f"observe_summary={summary[:80]!r}"
-            )
+            return f"phase={phase}  iteration={iter_num}  observe_summary={summary[:80]!r}"
         return None
 
     _print_result(resp, extract)
@@ -220,8 +200,7 @@ async def step2_orient(client: httpx.AsyncClient, op_id: str) -> None:
     """ORIENT — Retrieve latest PentestGPT recommendation."""
     _print_step_header(2, "Check PentestGPT recommendation", "ORIENT")
     _print_expected(
-        "Returns latest recommendation with confidence > 0, "
-        "recommended technique, and situation_assessment text"
+        "Returns latest recommendation with confidence > 0, recommended technique, and situation_assessment text"
     )
     resp = await get(client, f"/operations/{op_id}/recommendations/latest")
 
@@ -230,10 +209,7 @@ async def step2_orient(client: httpx.AsyncClient, op_id: str) -> None:
             tech_id = body.get("recommended_technique_id", "?")
             confidence = body.get("confidence", "?")
             assessment = (body.get("situation_assessment") or "")[:80]
-            return (
-                f"technique={tech_id}  confidence={confidence}  "
-                f"assessment={assessment!r}"
-            )
+            return f"technique={tech_id}  confidence={confidence}  assessment={assessment!r}"
         return None
 
     _print_result(resp, extract)
@@ -242,16 +218,13 @@ async def step2_orient(client: httpx.AsyncClient, op_id: str) -> None:
 async def step3_decide(client: httpx.AsyncClient, op_id: str) -> None:
     """DECIDE — Review C5ISR domain status to inform decision."""
     _print_step_header(3, "Review C5ISR domain status", "DECIDE")
-    _print_expected(
-        "Returns 6 C5ISR domains (command, control, comms, computers, "
-        "cyber, isr) with health_pct values"
-    )
+    _print_expected("Returns 6 C5ISR domains (command, control, comms, computers, cyber, isr) with health_pct values")
     resp = await get(client, f"/operations/{op_id}/c5isr")
 
     def extract(body: Any) -> str | None:
         if not isinstance(body, list):
             return None
-        parts = [f"{d.get('domain','?')}={d.get('health_pct','?')}%" for d in body]
+        parts = [f"{d.get('domain', '?')}={d.get('health_pct', '?')}%" for d in body]
         return "  |  ".join(parts)
 
     _print_result(resp, extract)
@@ -261,8 +234,7 @@ async def step4_act(client: httpx.AsyncClient, op_id: str) -> None:
     """ACT — Check technique execution history (matrix view)."""
     _print_step_header(4, "Check execution history (techniques)", "ACT")
     _print_expected(
-        "Returns technique list with latest_status per technique; "
-        "at least one entry should show status='success'"
+        "Returns technique list with latest_status per technique; at least one entry should show status='success'"
     )
     # The spec references /techniques/matrix; fall back to /techniques
     resp = await get(client, f"/operations/{op_id}/techniques/matrix")
@@ -273,10 +245,7 @@ async def step4_act(client: httpx.AsyncClient, op_id: str) -> None:
     def extract(body: Any) -> str | None:
         if not isinstance(body, list):
             return None
-        statuses = [
-            f"{t.get('mitre_id','?')}={t.get('latest_status') or 'none'}"
-            for t in body
-        ]
+        statuses = [f"{t.get('mitre_id', '?')}={t.get('latest_status') or 'none'}" for t in body]
         return "  |  ".join(statuses)
 
     _print_result(resp, extract)
@@ -286,8 +255,7 @@ async def step5_observe2(client: httpx.AsyncClient, op_id: str) -> None:
     """OBSERVE round 2 — Trigger second OODA cycle."""
     _print_step_header(5, "Trigger second OODA cycle", "OBSERVE (round 2)")
     _print_expected(
-        "API runs another Observe → Orient → Decide → Act cycle; "
-        "iteration_number should increment from previous cycle"
+        "API runs another Observe → Orient → Decide → Act cycle; iteration_number should increment from previous cycle"
     )
     resp = await post(client, f"/operations/{op_id}/ooda/trigger")
 
@@ -296,10 +264,7 @@ async def step5_observe2(client: httpx.AsyncClient, op_id: str) -> None:
             phase = body.get("phase", body.get("current_phase", "?"))
             iter_num = body.get("iteration_number", body.get("ooda_iteration_count", "?"))
             act_summary = body.get("act_summary") or body.get("summary") or ""
-            return (
-                f"phase={phase}  iteration={iter_num}  "
-                f"act_summary={act_summary[:80]!r}"
-            )
+            return f"phase={phase}  iteration={iter_num}  act_summary={act_summary[:80]!r}"
         return None
 
     _print_result(resp, extract)
@@ -323,10 +288,7 @@ async def step6_orient2(client: httpx.AsyncClient, op_id: str) -> None:
             phase = body.get("current_ooda_phase", "?")
             iters = body.get("ooda_iteration_count", "?")
             status = body.get("status", "?")
-            return (
-                f"code={code}  status={status}  "
-                f"ooda_phase={phase}  iteration_count={iters}"
-            )
+            return f"code={code}  status={status}  ooda_phase={phase}  iteration_count={iters}"
         return None
 
     _print_result(resp_op, extract_op)
@@ -339,10 +301,7 @@ async def step6_orient2(client: httpx.AsyncClient, op_id: str) -> None:
     def extract_timeline(body: Any) -> str | None:
         if not isinstance(body, list):
             return None
-        entries = [
-            f"iter{e.get('iteration_number','?')}:{e.get('phase','?')}"
-            for e in body
-        ]
+        entries = [f"iter{e.get('iteration_number', '?')}:{e.get('phase', '?')}" for e in body]
         return "  ".join(entries)
 
     _print_result(resp_tl, extract_timeline)
@@ -352,6 +311,7 @@ async def step6_orient2(client: httpx.AsyncClient, op_id: str) -> None:
 # Health check
 # ---------------------------------------------------------------------------
 
+
 async def _check_health(client: httpx.AsyncClient) -> bool:
     """Return True if the API is healthy."""
     print(dim("Checking API health …"))
@@ -359,7 +319,7 @@ async def _check_health(client: httpx.AsyncClient) -> bool:
         resp = await client.get(f"{BASE_URL}/health", timeout=10.0)
         if resp.status_code == 200:
             data = resp.json()
-            print(green(f"  API is healthy: status={data.get('status','?')}"))
+            print(green(f"  API is healthy: status={data.get('status', '?')}"))
             services = data.get("services", {})
             for svc, state in services.items():
                 colour = green if state in ("ok", "connected", "mock", "active", "claude") else yellow
@@ -375,6 +335,7 @@ async def _check_health(client: httpx.AsyncClient) -> bool:
 # ---------------------------------------------------------------------------
 # Operation discovery
 # ---------------------------------------------------------------------------
+
 
 async def _get_operation_id(client: httpx.AsyncClient) -> str | None:
     """Return the first operation ID from GET /operations."""
@@ -423,22 +384,12 @@ async def run_demo() -> None:
     async with httpx.AsyncClient() as client:
         # Pre-flight: health + operation ID
         if not await _check_health(client):
-            print(
-                red(
-                    "\n[ABORT] API is not reachable. "
-                    "Start the backend first: uvicorn app.main:app --reload\n"
-                )
-            )
+            print(red("\n[ABORT] API is not reachable. Start the backend first: uvicorn app.main:app --reload\n"))
             return
 
         op_id = await _get_operation_id(client)
         if not op_id:
-            print(
-                red(
-                    "\n[ABORT] No operation found. "
-                    "Run 'python -m app.seed.demo_scenario' first.\n"
-                )
-            )
+            print(red("\n[ABORT] No operation found. Run 'python -m app.seed.demo_scenario' first.\n"))
             return
 
         print()

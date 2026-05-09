@@ -49,14 +49,16 @@ def _parse_relay_configs() -> list[RelayConfig]:
             return []
         configs = []
         for item in items:
-            configs.append(RelayConfig(
-                name=item.get("name", "unnamed"),
-                ip=item.get("ip", ""),
-                ssh_user=item.get("ssh_user", settings.RELAY_SSH_USER),
-                ssh_port=item.get("ssh_port", settings.RELAY_SSH_PORT),
-                lport=item.get("lport", settings.RELAY_LPORT),
-                subnet=item.get("subnet", ""),
-            ))
+            configs.append(
+                RelayConfig(
+                    name=item.get("name", "unnamed"),
+                    ip=item.get("ip", ""),
+                    ssh_user=item.get("ssh_user", settings.RELAY_SSH_USER),
+                    ssh_port=item.get("ssh_port", settings.RELAY_SSH_PORT),
+                    lport=item.get("lport", settings.RELAY_LPORT),
+                    subnet=item.get("subnet", ""),
+                )
+            )
         return configs
     except (json.JSONDecodeError, TypeError) as e:
         logger.error("Failed to parse RELAY_CONFIGS: %s", e)
@@ -98,7 +100,10 @@ class RelayRouter:
                             if target in network:
                                 logger.info(
                                     "Relay '%s' (%s) selected for target %s (subnet %s)",
-                                    cfg.name, cfg.ip, target_ip, cfg.subnet,
+                                    cfg.name,
+                                    cfg.ip,
+                                    target_ip,
+                                    cfg.subnet,
                                 )
                                 return cfg
                         except ValueError:
@@ -109,7 +114,9 @@ class RelayRouter:
                     if not cfg.subnet and cfg.ip:
                         logger.info(
                             "Relay '%s' (%s) selected as catch-all for target %s",
-                            cfg.name, cfg.ip, target_ip,
+                            cfg.name,
+                            cfg.ip,
+                            target_ip,
                         )
                         return cfg
 
@@ -129,11 +136,13 @@ class RelayRouter:
         """List all configured relays (multi + legacy fallback)."""
         relays = list(self._configs)
         if not relays and settings.RELAY_IP:
-            relays.append(RelayConfig(
-                name="default",
-                ip=settings.RELAY_IP,
-                ssh_user=settings.RELAY_SSH_USER,
-                ssh_port=settings.RELAY_SSH_PORT,
-                lport=settings.RELAY_LPORT,
-            ))
+            relays.append(
+                RelayConfig(
+                    name="default",
+                    ip=settings.RELAY_IP,
+                    ssh_user=settings.RELAY_SSH_USER,
+                    ssh_port=settings.RELAY_SSH_PORT,
+                    lport=settings.RELAY_LPORT,
+                )
+            )
         return relays

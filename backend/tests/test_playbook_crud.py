@@ -9,6 +9,7 @@
 # For commercial licensing, contact: azz093093.830330@gmail.com
 
 """Integration tests for Playbook CRUD API."""
+
 from httpx import AsyncClient
 
 
@@ -110,6 +111,7 @@ def _load_attack_executor_server():
     """Load attack-executor server.py via importlib to avoid sys.modules collision."""
     import importlib.util
     from pathlib import Path
+
     server_path = Path(__file__).resolve().parent.parent.parent / "tools" / "attack-executor" / "server.py"
     spec = importlib.util.spec_from_file_location("attack_executor_server", server_path)
     mod = importlib.util.module_from_spec(spec)
@@ -140,11 +142,16 @@ def test_parse_stdout_regex_parser():
 
 async def test_patch_can_clear_output_parser(client: AsyncClient):
     """PATCH {"output_parser": null} should clear output_parser to NULL."""
-    create_resp = await client.post("/api/playbooks", json={
-        "mitre_id": "T5555", "platform": "linux",
-        "command": "test_cmd", "facts_traits": [],
-        "output_parser": "json",
-    })
+    create_resp = await client.post(
+        "/api/playbooks",
+        json={
+            "mitre_id": "T5555",
+            "platform": "linux",
+            "command": "test_cmd",
+            "facts_traits": [],
+            "output_parser": "json",
+        },
+    )
     assert create_resp.status_code == 201
     pb_id = create_resp.json()["id"]
 
@@ -164,10 +171,15 @@ async def test_patch_can_clear_output_parser(client: AsyncClient):
 
 async def test_patch_command_null_is_ignored(client: AsyncClient):
     """PATCH {"command": null} should be ignored, not modify existing command."""
-    create = await client.post("/api/playbooks", json={
-        "mitre_id": "T4444", "platform": "linux",
-        "command": "original_cmd", "facts_traits": [],
-    })
+    create = await client.post(
+        "/api/playbooks",
+        json={
+            "mitre_id": "T4444",
+            "platform": "linux",
+            "command": "original_cmd",
+            "facts_traits": [],
+        },
+    )
     pb_id = create.json()["id"]
 
     resp = await client.patch(f"/api/playbooks/{pb_id}", json={"command": None})
@@ -178,11 +190,12 @@ async def test_patch_command_null_is_ignored(client: AsyncClient):
 async def test_output_parser_read_from_playbook_on_mcp_execute(seeded_db):
     """engine_router._get_output_parser should read output_parser from technique_playbooks
     and _execute_via_mcp_executor should forward it to MCP engine."""
-    from unittest.mock import AsyncMock, patch, MagicMock
-    from app.database.seed import TECHNIQUE_PLAYBOOK_SEEDS
-    from app.clients import ExecutionResult
-    from app.services.engine_router import EngineRouter
+    from unittest.mock import AsyncMock, MagicMock, patch
     from uuid import uuid4
+
+    from app.clients import ExecutionResult
+    from app.database.seed import TECHNIQUE_PLAYBOOK_SEEDS
+    from app.services.engine_router import EngineRouter
 
     # Seed playbooks if needed
     count = await seeded_db.fetchval("SELECT COUNT(*) FROM technique_playbooks")
@@ -193,9 +206,13 @@ async def test_output_parser_read_from_playbook_on_mcp_execute(seeded_db):
                    (id, mitre_id, platform, command, output_parser, facts_traits, source, tags)
                    VALUES ($1, $2, $3, $4, $5, $6, 'seed', $7)
                    ON CONFLICT DO NOTHING""",
-                str(uuid4()), seed["mitre_id"], seed["platform"],
-                seed["command"], seed.get("output_parser"),
-                seed["facts_traits"], seed["tags"],
+                str(uuid4()),
+                seed["mitre_id"],
+                seed["platform"],
+                seed["command"],
+                seed.get("output_parser"),
+                seed["facts_traits"],
+                seed["tags"],
             )
 
     # Insert a linux-platform T1033 playbook with output_parser='json' if not present
@@ -212,8 +229,11 @@ async def test_output_parser_read_from_playbook_on_mcp_execute(seeded_db):
     mock_mcp = MagicMock()
     mock_mcp.execute = AsyncMock(
         return_value=ExecutionResult(
-            success=True, execution_id="mock-exec-id",
-            output="root", facts=[], error=None,
+            success=True,
+            execution_id="mock-exec-id",
+            output="root",
+            facts=[],
+            error=None,
         )
     )
     mock_fc = MagicMock()
@@ -226,9 +246,7 @@ async def test_output_parser_read_from_playbook_on_mcp_execute(seeded_db):
     )
 
     output_parser = await router._get_output_parser(seeded_db, "T1033")
-    assert output_parser == "json", (
-        f"Expected 'json' from technique_playbooks for T1033, got {output_parser!r}"
-    )
+    assert output_parser == "json", f"Expected 'json' from technique_playbooks for T1033, got {output_parser!r}"
 
     # Insert required data: SSH credential fact for test target + technique record
     await seeded_db.execute(
@@ -267,10 +285,11 @@ async def test_output_parser_read_from_playbook_on_mcp_execute(seeded_db):
 
 async def test_get_output_parser_windows_platform(seeded_db):
     """_get_output_parser with platform='windows' reads Windows playbook's output_parser."""
-    from unittest.mock import MagicMock, AsyncMock
+    from unittest.mock import AsyncMock, MagicMock
+    from uuid import uuid4
+
     from app.database.seed import TECHNIQUE_PLAYBOOK_SEEDS
     from app.services.engine_router import EngineRouter
-    from uuid import uuid4
 
     count = await seeded_db.fetchval("SELECT COUNT(*) FROM technique_playbooks")
     if count == 0:
@@ -280,9 +299,13 @@ async def test_get_output_parser_windows_platform(seeded_db):
                    (id, mitre_id, platform, command, output_parser, facts_traits, source, tags)
                    VALUES ($1, $2, $3, $4, $5, $6, 'seed', $7)
                    ON CONFLICT DO NOTHING""",
-                str(uuid4()), seed["mitre_id"], seed["platform"],
-                seed["command"], seed.get("output_parser"),
-                seed["facts_traits"], seed["tags"],
+                str(uuid4()),
+                seed["mitre_id"],
+                seed["platform"],
+                seed["command"],
+                seed.get("output_parser"),
+                seed["facts_traits"],
+                seed["tags"],
             )
 
     # T1059.001 is seeded with platform='windows', output_parser='first_line'
@@ -297,10 +320,11 @@ async def test_get_output_parser_windows_platform(seeded_db):
 
 async def test_get_output_parser_windows_technique_linux_path_returns_none(seeded_db):
     """Windows-only technique queried with platform='linux' returns None (no linux seed)."""
-    from unittest.mock import MagicMock, AsyncMock
+    from unittest.mock import AsyncMock, MagicMock
+    from uuid import uuid4
+
     from app.database.seed import TECHNIQUE_PLAYBOOK_SEEDS
     from app.services.engine_router import EngineRouter
-    from uuid import uuid4
 
     count = await seeded_db.fetchval("SELECT COUNT(*) FROM technique_playbooks")
     if count == 0:
@@ -310,9 +334,13 @@ async def test_get_output_parser_windows_technique_linux_path_returns_none(seede
                    (id, mitre_id, platform, command, output_parser, facts_traits, source, tags)
                    VALUES ($1, $2, $3, $4, $5, $6, 'seed', $7)
                    ON CONFLICT DO NOTHING""",
-                str(uuid4()), seed["mitre_id"], seed["platform"],
-                seed["command"], seed.get("output_parser"),
-                seed["facts_traits"], seed["tags"],
+                str(uuid4()),
+                seed["mitre_id"],
+                seed["platform"],
+                seed["command"],
+                seed.get("output_parser"),
+                seed["facts_traits"],
+                seed["tags"],
             )
 
     router = EngineRouter(
@@ -327,11 +355,12 @@ async def test_get_output_parser_windows_technique_linux_path_returns_none(seede
 
 async def test_mcp_executor_uses_windows_output_parser(seeded_db):
     """_execute_via_mcp_executor should pass windows output_parser for WinRM credential."""
-    from unittest.mock import AsyncMock, patch, MagicMock
-    from app.database.seed import TECHNIQUE_PLAYBOOK_SEEDS
-    from app.clients import ExecutionResult
-    from app.services.engine_router import EngineRouter
+    from unittest.mock import AsyncMock, MagicMock, patch
     from uuid import uuid4
+
+    from app.clients import ExecutionResult
+    from app.database.seed import TECHNIQUE_PLAYBOOK_SEEDS
+    from app.services.engine_router import EngineRouter
 
     count = await seeded_db.fetchval("SELECT COUNT(*) FROM technique_playbooks")
     if count == 0:
@@ -341,16 +370,23 @@ async def test_mcp_executor_uses_windows_output_parser(seeded_db):
                    (id, mitre_id, platform, command, output_parser, facts_traits, source, tags)
                    VALUES ($1, $2, $3, $4, $5, $6, 'seed', $7)
                    ON CONFLICT DO NOTHING""",
-                str(uuid4()), seed["mitre_id"], seed["platform"],
-                seed["command"], seed.get("output_parser"),
-                seed["facts_traits"], seed["tags"],
+                str(uuid4()),
+                seed["mitre_id"],
+                seed["platform"],
+                seed["command"],
+                seed.get("output_parser"),
+                seed["facts_traits"],
+                seed["tags"],
             )
 
     mock_mcp = MagicMock()
     mock_mcp.execute = AsyncMock(
         return_value=ExecutionResult(
-            success=True, execution_id="mock-id",
-            output="[MOCK WinRM] T1059.001 executed", facts=[], error=None,
+            success=True,
+            execution_id="mock-id",
+            output="[MOCK WinRM] T1059.001 executed",
+            facts=[],
+            error=None,
         )
     )
     mock_fc = MagicMock()

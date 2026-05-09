@@ -104,13 +104,9 @@ async def test_health_check_not_connected():
 async def test_list_servers():
     """list_servers() returns configured servers with connection status."""
     manager = MCPClientManager()
-    manager._configs["s1"] = MCPServerConfig(
-        name="s1", transport="stdio", enabled=True
-    )
+    manager._configs["s1"] = MCPServerConfig(name="s1", transport="stdio", enabled=True)
     manager._sessions["s1"] = AsyncMock()
-    manager._tools["s1"] = [
-        MCPToolInfo(server_name="s1", tool_name="t1", description="", input_schema={})
-    ]
+    manager._tools["s1"] = [MCPToolInfo(server_name="s1", tool_name="t1", description="", input_schema={})]
 
     servers = manager.list_servers()
     assert len(servers) == 1

@@ -30,9 +30,7 @@ async def test_enrichment_skips_when_mcp_disabled():
     with patch("app.services.ooda_controller.settings") as s:
         s.MCP_ENABLED = False
         # Should return without error
-        await controller._run_mcp_enrichment(
-            MagicMock(), "op-1", {"status": "success", "engine": "mcp"}
-        )
+        await controller._run_mcp_enrichment(MagicMock(), "op-1", {"status": "success", "engine": "mcp"})
 
 
 @pytest.mark.asyncio
@@ -49,9 +47,7 @@ async def test_enrichment_skips_non_mcp_engine():
     )
     with patch("app.services.ooda_controller.settings") as s:
         s.MCP_ENABLED = True
-        await controller._run_mcp_enrichment(
-            MagicMock(), "op-1", {"status": "success", "engine": "ssh"}
-        )
+        await controller._run_mcp_enrichment(MagicMock(), "op-1", {"status": "success", "engine": "ssh"})
 
 
 @pytest.mark.asyncio
@@ -68,6 +64,4 @@ async def test_enrichment_skips_non_success():
     )
     with patch("app.services.ooda_controller.settings") as s:
         s.MCP_ENABLED = True
-        await controller._run_mcp_enrichment(
-            MagicMock(), "op-1", {"status": "failed", "engine": "mcp"}
-        )
+        await controller._run_mcp_enrichment(MagicMock(), "op-1", {"status": "failed", "engine": "mcp"})

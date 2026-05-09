@@ -25,7 +25,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # T01: _execute_metasploit logs lhost= value
 # ---------------------------------------------------------------------------
@@ -48,12 +47,15 @@ async def test_t01_execute_metasploit_logs_lhost_from_settings(
     db.execute = AsyncMock()
     db.fetchrow = AsyncMock()
 
-    with patch(
-        "app.clients.metasploit_client.MetasploitRPCEngine",
-        autospec=True,
-    ) as mock_engine_cls, patch(
-        "app.services.engine_router.settings",
-    ) as mock_settings:
+    with (
+        patch(
+            "app.clients.metasploit_client.MetasploitRPCEngine",
+            autospec=True,
+        ) as mock_engine_cls,
+        patch(
+            "app.services.engine_router.settings",
+        ) as mock_settings,
+    ):
         mock_settings.RELAY_IP = "192.168.0.100"
         mock_settings.PERSISTENCE_ENABLED = False
 
@@ -91,8 +93,7 @@ async def test_t01_execute_metasploit_logs_lhost_from_settings(
 
     log_text = "\n".join(r.getMessage() for r in caplog.records)
     assert "lhost=192.168.0.100" in log_text, (
-        f"engine_router must log 'lhost=<value>' to audit metasploit "
-        f"LHOST per execution. Captured log:\n{log_text}"
+        f"engine_router must log 'lhost=<value>' to audit metasploit LHOST per execution. Captured log:\n{log_text}"
     )
 
 
@@ -112,12 +113,15 @@ async def test_t01_execute_metasploit_logs_lhost_degraded_when_relay_empty(
     db.execute = AsyncMock()
     db.fetchrow = AsyncMock()
 
-    with patch(
-        "app.clients.metasploit_client.MetasploitRPCEngine",
-        autospec=True,
-    ) as mock_engine_cls, patch(
-        "app.services.engine_router.settings",
-    ) as mock_settings:
+    with (
+        patch(
+            "app.clients.metasploit_client.MetasploitRPCEngine",
+            autospec=True,
+        ) as mock_engine_cls,
+        patch(
+            "app.services.engine_router.settings",
+        ) as mock_settings,
+    ):
         mock_settings.RELAY_IP = ""
         mock_settings.PERSISTENCE_ENABLED = False
 
@@ -154,7 +158,6 @@ async def test_t01_execute_metasploit_logs_lhost_degraded_when_relay_empty(
     # Degraded mode shows (none/bind) or empty-value marker — we accept
     # either as long as it's not a real IP.
     assert "lhost=" in log_text, (
-        f"engine_router must emit lhost= in log even when RELAY_IP is empty. "
-        f"Captured:\n{log_text}"
+        f"engine_router must emit lhost= in log even when RELAY_IP is empty. Captured:\n{log_text}"
     )
     assert "192.168.0.100" not in log_text

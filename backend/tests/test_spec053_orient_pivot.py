@@ -32,12 +32,12 @@ we don't need a running postgres for the pivot detection logic.
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from app.services.orient_engine import _ORIENT_SYSTEM_PROMPT
-from app.services.ooda_controller import OODAController
+import pytest
 
+from app.services.ooda_controller import OODAController
+from app.services.orient_engine import _ORIENT_SYSTEM_PROMPT
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -81,7 +81,9 @@ async def test_t08_pivot_detected_when_t1190_follows_t1110_auth_failure() -> Non
     }
 
     pivot = await controller._detect_cross_category_pivot(
-        db, "op-001", decision,
+        db,
+        "op-001",
+        decision,
     )
 
     assert pivot is not None
@@ -99,7 +101,9 @@ async def test_t08_pivot_detected_for_t1078_prior_failure() -> None:
     db.fetchrow = AsyncMock(return_value={"technique_id": "T1078.001"})
 
     pivot = await controller._detect_cross_category_pivot(
-        db, "op-001", {"technique_id": "T1190", "target_id": "tgt-abc"},
+        db,
+        "op-001",
+        {"technique_id": "T1190", "target_id": "tgt-abc"},
     )
     assert pivot is not None
     assert pivot["from_technique"] == "T1078.001"
@@ -113,7 +117,9 @@ async def test_t08_not_a_pivot_when_no_prior_failure() -> None:
     db.fetchrow = AsyncMock(return_value=None)
 
     pivot = await controller._detect_cross_category_pivot(
-        db, "op-001", {"technique_id": "T1190", "target_id": "tgt-abc"},
+        db,
+        "op-001",
+        {"technique_id": "T1190", "target_id": "tgt-abc"},
     )
     assert pivot is None
 
@@ -128,7 +134,9 @@ async def test_t08_not_a_pivot_when_decision_is_not_t1190() -> None:
 
     for tech in ("T1046", "T1110.001", "T1003.001"):
         pivot = await controller._detect_cross_category_pivot(
-            db, "op-001", {"technique_id": tech, "target_id": "tgt-abc"},
+            db,
+            "op-001",
+            {"technique_id": tech, "target_id": "tgt-abc"},
         )
         assert pivot is None, f"{tech} should not be classified as pivot"
 
@@ -141,7 +149,9 @@ async def test_t08_not_a_pivot_with_missing_target_id() -> None:
     db.fetchrow = AsyncMock(return_value={"technique_id": "T1110.001"})
 
     pivot = await controller._detect_cross_category_pivot(
-        db, "op-001", {"technique_id": "T1190"},
+        db,
+        "op-001",
+        {"technique_id": "T1190"},
     )
     assert pivot is None
 
@@ -164,8 +174,7 @@ def test_rule_8_relaxed_no_longer_requires_cve_fact() -> None:
     # Phrase from old prompt that should be gone
     assert "CVE facts present" not in _ORIENT_SYSTEM_PROMPT
     # New phrasing that should be in
-    assert "known exploitable" in _ORIENT_SYSTEM_PROMPT.lower() \
-        or "exploitable banner" in _ORIENT_SYSTEM_PROMPT.lower()
+    assert "known exploitable" in _ORIENT_SYSTEM_PROMPT.lower() or "exploitable banner" in _ORIENT_SYSTEM_PROMPT.lower()
 
 
 def test_rule_9_explicit_exception_to_rule_6() -> None:
@@ -173,5 +182,4 @@ def test_rule_9_explicit_exception_to_rule_6() -> None:
     # Must mention Rule 6 (No Redundant Recommendations) and note the
     # exception so an LLM reading the prompt doesn't suppress T1190.
     assert "Rule #6" in _ORIENT_SYSTEM_PROMPT
-    assert "EXPLICIT EXCEPTION" in _ORIENT_SYSTEM_PROMPT or \
-        "exception" in _ORIENT_SYSTEM_PROMPT.lower()
+    assert "EXPLICIT EXCEPTION" in _ORIENT_SYSTEM_PROMPT or "exception" in _ORIENT_SYSTEM_PROMPT.lower()

@@ -21,17 +21,18 @@ from fastapi import APIRouter, Depends
 
 from app.database import db_manager, get_db
 from app.models import OODAIteration
-from app.models.enums import OODAPhase
-from app.models.ooda import OodaTriggerQueued, OODADirectiveCreate, OodaDashboardResponse
 from app.models.api_schemas import OODATimelineEntry
+from app.models.enums import OODAPhase
+from app.models.ooda import OodaDashboardResponse, OODADirectiveCreate, OodaTriggerQueued
 from app.routers._deps import ensure_operation
-from app.utils.enum_safety import safe_enum
 from app.services.ooda_controller import OODAController
+from app.services.ooda_scheduler import get_loop_status, start_auto_loop, stop_auto_loop
+from app.utils.enum_safety import safe_enum
 from app.ws_manager import ws_manager
-from app.services.ooda_scheduler import start_auto_loop, stop_auto_loop, get_loop_status
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
 
 @functools.lru_cache(maxsize=1)
 def _get_controller() -> OODAController:
@@ -40,6 +41,7 @@ def _get_controller() -> OODAController:
     Delegates to build_ooda_controller() which correctly wires MCP engine.
     """
     from app.services.ooda_controller import build_ooda_controller  # noqa: PLC0415
+
     return build_ooda_controller()
 
 
@@ -61,8 +63,6 @@ def _row_to_ooda(row: asyncpg.Record) -> OODAIteration:
 
 
 @router.post("/operations/{operation_id}/ooda/trigger", status_code=202)
-
-
 async def trigger_ooda(
     operation_id: str,
     db: asyncpg.Connection = Depends(get_db),
@@ -72,14 +72,11 @@ async def trigger_ooda(
 
     iteration_id = str(uuid.uuid4())
 
-    _task = asyncio.create_task(
-        _run_ooda_background(iteration_id, operation_id)
-    )
+    _task = asyncio.create_task(_run_ooda_background(iteration_id, operation_id))
     _task.add_done_callback(
-        lambda t: logger.warning(
-            "OODA background task cancelled for iteration %s", iteration_id
+        lambda t: (
+            logger.warning("OODA background task cancelled for iteration %s", iteration_id) if t.cancelled() else None
         )
-        if t.cancelled() else None
     )
 
     return OodaTriggerQueued(
@@ -95,23 +92,22 @@ async def _run_ooda_background(iteration_id: str, op_id: str) -> None:
             controller = _get_controller()
             await controller.trigger_cycle(db, op_id)
         except Exception as exc:
-            logger.exception(
-                "Background OODA cycle %s failed: %s", iteration_id, exc
-            )
+            logger.exception("Background OODA cycle %s failed: %s", iteration_id, exc)
             try:
                 await db.execute(
-                    "UPDATE ooda_iterations SET phase = 'failed' "
-                    "WHERE id = $1",
+                    "UPDATE ooda_iterations SET phase = 'failed' WHERE id = $1",
                     iteration_id,
                 )
             except Exception:
-                logger.exception(
-                    "Failed to update ooda_iteration status for %s", iteration_id
-                )
-            await ws_manager.broadcast(op_id, "ooda.failed", {
-                "iteration_id": iteration_id,
-                "error": str(exc),
-            })
+                logger.exception("Failed to update ooda_iteration status for %s", iteration_id)
+            await ws_manager.broadcast(
+                op_id,
+                "ooda.failed",
+                {
+                    "iteration_id": iteration_id,
+                    "error": str(exc),
+                },
+            )
 
 
 @router.get(
@@ -129,8 +125,7 @@ async def get_ooda_dashboard(
         operation_id,
     )
     rows = await db.fetch(
-        "SELECT * FROM ooda_iterations WHERE operation_id = $1 "
-        "ORDER BY iteration_number DESC",
+        "SELECT * FROM ooda_iterations WHERE operation_id = $1 ORDER BY iteration_number DESC",
         operation_id,
     )
     iterations = [_row_to_ooda(r) for r in rows]
@@ -144,8 +139,6 @@ async def get_ooda_dashboard(
 
 
 @router.get("/operations/{operation_id}/ooda/current", response_model=OODAIteration | None)
-
-
 async def get_current_ooda(
     operation_id: str,
     db: asyncpg.Connection = Depends(get_db),
@@ -153,8 +146,7 @@ async def get_current_ooda(
     await ensure_operation(db, operation_id)
 
     row = await db.fetchrow(
-        "SELECT * FROM ooda_iterations WHERE operation_id = $1 "
-        "ORDER BY iteration_number DESC LIMIT 1",
+        "SELECT * FROM ooda_iterations WHERE operation_id = $1 ORDER BY iteration_number DESC LIMIT 1",
         operation_id,
     )
     if not row:
@@ -163,8 +155,6 @@ async def get_current_ooda(
 
 
 @router.get("/operations/{operation_id}/ooda/history", response_model=list[OODAIteration])
-
-
 async def get_ooda_history(
     operation_id: str,
     db: asyncpg.Connection = Depends(get_db),
@@ -172,8 +162,7 @@ async def get_ooda_history(
     await ensure_operation(db, operation_id)
 
     rows = await db.fetch(
-        "SELECT * FROM ooda_iterations WHERE operation_id = $1 "
-        "ORDER BY iteration_number ASC",
+        "SELECT * FROM ooda_iterations WHERE operation_id = $1 ORDER BY iteration_number ASC",
         operation_id,
     )
     return [_row_to_ooda(r) for r in rows]
@@ -183,8 +172,6 @@ async def get_ooda_history(
     "/operations/{operation_id}/ooda/timeline",
     response_model=list[OODATimelineEntry],
 )
-
-
 async def get_ooda_timeline(
     operation_id: str,
     db: asyncpg.Connection = Depends(get_db),
@@ -193,8 +180,7 @@ async def get_ooda_timeline(
     await ensure_operation(db, operation_id)
 
     rows = await db.fetch(
-        "SELECT * FROM ooda_iterations WHERE operation_id = $1 "
-        "ORDER BY iteration_number ASC",
+        "SELECT * FROM ooda_iterations WHERE operation_id = $1 ORDER BY iteration_number ASC",
         operation_id,
     )
 
@@ -305,9 +291,7 @@ async def get_ooda_timeline(
         host = row["hostname"] or row["ip_address"] or row["scan_ip"] or "unknown"
         parts = [f"Target: {host}"]
         if ports:
-            port_list = ", ".join(
-                f"{p['port']}/{p.get('service', '?')}" for p in ports
-            )
+            port_list = ", ".join(f"{p['port']}/{p.get('service', '?')}" for p in ports)
             parts.append(f"Ports: {port_list}")
         if row["os_guess"]:
             parts.append(f"OS: {row['os_guess']}")
@@ -339,7 +323,10 @@ async def create_directive(
     directive_id = str(uuid.uuid4())
     await db.execute(
         "INSERT INTO ooda_directives (id, operation_id, directive, scope) VALUES ($1, $2, $3, $4)",
-        directive_id, operation_id, body.directive, body.scope,
+        directive_id,
+        operation_id,
+        body.directive,
+        body.scope,
     )
     return {"id": directive_id, "status": "stored"}
 
@@ -377,8 +364,6 @@ async def get_operation_brief(
 
 
 @router.post("/operations/{operation_id}/ooda/auto-start")
-
-
 async def start_ooda_auto_loop(
     operation_id: str,
     interval_sec: int = 30,
@@ -395,8 +380,6 @@ async def start_ooda_auto_loop(
 
 
 @router.delete("/operations/{operation_id}/ooda/auto-stop")
-
-
 async def stop_ooda_auto_loop(
     operation_id: str,
     db: asyncpg.Connection = Depends(get_db),
@@ -407,8 +390,6 @@ async def stop_ooda_auto_loop(
 
 
 @router.get("/operations/{operation_id}/ooda/auto-status")
-
-
 async def get_ooda_auto_status(operation_id: str):
     """Get auto loop status for this operation (purely in-memory, no DB check needed)."""
     return get_loop_status(operation_id)

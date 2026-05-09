@@ -47,8 +47,6 @@ def _row_to_technique(row: asyncpg.Record) -> Technique:
 
 
 @router.get("/techniques", response_model=list[Technique])
-
-
 async def list_techniques(db: asyncpg.Connection = Depends(get_db)):
     """Return the full static technique catalog."""
     rows = await db.fetch("SELECT * FROM techniques ORDER BY mitre_id")
@@ -56,8 +54,6 @@ async def list_techniques(db: asyncpg.Connection = Depends(get_db)):
 
 
 @router.post("/techniques", status_code=201)
-
-
 async def create_technique(
     body: TechniqueCreate,
     db: asyncpg.Connection = Depends(get_db),
@@ -85,17 +81,12 @@ async def create_technique(
 
 
 @router.post("/techniques/sync-c2", status_code=202)
-
-
 async def sync_c2_abilities(
     db: asyncpg.Connection = Depends(get_db),  # noqa: ARG001  kept for DI consistency
 ):
     """Sync c2_ability_id from C2 engine's ability catalog -- returns 202 immediately."""
     _task = asyncio.create_task(_sync_techniques_background())
-    _task.add_done_callback(
-        lambda t: logger.warning("techniques/sync-c2 task cancelled")
-        if t.cancelled() else None
-    )
+    _task.add_done_callback(lambda t: logger.warning("techniques/sync-c2 task cancelled") if t.cancelled() else None)
     return {"status": "sync_started"}
 
 
@@ -119,9 +110,7 @@ async def _sync_techniques_background() -> None:
         # Build mitre_id -> ability_id mapping
         mapping: dict[str, str] = {}
         for ab in abilities:
-            tech_id = ab.get("technique_id") or ab.get("technique", {}).get(
-                "attack_id", ""
-            )
+            tech_id = ab.get("technique_id") or ab.get("technique", {}).get("attack_id", "")
             ab_id = ab.get("ability_id") or ab.get("id", "")
             if tech_id and ab_id:
                 mapping.setdefault(tech_id, ab_id)
@@ -132,15 +121,18 @@ async def _sync_techniques_background() -> None:
                 result = await db.execute(
                     "UPDATE techniques SET c2_ability_id = $1 "
                     "WHERE mitre_id = $2 AND (c2_ability_id IS NULL OR c2_ability_id = '')",
-                    ability_id, mitre_id,
+                    ability_id,
+                    mitre_id,
                 )
                 # asyncpg returns 'UPDATE N' string
-                if result and result.split()[-1] != '0':
+                if result and result.split()[-1] != "0":
                     synced += 1
 
         logger.info(
             "techniques/sync-c2: synced=%d total_abilities=%d mapped=%d",
-            synced, len(abilities), len(mapping),
+            synced,
+            len(abilities),
+            len(mapping),
         )
         # techniques/sync-c2 is a global endpoint (no op_id) --
         # WS broadcast requires an operation_id, so we log only.
@@ -152,8 +144,6 @@ async def _sync_techniques_background() -> None:
     "/operations/{operation_id}/techniques",
     response_model=list[TechniqueWithStatus],
 )
-
-
 async def list_techniques_with_status(
     operation_id: str,
     db: asyncpg.Connection = Depends(get_db),
@@ -210,14 +200,13 @@ async def list_techniques_with_status(
 
 
 @router.get("/operations/{operation_id}/attack-path", response_model=AttackPathResponse)
-
-
 async def get_attack_path(
     operation_id: str,
     db: asyncpg.Connection = Depends(get_db),
 ) -> AttackPathResponse:
     """Return full execution history for attack path timeline visualization."""
     from app.routers._deps import ensure_operation
+
     await ensure_operation(db, operation_id)
 
     rows = await db.fetch(
@@ -249,8 +238,20 @@ async def get_attack_path(
 
     # TACTIC_ORDER defines the 14 ATT&CK tactics left-to-right
     TACTIC_ORDER_IDS = [
-        "TA0043", "TA0042", "TA0001", "TA0002", "TA0003", "TA0004", "TA0005",
-        "TA0006", "TA0007", "TA0008", "TA0009", "TA0011", "TA0010", "TA0040",
+        "TA0043",
+        "TA0042",
+        "TA0001",
+        "TA0002",
+        "TA0003",
+        "TA0004",
+        "TA0005",
+        "TA0006",
+        "TA0007",
+        "TA0008",
+        "TA0009",
+        "TA0011",
+        "TA0010",
+        "TA0040",
     ]
     tactic_idx_map = {tid: i for i, tid in enumerate(TACTIC_ORDER_IDS)}
 
@@ -265,9 +266,18 @@ async def get_attack_path(
         if r.get("started_at") and r.get("completed_at"):
             try:
                 from datetime import datetime
+
                 fmt = "%Y-%m-%dT%H:%M:%S.%f" if "." in r["started_at"] else "%Y-%m-%dT%H:%M:%S"
-                t_start = (r["started_at"] if isinstance(r["started_at"], datetime) else datetime.fromisoformat(r["started_at"]))
-                t_end = (r["completed_at"] if isinstance(r["completed_at"], datetime) else datetime.fromisoformat(r["completed_at"]))
+                t_start = (
+                    r["started_at"]
+                    if isinstance(r["started_at"], datetime)
+                    else datetime.fromisoformat(r["started_at"])
+                )
+                t_end = (
+                    r["completed_at"]
+                    if isinstance(r["completed_at"], datetime)
+                    else datetime.fromisoformat(r["completed_at"])
+                )
                 duration_sec = (t_end - t_start).total_seconds()
             except Exception:
                 pass
@@ -283,7 +293,9 @@ async def get_attack_path(
             status=r["status"] or "queued",
             engine=r["engine"] or "",
             started_at=r["started_at"].isoformat() if hasattr(r["started_at"], "isoformat") else r["started_at"],
-            completed_at=r["completed_at"].isoformat() if hasattr(r["completed_at"], "isoformat") else r["completed_at"],
+            completed_at=r["completed_at"].isoformat()
+            if hasattr(r["completed_at"], "isoformat")
+            else r["completed_at"],
             duration_sec=duration_sec,
             result_summary=r["result_summary"],
             error_message=r["error_message"],

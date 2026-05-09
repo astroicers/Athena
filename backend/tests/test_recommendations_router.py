@@ -8,11 +8,12 @@
 
 """Integration tests for the Recommendations router."""
 
+from uuid import uuid4
+
+import asyncpg
 import pytest
 import pytest_asyncio
-import asyncpg
 from httpx import ASGITransport, AsyncClient
-from uuid import uuid4
 
 
 # ---------------------------------------------------------------------------
@@ -39,9 +40,13 @@ async def client_with_db(seeded_db: asyncpg.Connection):
                    (id, mitre_id, platform, command, output_parser, facts_traits, source, tags)
                    VALUES ($1, $2, $3, $4, $5, $6, 'seed', $7)
                    ON CONFLICT DO NOTHING""",
-                str(uuid4()), seed["mitre_id"], seed["platform"],
-                seed["command"], seed.get("output_parser"),
-                seed["facts_traits"], seed["tags"],
+                str(uuid4()),
+                seed["mitre_id"],
+                seed["platform"],
+                seed["command"],
+                seed.get("output_parser"),
+                seed["facts_traits"],
+                seed["tags"],
             )
 
     async def _override_get_db():
@@ -61,6 +66,7 @@ async def client_with_db(seeded_db: asyncpg.Connection):
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 async def test_get_latest_recommendation_none(client: AsyncClient):
     """GET /api/operations/test-op-1/recommendations/latest returns 200 with null when empty."""
@@ -164,9 +170,7 @@ async def test_accept_recommendation(client_with_db):
         )
     """)
 
-    resp = await client.post(
-        "/api/operations/test-op-1/recommendations/rec-3/accept"
-    )
+    resp = await client.post("/api/operations/test-op-1/recommendations/rec-3/accept")
     assert resp.status_code == 200
     data = resp.json()
     assert data["id"] == "rec-3"
@@ -175,7 +179,5 @@ async def test_accept_recommendation(client_with_db):
 
 async def test_accept_recommendation_not_found(client: AsyncClient):
     """POST /api/operations/test-op-1/recommendations/{bad_id}/accept returns 404."""
-    resp = await client.post(
-        "/api/operations/test-op-1/recommendations/nonexistent-rec-id/accept"
-    )
+    resp = await client.post("/api/operations/test-op-1/recommendations/nonexistent-rec-id/accept")
     assert resp.status_code == 404

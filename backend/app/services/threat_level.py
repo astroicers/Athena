@@ -71,18 +71,14 @@ async def compute_threat_level(
     dwell_factor = min(1.0, dwell_hours / 24.0)
 
     # Composite
-    level = (
-        0.35 * noise_factor
-        + 0.25 * auth_factor
-        + 0.25 * detect_factor
-        + 0.15 * dwell_factor
-    )
+    level = 0.35 * noise_factor + 0.25 * auth_factor + 0.25 * detect_factor + 0.15 * dwell_factor
     level = round(min(1.0, max(0.0, level)), 3)
 
     # Update operations table
     await db.execute(
         "UPDATE operations SET threat_level = $1 WHERE id = $2",
-        level, operation_id,
+        level,
+        operation_id,
     )
 
     return ThreatLevel(

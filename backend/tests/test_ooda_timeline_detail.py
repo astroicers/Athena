@@ -30,6 +30,7 @@ pytestmark = pytest.mark.asyncio
 # Helper: insert an OODA iteration with linked data
 # ---------------------------------------------------------------------------
 
+
 async def _seed_iteration(
     db,
     *,
@@ -56,9 +57,12 @@ async def _seed_iteration(
             "(id, operation_id, ooda_iteration_id, situation_assessment, "
             "recommended_technique_id, confidence, options, reasoning_text, accepted) "
             "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-            rec_id, operation_id, iter_id,
+            rec_id,
+            operation_id,
+            iter_id,
             "Host DC-01 shows credential access opportunity",
-            "T1003.001", 0.85,
+            "T1003.001",
+            0.85,
             json.dumps([{"technique": "T1003.001", "confidence": 0.85}]),
             "LSASS memory dump is most likely to succeed",
             True,
@@ -72,17 +76,28 @@ async def _seed_iteration(
             "engine, status, result_summary, error_message, facts_collected_count, "
             "started_at, completed_at) "
             "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())",
-            exec_id, "T1003.001", target_id, operation_id, iter_id,
-            "mcp_ssh", "success", "Dumped 3 credentials", None, 3,
+            exec_id,
+            "T1003.001",
+            target_id,
+            operation_id,
+            iter_id,
+            "mcp_ssh",
+            "success",
+            "Dumped 3 credentials",
+            None,
+            3,
         )
 
     # Insert facts if needed (for observe detail)
     if with_facts:
         for i in range(3):
             await db.execute(
-                "INSERT INTO facts (id, trait, value, category, operation_id) "
-                "VALUES ($1, $2, $3, $4, $5)",
-                str(uuid4()), f"host.port.{i}", f"{80 + i}", "host", operation_id,
+                "INSERT INTO facts (id, trait, value, category, operation_id) VALUES ($1, $2, $3, $4, $5)",
+                str(uuid4()),
+                f"host.port.{i}",
+                f"{80 + i}",
+                "host",
+                operation_id,
             )
 
     # Insert the OODA iteration
@@ -92,9 +107,16 @@ async def _seed_iteration(
         "observe_summary, orient_summary, decide_summary, act_summary, "
         "recommendation_id, technique_execution_id, started_at) "
         "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())",
-        iter_id, operation_id, iteration_number, "act",
-        observe, orient, decide, act,
-        rec_id, exec_id,
+        iter_id,
+        operation_id,
+        iteration_number,
+        "act",
+        observe,
+        orient,
+        decide,
+        act,
+        rec_id,
+        exec_id,
     )
 
     return {

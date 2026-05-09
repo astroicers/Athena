@@ -10,15 +10,16 @@
 
 """Unit tests for ReconEngine — SPEC-018 Phase 12 acceptance criteria."""
 
+from unittest.mock import AsyncMock, MagicMock, call, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch, call
 
 from app.services.recon_engine import ReconEngine
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_mock_db(ip_row=None):
     """Return a fully-mocked asyncpg connection.
@@ -55,14 +56,16 @@ def make_ip_row(ip: str = "192.168.1.100"):
 # Test: scan in mock mode returns three services
 # ---------------------------------------------------------------------------
 
+
 async def test_scan_mock_returns_three_services():
     """MOCK_C2_ENGINE=True → result.services has exactly 3 items."""
     row = make_ip_row("192.168.1.100")
     db = make_mock_db(ip_row=row)
 
-    with patch("app.services.recon_engine.settings") as mock_settings, \
-         patch("app.services.recon_engine.ws_manager.broadcast", new=AsyncMock()):
-
+    with (
+        patch("app.services.recon_engine.settings") as mock_settings,
+        patch("app.services.recon_engine.ws_manager.broadcast", new=AsyncMock()),
+    ):
         mock_settings.MOCK_C2_ENGINE = True
 
         result = await ReconEngine().scan(db, "op-001", "tgt-001")
@@ -76,14 +79,16 @@ async def test_scan_mock_returns_three_services():
 # Test: scan in mock mode writes exactly 5 facts
 # ---------------------------------------------------------------------------
 
+
 async def test_scan_mock_writes_facts():
     """MOCK_C2_ENGINE=True → result.facts_written == 5 (3 services + 1 IP + 1 OS)."""
     row = make_ip_row("192.168.1.100")
     db = make_mock_db(ip_row=row)
 
-    with patch("app.services.recon_engine.settings") as mock_settings, \
-         patch("app.services.recon_engine.ws_manager.broadcast", new=AsyncMock()):
-
+    with (
+        patch("app.services.recon_engine.settings") as mock_settings,
+        patch("app.services.recon_engine.ws_manager.broadcast", new=AsyncMock()),
+    ):
         mock_settings.MOCK_C2_ENGINE = True
 
         result = await ReconEngine().scan(db, "op-001", "tgt-001")
@@ -96,13 +101,15 @@ async def test_scan_mock_writes_facts():
 # Test: scan raises ValueError when target is not found
 # ---------------------------------------------------------------------------
 
+
 async def test_scan_target_not_found_raises():
     """fetchone() returning None → ValueError is raised."""
     db = make_mock_db(ip_row=None)
 
-    with patch("app.services.recon_engine.settings") as mock_settings, \
-         patch("app.services.recon_engine.ws_manager.broadcast", new=AsyncMock()):
-
+    with (
+        patch("app.services.recon_engine.settings") as mock_settings,
+        patch("app.services.recon_engine.ws_manager.broadcast", new=AsyncMock()),
+    ):
         mock_settings.MOCK_C2_ENGINE = True
 
         with pytest.raises(ValueError, match="tgt-missing"):
@@ -113,14 +120,16 @@ async def test_scan_target_not_found_raises():
 # SPEC-036: facts_written field in scan results
 # ---------------------------------------------------------------------------
 
+
 async def test_scan_result_includes_facts_written():
     """SPEC-036: ReconResult from scan() contains a ``facts_written`` int field."""
     row = make_ip_row("192.168.1.100")
     db = make_mock_db(ip_row=row)
 
-    with patch("app.services.recon_engine.settings") as mock_settings, \
-         patch("app.services.recon_engine.ws_manager.broadcast", new=AsyncMock()):
-
+    with (
+        patch("app.services.recon_engine.settings") as mock_settings,
+        patch("app.services.recon_engine.ws_manager.broadcast", new=AsyncMock()),
+    ):
         mock_settings.MOCK_C2_ENGINE = True
 
         result = await ReconEngine().scan(db, "op-001", "tgt-001")
@@ -143,10 +152,11 @@ async def test_facts_written_default_zero():
     # Patch _scan_via_mcp to return empty services, no OS, no XML
     empty_mcp = AsyncMock(return_value=([], None, None, 0.01))
 
-    with patch("app.services.recon_engine.settings") as mock_settings, \
-         patch("app.services.recon_engine.ws_manager.broadcast", new=AsyncMock()), \
-         patch.object(ReconEngine, "_scan_via_mcp", empty_mcp):
-
+    with (
+        patch("app.services.recon_engine.settings") as mock_settings,
+        patch("app.services.recon_engine.ws_manager.broadcast", new=AsyncMock()),
+        patch.object(ReconEngine, "_scan_via_mcp", empty_mcp),
+    ):
         mock_settings.MOCK_C2_ENGINE = False
         mock_settings.MCP_ENABLED = True
         mock_settings.NMAP_SCAN_TIMEOUT_SEC = 30
@@ -163,6 +173,7 @@ async def test_facts_written_default_zero():
 # SPEC-036: empty nmap result produces warning log
 # ---------------------------------------------------------------------------
 
+
 async def test_empty_nmap_result_warning_log(caplog):
     """SPEC-036: when MCP nmap returns 0 services a WARNING is logged."""
     import logging
@@ -173,10 +184,11 @@ async def test_empty_nmap_result_warning_log(caplog):
     # _scan_via_mcp returns empty services with some raw XML
     empty_mcp = AsyncMock(return_value=([], None, "<nmap/>", 0.01))
 
-    with patch("app.services.recon_engine.settings") as mock_settings, \
-         patch("app.services.recon_engine.ws_manager.broadcast", new=AsyncMock()), \
-         patch.object(ReconEngine, "_scan_via_mcp", empty_mcp):
-
+    with (
+        patch("app.services.recon_engine.settings") as mock_settings,
+        patch("app.services.recon_engine.ws_manager.broadcast", new=AsyncMock()),
+        patch.object(ReconEngine, "_scan_via_mcp", empty_mcp),
+    ):
         mock_settings.MOCK_C2_ENGINE = False
         mock_settings.MCP_ENABLED = True
         mock_settings.NMAP_SCAN_TIMEOUT_SEC = 30
@@ -189,6 +201,4 @@ async def test_empty_nmap_result_warning_log(caplog):
     assert result.services == []
     # Verify the warning log was emitted
     warning_msgs = [r.message for r in caplog.records if r.levelno >= logging.WARNING]
-    assert any("0 services" in msg for msg in warning_msgs), (
-        f"Expected a warning about 0 services; got: {warning_msgs}"
-    )
+    assert any("0 services" in msg for msg in warning_msgs), f"Expected a warning about 0 services; got: {warning_msgs}"

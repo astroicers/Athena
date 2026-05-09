@@ -17,10 +17,10 @@ import pytest
 
 from app.services.agent_capability_matcher import AgentCapabilityMatcher
 
-
 # ---------------------------------------------------------------------------
 # DB helpers — insert parent rows before inserting agents
 # ---------------------------------------------------------------------------
+
 
 async def _ensure_operation(db: asyncpg.Connection, operation_id: str) -> None:
     """Insert an operation row if it doesn't already exist."""
@@ -29,8 +29,11 @@ async def _ensure_operation(db: asyncpg.Connection, operation_id: str) -> None:
         "(id, code, name, codename, strategic_intent, status, current_ooda_phase) "
         "VALUES ($1, $2, $3, $4, $5, 'active', 'observe') "
         "ON CONFLICT DO NOTHING",
-        operation_id, f"CODE-{operation_id}", f"Op {operation_id}",
-        f"CN-{operation_id}", "test intent",
+        operation_id,
+        f"CODE-{operation_id}",
+        f"Op {operation_id}",
+        f"CN-{operation_id}",
+        "test intent",
     )
 
 
@@ -46,7 +49,9 @@ async def _ensure_target(
         "(id, hostname, ip_address, os, role, operation_id) "
         "VALUES ($1, $2, '10.0.0.1', 'Windows', 'server', $3) "
         "ON CONFLICT DO NOTHING",
-        host_id, f"host-{host_id}", operation_id,
+        host_id,
+        f"host-{host_id}",
+        operation_id,
     )
 
 
@@ -64,7 +69,13 @@ async def _insert_agent(
     await db.execute(
         "INSERT INTO agents (id, paw, host_id, operation_id, status, privilege, platform) "
         "VALUES ($1, $2, $3, $4, $5, $6, $7)",
-        str(uuid.uuid4()), paw, host_id, operation_id, status, privilege, platform,
+        str(uuid.uuid4()),
+        paw,
+        host_id,
+        operation_id,
+        status,
+        privilege,
+        platform,
     )
 
 
@@ -78,13 +89,17 @@ async def _insert_playbook(
         "INSERT INTO technique_playbooks (id, mitre_id, platform, command) "
         "VALUES ($1, $2, $3, $4) "
         "ON CONFLICT DO NOTHING",
-        str(uuid.uuid4()), mitre_id, platform, "whoami",
+        str(uuid.uuid4()),
+        mitre_id,
+        platform,
+        "whoami",
     )
 
 
 # ---------------------------------------------------------------------------
 # Fixture
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def matcher():
@@ -95,11 +110,10 @@ def matcher():
 # Tests
 # ---------------------------------------------------------------------------
 
+
 # Test 1: No agents → None
 async def test_no_agents_returns_none(seeded_db, matcher):
-    result = await matcher.select_agent_for_technique(
-        seeded_db, "op-1", "target-1", "T9999.001"
-    )
+    result = await matcher.select_agent_for_technique(seeded_db, "op-1", "target-1", "T9999.001")
     assert result is None
 
 

@@ -28,10 +28,10 @@ import pytest
 from app.services.decision_engine import DecisionEngine
 from app.services.kill_chain_enforcer import KillChainPenalty
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _uid() -> str:
     return str(uuid.uuid4())
@@ -61,7 +61,12 @@ async def _insert_target(
         "INSERT INTO targets (id, hostname, ip_address, os, role, operation_id, "
         "is_compromised, privilege_level, access_status) "
         "VALUES ($1, 'host', $2, 'Linux', 'server', $3, $4, $5, $6)",
-        target_id, ip, op_id, is_compromised, privilege_level, access_status,
+        target_id,
+        ip,
+        op_id,
+        is_compromised,
+        privilege_level,
+        access_status,
     )
 
 
@@ -79,14 +84,20 @@ async def _insert_technique_executions(
             "INSERT INTO technique_executions (id, technique_id, target_id, operation_id, "
             "engine, status, started_at, completed_at) "
             "VALUES ($1, $2, $3, $4, 'mcp_ssh', 'success', NOW(), NOW())",
-            _uid(), technique_id, target_id, op_id,
+            _uid(),
+            technique_id,
+            target_id,
+            op_id,
         )
     for _ in range(fail_count):
         await db.execute(
             "INSERT INTO technique_executions (id, technique_id, target_id, operation_id, "
             "engine, status, started_at, completed_at) "
             "VALUES ($1, $2, $3, $4, 'mcp_ssh', 'failed', NOW(), NOW())",
-            _uid(), technique_id, target_id, op_id,
+            _uid(),
+            technique_id,
+            target_id,
+            op_id,
         )
 
 
@@ -102,7 +113,12 @@ async def _insert_graph_node(
         "INSERT INTO attack_graph_nodes (id, operation_id, target_id, technique_id, "
         "tactic_id, status, confidence) "
         "VALUES ($1, $2, $3, $4, $5, 'pending', $6)",
-        _uid(), op_id, target_id, technique_id, tactic_id, confidence,
+        _uid(),
+        op_id,
+        target_id,
+        technique_id,
+        tactic_id,
+        confidence,
     )
 
 
@@ -115,7 +131,10 @@ async def _insert_edr_fact(
     await db.execute(
         "INSERT INTO facts (id, trait, value, category, source_target_id, operation_id) "
         "VALUES ($1, $2, 'CrowdStrike', 'host', $3, $4)",
-        _uid(), trait, target_id, op_id,
+        _uid(),
+        trait,
+        target_id,
+        op_id,
     )
 
 
@@ -132,6 +151,7 @@ def _kc_enforcer_mock() -> AsyncMock:
 # TC-A1: All four sources available, normal calculation
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_tc_a1_all_four_sources(tmp_db: asyncpg.Connection):
     """TC-A1: All four sources available, normal calculation.
@@ -145,13 +165,21 @@ async def test_tc_a1_all_four_sources(tmp_db: asyncpg.Connection):
 
     await _insert_operation(tmp_db, op_id)
     await _insert_target(
-        tmp_db, target_id, op_id,
-        is_compromised=False, privilege_level="root", access_status="unknown",
+        tmp_db,
+        target_id,
+        op_id,
+        is_compromised=False,
+        privilege_level="root",
+        access_status="unknown",
     )
     # 3 success + 2 fail = 5 total => rate = 3/5 = 0.60
     await _insert_technique_executions(
-        tmp_db, technique_id, target_id, op_id,
-        success_count=3, fail_count=2,
+        tmp_db,
+        technique_id,
+        target_id,
+        op_id,
+        success_count=3,
+        fail_count=2,
     )
     # Graph node with confidence=0.70
     await _insert_graph_node(tmp_db, op_id, target_id, technique_id, "TA0006", 0.70)
@@ -160,7 +188,10 @@ async def test_tc_a1_all_four_sources(tmp_db: asyncpg.Connection):
     engine._enforcer = _kc_enforcer_mock()
 
     composite, breakdown = await engine._compute_composite_confidence(
-        tmp_db, op_id, technique_id, target_id,
+        tmp_db,
+        op_id,
+        technique_id,
+        target_id,
         raw_confidence=0.80,
         tactic_id="TA0006",
     )
@@ -182,6 +213,7 @@ async def test_tc_a1_all_four_sources(tmp_db: asyncpg.Connection):
 # TC-A2: No history -> historical falls back to 0.5
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_tc_a2_no_history_fallback(tmp_db: asyncpg.Connection):
     """TC-A2: No technique_executions records -> historical = 0.5."""
@@ -197,7 +229,10 @@ async def test_tc_a2_no_history_fallback(tmp_db: asyncpg.Connection):
     engine._enforcer = _kc_enforcer_mock()
 
     _, breakdown = await engine._compute_composite_confidence(
-        tmp_db, op_id, technique_id, target_id,
+        tmp_db,
+        op_id,
+        technique_id,
+        target_id,
         raw_confidence=0.80,
         tactic_id="TA0002",
     )
@@ -208,6 +243,7 @@ async def test_tc_a2_no_history_fallback(tmp_db: asyncpg.Connection):
 # ---------------------------------------------------------------------------
 # TC-A3: EDR detected -> target_state subtracts 0.2
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_tc_a3_edr_detected(tmp_db: asyncpg.Connection):
@@ -221,7 +257,9 @@ async def test_tc_a3_edr_detected(tmp_db: asyncpg.Connection):
 
     await _insert_operation(tmp_db, op_id)
     await _insert_target(
-        tmp_db, target_id, op_id,
+        tmp_db,
+        target_id,
+        op_id,
         is_compromised=True,
     )
     await _insert_edr_fact(tmp_db, target_id, op_id, trait="host.edr")
@@ -230,7 +268,10 @@ async def test_tc_a3_edr_detected(tmp_db: asyncpg.Connection):
     engine._enforcer = _kc_enforcer_mock()
 
     _, breakdown = await engine._compute_composite_confidence(
-        tmp_db, op_id, technique_id, target_id,
+        tmp_db,
+        op_id,
+        technique_id,
+        target_id,
         raw_confidence=0.70,
         tactic_id="TA0006",
     )
@@ -242,6 +283,7 @@ async def test_tc_a3_edr_detected(tmp_db: asyncpg.Connection):
 # ---------------------------------------------------------------------------
 # TC-A4: LLM confidence out of range -> clamp
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_tc_a4_llm_clamp_high(tmp_db: asyncpg.Connection):
@@ -257,7 +299,10 @@ async def test_tc_a4_llm_clamp_high(tmp_db: asyncpg.Connection):
     engine._enforcer = _kc_enforcer_mock()
 
     _, breakdown = await engine._compute_composite_confidence(
-        tmp_db, op_id, technique_id, target_id,
+        tmp_db,
+        op_id,
+        technique_id,
+        target_id,
         raw_confidence=1.5,
         tactic_id="TA0002",
     )
@@ -279,7 +324,10 @@ async def test_tc_a4_llm_clamp_low(tmp_db: asyncpg.Connection):
     engine._enforcer = _kc_enforcer_mock()
 
     _, breakdown = await engine._compute_composite_confidence(
-        tmp_db, op_id, technique_id, target_id,
+        tmp_db,
+        op_id,
+        technique_id,
+        target_id,
         raw_confidence=-0.3,
         tactic_id="TA0002",
     )
@@ -290,6 +338,7 @@ async def test_tc_a4_llm_clamp_low(tmp_db: asyncpg.Connection):
 # ---------------------------------------------------------------------------
 # TC-A5: target_id is None -> all DB queries skipped, use defaults
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_tc_a5_target_id_none(tmp_db: asyncpg.Connection):
@@ -303,7 +352,10 @@ async def test_tc_a5_target_id_none(tmp_db: asyncpg.Connection):
     engine._enforcer = _kc_enforcer_mock()
 
     composite, breakdown = await engine._compute_composite_confidence(
-        tmp_db, op_id, technique_id, None,
+        tmp_db,
+        op_id,
+        technique_id,
+        None,
         raw_confidence=0.80,
         tactic_id=None,
     )
@@ -322,6 +374,7 @@ async def test_tc_a5_target_id_none(tmp_db: asyncpg.Connection):
 # TC-A6: Zero success rate -> historical=0.0
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_tc_a6_zero_success_rate(tmp_db: asyncpg.Connection):
     """TC-A6: 5 executions all failed -> historical=0.0."""
@@ -332,15 +385,22 @@ async def test_tc_a6_zero_success_rate(tmp_db: asyncpg.Connection):
     await _insert_operation(tmp_db, op_id)
     await _insert_target(tmp_db, target_id, op_id)
     await _insert_technique_executions(
-        tmp_db, technique_id, target_id, op_id,
-        success_count=0, fail_count=5,
+        tmp_db,
+        technique_id,
+        target_id,
+        op_id,
+        success_count=0,
+        fail_count=5,
     )
 
     engine = DecisionEngine()
     engine._enforcer = _kc_enforcer_mock()
 
     _, breakdown = await engine._compute_composite_confidence(
-        tmp_db, op_id, technique_id, target_id,
+        tmp_db,
+        op_id,
+        technique_id,
+        target_id,
         raw_confidence=0.70,
         tactic_id="TA0006",
     )
@@ -352,6 +412,7 @@ async def test_tc_a6_zero_success_rate(tmp_db: asyncpg.Connection):
 # TC-A7: Root + compromised -> target_state = 0.5 + 0.2 + 0.15 = 0.85
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_tc_a7_root_compromised(tmp_db: asyncpg.Connection):
     """TC-A7: is_compromised + root privilege -> target_state = 0.85."""
@@ -361,15 +422,21 @@ async def test_tc_a7_root_compromised(tmp_db: asyncpg.Connection):
 
     await _insert_operation(tmp_db, op_id)
     await _insert_target(
-        tmp_db, target_id, op_id,
-        is_compromised=True, privilege_level="root",
+        tmp_db,
+        target_id,
+        op_id,
+        is_compromised=True,
+        privilege_level="root",
     )
 
     engine = DecisionEngine()
     engine._enforcer = _kc_enforcer_mock()
 
     _, breakdown = await engine._compute_composite_confidence(
-        tmp_db, op_id, technique_id, target_id,
+        tmp_db,
+        op_id,
+        technique_id,
+        target_id,
         raw_confidence=0.80,
         tactic_id="TA0006",
     )
@@ -381,6 +448,7 @@ async def test_tc_a7_root_compromised(tmp_db: asyncpg.Connection):
 # TC-A8: access_lost + EDR -> target_state = max(0.0, 0.5 - 0.1 - 0.2) = 0.2
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_tc_a8_access_lost_edr(tmp_db: asyncpg.Connection):
     """TC-A8: access_lost + EDR -> target_state = 0.2."""
@@ -390,8 +458,11 @@ async def test_tc_a8_access_lost_edr(tmp_db: asyncpg.Connection):
 
     await _insert_operation(tmp_db, op_id)
     await _insert_target(
-        tmp_db, target_id, op_id,
-        is_compromised=False, access_status="lost",
+        tmp_db,
+        target_id,
+        op_id,
+        is_compromised=False,
+        access_status="lost",
     )
     await _insert_edr_fact(tmp_db, target_id, op_id, trait="host.av")
 
@@ -399,7 +470,10 @@ async def test_tc_a8_access_lost_edr(tmp_db: asyncpg.Connection):
     engine._enforcer = _kc_enforcer_mock()
 
     _, breakdown = await engine._compute_composite_confidence(
-        tmp_db, op_id, technique_id, target_id,
+        tmp_db,
+        op_id,
+        technique_id,
+        target_id,
         raw_confidence=0.70,
         tactic_id="TA0006",
     )

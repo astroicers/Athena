@@ -10,12 +10,12 @@
 
 """Tests for OODA Access Recovery & Credential Invalidation -- SPEC-037."""
 
-import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.services.engine_router import EngineRouter, _is_auth_failure
+import pytest
 
+from app.services.engine_router import EngineRouter, _is_auth_failure
 
 # ---------------------------------------------------------------------------
 # _is_auth_failure tests
@@ -89,7 +89,11 @@ async def test_handle_access_lost_revokes_compromised():
 
     # Verify at least one execute call updates targets
     calls = [str(c) for c in db.execute.call_args_list]
-    target_update = [c for c in calls if ("is_compromised = 0" in c or "is_compromised = FALSE" in c) and "access_status = 'lost'" in c]
+    target_update = [
+        c
+        for c in calls
+        if ("is_compromised = 0" in c or "is_compromised = FALSE" in c) and "access_status = 'lost'" in c
+    ]
     assert len(target_update) >= 1, f"Expected target update call, got: {calls}"
 
 
@@ -145,6 +149,7 @@ async def test_finalize_execution_triggers_access_lost_on_auth_failure():
     db = _make_db()
 
     from app.clients import ExecutionResult
+
     result = ExecutionResult(
         success=False,
         execution_id="exec-1",
@@ -153,9 +158,7 @@ async def test_finalize_execution_triggers_access_lost_on_auth_failure():
         facts=[],
     )
 
-    await router._finalize_execution(
-        db, "exec-1", "T1059.004", "tgt-1", "mcp_ssh", "op-1", result
-    )
+    await router._finalize_execution(db, "exec-1", "T1059.004", "tgt-1", "mcp_ssh", "op-1", result)
 
     router._handle_access_lost.assert_awaited_once_with(db, "op-1", "tgt-1")
 
@@ -169,6 +172,7 @@ async def test_finalize_execution_no_access_lost_on_normal_failure():
     db = _make_db()
 
     from app.clients import ExecutionResult
+
     result = ExecutionResult(
         success=False,
         execution_id="exec-1",
@@ -177,9 +181,7 @@ async def test_finalize_execution_no_access_lost_on_normal_failure():
         facts=[],
     )
 
-    await router._finalize_execution(
-        db, "exec-1", "T1059.004", "tgt-1", "mcp_ssh", "op-1", result
-    )
+    await router._finalize_execution(db, "exec-1", "T1059.004", "tgt-1", "mcp_ssh", "op-1", result)
 
     router._handle_access_lost.assert_not_awaited()
 
@@ -193,6 +195,7 @@ async def test_finalize_execution_no_access_lost_on_success():
     db = _make_db()
 
     from app.clients import ExecutionResult
+
     result = ExecutionResult(
         success=True,
         execution_id="exec-1",
@@ -201,9 +204,7 @@ async def test_finalize_execution_no_access_lost_on_success():
         facts=[],
     )
 
-    await router._finalize_execution(
-        db, "exec-1", "T1059.004", "tgt-1", "mcp_ssh", "op-1", result
-    )
+    await router._finalize_execution(db, "exec-1", "T1059.004", "tgt-1", "mcp_ssh", "op-1", result)
 
     router._handle_access_lost.assert_not_awaited()
 
@@ -222,20 +223,44 @@ def test_attack_graph_excludes_invalidated_facts():
     engine = AttackGraphEngine(ws)
 
     facts = [
-        {"id": "f1", "trait": "credential.ssh", "value": "user:user@10.0.1.1:22",
-         "category": "credential", "source_technique_id": "T1110.001",
-         "source_target_id": "tgt-1", "operation_id": "op-1"},
-        {"id": "f2", "trait": "credential.ssh.invalidated", "value": "old:old@10.0.1.1:22",
-         "category": "credential", "source_technique_id": "T1110.001",
-         "source_target_id": "tgt-1", "operation_id": "op-1"},
-        {"id": "f3", "trait": "service.open_port", "value": "22/tcp",
-         "category": "service", "source_technique_id": "T1595.001",
-         "source_target_id": "tgt-1", "operation_id": "op-1"},
+        {
+            "id": "f1",
+            "trait": "credential.ssh",
+            "value": "user:user@10.0.1.1:22",
+            "category": "credential",
+            "source_technique_id": "T1110.001",
+            "source_target_id": "tgt-1",
+            "operation_id": "op-1",
+        },
+        {
+            "id": "f2",
+            "trait": "credential.ssh.invalidated",
+            "value": "old:old@10.0.1.1:22",
+            "category": "credential",
+            "source_technique_id": "T1110.001",
+            "source_target_id": "tgt-1",
+            "operation_id": "op-1",
+        },
+        {
+            "id": "f3",
+            "trait": "service.open_port",
+            "value": "22/tcp",
+            "category": "service",
+            "source_technique_id": "T1595.001",
+            "source_target_id": "tgt-1",
+            "operation_id": "op-1",
+        },
     ]
 
     targets = [
-        {"id": "tgt-1", "hostname": "web-01", "ip_address": "10.0.1.1",
-         "os": "Linux", "role": "server", "operation_id": "op-1"},
+        {
+            "id": "tgt-1",
+            "hostname": "web-01",
+            "ip_address": "10.0.1.1",
+            "os": "Linux",
+            "role": "server",
+            "operation_id": "op-1",
+        },
     ]
 
     graph = engine._build_graph_in_memory("op-1", targets, facts, [])
@@ -255,9 +280,11 @@ async def test_infer_exploitable_service_vsftpd():
     db = AsyncMock()
     db.row_factory = None
 
-    db.fetch = AsyncMock(return_value=[
-        {"value": "21/tcp/ftp/vsftpd_2.3.4"},
-    ])
+    db.fetch = AsyncMock(
+        return_value=[
+            {"value": "21/tcp/ftp/vsftpd_2.3.4"},
+        ]
+    )
 
     result = await router._infer_exploitable_service(db, "op-1", "tgt-1")
     assert result == "vsftpd"
@@ -269,9 +296,11 @@ async def test_infer_exploitable_service_samba():
     router = _make_router()
     db = AsyncMock()
 
-    db.fetch = AsyncMock(return_value=[
-        {"value": "445/tcp/netbios-ssn/Samba 3.0.20-Debian"},
-    ])
+    db.fetch = AsyncMock(
+        return_value=[
+            {"value": "445/tcp/netbios-ssn/Samba 3.0.20-Debian"},
+        ]
+    )
 
     result = await router._infer_exploitable_service(db, "op-1", "tgt-1")
     assert result == "samba"
@@ -285,10 +314,12 @@ async def test_infer_exploitable_service_no_match():
     db.row_factory = None
 
     cursor = AsyncMock()
-    cursor.fetchall = AsyncMock(return_value=[
-        {"value": "22/tcp/ssh/OpenSSH_4.7p1"},
-        {"value": "80/tcp/http/Apache_2.2.8"},
-    ])
+    cursor.fetchall = AsyncMock(
+        return_value=[
+            {"value": "22/tcp/ssh/OpenSSH_4.7p1"},
+            {"value": "80/tcp/http/Apache_2.2.8"},
+        ]
+    )
     db.execute = AsyncMock(return_value=cursor)
 
     result = await router._infer_exploitable_service(db, "op-1", "tgt-1")
@@ -301,9 +332,11 @@ async def test_infer_exploitable_service_unrealircd():
     router = _make_router()
     db = AsyncMock()
 
-    db.fetch = AsyncMock(return_value=[
-        {"value": "6667/tcp/irc/UnrealIRCd"},
-    ])
+    db.fetch = AsyncMock(
+        return_value=[
+            {"value": "6667/tcp/irc/UnrealIRCd"},
+        ]
+    )
 
     result = await router._infer_exploitable_service(db, "op-1", "tgt-1")
     assert result == "unrealircd"
@@ -330,17 +363,22 @@ async def test_no_cred_early_return_writes_execution(tmp_db):
     router = _make_router()
     now = datetime(2026, 1, 1, tzinfo=timezone.utc)
     result = await router._execute_via_mcp_executor(
-        tmp_db, "exec-1", now, "T1059.004",
-        "T1059.004", "tgt-1", "mcp_ssh", "op-1", "ooda-1",
+        tmp_db,
+        "exec-1",
+        now,
+        "T1059.004",
+        "T1059.004",
+        "tgt-1",
+        "mcp_ssh",
+        "op-1",
+        "ooda-1",
     )
 
     assert result["status"] == "failed"
     assert "invalidated" in result["error"]
 
     # Verify technique_executions record was written
-    row = await tmp_db.fetchrow(
-        "SELECT status, error_message FROM technique_executions WHERE id = 'exec-1'"
-    )
+    row = await tmp_db.fetchrow("SELECT status, error_message FROM technique_executions WHERE id = 'exec-1'")
     assert row is not None, "technique_executions record was not written"
     assert row["status"] == "failed"
     assert "invalidated" in row["error_message"]
@@ -378,8 +416,11 @@ async def test_metasploit_route_on_explicit_engine(tmp_db):
     router = EngineRouter(MockC2Client(), fc, ws)
 
     result = await router.execute(
-        tmp_db, technique_id="T1190", target_id="tgt-1",
-        engine="metasploit", operation_id="op-1",
+        tmp_db,
+        technique_id="T1190",
+        target_id="tgt-1",
+        engine="metasploit",
+        operation_id="op-1",
     )
 
     # Should have routed through Metasploit (mock mode)
@@ -430,8 +471,11 @@ async def test_t1110_routes_to_initial_access_not_auto_fallback(tmp_db):
     router = EngineRouter(MockC2Client(), fc, ws)
 
     result = await router.execute(
-        tmp_db, technique_id="T1110.001", target_id="tgt-1",
-        engine="auto", operation_id="op-1",
+        tmp_db,
+        technique_id="T1110.001",
+        target_id="tgt-1",
+        engine="auto",
+        operation_id="op-1",
     )
 
     # SPEC-053 contract: T1110 stays in initial_access engine, does NOT
@@ -446,7 +490,8 @@ async def test_t1110_routes_to_initial_access_not_auto_fallback(tmp_db):
     row = await tmp_db.fetchrow(
         "SELECT failure_category FROM technique_executions "
         "WHERE operation_id = $1 AND technique_id = $2 AND status = 'failed'",
-        "op-1", "T1110.001",
+        "op-1",
+        "T1110.001",
     )
     assert row is not None
     assert row["failure_category"] in (
@@ -459,6 +504,7 @@ async def test_t1110_routes_to_initial_access_not_auto_fallback(tmp_db):
 async def test_exploit_vsftpd_no_lhost():
     """exploit_vsftpd should NOT pass LHOST (bind shell, not reverse)."""
     from unittest.mock import patch
+
     from app.clients.metasploit_client import MetasploitRPCEngine
 
     engine = MetasploitRPCEngine()
@@ -504,24 +550,27 @@ async def test_metasploit_success_updates_target(tmp_db):
 
     with patch("app.clients.metasploit_client.MetasploitRPCEngine", mock_msf_cls):
         result = await router._execute_metasploit(
-            tmp_db, "exec-msf-1", "2026-01-01T00:00:00",
-            "T1190", "tgt-1", "op-1", "ooda-1",
-            "vsftpd", "192.168.0.23", "metasploit",
+            tmp_db,
+            "exec-msf-1",
+            "2026-01-01T00:00:00",
+            "T1190",
+            "tgt-1",
+            "op-1",
+            "ooda-1",
+            "vsftpd",
+            "192.168.0.23",
+            "metasploit",
         )
 
     assert result["status"] == "success"
 
     # Check target updated to Root
-    row = await tmp_db.fetchrow(
-        "SELECT is_compromised, privilege_level, access_status FROM targets WHERE id = 'tgt-1'"
-    )
+    row = await tmp_db.fetchrow("SELECT is_compromised, privilege_level, access_status FROM targets WHERE id = 'tgt-1'")
     assert row["is_compromised"] is True
     assert row["privilege_level"] == "Root"
     assert row["access_status"] == "active"
 
     # Check root_shell fact written
-    row = await tmp_db.fetchrow(
-        "SELECT trait, value FROM facts WHERE trait = 'credential.root_shell'"
-    )
+    row = await tmp_db.fetchrow("SELECT trait, value FROM facts WHERE trait = 'credential.root_shell'")
     assert row is not None, "credential.root_shell fact was not written"
     assert "metasploit:vsftpd" in row["value"]

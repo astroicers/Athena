@@ -13,6 +13,7 @@
 Tests the complete flow end-to-end in mock mode.
 All external calls (LLM, SSH, Metasploit) are mocked via conftest env vars.
 """
+
 import uuid
 
 import asyncpg
@@ -89,9 +90,7 @@ async def test_add_target_to_operation(client: AsyncClient):
         "role": "Web Server",
         "network_segment": "dmz",
     }
-    tgt_resp = await client.post(
-        f"/api/operations/{op_id}/targets", json=target_payload
-    )
+    tgt_resp = await client.post(f"/api/operations/{op_id}/targets", json=target_payload)
     assert tgt_resp.status_code == 201
     tgt_data = tgt_resp.json()
     assert tgt_data["hostname"] == "web-server-01"
@@ -254,7 +253,8 @@ async def test_e2e_kill_chain_create_op_add_target_trigger_ooda(client: AsyncCli
     assert len(tgt_list_resp.json()) == 1
 
     # Step 4: Trigger OODA cycle — async 202 pattern
-    from unittest.mock import MagicMock, patch as _patch
+    from unittest.mock import MagicMock
+    from unittest.mock import patch as _patch
 
     with _patch("app.routers.ooda.asyncio.create_task") as mock_ct:
         mock_task = MagicMock()
@@ -396,20 +396,26 @@ async def test_lateral_playbooks_in_seed(client: AsyncClient):
 
 async def test_target_has_is_compromised_field(client: AsyncClient):
     """新建 Target 應包含 is_compromised 欄位且預設為 False。"""
-    op_resp = await client.post("/api/operations", json={
-        "code": "OP-LATERAL-001",
-        "name": "lateral-e2e-test",
-        "codename": "PHANTOM-LATERAL",
-        "strategic_intent": "lateral movement e2e",
-    })
+    op_resp = await client.post(
+        "/api/operations",
+        json={
+            "code": "OP-LATERAL-001",
+            "name": "lateral-e2e-test",
+            "codename": "PHANTOM-LATERAL",
+            "strategic_intent": "lateral movement e2e",
+        },
+    )
     assert op_resp.status_code in (200, 201)
     op_id = op_resp.json()["id"]
 
-    tgt_resp = await client.post(f"/api/operations/{op_id}/targets", json={
-        "ip_address": "10.10.99.1",
-        "hostname": "pivot-host",
-        "role": "workstation",
-    })
+    tgt_resp = await client.post(
+        f"/api/operations/{op_id}/targets",
+        json={
+            "ip_address": "10.10.99.1",
+            "hostname": "pivot-host",
+            "role": "workstation",
+        },
+    )
     assert tgt_resp.status_code in (200, 201)
     tgt = tgt_resp.json()
     assert "is_compromised" in tgt

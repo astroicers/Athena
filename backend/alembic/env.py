@@ -4,8 +4,9 @@ Uses psycopg2/sqlalchemy sync engine for migration execution.
 The main application uses asyncpg directly (no ORM).
 """
 
-from alembic import context
 from sqlalchemy import create_engine
+
+from alembic import context
 
 config = context.config
 

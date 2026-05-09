@@ -23,7 +23,7 @@ from pydantic import BaseModel
 from app.config import settings
 from app.database import db_manager, get_db
 from app.models.osint import OSINTDiscoverQueued, OSINTResult
-from app.models.recon import ReconScanResult, InitialAccessResult, ReconScanQueued, ServiceInfo
+from app.models.recon import InitialAccessResult, ReconScanQueued, ReconScanResult, ServiceInfo
 from app.routers._deps import ensure_operation
 from app.services.initial_access_engine import InitialAccessEngine
 from app.services.osint_engine import OSINTEngine
@@ -42,9 +42,13 @@ _MOCK_SCAN_PHASES: list[tuple[str, float]] = [
     ("finalizing", 1.0),
 ]
 _REAL_SCAN_STEPS = 2  # nmap_scan, finalizing
+
+
 class ReconScanRequest(BaseModel):
     target_id: str
     c2_host: str | None = None  # defaults to settings.C2_ENGINE_URL
+
+
 class OSINTDiscoverRequest(BaseModel):
     domain: str
     max_subdomains: int = 500
@@ -55,8 +59,6 @@ class OSINTDiscoverRequest(BaseModel):
     response_model=ReconScanQueued,
     status_code=202,
 )
-
-
 async def run_recon_scan(
     op_id: str,
     body: ReconScanRequest,
@@ -70,7 +72,8 @@ async def run_recon_scan(
     # -- 2. Validate target exists and belongs to this operation --
     target_row = await db.fetchrow(
         "SELECT id, ip_address FROM targets WHERE id = $1 AND operation_id = $2",
-        body.target_id, op_id,
+        body.target_id,
+        op_id,
     )
     if target_row is None:
         raise HTTPException(
@@ -88,17 +91,18 @@ async def run_recon_scan(
             (id, operation_id, target_id, ip_address, status, started_at)
         VALUES ($1, $2, $3, $4, 'queued', $5)
         """,
-        scan_id, op_id, body.target_id, ip_address, now_utc,
+        scan_id,
+        op_id,
+        body.target_id,
+        ip_address,
+        now_utc,
     )
 
     # -- 4. Launch background task --
-    _task = asyncio.create_task(
-        _run_scan_background(scan_id, op_id, body.target_id, ip_address, body)
-    )
+    _task = asyncio.create_task(_run_scan_background(scan_id, op_id, body.target_id, ip_address, body))
     if _task is not None:
         _task.add_done_callback(
-            lambda t: logger.warning("Recon background task cancelled for scan %s", scan_id)
-            if t.cancelled() else None
+            lambda t: logger.warning("Recon background task cancelled for scan %s", scan_id) if t.cancelled() else None
         )
 
     # -- 5. Return immediately with 202 Accepted --
@@ -138,12 +142,8 @@ async def _run_scan_background(
     async with db_manager.connection() as db:
         try:
             # Mark running
-            await db.execute(
-                "UPDATE recon_scans SET status='running' WHERE id=$1", scan_id
-            )
-            await ws_manager.broadcast(
-                op_id, "recon.started", {"scan_id": scan_id, "target_id": target_id}
-            )
+            await db.execute("UPDATE recon_scans SET status='running' WHERE id=$1", scan_id)
+            await ws_manager.broadcast(op_id, "recon.started", {"scan_id": scan_id, "target_id": target_id})
 
             # -- Mock mode: simulate phased scan with delays --
             if settings.MOCK_C2_ENGINE:
@@ -174,15 +174,17 @@ async def _run_scan_background(
                 await _broadcast_phase("finalizing", 2)
 
             # Update DB as completed
-            open_ports_json = json.dumps([
-                {
-                    "port": svc.port,
-                    "protocol": svc.protocol,
-                    "service": svc.service,
-                    "version": svc.version,
-                }
-                for svc in recon_result.services
-            ])
+            open_ports_json = json.dumps(
+                [
+                    {
+                        "port": svc.port,
+                        "protocol": svc.protocol,
+                        "service": svc.service,
+                        "version": svc.version,
+                    }
+                    for svc in recon_result.services
+                ]
+            )
             completed_at = datetime.now(timezone.utc)
             await db.execute(
                 """
@@ -227,12 +229,11 @@ async def _run_scan_background(
             try:
                 await db.execute(
                     "UPDATE recon_scans SET status='failed', completed_at=$1 WHERE id=$2",
-                    datetime.now(timezone.utc), scan_id,
+                    datetime.now(timezone.utc),
+                    scan_id,
                 )
             except Exception:
-                logger.exception(
-                    "Failed to update recon_scan status to 'failed' for %s", scan_id
-                )
+                logger.exception("Failed to update recon_scan status to 'failed' for %s", scan_id)
             await ws_manager.broadcast(
                 op_id,
                 "recon.failed",
@@ -248,8 +249,8 @@ def _build_scan_result(row: asyncpg.Record) -> ReconScanResult:
     scan_duration = 0.0
     if started and completed:
         try:
-            t_start = (started if isinstance(started, datetime) else datetime.fromisoformat(started))
-            t_end = (completed if isinstance(completed, datetime) else datetime.fromisoformat(completed))
+            t_start = started if isinstance(started, datetime) else datetime.fromisoformat(started)
+            t_end = completed if isinstance(completed, datetime) else datetime.fromisoformat(completed)
             scan_duration = (t_end - t_start).total_seconds()
         except ValueError:
             pass
@@ -301,8 +302,6 @@ _SCAN_SELECT = """
     "/operations/{op_id}/recon/scans/{scan_id}",
     response_model=ReconScanResult,
 )
-
-
 async def get_recon_scan_result(
     op_id: str,
     scan_id: str,
@@ -313,7 +312,8 @@ async def get_recon_scan_result(
 
     row = await db.fetchrow(
         _SCAN_SELECT + " WHERE s.id = $1 AND s.operation_id = $2",
-        scan_id, op_id,
+        scan_id,
+        op_id,
     )
     if row is None:
         raise HTTPException(
@@ -328,8 +328,6 @@ async def get_recon_scan_result(
     "/operations/{op_id}/recon/scans/by-target/{target_id}",
     response_model=ReconScanResult | None,
 )
-
-
 async def get_latest_scan_by_target(
     op_id: str,
     target_id: str,
@@ -339,10 +337,10 @@ async def get_latest_scan_by_target(
     await ensure_operation(db, op_id)
 
     row = await db.fetchrow(
-        _SCAN_SELECT
-        + " WHERE s.operation_id = $1 AND s.target_id = $2 AND s.status = 'completed'"
+        _SCAN_SELECT + " WHERE s.operation_id = $1 AND s.target_id = $2 AND s.status = 'completed'"
         " ORDER BY s.completed_at DESC LIMIT 1",
-        op_id, target_id,
+        op_id,
+        target_id,
     )
     if row is None:
         return None
@@ -377,7 +375,8 @@ async def run_initial_access(
     # Validate target
     target_row = await db.fetchrow(
         "SELECT id, ip_address FROM targets WHERE id = $1 AND operation_id = $2",
-        body.target_id, op_id,
+        body.target_id,
+        op_id,
     )
     if target_row is None:
         raise HTTPException(404, f"Target '{body.target_id}' not found in operation '{op_id}'")
@@ -388,7 +387,8 @@ async def run_initial_access(
         "SELECT open_ports FROM recon_scans "
         "WHERE target_id = $1 AND operation_id = $2 AND status = 'completed' "
         "ORDER BY completed_at DESC LIMIT 1",
-        body.target_id, op_id,
+        body.target_id,
+        op_id,
     )
     if scan_row is None:
         raise HTTPException(400, "No completed recon scan found -- run recon scan first")
@@ -403,8 +403,9 @@ async def run_initial_access(
     )
     if _task is not None:
         _task.add_done_callback(
-            lambda t: logger.warning("Initial access task cancelled for target %s", body.target_id)
-            if t.cancelled() else None
+            lambda t: (
+                logger.warning("Initial access task cancelled for target %s", body.target_id) if t.cancelled() else None
+            )
         )
 
     return {"status": "queued", "target_id": body.target_id, "operation_id": op_id}
@@ -422,21 +423,19 @@ async def _run_initial_access_background(
 
     async with db_manager.connection() as db:
         try:
-            await ws_manager.broadcast(
-                op_id, "initial_access.started", {"target_id": target_id}
-            )
+            await ws_manager.broadcast(op_id, "initial_access.started", {"target_id": target_id})
 
             ia_engine = InitialAccessEngine()
             ia_result = await ia_engine.try_initial_access(
-                db, op_id, target_id, ip_address, services,
+                db,
+                op_id,
+                target_id,
+                ip_address,
+                services,
             )
 
             # Bootstrap C2 agent for SSH success
-            if (
-                ia_result.success
-                and ia_result.method == "ssh_credential"
-                and not settings.MOCK_C2_ENGINE
-            ):
+            if ia_result.success and ia_result.method == "ssh_credential" and not settings.MOCK_C2_ENGINE:
                 c2 = c2_host or settings.C2_AGENT_CALLBACK_URL or settings.C2_ENGINE_URL
                 cred_parts = (ia_result.credential or ":").split(":", 1)
                 cred_tuple = (cred_parts[0], cred_parts[1] if len(cred_parts) > 1 else "")
@@ -470,8 +469,6 @@ async def _run_initial_access_background(
 
 
 @router.get("/operations/{op_id}/recon/status")
-
-
 async def get_recon_status(
     op_id: str,
     db: asyncpg.Connection = Depends(get_db),
@@ -507,13 +504,18 @@ async def get_recon_status(
     # Auto-fail stuck scans (running/queued > 10 minutes)
     if result["status"] in ("running", "queued") and result.get("started_at"):
         try:
-            started = (result["started_at"] if isinstance(result["started_at"], datetime) else datetime.fromisoformat(result["started_at"]))
+            started = (
+                result["started_at"]
+                if isinstance(result["started_at"], datetime)
+                else datetime.fromisoformat(result["started_at"])
+            )
             elapsed = (datetime.now(timezone.utc) - started).total_seconds()
             if elapsed > 600:  # 10 minutes
                 now_iso = datetime.now(timezone.utc)
                 await db.execute(
                     "UPDATE recon_scans SET status='failed', completed_at=$1 WHERE id=$2",
-                    now_iso, result["id"],
+                    now_iso,
+                    result["id"],
                 )
                 result["status"] = "failed"
                 result["completed_at"] = now_iso
@@ -529,8 +531,6 @@ async def get_recon_status(
     response_model=OSINTDiscoverQueued,
     status_code=202,
 )
-
-
 async def run_osint_discover(
     op_id: str,
     body: OSINTDiscoverRequest,
@@ -539,15 +539,14 @@ async def run_osint_discover(
     """Enqueue OSINT discovery -- returns 202 immediately, executes in background."""
     await ensure_operation(db, op_id)
 
-    _task = asyncio.create_task(
-        _run_osint_background(op_id, body.domain, body.max_subdomains)
-    )
+    _task = asyncio.create_task(_run_osint_background(op_id, body.domain, body.max_subdomains))
     if _task is not None:
         _task.add_done_callback(
-            lambda t: logger.warning(
-                "OSINT background task cancelled for op %s domain %s", op_id, body.domain
+            lambda t: (
+                logger.warning("OSINT background task cancelled for op %s domain %s", op_id, body.domain)
+                if t.cancelled()
+                else None
             )
-            if t.cancelled() else None
         )
 
     return OSINTDiscoverQueued(
@@ -569,10 +568,14 @@ async def _run_osint_background(op_id: str, domain: str, max_subdomains: int) ->
                 domain=domain,
                 max_subdomains=max_subdomains,
             )
-            await ws_manager.broadcast(op_id, "osint.completed", {
-                "domain": domain,
-                "subdomains_found": result.subdomains_found,
-            })
+            await ws_manager.broadcast(
+                op_id,
+                "osint.completed",
+                {
+                    "domain": domain,
+                    "subdomains_found": result.subdomains_found,
+                },
+            )
 
             # R1: Auto-trigger recon on newly discovered targets, then OODA
             try:
@@ -591,10 +594,12 @@ async def _run_osint_background(op_id: str, domain: str, max_subdomains: int) ->
                     except Exception as recon_exc:
                         logger.warning(
                             "Auto-recon after OSINT failed for target %s: %s",
-                            t["id"], recon_exc,
+                            t["id"],
+                            recon_exc,
                         )
                 # Trigger OODA after recon chain completes
                 from app.services.ooda_trigger import auto_trigger_ooda
+
                 asyncio.create_task(
                     auto_trigger_ooda(
                         op_id,
@@ -604,14 +609,17 @@ async def _run_osint_background(op_id: str, domain: str, max_subdomains: int) ->
                 )
             except Exception as chain_exc:
                 logger.warning(
-                    "OSINT->Recon->OODA chain failed: %s", chain_exc,
+                    "OSINT->Recon->OODA chain failed: %s",
+                    chain_exc,
                 )
 
         except Exception as exc:
-            logger.exception(
-                "Background OSINT discover for domain %s failed: %s", domain, exc
+            logger.exception("Background OSINT discover for domain %s failed: %s", domain, exc)
+            await ws_manager.broadcast(
+                op_id,
+                "osint.failed",
+                {
+                    "domain": domain,
+                    "error": str(exc),
+                },
             )
-            await ws_manager.broadcast(op_id, "osint.failed", {
-                "domain": domain,
-                "error": str(exc),
-            })

@@ -21,9 +21,7 @@ async def test_normal_health_no_hard_limits(sit_services):
     result = await ce.evaluate(db, "test-op-1", "SP")
 
     assert isinstance(result.hard_limits, list)
-    assert len(result.hard_limits) == 0, (
-        f"Expected no hard_limits with healthy defaults, got: {result.hard_limits}"
-    )
+    assert len(result.hard_limits) == 0, f"Expected no hard_limits with healthy defaults, got: {result.hard_limits}"
 
 
 # -- C.2 low command health reduces orient options ----------------------------
@@ -33,8 +31,7 @@ async def test_low_command_health_reduces_orient_options(sit_services):
 
     # Overwrite command health to 25 (below SP warning threshold of 50)
     await db.execute(
-        "UPDATE c5isr_statuses SET health_pct = 25.0 "
-        "WHERE operation_id = $1 AND domain = 'command'",
+        "UPDATE c5isr_statuses SET health_pct = 25.0 WHERE operation_id = $1 AND domain = 'command'",
         "test-op-1",
     )
 
@@ -52,8 +49,7 @@ async def test_critical_control_forces_recovery(sit_services):
 
     # Set control health to critical level (below SP critical threshold of 25)
     await db.execute(
-        "UPDATE c5isr_statuses SET health_pct = 10.0 "
-        "WHERE operation_id = $1 AND domain = 'control'",
+        "UPDATE c5isr_statuses SET health_pct = 10.0 WHERE operation_id = $1 AND domain = 'control'",
         "test-op-1",
     )
 
@@ -71,9 +67,7 @@ async def test_noise_budget_from_profile(sit_services):
 
     result = await ce.evaluate(db, "test-op-1", "SP")
 
-    assert result.noise_budget_remaining is not None, (
-        "noise_budget_remaining should not be None"
-    )
+    assert result.noise_budget_remaining is not None, "noise_budget_remaining should not be None"
     assert isinstance(result.noise_budget_remaining, int), (
         f"noise_budget_remaining should be int, got {type(result.noise_budget_remaining)}"
     )
@@ -98,6 +92,5 @@ async def test_active_overrides_from_event_store(sit_services):
     result = await ce.evaluate(db, "test-op-1", "SP")
 
     assert "comms" in result.active_overrides, (
-        f"'comms' should appear in active_overrides after override event, "
-        f"got: {result.active_overrides}"
+        f"'comms' should appear in active_overrides after override event, got: {result.active_overrides}"
     )

@@ -4,8 +4,10 @@ Revision ID: 001
 Revises: None
 Create Date: 2026-03-10
 """
-from alembic import op
+
 import sqlalchemy as sa
+
+from alembic import op
 
 revision = "001"
 down_revision = None
@@ -411,12 +413,28 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     tables = [
-        "vulnerabilities", "swarm_tasks", "attack_graph_edges", "attack_graph_nodes",
-        "tool_registry", "technique_playbooks", "vuln_cache", "engagements",
-        "recon_scans", "log_entries", "c5isr_statuses", "mission_steps",
-        "recommendations", "ooda_directives", "ooda_iterations", "facts",
-        "technique_executions", "techniques", "agents", "targets",
-        "operations", "users",
+        "vulnerabilities",
+        "swarm_tasks",
+        "attack_graph_edges",
+        "attack_graph_nodes",
+        "tool_registry",
+        "technique_playbooks",
+        "vuln_cache",
+        "engagements",
+        "recon_scans",
+        "log_entries",
+        "c5isr_statuses",
+        "mission_steps",
+        "recommendations",
+        "ooda_directives",
+        "ooda_iterations",
+        "facts",
+        "technique_executions",
+        "techniques",
+        "agents",
+        "targets",
+        "operations",
+        "users",
     ]
     for t in tables:
         op.execute(f"DROP TABLE IF EXISTS {t} CASCADE")

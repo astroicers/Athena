@@ -82,11 +82,7 @@ def _tool_dirs() -> list[Path]:
     """Return a sorted list of production tool directories (excludes _template)."""
     if not TOOLS_DIR.is_dir():
         return []
-    return sorted(
-        p
-        for p in TOOLS_DIR.iterdir()
-        if p.is_dir() and p.name not in _SKIP_DIRS
-    )
+    return sorted(p for p in TOOLS_DIR.iterdir() if p.is_dir() and p.name not in _SKIP_DIRS)
 
 
 def _tool_names() -> list[str]:
@@ -166,9 +162,7 @@ class TestToolYamlStructure:
             pytest.skip(f"tools/{tool_name}/tool.yaml does not exist")
         data = yaml.safe_load(yaml_path.read_text())
         missing = TOOL_YAML_REQUIRED_KEYS - set(data.keys())
-        assert not missing, (
-            f"tools/{tool_name}/tool.yaml is missing keys: {sorted(missing)}"
-        )
+        assert not missing, f"tools/{tool_name}/tool.yaml is missing keys: {sorted(missing)}"
 
     @pytest.mark.parametrize("tool_name", _tool_names())
     def test_tool_yaml_mcp_section_has_required_keys(self, tool_name: str) -> None:
@@ -180,9 +174,7 @@ class TestToolYamlStructure:
         if mcp_section is None:
             pytest.skip("mcp section missing (caught by other test)")
         missing = MCP_SECTION_REQUIRED_KEYS - set(mcp_section.keys())
-        assert not missing, (
-            f"tools/{tool_name}/tool.yaml mcp section missing keys: {sorted(missing)}"
-        )
+        assert not missing, f"tools/{tool_name}/tool.yaml mcp section missing keys: {sorted(missing)}"
 
     @pytest.mark.parametrize("tool_name", _tool_names())
     def test_tool_yaml_category_is_valid(self, tool_name: str) -> None:
@@ -194,8 +186,7 @@ class TestToolYamlStructure:
         if category is None:
             pytest.skip("category missing (caught by other test)")
         assert category in VALID_CATEGORIES, (
-            f"tools/{tool_name}/tool.yaml category '{category}' "
-            f"not in {sorted(VALID_CATEGORIES)}"
+            f"tools/{tool_name}/tool.yaml category '{category}' not in {sorted(VALID_CATEGORIES)}"
         )
 
     @pytest.mark.parametrize("tool_name", _tool_names())
@@ -208,8 +199,7 @@ class TestToolYamlStructure:
         if risk_level is None:
             pytest.skip("risk_level missing (caught by other test)")
         assert risk_level in VALID_RISK_LEVELS, (
-            f"tools/{tool_name}/tool.yaml risk_level '{risk_level}' "
-            f"not in {sorted(VALID_RISK_LEVELS)}"
+            f"tools/{tool_name}/tool.yaml risk_level '{risk_level}' not in {sorted(VALID_RISK_LEVELS)}"
         )
 
     @pytest.mark.parametrize("tool_name", _tool_names())
@@ -221,9 +211,7 @@ class TestToolYamlStructure:
         mitre = data.get("mitre_techniques")
         if mitre is None:
             pytest.skip("mitre_techniques missing (caught by other test)")
-        assert isinstance(mitre, list), (
-            f"tools/{tool_name}/tool.yaml mitre_techniques must be a list"
-        )
+        assert isinstance(mitre, list), f"tools/{tool_name}/tool.yaml mitre_techniques must be a list"
 
     @pytest.mark.parametrize("tool_name", _tool_names())
     def test_tool_yaml_output_traits_is_list(self, tool_name: str) -> None:
@@ -234,9 +222,7 @@ class TestToolYamlStructure:
         traits = data.get("output_traits")
         if traits is None:
             pytest.skip("output_traits missing (caught by other test)")
-        assert isinstance(traits, list), (
-            f"tools/{tool_name}/tool.yaml output_traits must be a list"
-        )
+        assert isinstance(traits, list), f"tools/{tool_name}/tool.yaml output_traits must be a list"
 
 
 # ---------------------------------------------------------------------------
@@ -254,10 +240,7 @@ class TestToolYamlNameConsistency:
             pytest.skip(f"tools/{tool_name}/tool.yaml does not exist")
         data = yaml.safe_load(yaml_path.read_text())
         tool_id = data.get("tool_id")
-        assert tool_id == tool_name, (
-            f"tools/{tool_name}/tool.yaml tool_id is '{tool_id}', "
-            f"expected '{tool_name}'"
-        )
+        assert tool_id == tool_name, f"tools/{tool_name}/tool.yaml tool_id is '{tool_id}', expected '{tool_name}'"
 
 
 # ---------------------------------------------------------------------------
@@ -283,9 +266,7 @@ class TestMcpServersJson:
         tool_names = set(_tool_names())
 
         missing = tool_names - server_names
-        assert not missing, (
-            f"mcp_servers.json is missing entries for tools: {sorted(missing)}"
-        )
+        assert not missing, f"mcp_servers.json is missing entries for tools: {sorted(missing)}"
 
     def test_mcp_servers_entries_have_required_fields(self) -> None:
         """Each server entry must have transport, command, args, and http_url."""
@@ -293,9 +274,7 @@ class TestMcpServersJson:
         data = json.loads(MCP_SERVERS_FILE.read_text())
         for name, entry in data.get("servers", {}).items():
             missing = required - set(entry.keys())
-            assert not missing, (
-                f"mcp_servers.json entry '{name}' is missing fields: {sorted(missing)}"
-            )
+            assert not missing, f"mcp_servers.json entry '{name}' is missing fields: {sorted(missing)}"
 
     @pytest.mark.parametrize("tool_name", _tool_names())
     def test_mcp_server_description_not_empty(self, tool_name: str) -> None:
@@ -305,9 +284,7 @@ class TestMcpServersJson:
         if entry is None:
             pytest.skip(f"'{tool_name}' not in mcp_servers.json")
         desc = entry.get("description", "")
-        assert desc and desc.strip(), (
-            f"mcp_servers.json entry '{tool_name}' has empty description"
-        )
+        assert desc and desc.strip(), f"mcp_servers.json entry '{tool_name}' has empty description"
 
 
 # ---------------------------------------------------------------------------
@@ -336,6 +313,4 @@ class TestTemplateDirectory:
     def test_template_tool_yaml_has_placeholder(self) -> None:
         """Template tool.yaml must contain the {{TOOL_NAME}} placeholder."""
         content = (TOOLS_DIR / "_template" / "tool.yaml").read_text()
-        assert "{{TOOL_NAME}}" in content, (
-            "tools/_template/tool.yaml must contain {{TOOL_NAME}} placeholder"
-        )
+        assert "{{TOOL_NAME}}" in content, "tools/_template/tool.yaml must contain {{TOOL_NAME}} placeholder"

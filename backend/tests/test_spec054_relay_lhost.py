@@ -26,7 +26,6 @@ import pytest
 
 from app.clients.metasploit_client import MetasploitRPCEngine
 
-
 # ---------------------------------------------------------------------------
 # T01: exploit_samba reads RELAY_IP as LHOST
 # ---------------------------------------------------------------------------
@@ -43,8 +42,10 @@ async def test_t01_exploit_samba_uses_relay_ip_as_lhost() -> None:
         captured_options.update(options)
         return {"status": "success", "engine": "metasploit"}
 
-    with patch.object(engine, "_run_exploit", side_effect=fake_run_exploit), \
-         patch("app.clients.metasploit_client.settings") as mock_settings:
+    with (
+        patch.object(engine, "_run_exploit", side_effect=fake_run_exploit),
+        patch("app.clients.metasploit_client.settings") as mock_settings,
+    ):
         mock_settings.RELAY_IP = "192.168.0.100"
         mock_settings.MOCK_METASPLOIT = False
         await engine.exploit_samba("192.168.0.26")
@@ -66,8 +67,10 @@ async def test_t01_exploit_unrealircd_uses_relay_ip_as_lhost() -> None:
         captured_options.update(options)
         return {"status": "success", "engine": "metasploit"}
 
-    with patch.object(engine, "_run_exploit", side_effect=fake_run_exploit), \
-         patch("app.clients.metasploit_client.settings") as mock_settings:
+    with (
+        patch.object(engine, "_run_exploit", side_effect=fake_run_exploit),
+        patch("app.clients.metasploit_client.settings") as mock_settings,
+    ):
         mock_settings.RELAY_IP = "192.168.0.100"
         mock_settings.MOCK_METASPLOIT = False
         await engine.exploit_unrealircd("192.168.0.26")
@@ -92,16 +95,17 @@ async def test_t02_exploit_vsftpd_has_no_lhost() -> None:
         captured_options.update(options)
         return {"status": "success", "engine": "metasploit"}
 
-    with patch.object(engine, "_run_exploit", side_effect=fake_run_exploit), \
-         patch("app.clients.metasploit_client.settings") as mock_settings:
+    with (
+        patch.object(engine, "_run_exploit", side_effect=fake_run_exploit),
+        patch("app.clients.metasploit_client.settings") as mock_settings,
+    ):
         # Even if RELAY_IP is set, vsftpd must not pick it up
         mock_settings.RELAY_IP = "192.168.0.100"
         mock_settings.MOCK_METASPLOIT = False
         await engine.exploit_vsftpd("192.168.0.26")
 
     assert "LHOST" not in captured_options, (
-        f"exploit_vsftpd is bind shell; LHOST must not be set. "
-        f"Got: {captured_options}"
+        f"exploit_vsftpd is bind shell; LHOST must not be set. Got: {captured_options}"
     )
     assert captured_options.get("RHOSTS") == "192.168.0.26"
 
@@ -122,8 +126,10 @@ async def test_t03_exploit_samba_passes_probe_cmd() -> None:
         captured_kwargs.update(kwargs)
         return {"status": "success", "engine": "metasploit"}
 
-    with patch.object(engine, "_run_exploit", side_effect=fake_run_exploit), \
-         patch("app.clients.metasploit_client.settings") as mock_settings:
+    with (
+        patch.object(engine, "_run_exploit", side_effect=fake_run_exploit),
+        patch("app.clients.metasploit_client.settings") as mock_settings,
+    ):
         mock_settings.RELAY_IP = "192.168.0.100"
         mock_settings.MOCK_METASPLOIT = False
         await engine.exploit_samba("192.168.0.26", probe_cmd="whoami")
@@ -142,8 +148,10 @@ async def test_t03_exploit_vsftpd_passes_probe_cmd() -> None:
         captured_kwargs.update(kwargs)
         return {"status": "success", "engine": "metasploit"}
 
-    with patch.object(engine, "_run_exploit", side_effect=fake_run_exploit), \
-         patch("app.clients.metasploit_client.settings") as mock_settings:
+    with (
+        patch.object(engine, "_run_exploit", side_effect=fake_run_exploit),
+        patch("app.clients.metasploit_client.settings") as mock_settings,
+    ):
         mock_settings.MOCK_METASPLOIT = False
         await engine.exploit_vsftpd("192.168.0.26", probe_cmd="id")
 
@@ -161,8 +169,10 @@ async def test_t03_exploit_unrealircd_passes_probe_cmd() -> None:
         captured_kwargs.update(kwargs)
         return {"status": "success", "engine": "metasploit"}
 
-    with patch.object(engine, "_run_exploit", side_effect=fake_run_exploit), \
-         patch("app.clients.metasploit_client.settings") as mock_settings:
+    with (
+        patch.object(engine, "_run_exploit", side_effect=fake_run_exploit),
+        patch("app.clients.metasploit_client.settings") as mock_settings,
+    ):
         mock_settings.RELAY_IP = "192.168.0.100"
         mock_settings.MOCK_METASPLOIT = False
         await engine.exploit_unrealircd("192.168.0.26", probe_cmd="uname -a")
@@ -186,16 +196,17 @@ async def test_n3_empty_relay_ip_degrades_to_zero_zero_zero_zero() -> None:
         captured_options.update(options)
         return {"status": "success", "engine": "metasploit"}
 
-    with patch.object(engine, "_run_exploit", side_effect=fake_run_exploit), \
-         patch("app.clients.metasploit_client.settings") as mock_settings:
+    with (
+        patch.object(engine, "_run_exploit", side_effect=fake_run_exploit),
+        patch("app.clients.metasploit_client.settings") as mock_settings,
+    ):
         mock_settings.RELAY_IP = ""
         mock_settings.MOCK_METASPLOIT = False
         # Must not raise
         await engine.exploit_samba("192.168.0.26")
 
     assert captured_options.get("LHOST") == "0.0.0.0", (
-        f"Empty RELAY_IP should degrade to 0.0.0.0. "
-        f"Got: {captured_options.get('LHOST')}"
+        f"Empty RELAY_IP should degrade to 0.0.0.0. Got: {captured_options.get('LHOST')}"
     )
 
 
@@ -210,8 +221,10 @@ async def test_explicit_lhost_override_still_works() -> None:
         captured_options.update(options)
         return {"status": "success", "engine": "metasploit"}
 
-    with patch.object(engine, "_run_exploit", side_effect=fake_run_exploit), \
-         patch("app.clients.metasploit_client.settings") as mock_settings:
+    with (
+        patch.object(engine, "_run_exploit", side_effect=fake_run_exploit),
+        patch("app.clients.metasploit_client.settings") as mock_settings,
+    ):
         mock_settings.RELAY_IP = "10.0.0.1"  # Should be ignored
         mock_settings.MOCK_METASPLOIT = False
         await engine.exploit_samba("192.168.0.26", lhost="172.16.0.1")

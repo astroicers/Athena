@@ -9,6 +9,7 @@
 # For commercial licensing, contact: azz093093.830330@gmail.com
 
 """Technique playbook knowledge base CRUD endpoints."""
+
 import json
 import logging
 import uuid
@@ -45,8 +46,6 @@ def _row_to_playbook(row: asyncpg.Record) -> dict:
 
 
 @router.get("", response_model=list[Playbook])
-
-
 async def list_playbooks(
     mitre_id: str | None = None,
     platform: str | None = None,
@@ -70,8 +69,6 @@ async def list_playbooks(
 
 
 @router.post("", response_model=Playbook, status_code=201)
-
-
 async def create_playbook(
     body: PlaybookCreate,
     db: asyncpg.Connection = Depends(get_db),
@@ -92,15 +89,11 @@ async def create_playbook(
         json.dumps(body.tags),
         now,
     )
-    row = await db.fetchrow(
-        "SELECT * FROM technique_playbooks WHERE id = $1", pb_id
-    )
+    row = await db.fetchrow("SELECT * FROM technique_playbooks WHERE id = $1", pb_id)
     return _row_to_playbook(row)
 
 
 @router.post("/bulk", response_model=PlaybookBulkResult, status_code=200)
-
-
 async def bulk_create_playbooks(
     body: PlaybookBulkCreate,
     db: asyncpg.Connection = Depends(get_db),
@@ -114,7 +107,8 @@ async def bulk_create_playbooks(
         try:
             existing = await db.fetchrow(
                 "SELECT id FROM technique_playbooks WHERE mitre_id = $1 AND platform = $2",
-                pb.mitre_id, pb.platform,
+                pb.mitre_id,
+                pb.platform,
             )
             if existing:
                 skipped += 1
@@ -125,9 +119,14 @@ async def bulk_create_playbooks(
                 """INSERT INTO technique_playbooks
                    (id, mitre_id, platform, command, output_parser, facts_traits, source, tags, created_at)
                    VALUES ($1, $2, $3, $4, $5, $6, 'user', $7, $8)""",
-                pb_id, pb.mitre_id, pb.platform, pb.command,
-                pb.output_parser, json.dumps(pb.facts_traits),
-                json.dumps(pb.tags), now,
+                pb_id,
+                pb.mitre_id,
+                pb.platform,
+                pb.command,
+                pb.output_parser,
+                json.dumps(pb.facts_traits),
+                json.dumps(pb.tags),
+                now,
             )
             created += 1
         except Exception as exc:
@@ -138,33 +137,25 @@ async def bulk_create_playbooks(
 
 
 @router.get("/{playbook_id}", response_model=Playbook)
-
-
 async def get_playbook(
     playbook_id: str,
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Get a specific playbook by ID."""
-    row = await db.fetchrow(
-        "SELECT * FROM technique_playbooks WHERE id = $1", playbook_id
-    )
+    row = await db.fetchrow("SELECT * FROM technique_playbooks WHERE id = $1", playbook_id)
     if not row:
         raise HTTPException(status_code=404, detail="Playbook not found")
     return _row_to_playbook(row)
 
 
 @router.patch("/{playbook_id}", response_model=Playbook)
-
-
 async def update_playbook(
     playbook_id: str,
     body: PlaybookUpdate,
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Update an existing playbook."""
-    existing = await db.fetchrow(
-        "SELECT * FROM technique_playbooks WHERE id = $1", playbook_id
-    )
+    existing = await db.fetchrow("SELECT * FROM technique_playbooks WHERE id = $1", playbook_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Playbook not found")
 
@@ -181,7 +172,7 @@ async def update_playbook(
             updates[field] = value  # allow None through (clear output_parser etc.)
 
     if updates:
-        set_clause = ", ".join(f"{k} = ${i+1}" for i, k in enumerate(updates))
+        set_clause = ", ".join(f"{k} = ${i + 1}" for i, k in enumerate(updates))
         values = list(updates.values())
         values.append(playbook_id)
         await db.execute(  # noqa: S608
@@ -189,27 +180,19 @@ async def update_playbook(
             *values,
         )
 
-    row = await db.fetchrow(
-        "SELECT * FROM technique_playbooks WHERE id = $1", playbook_id
-    )
+    row = await db.fetchrow("SELECT * FROM technique_playbooks WHERE id = $1", playbook_id)
     return _row_to_playbook(row)
 
 
 @router.delete("/{playbook_id}", status_code=204)
-
-
 async def delete_playbook(
     playbook_id: str,
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Delete a user-created playbook. Seed playbooks cannot be deleted."""
-    row = await db.fetchrow(
-        "SELECT source FROM technique_playbooks WHERE id = $1", playbook_id
-    )
+    row = await db.fetchrow("SELECT source FROM technique_playbooks WHERE id = $1", playbook_id)
     if not row:
         raise HTTPException(status_code=404, detail="Playbook not found")
     if row["source"] == "seed":
         raise HTTPException(status_code=403, detail="Cannot delete seed playbooks")
-    await db.execute(
-        "DELETE FROM technique_playbooks WHERE id = $1", playbook_id
-    )
+    await db.execute("DELETE FROM technique_playbooks WHERE id = $1", playbook_id)

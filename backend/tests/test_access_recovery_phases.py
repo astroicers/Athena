@@ -1,8 +1,9 @@
 """Tests for 3-phase access recovery (SPEC-041 Part B)."""
-import pytest
+
 import uuid
 from datetime import datetime, timezone
 
+import pytest
 
 # We test the recovery phases by directly calling the methods on the engine router
 
@@ -26,12 +27,18 @@ async def _setup_target(db, op_id, target_id, target_ip, compromised=False, acce
     await db.execute(
         "INSERT INTO operations (id, code, name, codename, strategic_intent) "
         "VALUES ($1, $2, 'Test', 'TEST', 'test') ON CONFLICT DO NOTHING",
-        op_id, f"OP-{op_id[:8]}",
+        op_id,
+        f"OP-{op_id[:8]}",
     )
     await db.execute(
         "INSERT INTO targets (id, operation_id, ip_address, is_compromised, access_status, privilege_level, hostname, os, role) "
         "VALUES ($1, $2, $3, $4, $5, $6, 'host', 'Linux', 'server')",
-        target_id, op_id, target_ip, compromised, access_status, privilege,
+        target_id,
+        op_id,
+        target_ip,
+        compromised,
+        access_status,
+        privilege,
     )
 
 
@@ -40,21 +47,29 @@ async def _add_fact(db, op_id, target_id, trait, value, category="host"):
         "INSERT INTO facts (id, trait, value, category, source_target_id, operation_id, score, collected_at) "
         "VALUES ($1, $2, $3, $4, $5, $6, 1, $7) "
         "ON CONFLICT DO NOTHING",
-        str(uuid.uuid4()), trait, value, category, target_id, op_id, datetime.now(timezone.utc),
+        str(uuid.uuid4()),
+        trait,
+        value,
+        category,
+        target_id,
+        op_id,
+        datetime.now(timezone.utc),
     )
 
 
 async def _count_facts(db, op_id, trait):
     return await db.fetchval(
         "SELECT COUNT(*) FROM facts WHERE operation_id = $1 AND trait = $2",
-        op_id, trait,
+        op_id,
+        trait,
     )
 
 
 async def _get_fact_value(db, op_id, trait):
     row = await db.fetchrow(
         "SELECT value FROM facts WHERE operation_id = $1 AND trait = $2",
-        op_id, trait,
+        op_id,
+        trait,
     )
     return row["value"] if row else None
 
@@ -69,6 +84,7 @@ class TestRecoveryPhase1:
 
         # Import and call directly
         from app.services.engine_router import EngineRouter
+
         router = EngineRouter.__new__(EngineRouter)
         await router._recovery_phase1_rescan(tmp_db, op_id, target_id, target_ip)
 
@@ -82,6 +98,7 @@ class TestRecoveryPhase1:
         """Phase 1: no open ports -> no fact written."""
         await _setup_target(tmp_db, op_id, target_id, target_ip)
         from app.services.engine_router import EngineRouter
+
         router = EngineRouter.__new__(EngineRouter)
         await router._recovery_phase1_rescan(tmp_db, op_id, target_id, target_ip)
         count = await _count_facts(tmp_db, op_id, "access.recovery_candidate")
@@ -91,6 +108,7 @@ class TestRecoveryPhase1:
     async def test_rescan_no_ip(self, tmp_db, op_id, target_id):
         """Phase 1: no target_ip -> early return."""
         from app.services.engine_router import EngineRouter
+
         router = EngineRouter.__new__(EngineRouter)
         await router._recovery_phase1_rescan(tmp_db, op_id, target_id, None)
         count = await _count_facts(tmp_db, op_id, "access.recovery_candidate")
@@ -104,6 +122,7 @@ class TestRecoveryPhase2:
         await _setup_target(tmp_db, op_id, target_id, target_ip)
         await _add_fact(tmp_db, op_id, target_id, "service.open_port", "5985/tcp:wsman")
         from app.services.engine_router import EngineRouter
+
         router = EngineRouter.__new__(EngineRouter)
         await router._recovery_phase2_alt_protocol(tmp_db, op_id, target_id, target_ip)
         val = await _get_fact_value(tmp_db, op_id, "access.alternative_available")
@@ -115,6 +134,7 @@ class TestRecoveryPhase2:
         await _setup_target(tmp_db, op_id, target_id, target_ip)
         await _add_fact(tmp_db, op_id, target_id, "credential.ssh_key", "id_rsa_contents", category="credential")
         from app.services.engine_router import EngineRouter
+
         router = EngineRouter.__new__(EngineRouter)
         await router._recovery_phase2_alt_protocol(tmp_db, op_id, target_id, target_ip)
         val = await _get_fact_value(tmp_db, op_id, "access.alternative_available")
@@ -126,6 +146,7 @@ class TestRecoveryPhase2:
         await _setup_target(tmp_db, op_id, target_id, target_ip)
         await _add_fact(tmp_db, op_id, target_id, "service.open_port", "445/tcp:smb")
         from app.services.engine_router import EngineRouter
+
         router = EngineRouter.__new__(EngineRouter)
         await router._recovery_phase2_alt_protocol(tmp_db, op_id, target_id, target_ip)
         val = await _get_fact_value(tmp_db, op_id, "access.alternative_available")
@@ -138,8 +159,11 @@ class TestRecoveryPhase3:
         """Phase 3: another compromised host -> pivot_candidate fact."""
         await _setup_target(tmp_db, op_id, target_id, target_ip)
         pivot_id = str(uuid.uuid4())
-        await _setup_target(tmp_db, op_id, pivot_id, "192.168.1.200", compromised=True, access_status="active", privilege="Root")
+        await _setup_target(
+            tmp_db, op_id, pivot_id, "192.168.1.200", compromised=True, access_status="active", privilege="Root"
+        )
         from app.services.engine_router import EngineRouter
+
         router = EngineRouter.__new__(EngineRouter)
         await router._recovery_phase3_pivot(tmp_db, op_id, target_id, target_ip)
         val = await _get_fact_value(tmp_db, op_id, "access.pivot_candidate")
@@ -150,6 +174,7 @@ class TestRecoveryPhase3:
         """Phase 3: no other compromised hosts -> no fact."""
         await _setup_target(tmp_db, op_id, target_id, target_ip)
         from app.services.engine_router import EngineRouter
+
         router = EngineRouter.__new__(EngineRouter)
         await router._recovery_phase3_pivot(tmp_db, op_id, target_id, target_ip)
         count = await _count_facts(tmp_db, op_id, "access.pivot_candidate")
@@ -161,6 +186,7 @@ class TestRecoveryPhase3:
         await _setup_target(tmp_db, op_id, target_id, target_ip)
         await _add_fact(tmp_db, op_id, target_id, "service.open_port", "22/tcp:ssh")
         from app.services.engine_router import EngineRouter
+
         router = EngineRouter.__new__(EngineRouter)
         await router._recovery_phase1_rescan(tmp_db, op_id, target_id, target_ip)
         await router._recovery_phase1_rescan(tmp_db, op_id, target_id, target_ip)
@@ -183,6 +209,7 @@ class TestRecoveryPhase1Expanded:
         await _add_fact(tmp_db, op_id, target_id, "service.open_port", "443/tcp:https:nginx")
 
         from app.services.engine_router import EngineRouter
+
         router = EngineRouter.__new__(EngineRouter)
         await router._recovery_phase1_rescan(tmp_db, op_id, target_id, target_ip)
 
@@ -202,6 +229,7 @@ class TestRecoveryPhase1Expanded:
         await _add_fact(tmp_db, op_id, target_id, "os.type", "Linux")
 
         from app.services.engine_router import EngineRouter
+
         router = EngineRouter.__new__(EngineRouter)
         await router._recovery_phase1_rescan(tmp_db, op_id, target_id, target_ip)
 
@@ -219,6 +247,7 @@ class TestRecoveryPhase2Expanded:
         await _add_fact(tmp_db, op_id, target_id, "service.open_port", "5985/tcp:wsman:Microsoft HTTPAPI")
 
         from app.services.engine_router import EngineRouter
+
         router = EngineRouter.__new__(EngineRouter)
         await router._recovery_phase2_alt_protocol(tmp_db, op_id, target_id, target_ip)
 
@@ -229,9 +258,12 @@ class TestRecoveryPhase2Expanded:
     async def test_recovery_phase2_ssh_key_available(self, tmp_db, op_id, target_id, target_ip):
         """Has credential.ssh_key -> writes ssh_key alternative fact."""
         await _setup_target(tmp_db, op_id, target_id, target_ip)
-        await _add_fact(tmp_db, op_id, target_id, "credential.ssh_key", "-----BEGIN RSA PRIVATE KEY-----", category="credential")
+        await _add_fact(
+            tmp_db, op_id, target_id, "credential.ssh_key", "-----BEGIN RSA PRIVATE KEY-----", category="credential"
+        )
 
         from app.services.engine_router import EngineRouter
+
         router = EngineRouter.__new__(EngineRouter)
         await router._recovery_phase2_alt_protocol(tmp_db, op_id, target_id, target_ip)
 
@@ -248,10 +280,13 @@ class TestRecoveryPhase3Expanded:
         await _setup_target(tmp_db, op_id, target_id, target_ip)
         pivot_id = str(uuid.uuid4())
         pivot_ip = "10.0.0.50"
-        await _setup_target(tmp_db, op_id, pivot_id, pivot_ip, compromised=True, access_status="active", privilege="Root")
+        await _setup_target(
+            tmp_db, op_id, pivot_id, pivot_ip, compromised=True, access_status="active", privilege="Root"
+        )
         await _add_fact(tmp_db, op_id, pivot_id, "credential.root_shell", "msf_session_42")
 
         from app.services.engine_router import EngineRouter
+
         router = EngineRouter.__new__(EngineRouter)
         await router._recovery_phase3_pivot(tmp_db, op_id, target_id, target_ip)
 
@@ -266,6 +301,7 @@ class TestRecoveryPhase3Expanded:
         await _setup_target(tmp_db, op_id, target_id, target_ip, compromised=True, access_status="lost")
 
         from app.services.engine_router import EngineRouter
+
         router = EngineRouter.__new__(EngineRouter)
         await router._recovery_phase3_pivot(tmp_db, op_id, target_id, target_ip)
 
@@ -287,9 +323,12 @@ class TestRecoveryIdempotency:
 
         # Setup a pivot host for Phase 3
         pivot_id = str(uuid.uuid4())
-        await _setup_target(tmp_db, op_id, pivot_id, "10.0.0.99", compromised=True, access_status="active", privilege="Root")
+        await _setup_target(
+            tmp_db, op_id, pivot_id, "10.0.0.99", compromised=True, access_status="active", privilege="Root"
+        )
 
         from app.services.engine_router import EngineRouter
+
         router = EngineRouter.__new__(EngineRouter)
 
         # Run all three phases twice

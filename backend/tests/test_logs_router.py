@@ -22,9 +22,7 @@ async def test_list_logs_empty(client: AsyncClient):
     assert data["total"] == 0
 
 
-async def test_list_logs_with_entries(
-    client: AsyncClient, seeded_db: asyncpg.Connection
-):
+async def test_list_logs_with_entries(client: AsyncClient, seeded_db: asyncpg.Connection):
     """GET /api/operations/test-op-1/logs returns inserted log entries."""
     await seeded_db.execute(
         "INSERT INTO log_entries (id, operation_id, severity, source, message) "
@@ -43,9 +41,7 @@ async def test_list_logs_with_entries(
     assert {"log-1", "log-2"} == ids
 
 
-async def test_list_logs_pagination(
-    client: AsyncClient, seeded_db: asyncpg.Connection
-):
+async def test_list_logs_pagination(client: AsyncClient, seeded_db: asyncpg.Connection):
     """GET /api/operations/test-op-1/logs?page=1&page_size=2 returns 2 items
     and reports total=5."""
     for i in range(1, 6):
@@ -63,9 +59,7 @@ async def test_list_logs_pagination(
     assert data["page_size"] == 2
 
 
-async def test_list_logs_page_2(
-    client: AsyncClient, seeded_db: asyncpg.Connection
-):
+async def test_list_logs_page_2(client: AsyncClient, seeded_db: asyncpg.Connection):
     """GET /api/operations/test-op-1/logs?page=2&page_size=2 returns the next
     2 items (different from page 1)."""
     for i in range(1, 6):

@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SwarmTask:
     """Single unit of parallel execution within the Act phase."""
+
     task_id: str
     technique_id: str
     target_id: str
@@ -42,6 +43,7 @@ class SwarmTask:
 @dataclass
 class SwarmResult:
     """Aggregated result of all parallel tasks in one Act phase."""
+
     ooda_iteration_id: str
     total: int
     completed: int = 0
@@ -59,10 +61,7 @@ class SwarmResult:
 
     @property
     def act_summary(self) -> str:
-        return (
-            f"Swarm: {self.completed}/{self.total} succeeded, "
-            f"{self.failed} failed, {self.timed_out} timed out"
-        )
+        return f"Swarm: {self.completed}/{self.total} succeeded, {self.failed} failed, {self.timed_out} timed out"
 
 
 class SwarmExecutor:
@@ -116,8 +115,13 @@ class SwarmExecutor:
                     "(id, ooda_iteration_id, operation_id, technique_id, target_id, "
                     "engine, status, created_at) "
                     "VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7)",
-                    st.task_id, ooda_iteration_id, operation_id,
-                    st.technique_id, st.target_id, st.engine, now,
+                    st.task_id,
+                    ooda_iteration_id,
+                    operation_id,
+                    st.technique_id,
+                    st.target_id,
+                    st.engine,
+                    now,
                 )
 
         # Broadcast initial state
@@ -129,17 +133,15 @@ class SwarmExecutor:
         # Using asyncio.gather with return_exceptions=True for Python 3.10 compat
         # (_execute_single handles its own exceptions, so leaked ones are logged)
         results = await asyncio.gather(
-            *(
-                self._execute_single(pool, operation_id, ooda_iteration_id, st)
-                for st in swarm_tasks
-            ),
+            *(self._execute_single(pool, operation_id, ooda_iteration_id, st) for st in swarm_tasks),
             return_exceptions=True,
         )
         for i, result in enumerate(results):
             if isinstance(result, Exception):
                 logger.error(
                     "SwarmExecutor: unhandled task exception: %s",
-                    result, exc_info=result,
+                    result,
+                    exc_info=result,
                 )
 
         # Aggregate results
@@ -156,9 +158,9 @@ class SwarmExecutor:
         async with pool.acquire() as db:
             for st in swarm_tasks:
                 await db.execute(
-                    "UPDATE swarm_tasks SET status = $1, error = $2, "
-                    "started_at = $3, completed_at = $4 WHERE id = $5",
-                    st.status, st.error,
+                    "UPDATE swarm_tasks SET status = $1, error = $2, started_at = $3, completed_at = $4 WHERE id = $5",
+                    st.status,
+                    st.error,
                     st.started_at if st.started_at else None,
                     st.completed_at if st.completed_at else None,
                     st.task_id,
@@ -170,7 +172,11 @@ class SwarmExecutor:
         return swarm_result
 
     async def _execute_single(
-        self, pool: asyncpg.Pool, operation_id: str, ooda_iteration_id: str, task: SwarmTask,
+        self,
+        pool: asyncpg.Pool,
+        operation_id: str,
+        ooda_iteration_id: str,
+        task: SwarmTask,
     ) -> None:
         """Execute a single task with semaphore guard and per-task timeout.
 
@@ -213,13 +219,21 @@ class SwarmExecutor:
         """Broadcast execution.batch_update WebSocket event."""
         try:
             await self._ws.broadcast(
-                operation_id, "execution.batch_update",
-                {"tasks": [
-                    {"task_id": t.task_id, "technique_id": t.technique_id,
-                     "target_id": t.target_id, "engine": t.engine,
-                     "status": t.status, "error": t.error}
-                    for t in tasks
-                ]},
+                operation_id,
+                "execution.batch_update",
+                {
+                    "tasks": [
+                        {
+                            "task_id": t.task_id,
+                            "technique_id": t.technique_id,
+                            "target_id": t.target_id,
+                            "engine": t.engine,
+                            "status": t.status,
+                            "error": t.error,
+                        }
+                        for t in tasks
+                    ]
+                },
             )
         except Exception as _exc:
             logger.warning("SwarmExecutor broadcast failed (non-fatal): %s", _exc)

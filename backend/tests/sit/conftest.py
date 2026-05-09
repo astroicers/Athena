@@ -11,12 +11,12 @@ import pytest
 import pytest_asyncio
 
 from app.clients import BaseEngineClient, ExecutionResult
+from app.services.agent_swarm import SwarmExecutor
 from app.services.c5isr_mapper import C5ISRMapper
 from app.services.decision_engine import DecisionEngine
 from app.services.engine_router import EngineRouter
 from app.services.fact_collector import FactCollector
 from app.services.orient_engine import OrientEngine
-from app.services.agent_swarm import SwarmExecutor
 
 
 # ---------------------------------------------------------------------------
@@ -45,12 +45,14 @@ def sit_ws_manager():
 def mock_engine_client():
     """Mock BaseEngineClient that returns success by default."""
     client = MagicMock(spec=BaseEngineClient)
-    client.execute = AsyncMock(return_value=ExecutionResult(
-        success=True,
-        execution_id="mock-exec-001",
-        output="Mock execution completed successfully",
-        facts=[],
-    ))
+    client.execute = AsyncMock(
+        return_value=ExecutionResult(
+            success=True,
+            execution_id="mock-exec-001",
+            output="Mock execution completed successfully",
+            facts=[],
+        )
+    )
     client.is_available = AsyncMock(return_value=True)
     return client
 
@@ -77,6 +79,7 @@ async def sit_services(seeded_db, sit_ws_manager, mock_engine_client):
     swarm = SwarmExecutor(engine_router=router, ws_manager=sit_ws_manager)
 
     from app.services.ooda_controller import OODAController
+
     controller = OODAController(
         fact_collector=fc,
         orient_engine=orient,
@@ -117,10 +120,15 @@ async def sit_seeded_with_execution(seeded_db):
         "(id, technique_id, target_id, operation_id, engine, status, "
         "result_summary, started_at, completed_at) "
         "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-        exec_id, "T1003.001", "test-target-1", "test-op-1", "mcp_ssh",
+        exec_id,
+        "T1003.001",
+        "test-target-1",
+        "test-op-1",
+        "mcp_ssh",
         "success",
         "Dumped LSASS memory: found NTLM hash for Administrator (aad3b435...)",
-        now, now,
+        now,
+        now,
     )
     yield seeded_db
 
@@ -144,7 +152,14 @@ async def sit_seeded_with_facts(seeded_db):
             "INSERT INTO facts (id, trait, value, category, "
             "source_technique_id, source_target_id, operation_id, score, collected_at) "
             "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-            str(uuid.uuid4()), trait, value, category,
-            "T1003.001", "test-target-1", "test-op-1", 1, now,
+            str(uuid.uuid4()),
+            trait,
+            value,
+            category,
+            "T1003.001",
+            "test-target-1",
+            "test-op-1",
+            1,
+            now,
         )
     yield seeded_db

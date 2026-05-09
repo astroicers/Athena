@@ -61,9 +61,7 @@ _MOCK_RESULTS: dict[str, ExecutionResult] = {
 class MockC2Client(BaseEngineClient):
     """Mock mode: returns pre-recorded results without calling real C2 engine."""
 
-    async def execute(
-        self, ability_id: str, target: str, params: dict | None = None
-    ) -> ExecutionResult:
+    async def execute(self, ability_id: str, target: str, params: dict | None = None) -> ExecutionResult:
         # Simulate 2-5 second execution delay
         await asyncio.sleep(random.uniform(2, 5))
 
@@ -90,10 +88,7 @@ class MockC2Client(BaseEngineClient):
         return "finished"
 
     async def list_abilities(self) -> list[dict]:
-        return [
-            {"ability_id": k, "name": k, "tactic": "various"}
-            for k in _MOCK_RESULTS
-        ]
+        return [{"ability_id": k, "name": k, "tactic": "various"} for k in _MOCK_RESULTS]
 
     async def is_available(self) -> bool:
         return True

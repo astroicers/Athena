@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 class ConstraintWarning(BaseModel):
     """Soft constraint: advisory message for the commander."""
+
     domain: str
     health_pct: float
     message: str
@@ -19,6 +20,7 @@ class ConstraintWarning(BaseModel):
 
 class ConstraintLimit(BaseModel):
     """Hard constraint: enforced limit on OODA behavior."""
+
     domain: str
     health_pct: float
     rule: str
@@ -32,6 +34,7 @@ class OperationalConstraints(BaseModel):
     Produced by constraint_engine.evaluate() at the start of each OODA cycle.
     Consumed by orient_engine, decision_engine, engine_router, agent_swarm.
     """
+
     warnings: list[ConstraintWarning] = Field(default_factory=list)
     hard_limits: list[ConstraintLimit] = Field(default_factory=list)
     orient_max_options: int = 3

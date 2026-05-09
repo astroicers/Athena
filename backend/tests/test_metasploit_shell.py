@@ -1,7 +1,9 @@
 """Tests for Metasploit shell exponential backoff and session health check."""
+
 import asyncio
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from app.clients.metasploit_client import MetasploitRPCEngine
 
@@ -19,12 +21,14 @@ class TestReadShellOutput:
         """Shell returns output after a few empty reads."""
         shell = MagicMock()
         call_count = 0
+
         def mock_read():
             nonlocal call_count
             call_count += 1
             if call_count <= 3:
                 return ""
             return "uid=0(root) gid=0(root)\n"
+
         shell.read = mock_read
         result = await engine._read_shell_output(shell, timeout=5.0)
         assert "uid=0(root)" in result
@@ -132,9 +136,7 @@ class TestReadShellOutputExpanded:
         shell.read = mock_read
 
         with patch("asyncio.sleep", new_callable=AsyncMock):
-            result = await engine._read_shell_output(
-                shell, start_interval=0.1, timeout=10.0
-            )
+            result = await engine._read_shell_output(shell, start_interval=0.1, timeout=10.0)
 
         assert result == "uid=0(root) gid=0(root)"
         # At least 6 reads: 3 empty + 1 data + 2 empty (consecutive stop)
@@ -147,15 +149,13 @@ class TestReadShellOutputExpanded:
         Tests each prompt character to ensure the loop breaks immediately
         upon detecting a shell prompt at the end of accumulated output.
         """
-        for prompt_char in ('$', '#', '>'):
+        for prompt_char in ("$", "#", ">"):
             shell = MagicMock()
             output_with_prompt = f"user@host{prompt_char} "
             shell.read = MagicMock(side_effect=[output_with_prompt])
 
             with patch("asyncio.sleep", new_callable=AsyncMock):
-                result = await engine._read_shell_output(
-                    shell, start_interval=0.1, timeout=10.0
-                )
+                result = await engine._read_shell_output(shell, start_interval=0.1, timeout=10.0)
 
             assert output_with_prompt.rstrip() in result.rstrip(), (
                 f"Expected prompt '{prompt_char}' to trigger early termination"
@@ -178,16 +178,13 @@ class TestReadShellOutputExpanded:
         async def mock_sleep(seconds):
             sleep_calls.append(seconds)
 
-        with patch("asyncio.sleep", side_effect=mock_sleep), \
-             patch("time.monotonic") as mock_time:
+        with patch("asyncio.sleep", side_effect=mock_sleep), patch("time.monotonic") as mock_time:
             # Simulate time progression: starts at 0, each call advances by 1s,
             # exceeds 15s timeout after enough iterations
             time_values = [float(i) for i in range(0, 100)]
             mock_time.side_effect = time_values
 
-            result = await engine._read_shell_output(
-                shell, start_interval=0.3, timeout=15.0
-            )
+            result = await engine._read_shell_output(shell, start_interval=0.3, timeout=15.0)
 
         assert result == ""
         # Verify exponential backoff was applied (intervals should increase)

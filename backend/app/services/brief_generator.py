@@ -62,12 +62,14 @@ class BriefGenerator:
 
         # 1. Operation metadata
         op = await db.fetchrow(
-            "SELECT * FROM operations WHERE id = $1", operation_id,
+            "SELECT * FROM operations WHERE id = $1",
+            operation_id,
         )
 
         # 2. Targets
         targets = await db.fetch(
-            "SELECT * FROM targets WHERE operation_id = $1", operation_id,
+            "SELECT * FROM targets WHERE operation_id = $1",
+            operation_id,
         )
 
         # 3. Facts
@@ -78,15 +80,13 @@ class BriefGenerator:
 
         # 4. OODA iterations
         ooda_iters = await db.fetch(
-            "SELECT * FROM ooda_iterations WHERE operation_id = $1 "
-            "ORDER BY iteration_number",
+            "SELECT * FROM ooda_iterations WHERE operation_id = $1 ORDER BY iteration_number",
             operation_id,
         )
 
         # 5. Technique executions
         tech_execs = await db.fetch(
-            "SELECT * FROM technique_executions WHERE operation_id = $1 "
-            "ORDER BY started_at",
+            "SELECT * FROM technique_executions WHERE operation_id = $1 ORDER BY started_at",
             operation_id,
         )
 
@@ -98,8 +98,7 @@ class BriefGenerator:
 
         # 7. Latest recommendation
         rec_row = await db.fetchrow(
-            "SELECT * FROM recommendations WHERE operation_id = $1 "
-            "ORDER BY created_at DESC LIMIT 1",
+            "SELECT * FROM recommendations WHERE operation_id = $1 ORDER BY created_at DESC LIMIT 1",
             operation_id,
         )
 
@@ -111,9 +110,7 @@ class BriefGenerator:
         latest_iter = ooda_iters[-1]["iteration_number"] if ooda_iters else 0
 
         targets_total = len(targets)
-        targets_compromised = sum(
-            1 for t in targets if t.get("is_compromised")
-        )
+        targets_compromised = sum(1 for t in targets if t.get("is_compromised"))
         facts_count = len(facts)
 
         # Build kill-chain map: tactic -> list of technique_ids
@@ -125,10 +122,9 @@ class BriefGenerator:
                 tactic_techniques.setdefault(tactic, []).append(tid)
 
         # Also look up tactics via the techniques table for executions without tactic
-        exec_technique_ids = list({
-            te["technique_id"] for te in tech_execs
-            if te.get("technique_id") and not te.get("tactic")
-        })
+        exec_technique_ids = list(
+            {te["technique_id"] for te in tech_execs if te.get("technique_id") and not te.get("tactic")}
+        )
         if exec_technique_ids:
             try:
                 tactic_rows = await db.fetch(
@@ -156,12 +152,8 @@ class BriefGenerator:
 
         # Header
         lines.append(f"# Operation Brief: {codename}")
-        lines.append(
-            f"> Auto-generated after OODA #{latest_iter} | {now.strftime('%Y-%m-%d %H:%M:%S UTC')}"
-        )
-        lines.append(
-            f"> Mission Profile: {mission_profile} | Status: {status} | Threat Level: {threat_level}"
-        )
+        lines.append(f"> Auto-generated after OODA #{latest_iter} | {now.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+        lines.append(f"> Mission Profile: {mission_profile} | Status: {status} | Threat Level: {threat_level}")
         lines.append("")
 
         # Executive Summary
@@ -186,9 +178,7 @@ class BriefGenerator:
             else:
                 stage_status = "-"
                 tech_list = "-"
-            lines.append(
-                f"| {tactic_name} ({tactic_id}) | {stage_status} | {tech_list} |"
-            )
+            lines.append(f"| {tactic_name} ({tactic_id}) | {stage_status} | {tech_list} |")
         lines.append("")
 
         # Targets
@@ -199,16 +189,12 @@ class BriefGenerator:
             for t in targets:
                 hostname = _escape_md(t.get("hostname")) or "-"
                 ip = _escape_md(t.get("ip_address")) or "-"
-                t_status = "Compromised" if t.get("is_compromised") else (
-                    _escape_md(t.get("access_status")) or "pending"
+                t_status = (
+                    "Compromised" if t.get("is_compromised") else (_escape_md(t.get("access_status")) or "pending")
                 )
                 privilege = _escape_md(t.get("privilege_level")) or "-"
-                t_fact_count = sum(
-                    1 for f in facts if f.get("source_target_id") == t["id"]
-                )
-                lines.append(
-                    f"| {hostname} | {ip} | {t_status} | {privilege} | {t_fact_count} |"
-                )
+                t_fact_count = sum(1 for f in facts if f.get("source_target_id") == t["id"])
+                lines.append(f"| {hostname} | {ip} | {t_status} | {privilege} | {t_fact_count} |")
         else:
             lines.append("_No targets defined._")
         lines.append("")

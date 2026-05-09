@@ -12,7 +12,9 @@
 """Vulnerability domain models."""
 
 from __future__ import annotations
+
 from dataclasses import dataclass
+
 from pydantic import BaseModel
 
 
@@ -21,7 +23,7 @@ class VulnFinding(BaseModel):
     service: str
     version: str
     cvss_score: float
-    severity: str       # "critical" | "high" | "medium" | "low" | "info"
+    severity: str  # "critical" | "high" | "medium" | "low" | "info"
     description: str
     exploit_available: bool
     target_id: str
@@ -32,15 +34,15 @@ class VulnFinding(BaseModel):
 class ValidatedFinding:
     """Result of running a VulnFinding through the exploit validation pipeline."""
 
-    cve_id: str                    # e.g. "CVE-2021-41773"
-    service: str                   # e.g. "http"
-    version: str                   # e.g. "Apache 2.4.49"
-    cvss_score: float              # 0.0 - 10.0
-    validation_status: str         # "confirmed" | "rejected" | "uncertain"
-    validation_confidence: float   # 0.0 - 1.0
-    validation_evidence: str       # human-readable evidence string
-    exploit_available: bool        # True if public exploit found
+    cve_id: str  # e.g. "CVE-2021-41773"
+    service: str  # e.g. "http"
+    version: str  # e.g. "Apache 2.4.49"
+    cvss_score: float  # 0.0 - 10.0
+    validation_status: str  # "confirmed" | "rejected" | "uncertain"
+    validation_confidence: float  # 0.0 - 1.0
+    validation_evidence: str  # human-readable evidence string
+    exploit_available: bool  # True if public exploit found
     exploit_reference: str | None  # URL to PoC (Exploit-DB / GitHub)
-    strategy_used: str             # e.g. "BackportCheckStrategy"
+    strategy_used: str  # e.g. "BackportCheckStrategy"
     target_id: str
     operation_id: str

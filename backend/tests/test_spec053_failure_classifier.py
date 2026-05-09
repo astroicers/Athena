@@ -29,7 +29,6 @@ import pytest
 
 from app.services.engine_router import _classify_failure
 
-
 # ---------------------------------------------------------------------------
 # Explicit single-case tests (match Test Matrix B1-B4 one-for-one)
 # ---------------------------------------------------------------------------
@@ -58,8 +57,7 @@ def test_b3_none_error_falls_to_unknown() -> None:
 def test_b4_tool_error_pydantic_validation() -> None:
     """B4: dns_resolve pydantic validation -> tool_error."""
     got = _classify_failure(
-        "1 validation error for dns_resolveArguments\n"
-        "subdomains\n  Field required",
+        "1 validation error for dns_resolveArguments\nsubdomains\n  Field required",
         "mcp",
     )
     assert got == "tool_error"
@@ -119,10 +117,7 @@ def test_classify_failure_outline(error, engine, expected) -> None:
 
 def test_classify_failure_accepts_mixed_case() -> None:
     """Heuristic must be case-insensitive (we lowercase the input)."""
-    assert (
-        _classify_failure("CONNECTION REFUSED", "metasploit")
-        == "service_unreachable"
-    )
+    assert _classify_failure("CONNECTION REFUSED", "metasploit") == "service_unreachable"
 
 
 def test_classify_failure_never_raises_on_unicode() -> None:

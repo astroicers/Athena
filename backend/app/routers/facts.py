@@ -41,8 +41,6 @@ def _row_to_fact(row: asyncpg.Record) -> Fact:
 
 
 @router.get("/operations/{operation_id}/facts", response_model=list[Fact])
-
-
 async def list_facts(
     operation_id: str,
     target_id: str | None = None,
@@ -52,9 +50,9 @@ async def list_facts(
 
     if target_id:
         rows = await db.fetch(
-            "SELECT * FROM facts WHERE operation_id = $1 AND source_target_id = $2 "
-            "ORDER BY collected_at DESC",
-            operation_id, target_id,
+            "SELECT * FROM facts WHERE operation_id = $1 AND source_target_id = $2 ORDER BY collected_at DESC",
+            operation_id,
+            target_id,
         )
     else:
         rows = await db.fetch(
@@ -79,9 +77,15 @@ async def create_fact(
         "(id, trait, value, category, source_technique_id, "
         "source_target_id, operation_id, score, collected_at) "
         "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-        fact_id, body.trait, body.value, body.category,
-        body.source_technique_id, body.source_target_id,
-        operation_id, body.score, now,
+        fact_id,
+        body.trait,
+        body.value,
+        body.category,
+        body.source_technique_id,
+        body.source_target_id,
+        operation_id,
+        body.score,
+        now,
     )
     row = await db.fetchrow("SELECT * FROM facts WHERE id = $1", fact_id)
     return _row_to_fact(row)

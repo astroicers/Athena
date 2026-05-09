@@ -78,9 +78,7 @@ async def test_update_mission_step_status_running(client: AsyncClient, seeded_db
     assert patch_resp.json()["status"] == "running"
 
     # Verify started_at was written to the database
-    row = await seeded_db.fetchrow(
-        "SELECT started_at FROM mission_steps WHERE id = $1", step_id
-    )
+    row = await seeded_db.fetchrow("SELECT started_at FROM mission_steps WHERE id = $1", step_id)
     assert row["started_at"] is not None
 
 
@@ -97,9 +95,7 @@ async def test_update_mission_step_completed(client: AsyncClient, seeded_db):
     assert patch_resp.status_code == 200
     assert patch_resp.json()["status"] == "completed"
 
-    row = await seeded_db.fetchrow(
-        "SELECT completed_at FROM mission_steps WHERE id = $1", step_id
-    )
+    row = await seeded_db.fetchrow("SELECT completed_at FROM mission_steps WHERE id = $1", step_id)
     assert row["completed_at"] is not None
 
 

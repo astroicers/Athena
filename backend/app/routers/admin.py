@@ -26,13 +26,12 @@ router = APIRouter()
 async def reload_technique_rules():
     """Hot-reload technique rules from YAML without restart."""
     from app.services.attack_graph_engine import reload_rules
+
     reload_rules()
     return {"status": "ok", "message": "Rules reloaded"}
 
 
 @router.post("/operations/{operation_id}/reset", status_code=204)
-
-
 async def reset_operation(
     operation_id: str,
     db: asyncpg.Connection = Depends(get_db),
@@ -50,49 +49,23 @@ async def reset_operation(
 
     async with db.transaction():
         # ── DELETE execution history (FK-safe order) ─────────────────────────
-        await db.execute(
-            "DELETE FROM log_entries WHERE operation_id = $1", operation_id
-        )
-        await db.execute(
-            "DELETE FROM recommendations WHERE operation_id = $1", operation_id
-        )
-        await db.execute(
-            "DELETE FROM facts WHERE operation_id = $1", operation_id
-        )
-        await db.execute(
-            "DELETE FROM technique_executions WHERE operation_id = $1", operation_id
-        )
-        await db.execute(
-            "DELETE FROM ooda_iterations WHERE operation_id = $1", operation_id
-        )
+        await db.execute("DELETE FROM log_entries WHERE operation_id = $1", operation_id)
+        await db.execute("DELETE FROM recommendations WHERE operation_id = $1", operation_id)
+        await db.execute("DELETE FROM facts WHERE operation_id = $1", operation_id)
+        await db.execute("DELETE FROM technique_executions WHERE operation_id = $1", operation_id)
+        await db.execute("DELETE FROM ooda_iterations WHERE operation_id = $1", operation_id)
 
         # ── DELETE graph / swarm / directives (FK-safe: before targets) ─────
-        await db.execute(
-            "DELETE FROM attack_graph_edges WHERE operation_id = $1", operation_id
-        )
-        await db.execute(
-            "DELETE FROM attack_graph_nodes WHERE operation_id = $1", operation_id
-        )
-        await db.execute(
-            "DELETE FROM swarm_tasks WHERE operation_id = $1", operation_id
-        )
-        await db.execute(
-            "DELETE FROM ooda_directives WHERE operation_id = $1", operation_id
-        )
+        await db.execute("DELETE FROM attack_graph_edges WHERE operation_id = $1", operation_id)
+        await db.execute("DELETE FROM attack_graph_nodes WHERE operation_id = $1", operation_id)
+        await db.execute("DELETE FROM swarm_tasks WHERE operation_id = $1", operation_id)
+        await db.execute("DELETE FROM ooda_directives WHERE operation_id = $1", operation_id)
 
         # ── DELETE operational data (FK-safe order) ──────────────────────────
-        await db.execute(
-            "DELETE FROM mission_steps WHERE operation_id = $1", operation_id
-        )
-        await db.execute(
-            "DELETE FROM recon_scans WHERE operation_id = $1", operation_id
-        )
-        await db.execute(
-            "DELETE FROM agents WHERE operation_id = $1", operation_id
-        )
-        await db.execute(
-            "DELETE FROM targets WHERE operation_id = $1", operation_id
-        )
+        await db.execute("DELETE FROM mission_steps WHERE operation_id = $1", operation_id)
+        await db.execute("DELETE FROM recon_scans WHERE operation_id = $1", operation_id)
+        await db.execute("DELETE FROM agents WHERE operation_id = $1", operation_id)
+        await db.execute("DELETE FROM targets WHERE operation_id = $1", operation_id)
 
         # ── RESET operation counters & C5ISR statuses ──────────────────────
         await db.execute(
@@ -107,7 +80,8 @@ async def reset_operation(
             "data_exfiltrated_bytes = 0, "
             "updated_at = $1 "
             "WHERE id = $2",
-            now, operation_id,
+            now,
+            operation_id,
         )
         await db.execute(
             "UPDATE c5isr_statuses SET "
@@ -116,13 +90,12 @@ async def reset_operation(
             "detail = 'Awaiting operation start', "
             "updated_at = $1 "
             "WHERE operation_id = $2",
-            now, operation_id,
+            now,
+            operation_id,
         )
 
     # ── Broadcast reset event via WebSocket ──────────────────────────────
-    await ws_manager.broadcast(
-        operation_id, "operation.reset", {"operation_id": operation_id}
-    )
+    await ws_manager.broadcast(operation_id, "operation.reset", {"operation_id": operation_id})
 
     return Response(status_code=204)
 
@@ -146,9 +119,7 @@ async def soft_reset_operation(
             "swarm_tasks",
             "ooda_directives",
         ]:
-            await db.execute(
-                f"DELETE FROM {table} WHERE operation_id = $1", operation_id
-            )
+            await db.execute(f"DELETE FROM {table} WHERE operation_id = $1", operation_id)
         await db.execute(
             "UPDATE operations SET "
             "status = 'active', "
@@ -162,8 +133,6 @@ async def soft_reset_operation(
         )
 
     # Broadcast soft reset event
-    await ws_manager.broadcast(
-        operation_id, "operation.soft_reset", {"operation_id": operation_id}
-    )
+    await ws_manager.broadcast(operation_id, "operation.soft_reset", {"operation_id": operation_id})
 
     return Response(status_code=204)

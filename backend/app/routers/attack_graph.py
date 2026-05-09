@@ -99,16 +99,14 @@ def _to_response(graph: AttackGraph) -> dict:
         explored_paths=graph.explored_paths,
         unexplored_branches=graph.unexplored_branches,
         coverage_score=graph.coverage_score,
-        updated_at=graph.updated_at.isoformat() if hasattr(graph.updated_at, 'isoformat') else graph.updated_at,
+        updated_at=graph.updated_at.isoformat() if hasattr(graph.updated_at, "isoformat") else graph.updated_at,
         stats=stats,
     ).model_dump()
 
 
 async def _verify_operation(db: asyncpg.Connection, operation_id: str) -> None:
     """Raise 404 if operation does not exist."""
-    row = await db.fetchrow(
-        "SELECT id FROM operations WHERE id = $1", operation_id
-    )
+    row = await db.fetchrow("SELECT id FROM operations WHERE id = $1", operation_id)
     if not row:
         raise HTTPException(status_code=404, detail="Operation not found")
 

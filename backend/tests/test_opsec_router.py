@@ -12,10 +12,10 @@
 
 from httpx import AsyncClient
 
-
 # ---------------------------------------------------------------------------
 # GET /api/operations/{op_id}/opsec-status
 # ---------------------------------------------------------------------------
+
 
 async def test_get_opsec_status(client: AsyncClient, seeded_db):
     """GET /api/operations/{op_id}/opsec-status returns 200 with OPSEC aggregate."""
@@ -47,7 +47,11 @@ async def test_opsec_status_with_event(client: AsyncClient, seeded_db):
     await seeded_db.execute(
         """INSERT INTO opsec_events (id, operation_id, event_type, noise_points, detail)
            VALUES ($1, $2, $3, $4, $5)""",
-        "opsec-evt-1", "test-op-1", "port_scan", 15, '{"message": "Nmap SYN scan detected"}',
+        "opsec-evt-1",
+        "test-op-1",
+        "port_scan",
+        15,
+        '{"message": "Nmap SYN scan detected"}',
     )
     resp = await client.get("/api/operations/test-op-1/opsec-status")
     assert resp.status_code == 200
@@ -58,6 +62,7 @@ async def test_opsec_status_with_event(client: AsyncClient, seeded_db):
 # ---------------------------------------------------------------------------
 # GET /api/operations/{op_id}/threat-level
 # ---------------------------------------------------------------------------
+
 
 async def test_get_threat_level(client: AsyncClient, seeded_db):
     """GET /api/operations/{op_id}/threat-level returns 200 with threat data."""

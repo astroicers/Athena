@@ -14,9 +14,8 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.clients import ExecutionResult
-from app.clients.mock_c2_client import MockC2Client
 from app.clients.c2_client import C2EngineClient
-
+from app.clients.mock_c2_client import MockC2Client
 
 # ===================================================================
 # MockC2Client (5 tests)
@@ -83,8 +82,8 @@ async def test_c2_engine_client_check_version_callable():
 
 async def test_engine_router_metasploit_route(seeded_db):
     """EngineRouter routes to MetasploitRPCEngine when exploit=true CVE fact exists."""
-    from app.services.engine_router import EngineRouter
     from app.clients.mock_c2_client import MockC2Client
+    from app.services.engine_router import EngineRouter
     from app.services.fact_collector import FactCollector
 
     # Insert vuln.cve fact with exploit=true for seeded target
@@ -137,17 +136,19 @@ async def test_engine_router_mcp_ssh_route(seeded_db):
 
     Uses seeded_db with real PostgreSQL schema instead of in-memory SQLite.
     """
-    from app.services.engine_router import EngineRouter
     from app.clients.mock_c2_client import MockC2Client
-    from app.clients import ExecutionResult
+    from app.services.engine_router import EngineRouter
 
     mock_ws = MagicMock()
     mock_ws.broadcast = AsyncMock()
     mock_mcp = MagicMock()
     mock_mcp.execute = AsyncMock(
         return_value=ExecutionResult(
-            success=True, execution_id="exec-123",
-            output="Linux test", facts=[], error=None,
+            success=True,
+            execution_id="exec-123",
+            output="Linux test",
+            facts=[],
+            error=None,
         )
     )
     mock_fc = MagicMock()

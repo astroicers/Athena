@@ -44,10 +44,14 @@ async def auto_trigger_ooda(
         await asyncio.sleep(delay)
 
     logger.info(
-        "Auto-triggering OODA cycle for operation %s (reason: %s)", operation_id, reason,
+        "Auto-triggering OODA cycle for operation %s (reason: %s)",
+        operation_id,
+        reason,
     )
     await ws_manager.broadcast(
-        operation_id, "ooda.auto_trigger", {"reason": reason},
+        operation_id,
+        "ooda.auto_trigger",
+        {"reason": reason},
     )
 
     iteration_id = str(uuid.uuid4())
@@ -57,9 +61,12 @@ async def auto_trigger_ooda(
             await controller.trigger_cycle(db, operation_id)
         except Exception as exc:
             logger.exception(
-                "Auto-triggered OODA cycle %s failed: %s", iteration_id, exc,
+                "Auto-triggered OODA cycle %s failed: %s",
+                iteration_id,
+                exc,
             )
             await ws_manager.broadcast(
-                operation_id, "ooda.failed",
+                operation_id,
+                "ooda.failed",
                 {"iteration_id": iteration_id, "error": str(exc)},
             )

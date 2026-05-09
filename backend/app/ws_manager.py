@@ -56,11 +56,14 @@ class WebSocketManager:
             c5isr.update, fact.new, recommendation
         """
         self._broadcast_total += 1
-        message = json.dumps({
-            "event": event,
-            "data": data,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }, default=str)
+        message = json.dumps(
+            {
+                "event": event,
+                "data": data,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
+            default=str,
+        )
         connections = self._connections.get(operation_id, set()).copy()
         any_success = False
         for ws in connections:
@@ -74,11 +77,14 @@ class WebSocketManager:
 
     async def broadcast_global(self, event: str, data: dict):
         """Broadcast an event to ALL active connections across all operations."""
-        message = json.dumps({
-            "event": event,
-            "data": data,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }, default=str)
+        message = json.dumps(
+            {
+                "event": event,
+                "data": data,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
+            default=str,
+        )
         for op_id, connections in list(self._connections.items()):
             for ws in connections.copy():
                 try:

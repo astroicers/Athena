@@ -29,7 +29,6 @@ import pytest
 
 from app.services import orient_engine as orient_module
 
-
 # ---------------------------------------------------------------------------
 # B4 / Rule #9: Static system prompt contract
 # ---------------------------------------------------------------------------

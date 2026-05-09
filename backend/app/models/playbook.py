@@ -9,6 +9,7 @@
 # For commercial licensing, contact: azz093093.830330@gmail.com
 
 """Playbook models for technique knowledge base."""
+
 from __future__ import annotations
 
 from datetime import datetime

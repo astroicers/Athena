@@ -64,9 +64,7 @@ class OSINTEngine:
 
         # Steps 2–5: MCP-only (no direct crtsh/subfinder/DNS execution)
         if not settings.MCP_ENABLED:
-            raise ConnectionError(
-                "MCP is required for OSINT discovery (MCP_ENABLED=false)"
-            )
+            raise ConnectionError("MCP is required for OSINT discovery (MCP_ENABLED=false)")
 
         subdomain_infos, sources_used = await self._discover_via_mcp(domain, limit)
 
@@ -125,9 +123,7 @@ class OSINTEngine:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    async def _discover_via_mcp(
-        self, domain: str, limit: int
-    ) -> "tuple[list[SubdomainInfo], list[str]]":
+    async def _discover_via_mcp(self, domain: str, limit: int) -> "tuple[list[SubdomainInfo], list[str]]":
         """Delegate OSINT discovery to MCP osint-recon server."""
         import json as _json
 
@@ -140,9 +136,7 @@ class OSINTEngine:
         sources_used: list[str] = []
 
         # 1. crt.sh query
-        crtsh_result = await manager.call_tool(
-            "osint-recon", "crtsh_query", {"domain": domain}
-        )
+        crtsh_result = await manager.call_tool("osint-recon", "crtsh_query", {"domain": domain})
         crtsh_subs = self._parse_mcp_subdomains(crtsh_result)
         if crtsh_subs:
             sources_used.append("crtsh")
@@ -150,9 +144,7 @@ class OSINTEngine:
         # 2. subfinder query (if enabled)
         subfinder_subs: set[str] = set()
         if settings.SUBFINDER_ENABLED:
-            sf_result = await manager.call_tool(
-                "osint-recon", "subfinder_query", {"domain": domain}
-            )
+            sf_result = await manager.call_tool("osint-recon", "subfinder_query", {"domain": domain})
             subfinder_subs = set(self._parse_mcp_subdomains(sf_result))
             if subfinder_subs:
                 sources_used.append("subfinder")
@@ -162,9 +154,7 @@ class OSINTEngine:
 
         # 4. DNS resolve
         if all_subs:
-            resolve_result = await manager.call_tool(
-                "osint-recon", "dns_resolve", {"subdomains": ",".join(all_subs)}
-            )
+            resolve_result = await manager.call_tool("osint-recon", "dns_resolve", {"subdomains": ",".join(all_subs)})
             resolved = self._parse_mcp_resolved_ips(resolve_result)
         else:
             resolved = {}
@@ -193,11 +183,7 @@ class OSINTEngine:
             data = _json.loads(text)
         except _json.JSONDecodeError:
             return []
-        return [
-            f["value"]
-            for f in data.get("facts", [])
-            if f.get("trait") == "osint.subdomain"
-        ]
+        return [f["value"] for f in data.get("facts", []) if f.get("trait") == "osint.subdomain"]
 
     @staticmethod
     def _parse_mcp_resolved_ips(mcp_result: dict) -> dict[str, list[str]]:
@@ -237,7 +223,12 @@ class OSINTEngine:
             "(id, trait, value, category, source_technique_id, "
             "source_target_id, operation_id, score, collected_at) "
             "VALUES ($1, $2, $3, $4, NULL, NULL, $5, 1, $6) ON CONFLICT DO NOTHING",
-            fact_id, trait, value, category, operation_id, now,
+            fact_id,
+            trait,
+            value,
+            category,
+            operation_id,
+            now,
         )
         payload = {
             "id": fact_id,
@@ -271,9 +262,13 @@ class OSINTEngine:
             VALUES ($1, $2, $3, NULL, 'discovered', 'external', FALSE, NULL, $4, $5)
             ON CONFLICT DO NOTHING
             """,
-            target_id, hostname, ip_address, operation_id, now,
+            target_id,
+            hostname,
+            ip_address,
+            operation_id,
+            now,
         )
-        return result.split()[-1] != '0' if result else False
+        return result.split()[-1] != "0" if result else False
 
     async def _mock_result(
         self,
@@ -289,19 +284,27 @@ class OSINTEngine:
 
         for info in _MOCK_SUBDOMAINS:
             facts_written += await self._write_fact(
-                db=db, operation_id=operation_id,
-                trait="osint.subdomain", value=info.subdomain, category="osint",
+                db=db,
+                operation_id=operation_id,
+                trait="osint.subdomain",
+                value=info.subdomain,
+                category="osint",
             )
             for ip in info.resolved_ips:
                 facts_written += await self._write_fact(
-                    db=db, operation_id=operation_id,
-                    trait="osint.resolved_ip", value=f"{info.subdomain}:{ip}", category="osint",
+                    db=db,
+                    operation_id=operation_id,
+                    trait="osint.resolved_ip",
+                    value=f"{info.subdomain}:{ip}",
+                    category="osint",
                 )
                 if ip not in ips_seen:
                     ips_seen.add(ip)
                     created = await self._create_target_if_missing(
-                        db=db, operation_id=operation_id,
-                        hostname=info.subdomain, ip_address=ip,
+                        db=db,
+                        operation_id=operation_id,
+                        hostname=info.subdomain,
+                        ip_address=ip,
                     )
                     if created:
                         targets_created += 1

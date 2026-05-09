@@ -21,10 +21,10 @@ import asyncpg
 from app.models.enums import C5ISRDomain, C5ISRDomainStatus
 from app.ws_manager import WebSocketManager
 
-
 # ---------------------------------------------------------------------------
 #  Data structures (SPEC-038)
 # ---------------------------------------------------------------------------
+
 
 class RiskSeverity(str, Enum):
     CRIT = "CRIT"
@@ -35,9 +35,10 @@ class RiskSeverity(str, Enum):
 @dataclass
 class DomainMetric:
     """Single weighted metric."""
-    name: str                # e.g. "decision_throughput"
-    value: float             # 0.0-100.0
-    weight: float            # 0.0-1.0
+
+    name: str  # e.g. "decision_throughput"
+    value: float  # 0.0-100.0
+    weight: float  # 0.0-1.0
     numerator: int | None = None
     denominator: int | None = None
 
@@ -45,16 +46,18 @@ class DomainMetric:
 @dataclass
 class RiskVector:
     """Risk item."""
-    severity: RiskSeverity   # CRIT / WARN / INFO
+
+    severity: RiskSeverity  # CRIT / WARN / INFO
     message: str
 
 
 @dataclass
 class DomainReport:
     """Structured domain assessment report."""
+
     executive_summary: str
     health_pct: float
-    status: str                          # C5ISRDomainStatus.value
+    status: str  # C5ISRDomainStatus.value
     metrics: list[DomainMetric] = field(default_factory=list)
     asset_roster: list[dict] = field(default_factory=list)
     tactical_assessment: str = ""
@@ -64,10 +67,12 @@ class DomainReport:
 
     def to_json(self) -> str:
         """Serialize to JSON string (stored in DB detail column)."""
+
         def _default(o: object) -> object:
             if isinstance(o, datetime):
                 return o.isoformat()
             raise TypeError(f"Object of type {type(o).__name__} is not JSON serializable")
+
         return json.dumps(asdict(self), ensure_ascii=False, default=_default)
 
     @classmethod
@@ -84,8 +89,13 @@ class DomainReport:
 
 # Kill chain stage -> score mapping
 _KILLCHAIN_SCORES = {
-    "recon": 20, "weaponize": 30, "deliver": 40,
-    "exploit": 50, "install": 70, "c2": 85, "action": 100,
+    "recon": 20,
+    "weaponize": 30,
+    "deliver": 40,
+    "exploit": 50,
+    "install": 70,
+    "c2": 85,
+    "action": 100,
 }
 
 
@@ -99,7 +109,9 @@ class C5ISRMapper:
     #  _build_command_report
     # ------------------------------------------------------------------
     async def _build_command_report(
-        self, db: asyncpg.Connection, operation_id: str,
+        self,
+        db: asyncpg.Connection,
+        operation_id: str,
     ) -> DomainReport:
         risks: list[RiskVector] = []
         actions: list[str] = []
@@ -111,29 +123,30 @@ class C5ISRMapper:
             operation_id,
         )
         ooda_count = op["ooda_iteration_count"] if op else 0
-        expected = (op["max_iterations"] if op and op["max_iterations"] else 20)
+        expected = op["max_iterations"] if op and op["max_iterations"] else 20
         dt_value = min(100.0, ooda_count / max(1, expected) * 100)
 
         # Stall penalty: check last 3 recommendations
         rec_rows = await db.fetch(
-            "SELECT created_at FROM recommendations "
-            "WHERE operation_id = $1 ORDER BY created_at DESC LIMIT 3",
+            "SELECT created_at FROM recommendations WHERE operation_id = $1 ORDER BY created_at DESC LIMIT 3",
             operation_id,
         )
         if rec_rows and ooda_count > 0:
             oldest_ts = rec_rows[-1]["created_at"]
             try:
-                oldest_dt = (oldest_ts if isinstance(oldest_ts, datetime) else datetime.fromisoformat(oldest_ts))
+                oldest_dt = oldest_ts if isinstance(oldest_ts, datetime) else datetime.fromisoformat(oldest_ts)
                 if oldest_dt.tzinfo is None:
                     oldest_dt = oldest_dt.replace(tzinfo=timezone.utc)
                 stall_threshold = ooda_count * 30 * 3  # seconds
                 elapsed = (datetime.now(timezone.utc) - oldest_dt).total_seconds()
                 if elapsed > stall_threshold:
                     dt_value = max(0.0, dt_value - 20)
-                    risks.append(RiskVector(
-                        severity=RiskSeverity.WARN,
-                        message="Decision stall detected: no new recommendations in 3+ iteration cycles",
-                    ))
+                    risks.append(
+                        RiskVector(
+                            severity=RiskSeverity.WARN,
+                            message="Decision stall detected: no new recommendations in 3+ iteration cycles",
+                        )
+                    )
             except (ValueError, TypeError):
                 pass
 
@@ -166,10 +179,12 @@ class C5ISRMapper:
             dc_value = 100.0  # no directives = 100%
 
         if total_dirs > 0 and dc_value < 70:
-            risks.append(RiskVector(
-                severity=RiskSeverity.WARN,
-                message=f"Directive consumption rate {dc_value:.0f}% below 70% threshold",
-            ))
+            risks.append(
+                RiskVector(
+                    severity=RiskSeverity.WARN,
+                    message=f"Directive consumption rate {dc_value:.0f}% below 70% threshold",
+                )
+            )
             actions.append("Review unconsumed directives and confirm their relevance")
 
         if ooda_count == 0:
@@ -180,8 +195,12 @@ class C5ISRMapper:
 
         metrics = [
             DomainMetric("decision_throughput", round(dt_value, 1), 0.40, ooda_count, expected),
-            DomainMetric("acceptance_rate", round(ar_value, 1), 0.35, accepted_recs, total_recs if total_recs > 0 else None),
-            DomainMetric("directive_consumption", round(dc_value, 1), 0.25, consumed_dirs, total_dirs if total_dirs > 0 else None),
+            DomainMetric(
+                "acceptance_rate", round(ar_value, 1), 0.35, accepted_recs, total_recs if total_recs > 0 else None
+            ),
+            DomainMetric(
+                "directive_consumption", round(dc_value, 1), 0.25, consumed_dirs, total_dirs if total_dirs > 0 else None
+            ),
         ]
 
         health = round(sum(m.value * m.weight for m in metrics), 1)
@@ -195,10 +214,8 @@ class C5ISRMapper:
             summary_parts.append("no recommendations yet")
         executive = ", ".join(summary_parts)
 
-        tactical = (
-            f"OODA cycle at iteration {ooda_count} of {expected}. "
-            f"Directive consumption at {dc_value:.0f}%. "
-            + ("Recommendation pipeline active." if total_recs > 0 else "Awaiting first OODA iteration.")
+        tactical = f"OODA cycle at iteration {ooda_count} of {expected}. Directive consumption at {dc_value:.0f}%. " + (
+            "Recommendation pipeline active." if total_recs > 0 else "Awaiting first OODA iteration."
         )
 
         # Asset roster: ooda_directives
@@ -232,7 +249,9 @@ class C5ISRMapper:
     #  _build_control_report
     # ------------------------------------------------------------------
     async def _build_control_report(
-        self, db: asyncpg.Connection, operation_id: str,
+        self,
+        db: asyncpg.Connection,
+        operation_id: str,
     ) -> DomainReport:
         risks: list[RiskVector] = []
         actions: list[str] = []
@@ -262,8 +281,7 @@ class C5ISRMapper:
 
         # Beacon freshness
         beacon_rows = await db.fetch(
-            "SELECT last_beacon FROM agents "
-            "WHERE operation_id = $1 AND status = 'alive' AND last_beacon IS NOT NULL",
+            "SELECT last_beacon FROM agents WHERE operation_id = $1 AND status = 'alive' AND last_beacon IS NOT NULL",
             operation_id,
         )
         now = datetime.now(timezone.utc)
@@ -272,7 +290,11 @@ class C5ISRMapper:
             stale_count = 0
             for row in beacon_rows:
                 try:
-                    beacon_dt = (row["last_beacon"] if isinstance(row["last_beacon"], datetime) else datetime.fromisoformat(row["last_beacon"]))
+                    beacon_dt = (
+                        row["last_beacon"]
+                        if isinstance(row["last_beacon"], datetime)
+                        else datetime.fromisoformat(row["last_beacon"])
+                    )
                     if beacon_dt.tzinfo is None:
                         beacon_dt = beacon_dt.replace(tzinfo=timezone.utc)
                     staleness_sec = (now - beacon_dt).total_seconds()
@@ -297,17 +319,27 @@ class C5ISRMapper:
 
         if total_agents > 0 and alive_agents < total_agents:
             dead = total_agents - alive_agents
-            risks.append(RiskVector(
-                severity=RiskSeverity.WARN,
-                message=f"{dead} agent(s) not alive",
-            ))
+            risks.append(
+                RiskVector(
+                    severity=RiskSeverity.WARN,
+                    message=f"{dead} agent(s) not alive",
+                )
+            )
 
         cross.append("Comms: agent beacons depend on C2 channel availability")
         cross.append("Computers: agent liveness required for technique execution")
 
         metrics = [
-            DomainMetric("agent_liveness", round(al_value, 1), 0.50, alive_agents, total_agents if total_agents > 0 else None),
-            DomainMetric("access_stability", round(as_value, 1), 0.30, active_count, total_accessed if total_accessed > 0 else None),
+            DomainMetric(
+                "agent_liveness", round(al_value, 1), 0.50, alive_agents, total_agents if total_agents > 0 else None
+            ),
+            DomainMetric(
+                "access_stability",
+                round(as_value, 1),
+                0.30,
+                active_count,
+                total_accessed if total_accessed > 0 else None,
+            ),
             DomainMetric("beacon_freshness", round(bf_value, 1), 0.20),
         ]
 
@@ -355,7 +387,9 @@ class C5ISRMapper:
     #  _build_comms_report
     # ------------------------------------------------------------------
     async def _build_comms_report(
-        self, db: asyncpg.Connection, operation_id: str,
+        self,
+        db: asyncpg.Connection,
+        operation_id: str,
     ) -> DomainReport:
         risks: list[RiskVector] = []
         actions: list[str] = []
@@ -384,23 +418,29 @@ class C5ISRMapper:
             bc_value = bs / bt * 100
 
         if ws_count == 0:
-            risks.append(RiskVector(
-                severity=RiskSeverity.WARN,
-                message="No active WebSocket connections (headless mode)",
-            ))
+            risks.append(
+                RiskVector(
+                    severity=RiskSeverity.WARN,
+                    message="No active WebSocket connections (headless mode)",
+                )
+            )
         if total_tools > 0 and enabled_tools < total_tools:
             disabled = total_tools - enabled_tools
-            risks.append(RiskVector(
-                severity=RiskSeverity.INFO,
-                message=f"{disabled} MCP tool(s) disabled",
-            ))
+            risks.append(
+                RiskVector(
+                    severity=RiskSeverity.INFO,
+                    message=f"{disabled} MCP tool(s) disabled",
+                )
+            )
 
         cross.append("Control: C2 channel affects agent beacon reliability")
         cross.append("Cyber: MCP tool availability affects technique execution options")
 
         metrics = [
             DomainMetric("ws_connections", round(ws_value, 1), 0.40, ws_count, 2),
-            DomainMetric("mcp_availability", round(mcp_value, 1), 0.30, enabled_tools, total_tools if total_tools > 0 else None),
+            DomainMetric(
+                "mcp_availability", round(mcp_value, 1), 0.30, enabled_tools, total_tools if total_tools > 0 else None
+            ),
             DomainMetric("broadcast_success", round(bc_value, 1), 0.30, bs, bt if bt > 0 else None),
         ]
 
@@ -445,7 +485,9 @@ class C5ISRMapper:
     #  _build_computers_report
     # ------------------------------------------------------------------
     async def _build_computers_report(
-        self, db: asyncpg.Connection, operation_id: str,
+        self,
+        db: asyncpg.Connection,
+        operation_id: str,
     ) -> DomainReport:
         risks: list[RiskVector] = []
         actions: list[str] = []
@@ -464,7 +506,7 @@ class C5ISRMapper:
         root_count = target_row["root_count"] or 0
 
         cr_value = (compromised / total_targets * 100) if total_targets > 0 else 0.0
-        pd_value = (root_count / max(1, compromised) * 100)
+        pd_value = root_count / max(1, compromised) * 100
 
         # Kill chain advancement
         kc_rows = await db.fetch(
@@ -481,10 +523,12 @@ class C5ISRMapper:
                 kc_score = max(kc_score, _KILLCHAIN_SCORES[stage])
 
         if total_targets > 0 and compromised == total_targets and root_count == total_targets:
-            risks.append(RiskVector(
-                severity=RiskSeverity.INFO,
-                message="All targets fully controlled, consider expanding attack surface",
-            ))
+            risks.append(
+                RiskVector(
+                    severity=RiskSeverity.INFO,
+                    message="All targets fully controlled, consider expanding attack surface",
+                )
+            )
 
         if total_targets == 0:
             actions.append("Add target hosts to begin engagement")
@@ -493,8 +537,12 @@ class C5ISRMapper:
         cross.append("Cyber: kill chain advancement drives technique selection")
 
         metrics = [
-            DomainMetric("compromise_rate", round(cr_value, 1), 0.40, compromised, total_targets if total_targets > 0 else None),
-            DomainMetric("privilege_depth", round(pd_value, 1), 0.35, root_count, compromised if compromised > 0 else None),
+            DomainMetric(
+                "compromise_rate", round(cr_value, 1), 0.40, compromised, total_targets if total_targets > 0 else None
+            ),
+            DomainMetric(
+                "privilege_depth", round(pd_value, 1), 0.35, root_count, compromised if compromised > 0 else None
+            ),
             DomainMetric("killchain_advancement", float(kc_score), 0.25),
         ]
 
@@ -543,7 +591,9 @@ class C5ISRMapper:
     #  _build_cyber_report
     # ------------------------------------------------------------------
     async def _build_cyber_report(
-        self, db: asyncpg.Connection, operation_id: str,
+        self,
+        db: asyncpg.Connection,
+        operation_id: str,
     ) -> DomainReport:
         risks: list[RiskVector] = []
         actions: list[str] = []
@@ -588,8 +638,7 @@ class C5ISRMapper:
 
         # Recent 5 trend
         recent_rows = await db.fetch(
-            "SELECT status FROM technique_executions "
-            "WHERE operation_id = $1 ORDER BY created_at DESC LIMIT 5",
+            "SELECT status FROM technique_executions WHERE operation_id = $1 ORDER BY created_at DESC LIMIT 5",
             operation_id,
         )
         if recent_rows:
@@ -606,10 +655,12 @@ class C5ISRMapper:
             # Declining trend detection
             if recent_rate < overall_rate - 0.20:
                 rt_value = 0.0
-                risks.append(RiskVector(
-                    severity=RiskSeverity.WARN,
-                    message="Declining success trend: recent success rate 20%+ below overall",
-                ))
+                risks.append(
+                    RiskVector(
+                        severity=RiskSeverity.WARN,
+                        message="Declining success trend: recent success rate 20%+ below overall",
+                    )
+                )
         else:
             rt_value = 0.0
 
@@ -617,8 +668,16 @@ class C5ISRMapper:
         cross.append("ISR: recon success feeds intelligence collection")
 
         metrics = [
-            DomainMetric("recon_success", round(rs_value, 1), 0.25, recon_success, recon_total if recon_total > 0 else None),
-            DomainMetric("exploit_success", round(es_value, 1), 0.45, exploit_success, exploit_total if exploit_total > 0 else None),
+            DomainMetric(
+                "recon_success", round(rs_value, 1), 0.25, recon_success, recon_total if recon_total > 0 else None
+            ),
+            DomainMetric(
+                "exploit_success",
+                round(es_value, 1),
+                0.45,
+                exploit_success,
+                exploit_total if exploit_total > 0 else None,
+            ),
             DomainMetric("recent_trend", round(rt_value, 1), 0.30),
         ]
 
@@ -651,7 +710,9 @@ class C5ISRMapper:
     #  _build_isr_report
     # ------------------------------------------------------------------
     async def _build_isr_report(
-        self, db: asyncpg.Connection, operation_id: str,
+        self,
+        db: asyncpg.Connection,
+        operation_id: str,
     ) -> DomainReport:
         risks: list[RiskVector] = []
         actions: list[str] = []
@@ -659,8 +720,7 @@ class C5ISRMapper:
 
         # Confidence trend: average of last 5 recommendations
         conf_rows = await db.fetch(
-            "SELECT confidence FROM recommendations "
-            "WHERE operation_id = $1 ORDER BY created_at DESC LIMIT 5",
+            "SELECT confidence FROM recommendations WHERE operation_id = $1 ORDER BY created_at DESC LIMIT 5",
             operation_id,
         )
         if conf_rows:
@@ -671,8 +731,7 @@ class C5ISRMapper:
 
         # Fact coverage: distinct categories / 7
         fact_row = await db.fetchrow(
-            "SELECT COUNT(DISTINCT category) as distinct_categories "
-            "FROM facts WHERE operation_id = $1",
+            "SELECT COUNT(DISTINCT category) as distinct_categories FROM facts WHERE operation_id = $1",
             operation_id,
         )
         distinct_cats = fact_row["distinct_categories"] or 0
@@ -703,24 +762,30 @@ class C5ISRMapper:
         rc_value = (recon_covered_targets / recon_total_targets * 100) if recon_total_targets > 0 else 0.0
 
         if recon_total_targets > 0 and rc_value == 0.0:
-            risks.append(RiskVector(
-                severity=RiskSeverity.CRIT,
-                message="Recon coverage 0%: no active targets have collected facts",
-            ))
+            risks.append(
+                RiskVector(
+                    severity=RiskSeverity.CRIT,
+                    message="Recon coverage 0%: no active targets have collected facts",
+                )
+            )
             actions.append("Initiate reconnaissance scans on active targets")
         elif recon_total_targets > 0 and rc_value < 50.0:
-            risks.append(RiskVector(
-                severity=RiskSeverity.WARN,
-                message=f"Recon coverage {rc_value:.0f}% below 50% threshold "
-                        f"({recon_covered_targets}/{recon_total_targets} targets covered)",
-            ))
+            risks.append(
+                RiskVector(
+                    severity=RiskSeverity.WARN,
+                    message=f"Recon coverage {rc_value:.0f}% below 50% threshold "
+                    f"({recon_covered_targets}/{recon_total_targets} targets covered)",
+                )
+            )
             actions.append("Expand reconnaissance to uncovered active targets")
 
         if distinct_cats < 3:
-            risks.append(RiskVector(
-                severity=RiskSeverity.INFO,
-                message=f"Low fact diversity: only {distinct_cats}/7 categories covered",
-            ))
+            risks.append(
+                RiskVector(
+                    severity=RiskSeverity.INFO,
+                    message=f"Low fact diversity: only {distinct_cats}/7 categories covered",
+                )
+            )
             actions.append("Expand reconnaissance to cover more fact categories")
 
         cross.append("Command: intelligence quality affects decision confidence")
@@ -729,9 +794,17 @@ class C5ISRMapper:
         metrics = [
             DomainMetric("confidence_trend", round(ct_value, 1), 0.30),
             DomainMetric("fact_coverage", round(fc_value, 1), 0.25, distinct_cats, 7),
-            DomainMetric("graph_coverage", round(gc_value, 1), 0.25, covered_nodes, total_nodes if total_nodes > 0 else None),
+            DomainMetric(
+                "graph_coverage", round(gc_value, 1), 0.25, covered_nodes, total_nodes if total_nodes > 0 else None
+            ),
             # SPEC-052: recon coverage metric
-            DomainMetric("recon_coverage", round(rc_value, 1), 0.20, recon_covered_targets, recon_total_targets if recon_total_targets > 0 else None),
+            DomainMetric(
+                "recon_coverage",
+                round(rc_value, 1),
+                0.20,
+                recon_covered_targets,
+                recon_total_targets if recon_total_targets > 0 else None,
+            ),
         ]
 
         health = round(sum(m.value * m.weight for m in metrics), 1)
@@ -819,15 +892,22 @@ class C5ISRMapper:
             # Upsert
             existing = await db.fetchrow(
                 "SELECT id FROM c5isr_statuses WHERE operation_id = $1 AND domain = $2",
-                operation_id, domain.value,
+                operation_id,
+                domain.value,
             )
             if existing:
                 await db.execute(
                     "UPDATE c5isr_statuses SET status = $1, health_pct = $2, "
                     "detail = $3, numerator = $4, denominator = $5, metric_label = $6, "
                     "updated_at = $7 WHERE id = $8",
-                    status.value, round(health, 1), detail_json,
-                    numerator, denominator, metric_label, now, existing["id"],
+                    status.value,
+                    round(health, 1),
+                    detail_json,
+                    numerator,
+                    denominator,
+                    metric_label,
+                    now,
+                    existing["id"],
                 )
                 row_id = existing["id"]
             else:
@@ -837,9 +917,16 @@ class C5ISRMapper:
                     "(id, operation_id, domain, status, health_pct, detail, "
                     "numerator, denominator, metric_label, updated_at) "
                     "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
-                    row_id, operation_id, domain.value, status.value,
-                    round(health, 1), detail_json, numerator, denominator,
-                    metric_label, now,
+                    row_id,
+                    operation_id,
+                    domain.value,
+                    status.value,
+                    round(health, 1),
+                    detail_json,
+                    numerator,
+                    denominator,
+                    metric_label,
+                    now,
                 )
 
             # SPEC-047: Record history for time-series analysis
@@ -848,16 +935,23 @@ class C5ISRMapper:
                 "INSERT INTO c5isr_status_history "
                 "(id, operation_id, domain, health_pct, status, metrics) "
                 "VALUES ($1, $2, $3, $4, $5, $6)",
-                hist_id, operation_id, domain.value, round(health, 1),
-                status.value, detail_json,
+                hist_id,
+                operation_id,
+                domain.value,
+                round(health, 1),
+                status.value,
+                detail_json,
             )
 
             result = {
-                "id": row_id, "operation_id": operation_id,
-                "domain": domain.value, "status": status.value,
+                "id": row_id,
+                "operation_id": operation_id,
+                "domain": domain.value,
+                "status": status.value,
                 "health_pct": round(health, 1),
                 "detail": report.executive_summary,
-                "numerator": numerator, "denominator": denominator,
+                "numerator": numerator,
+                "denominator": denominator,
                 "metric_label": metric_label,
                 "report": asdict(report),
             }

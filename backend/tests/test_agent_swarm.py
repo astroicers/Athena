@@ -16,10 +16,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import pytest_asyncio
 
-
 # ---------------------------------------------------------------------------
 # Helper: seed the minimal rows that swarm_tasks FK references need.
 # ---------------------------------------------------------------------------
+
 
 async def _seed_swarm_rows(db) -> None:
     """Insert op-1, tgt-1, ooda-1 so swarm_tasks FK constraints pass."""
@@ -46,6 +46,7 @@ async def _seed_swarm_rows(db) -> None:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_mock_ws():
     """Return a mock WebSocketManager."""
     ws = MagicMock()
@@ -69,44 +70,50 @@ def _make_mock_router(side_effect=None, return_value=None):
 # SwarmResult property tests
 # ---------------------------------------------------------------------------
 
+
 class TestSwarmResultProperties:
     """Test SwarmResult dataclass properties."""
 
     def test_all_failed_when_none_completed(self):
         from app.services.agent_swarm import SwarmResult
+
         r = SwarmResult(ooda_iteration_id="ooda-1", total=3, completed=0, failed=3)
         assert r.all_failed is True
 
     def test_all_failed_false_when_some_completed(self):
         from app.services.agent_swarm import SwarmResult
+
         r = SwarmResult(ooda_iteration_id="ooda-1", total=3, completed=1, failed=2)
         assert r.all_failed is False
 
     def test_all_failed_false_when_total_is_zero(self):
         from app.services.agent_swarm import SwarmResult
+
         r = SwarmResult(ooda_iteration_id="ooda-1", total=0, completed=0)
         assert r.all_failed is False
 
     def test_partial_success_when_some_completed(self):
         from app.services.agent_swarm import SwarmResult
+
         r = SwarmResult(ooda_iteration_id="ooda-1", total=3, completed=2, failed=1)
         assert r.partial_success is True
 
     def test_partial_success_false_when_all_completed(self):
         from app.services.agent_swarm import SwarmResult
+
         r = SwarmResult(ooda_iteration_id="ooda-1", total=3, completed=3)
         assert r.partial_success is False
 
     def test_partial_success_false_when_none_completed(self):
         from app.services.agent_swarm import SwarmResult
+
         r = SwarmResult(ooda_iteration_id="ooda-1", total=3, completed=0, failed=3)
         assert r.partial_success is False
 
     def test_act_summary_format(self):
         from app.services.agent_swarm import SwarmResult
-        r = SwarmResult(
-            ooda_iteration_id="ooda-1", total=5, completed=3, failed=1, timed_out=1
-        )
+
+        r = SwarmResult(ooda_iteration_id="ooda-1", total=5, completed=3, failed=1, timed_out=1)
         expected = "Swarm: 3/5 succeeded, 1 failed, 1 timed out"
         assert r.act_summary == expected
 
@@ -114,6 +121,7 @@ class TestSwarmResultProperties:
 # ---------------------------------------------------------------------------
 # SwarmExecutor tests
 # ---------------------------------------------------------------------------
+
 
 class TestSwarmExecutorEmptyTasks:
     """Test empty parallel_tasks list."""
@@ -125,9 +133,7 @@ class TestSwarmExecutorEmptyTasks:
         router = _make_mock_router()
         executor = SwarmExecutor(engine_router=router, ws_manager=ws)
 
-        result = await executor.execute_swarm(
-            pg_pool, "op-1", "ooda-1", []
-        )
+        result = await executor.execute_swarm(pg_pool, "op-1", "ooda-1", [])
         assert result.total == 0
         assert result.completed == 0
         assert result.failed == 0
@@ -228,10 +234,7 @@ class TestSwarmExecutorSemaphore:
 
             executor = SwarmExecutor(engine_router=router, ws_manager=ws)
 
-            tasks = [
-                {"technique_id": f"T{i}", "target_id": f"tgt-{i}", "engine": "ssh"}
-                for i in range(4)
-            ]
+            tasks = [{"technique_id": f"T{i}", "target_id": f"tgt-{i}", "engine": "ssh"} for i in range(4)]
             result = await executor.execute_swarm(pg_pool, "op-1", "ooda-1", tasks)
             assert result.total == 4
             assert result.completed == 4
@@ -413,15 +416,11 @@ class TestSwarmExecutorDBPersistence:
             result = await executor.execute_swarm(pg_pool, "op-1", "ooda-1", tasks)
 
             # Verify via tmp_db (same underlying test database, tables already truncated)
-            count = await tmp_db.fetchval(
-                "SELECT COUNT(*) FROM swarm_tasks WHERE ooda_iteration_id = 'ooda-1'"
-            )
+            count = await tmp_db.fetchval("SELECT COUNT(*) FROM swarm_tasks WHERE ooda_iteration_id = 'ooda-1'")
             assert count == 2
 
             # Check records have completed status
-            rows = await tmp_db.fetch(
-                "SELECT status FROM swarm_tasks WHERE ooda_iteration_id = 'ooda-1'"
-            )
+            rows = await tmp_db.fetch("SELECT status FROM swarm_tasks WHERE ooda_iteration_id = 'ooda-1'")
             for r in rows:
                 assert r["status"] == "completed"
 
@@ -429,6 +428,7 @@ class TestSwarmExecutorDBPersistence:
 # ---------------------------------------------------------------------------
 # DecisionEngine parallel_tasks tests
 # ---------------------------------------------------------------------------
+
 
 class TestDecisionEngineParallelTasks:
     """Test that DecisionEngine.evaluate() produces parallel_tasks."""

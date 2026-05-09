@@ -11,10 +11,10 @@
 import pytest
 from httpx import AsyncClient
 
-
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 async def test_list_c5isr(client: AsyncClient):
     """GET /api/operations/test-op-1/c5isr -> 200, returns 6 seeded domains."""

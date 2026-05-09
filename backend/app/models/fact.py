@@ -17,8 +17,8 @@ from .enums import FactCategory
 
 class Fact(BaseModel):
     id: str
-    trait: str                          # "host.user.name"
-    value: str                          # "CORP\\Administrator"
+    trait: str  # "host.user.name"
+    value: str  # "CORP\\Administrator"
     category: FactCategory | str
     source_technique_id: str | None = None
     source_target_id: str | None = None

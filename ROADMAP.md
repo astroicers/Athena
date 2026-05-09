@@ -1,83 +1,20 @@
 # Athena Roadmap
 
-## v0.1.0 (Released) — Enterprise External Pentest MVP
+> **For the detailed phase-by-phase development plan (Chinese), see [`docs/ROADMAP.md`](docs/ROADMAP.md).**
 
-### Completed
+This file gives a quick release-level snapshot. The authoritative, regularly-updated breakdown lives in `docs/ROADMAP.md`.
 
-- OODA automated loop (APScheduler-driven, auto-start/stop/status endpoints)
-- OSINT subdomain enumeration (crt.sh + subfinder)
-- Nmap Recon + CVE correlation (NVD API, 24h cache)
-- SSH credential spraying (DirectSSHEngine) + Persistent Session Pool (PersistentSSHChannelEngine)
-- Metasploit RPC integration (vsftpd / UnrealIRCd / Samba / WinRM) with MOCK_METASPLOIT=true CI default
-- Playbook CRUD API (13 seed playbooks, dynamic output_parser)
-- Structured reporting (JSON + Markdown)
-- ROE / Scope validation (ScopeValidator)
-- C5ISR battle dashboard (WebSocket)
+## Released
 
-## v0.2.0 (Released) — Lateral Movement + Persistence
+| Version | Theme | Highlights |
+|---------|-------|-----------|
+| **v0.1.0** | Enterprise External Pentest MVP | OODA loop, OSINT enum, Nmap+CVE, SSH spraying, Metasploit RPC, 13 seed playbooks, C5ISR dashboard |
+| **v0.2.0** | Lateral Movement + Persistence | SSH key auth, lateral movement mapping, Linux persistence, Windows WinRM, agent capability matching, 25 seed playbooks |
+| **v0.3.0** | C5ISR + Attack Graph + MCP Tools | PostgreSQL migration, Attack Graph engine (13 rules), 20 MCP tool servers, vuln management, OODA directives, network topology, web terminal |
 
-### Completed (Phase G)
+## Planned
 
-- SSH key-based auth (`credential.ssh_key` fact, `user@host:port#<base64_key>` format)
-- Lateral movement technique mapping (T1021.004_priv/recon, T1560.001, T1105)
-- Auto-mark target `is_compromised` + `privilege_level` on successful SSH execution
-- OrientEngine Section 7.7 — lateral movement opportunity recommendations (credentials × uncompromised targets)
-- 17 seed playbooks (13 recon + 4 lateral movement)
-- output_parser wiring: playbook-defined output_parser passed to SSH execution engines
+- **v0.4.0** — Advanced Orchestration: Attack Graph YAML externalization (50 rules), `mcp-web-scanner`, ExploitValidator SafeProbe, vulnerability dynamic validation, UI optimization
+- **v1.0.0** — Production: Auth & RBAC, multi-operation support, advanced topology, PDF reports, external integrations (BloodHound, Cobalt Strike), Helm chart
 
-### Completed (Phase H)
-
-- Linux persistence probe — PersistenceEngine (T1053.003 cron, T1543.002 systemd) with `PERSISTENCE_ENABLED` toggle
-- Windows WinRM post-exploitation — WinRMEngine (pywinrm + mock mode, `WINRM_ENABLED` toggle, 7 PowerShell techniques)
-- 25 seed playbooks (+ T1136.001 account, + 3 Windows WinRM, + 2 Linux persistence)
-- OrientEngine Section 7.6 platform-aware (Windows vs Linux playbook selection based on target OS)
-- OrientEngine Section 7.7 persistence status (host.persistence facts surfaced to LLM)
-
-### Completed (Phase I)
-
-- Agent capability matching — `AgentCapabilityMatcher` selects best-fit C2 agent by privilege (SYSTEM > Admin > User) + platform; replaces blind `LIMIT 1` selection (ADR-021, SPEC-022)
-- Tech debt: `_get_output_parser` now platform-aware (`platform='windows'` for WinRM path); seed INSERT bug fixed (output_parser column was missing)
-- 202 tests passing
-
-## v0.3.0 (Released) — C5ISR + Attack Graph + MCP Tools
-
-### Completed (Phase 10-11)
-
-- PostgreSQL migration (asyncpg + Alembic, replaced SQLite)
-- Attack Graph engine with YAML-based technique rules (13 rules, Dijkstra weighted paths)
-- C5ISR 6-domain battle dashboard (Command/Control/Comms/Computers/Cyber/ISR)
-- Constraint engine (mission profile-aware noise/risk thresholds)
-- OPSEC monitoring (noise tracking, threat level computation, cross-domain penalty)
-- MCP tool servers (20 total):
-  - Core: nmap-scanner, osint-recon, vuln-lookup, credential-checker, attack-executor, web-scanner, api-fuzzer, msf-rpc
-  - Post-exploitation: privesc-scanner, credential-dumper, lateral-mover
-  - AD attack chain: bloodhound-collector, netexec-suite, certipy-ad, responder-capture
-  - Cloud attack chain: cloudfox-enum, pacu-aws, scoutsuite-audit
-- Tool Registry with enable/disable toggle, health checks, and execution API
-- Vulnerability management module (severity heat strip, status pipeline, PoC evidence)
-- Engagement/ROE lifecycle (draft -> active -> suspended)
-- Dashboard aggregate APIs (kill-chain, attack-surface, time-series, credential-graph)
-- Structured pentest report (JSON + Markdown export)
-- OODA directive system (operator guidance for orient phase)
-- Batch target import (CIDR/IP/hostname, max 512)
-- Network topology visualization
-- Web Terminal (SSH interactive console for compromised targets)
-- Notification center
-- 158+ E2E tests (Playwright), 370+ backend tests (pytest), 63+ frontend unit tests (Vitest)
-
-## v0.4.0 (Planned) — Advanced Orchestration
-
-### Priority 1: SPEC-039 — Attack Graph YAML Externalization + 50 Rules
-### Priority 2: SPEC-032 — mcp-web-scanner (httpx + Nuclei)
-### Priority 3: SPEC-028 Phase 4 — ExploitValidator SafeProbe
-### Priority 4: SPEC-044 — Vulnerability Dynamic Validation Pipeline
-### Priority 5: SPEC-027 — UI Optimization (5 phases)
-
-## v1.0.0 (Future) — Production Ready
-
-- Authentication & RBAC (JWT + Commander/Operator/Observer roles)
-- Multi-operation support (sidebar switcher, cross-op intelligence sharing)
-- Advanced topology (VR mode, attack path replay)
-- PDF report generation + MITRE coverage heatmap export
-- External integrations (BloodHound, Cobalt Strike, Slack/Teams notifications)
-- Helm Chart for Kubernetes deployment
+For the full phase tracker (Phase 0–12.7) and per-SPEC progress, refer to [`docs/ROADMAP.md`](docs/ROADMAP.md).

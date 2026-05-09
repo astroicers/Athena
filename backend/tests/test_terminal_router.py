@@ -17,10 +17,10 @@ import pytest
 
 from app.routers.terminal import _is_dangerous
 
-
 # ---------------------------------------------------------------------------
 # Blocked commands — every entry in _CMD_BLACKLIST must be rejected
 # ---------------------------------------------------------------------------
+
 
 class TestBlockedCommands:
     def test_blocks_rm_rf_root(self):
@@ -59,6 +59,7 @@ class TestBlockedCommands:
 # Case-insensitivity — blacklist match is lower-cased
 # ---------------------------------------------------------------------------
 
+
 class TestCaseInsensitivity:
     def test_blocks_rm_rf_uppercase(self):
         assert _is_dangerous("RM -RF /") is True
@@ -73,6 +74,7 @@ class TestCaseInsensitivity:
 # ---------------------------------------------------------------------------
 # Allowed commands — normal operations must not be blocked
 # ---------------------------------------------------------------------------
+
 
 class TestAllowedCommands:
     def test_allows_whoami(self):

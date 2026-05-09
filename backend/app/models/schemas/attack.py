@@ -19,15 +19,15 @@ class AttackPathEntry(BaseModel):
     execution_id: str
     mitre_id: str
     technique_name: str
-    tactic: str         # "Reconnaissance", "Initial Access"
-    tactic_id: str      # "TA0043", "TA0001"
+    tactic: str  # "Reconnaissance", "Initial Access"
+    tactic_id: str  # "TA0043", "TA0001"
     kill_chain_stage: str
     risk_level: str
-    status: str         # queued|running|success|partial|failed
+    status: str  # queued|running|success|partial|failed
     engine: str
     started_at: str | None
     completed_at: str | None
-    duration_sec: float | None   # computed in Python
+    duration_sec: float | None  # computed in Python
     result_summary: str | None
     error_message: str | None
     facts_collected_count: int
@@ -38,7 +38,7 @@ class AttackPathEntry(BaseModel):
 class AttackPathResponse(BaseModel):
     operation_id: str
     entries: list[AttackPathEntry]
-    highest_tactic_idx: int          # 0-13, index of furthest reached tactic
+    highest_tactic_idx: int  # 0-13, index of furthest reached tactic
     tactic_coverage: dict[str, int]  # tactic_id -> success count
 
 

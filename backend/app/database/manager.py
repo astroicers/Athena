@@ -110,11 +110,12 @@ async def init_db() -> None:
     await db_manager.startup()
 
     # Run Alembic migrations programmatically
-    from alembic import command
-    from alembic.config import Config
-
     import importlib.resources
     from pathlib import Path
+
+    from alembic.config import Config
+
+    from alembic import command
 
     alembic_dir = Path(__file__).resolve().parent.parent.parent / "alembic"
     alembic_cfg = Config(str(alembic_dir / "alembic.ini"))
@@ -123,10 +124,12 @@ async def init_db() -> None:
 
     # Run upgrade in a thread to avoid blocking the event loop
     import asyncio
+
     loop = asyncio.get_event_loop()
     await loop.run_in_executor(None, lambda: command.upgrade(alembic_cfg, "head"))
     logger.info("Alembic migrations applied")
 
     # Seed data if operations table is empty
     from app.database.seed import seed_if_empty
+
     await seed_if_empty(db_manager)

@@ -25,8 +25,7 @@ logger = logging.getLogger(__name__)
 
 # Kill Chain stages mapped to MITRE ATT&CK tactics
 _KILL_CHAIN_STAGES: list[tuple[int, str, str, bool]] = [
-    (s["stage"], s["tactic_id"], s["name"], s["required"])
-    for s in get_kill_chain_stages()
+    (s["stage"], s["tactic_id"], s["name"], s["required"]) for s in get_kill_chain_stages()
 ]
 
 _TACTIC_TO_STAGE: dict[str, int] = {t[1]: t[0] for t in _KILL_CHAIN_STAGES}
@@ -66,9 +65,7 @@ class KillChainEnforcer:
 
         current_stage = _TACTIC_TO_STAGE[tactic_id]
 
-        completed_tactics = await self._get_completed_tactics(
-            db, operation_id, target_id
-        )
+        completed_tactics = await self._get_completed_tactics(db, operation_id, target_id)
 
         skipped: list[str] = []
         for stage, tid, name, required in _KILL_CHAIN_STAGES:
@@ -91,9 +88,7 @@ class KillChainEnforcer:
             )
             logger.warning(warning)
 
-        return KillChainPenalty(
-            penalty=penalty, skipped_stages=skipped, warning=warning
-        )
+        return KillChainPenalty(penalty=penalty, skipped_stages=skipped, warning=warning)
 
     async def _get_completed_tactics(
         self,
@@ -126,7 +121,8 @@ class KillChainEnforcer:
                 "  AND te.target_id = agn.target_id "
                 "WHERE te.operation_id = $1 AND te.target_id = $2 "
                 "AND te.status = 'success'",
-                operation_id, target_id,
+                operation_id,
+                target_id,
             )
         completed_tactics = {r["tactic_id"] for r in rows}
 
@@ -136,7 +132,8 @@ class KillChainEnforcer:
             "SELECT 1 FROM technique_executions "
             "WHERE operation_id = $1 AND status = 'success' "
             "AND technique_id = ANY($2::text[])",
-            operation_id, ["T1046", "T1595", "T1595.001", "T1590"],
+            operation_id,
+            ["T1046", "T1595", "T1595.001", "T1590"],
         )
         if recon_rows:
             completed_tactics.add("TA0043")

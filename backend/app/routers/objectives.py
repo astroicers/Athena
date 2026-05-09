@@ -59,7 +59,11 @@ async def create_objective(
     await db.execute(
         """INSERT INTO mission_objectives (id, operation_id, objective, category, priority)
            VALUES ($1, $2, $3, $4, $5)""",
-        obj_id, operation_id, body.objective, body.category, body.priority,
+        obj_id,
+        operation_id,
+        body.objective,
+        body.category,
+        body.priority,
     )
     return {"id": obj_id, "status": "pending"}
 
@@ -74,7 +78,8 @@ async def update_objective(
     await ensure_operation(db, operation_id)
     row = await db.fetchrow(
         "SELECT id FROM mission_objectives WHERE id = $1 AND operation_id = $2",
-        objective_id, operation_id,
+        objective_id,
+        operation_id,
     )
     if not row:
         raise HTTPException(status_code=404, detail="Objective not found")

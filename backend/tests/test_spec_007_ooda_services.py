@@ -28,6 +28,7 @@ from app.services.orient_engine import OrientEngine
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_ws():
     ws = MagicMock()
     ws.broadcast = AsyncMock()
@@ -38,7 +39,9 @@ def _make_ws():
 
 
 def _mock_recommendation(
-    risk_level="medium", confidence=0.87, technique_id="T1003.001",
+    risk_level="medium",
+    confidence=0.87,
+    technique_id="T1003.001",
 ):
     """Return a recommendation dict matching OrientEngine mock output shape."""
     return {
@@ -86,13 +89,14 @@ def _mock_recommendation(
 async def test_decision_manual_mode_always_needs_approval(seeded_db):
     """MANUAL mode → auto_approved=False regardless of risk level."""
     await seeded_db.execute(
-        "UPDATE operations SET automation_mode = 'manual', risk_threshold = 'medium' "
-        "WHERE id = 'test-op-1'"
+        "UPDATE operations SET automation_mode = 'manual', risk_threshold = 'medium' WHERE id = 'test-op-1'"
     )
 
     engine = DecisionEngine()
     result = await engine.evaluate(
-        seeded_db, "test-op-1", _mock_recommendation(risk_level="low"),
+        seeded_db,
+        "test-op-1",
+        _mock_recommendation(risk_level="low"),
     )
     assert result["auto_approved"] is False
     assert result["needs_manual"] is True
@@ -101,14 +105,14 @@ async def test_decision_manual_mode_always_needs_approval(seeded_db):
 async def test_decision_low_confidence_forces_manual(seeded_db):
     """confidence < 0.5 → needs_confirmation=True."""
     await seeded_db.execute(
-        "UPDATE operations SET automation_mode = 'semi_auto', risk_threshold = 'medium' "
-        "WHERE id = 'test-op-1'"
+        "UPDATE operations SET automation_mode = 'semi_auto', risk_threshold = 'medium' WHERE id = 'test-op-1'"
     )
 
     engine = DecisionEngine()
     # Use non-existent technique so all DB lookups return defaults
     result = await engine.evaluate(
-        seeded_db, "test-op-1",
+        seeded_db,
+        "test-op-1",
         _mock_recommendation(confidence=0.0, technique_id="T9999.999"),
     )
     assert result["auto_approved"] is False
@@ -119,7 +123,9 @@ async def test_decision_critical_risk_always_manual(seeded_db):
     """CRITICAL risk → needs_manual=True."""
     engine = DecisionEngine()
     result = await engine.evaluate(
-        seeded_db, "test-op-1", _mock_recommendation(risk_level="critical"),
+        seeded_db,
+        "test-op-1",
+        _mock_recommendation(risk_level="critical"),
     )
     assert result["auto_approved"] is False
     assert result["needs_manual"] is True
@@ -129,7 +135,9 @@ async def test_decision_high_risk_needs_confirmation(seeded_db):
     """HIGH risk → auto_approved=False, needs_confirmation=True (HexConfirmModal)."""
     engine = DecisionEngine()
     result = await engine.evaluate(
-        seeded_db, "test-op-1", _mock_recommendation(risk_level="high"),
+        seeded_db,
+        "test-op-1",
+        _mock_recommendation(risk_level="high"),
     )
     assert result["auto_approved"] is False
     assert result["needs_confirmation"] is True
@@ -139,13 +147,14 @@ async def test_decision_high_risk_needs_confirmation(seeded_db):
 async def test_decision_low_risk_auto_approved(seeded_db):
     """LOW risk with threshold=medium → auto_approved=True."""
     await seeded_db.execute(
-        "UPDATE operations SET automation_mode = 'semi_auto', risk_threshold = 'medium' "
-        "WHERE id = 'test-op-1'"
+        "UPDATE operations SET automation_mode = 'semi_auto', risk_threshold = 'medium' WHERE id = 'test-op-1'"
     )
 
     engine = DecisionEngine()
     result = await engine.evaluate(
-        seeded_db, "test-op-1", _mock_recommendation(risk_level="low"),
+        seeded_db,
+        "test-op-1",
+        _mock_recommendation(risk_level="low"),
     )
     assert result["auto_approved"] is True
     assert result["needs_confirmation"] is False
@@ -154,13 +163,14 @@ async def test_decision_low_risk_auto_approved(seeded_db):
 async def test_decision_medium_risk_within_threshold(seeded_db):
     """MEDIUM risk with threshold=medium → auto_approved=True."""
     await seeded_db.execute(
-        "UPDATE operations SET automation_mode = 'semi_auto', risk_threshold = 'medium' "
-        "WHERE id = 'test-op-1'"
+        "UPDATE operations SET automation_mode = 'semi_auto', risk_threshold = 'medium' WHERE id = 'test-op-1'"
     )
 
     engine = DecisionEngine()
     result = await engine.evaluate(
-        seeded_db, "test-op-1", _mock_recommendation(risk_level="medium"),
+        seeded_db,
+        "test-op-1",
+        _mock_recommendation(risk_level="medium"),
     )
     assert result["auto_approved"] is True
 
@@ -168,13 +178,14 @@ async def test_decision_medium_risk_within_threshold(seeded_db):
 async def test_decision_medium_risk_above_threshold(seeded_db):
     """MEDIUM risk with threshold=low → needs_confirmation=True."""
     await seeded_db.execute(
-        "UPDATE operations SET automation_mode = 'semi_auto', risk_threshold = 'low' "
-        "WHERE id = 'test-op-1'"
+        "UPDATE operations SET automation_mode = 'semi_auto', risk_threshold = 'low' WHERE id = 'test-op-1'"
     )
 
     engine = DecisionEngine()
     result = await engine.evaluate(
-        seeded_db, "test-op-1", _mock_recommendation(risk_level="medium"),
+        seeded_db,
+        "test-op-1",
+        _mock_recommendation(risk_level="medium"),
     )
     assert result["auto_approved"] is False
     assert result["needs_confirmation"] is True
@@ -298,9 +309,9 @@ async def test_orient_prompt_includes_playbook_summary(seeded_db):
     await seeded_db.execute(
         "INSERT INTO technique_playbooks (id, mitre_id, platform, command, facts_traits, source, tags) "
         "VALUES ('pb-1', 'T1021.001', 'windows', 'whoami; hostname', '[\"host.os\"]', 'seed', "
-        "'[\"lateral_move\",\"winrm\",\"windows\"]'), "
+        '\'["lateral_move","winrm","windows"]\'), '
         "       ('pb-2', 'T1059.001', 'windows', 'Get-Process | Select -First 5', '[\"host.os\"]', 'seed', "
-        "'[\"execution\",\"powershell\",\"windows\"]')"
+        '\'["execution","powershell","windows"]\')'
     )
 
     ws = _make_ws()
@@ -459,19 +470,25 @@ async def test_ooda_trigger_cycle_mock_mode(seeded_db):
 
     # Mock C2 engine client
     mock_c2_engine = MagicMock()
-    mock_c2_engine.execute = AsyncMock(return_value=ExecutionResult(
-        success=True,
-        execution_id="mock-exec-1",
-        output="Mock execution complete",
-        facts=[{"trait": "credential.hash", "value": "aad3b435b51404ee"}],
-        error=None,
-    ))
+    mock_c2_engine.execute = AsyncMock(
+        return_value=ExecutionResult(
+            success=True,
+            execution_id="mock-exec-1",
+            output="Mock execution complete",
+            facts=[{"trait": "credential.hash", "value": "aad3b435b51404ee"}],
+            error=None,
+        )
+    )
 
     engine_router = EngineRouter(mock_c2_engine, fact_collector, ws)
     c5isr_mapper = C5ISRMapper(ws)
     controller = OODAController(
-        fact_collector, orient_engine, decision_engine,
-        engine_router, c5isr_mapper, ws,
+        fact_collector,
+        orient_engine,
+        decision_engine,
+        engine_router,
+        c5isr_mapper,
+        ws,
     )
 
     result = await controller.trigger_cycle(seeded_db, "test-op-1")
@@ -487,23 +504,30 @@ async def test_ooda_trigger_creates_iteration_record(seeded_db):
     decision_engine = DecisionEngine()
 
     mock_c2_engine = MagicMock()
-    mock_c2_engine.execute = AsyncMock(return_value=ExecutionResult(
-        success=True, execution_id="mock-exec-2",
-        output="Complete", facts=[], error=None,
-    ))
+    mock_c2_engine.execute = AsyncMock(
+        return_value=ExecutionResult(
+            success=True,
+            execution_id="mock-exec-2",
+            output="Complete",
+            facts=[],
+            error=None,
+        )
+    )
 
     engine_router = EngineRouter(mock_c2_engine, fact_collector, ws)
     c5isr_mapper = C5ISRMapper(ws)
     controller = OODAController(
-        fact_collector, orient_engine, decision_engine,
-        engine_router, c5isr_mapper, ws,
+        fact_collector,
+        orient_engine,
+        decision_engine,
+        engine_router,
+        c5isr_mapper,
+        ws,
     )
 
     await controller.trigger_cycle(seeded_db, "test-op-1")
 
-    rows = await seeded_db.fetch(
-        "SELECT * FROM ooda_iterations WHERE operation_id = 'test-op-1'"
-    )
+    rows = await seeded_db.fetch("SELECT * FROM ooda_iterations WHERE operation_id = 'test-op-1'")
     assert len(rows) >= 1
     assert rows[0]["observe_summary"] is not None
 
@@ -516,16 +540,25 @@ async def test_ooda_trigger_updates_operation_phase(seeded_db):
     decision_engine = DecisionEngine()
 
     mock_c2_engine = MagicMock()
-    mock_c2_engine.execute = AsyncMock(return_value=ExecutionResult(
-        success=True, execution_id="mock-exec-3",
-        output="Complete", facts=[], error=None,
-    ))
+    mock_c2_engine.execute = AsyncMock(
+        return_value=ExecutionResult(
+            success=True,
+            execution_id="mock-exec-3",
+            output="Complete",
+            facts=[],
+            error=None,
+        )
+    )
 
     engine_router = EngineRouter(mock_c2_engine, fact_collector, ws)
     c5isr_mapper = C5ISRMapper(ws)
     controller = OODAController(
-        fact_collector, orient_engine, decision_engine,
-        engine_router, c5isr_mapper, ws,
+        fact_collector,
+        orient_engine,
+        decision_engine,
+        engine_router,
+        c5isr_mapper,
+        ws,
     )
 
     await controller.trigger_cycle(seeded_db, "test-op-1")

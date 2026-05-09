@@ -29,7 +29,8 @@ logger = logging.getLogger(__name__)
 # Maps (service_name_lower, version_prefix) → CPE vendor/product
 # ---------------------------------------------------------------------------
 _CPE_MAP: dict[str, tuple[str, str]] = {
-    k: tuple(v) for k, v in get_cpe_mappings().items()  # type: ignore[arg-type]
+    k: tuple(v)
+    for k, v in get_cpe_mappings().items()  # type: ignore[arg-type]
 }
 
 
@@ -96,6 +97,7 @@ class VulnLookupService:
         # Extract version number from the version string
         # "OpenSSH 7.4" → "7.4",  "Apache 2.4.6" → "2.4.6"
         import re
+
         version_match = re.search(r"(\d+\.\d+[\d.]*)", version_str)
         version_num = version_match.group(1) if version_match else "*"
 
@@ -138,9 +140,7 @@ class VulnLookupService:
                     nvd_results = await self._query_nvd_via_mcp(cpe)
                     _mcp_ok = True
                 except ConnectionError:
-                    logger.warning(
-                        "MCP vuln-lookup unavailable, falling back to direct NVD API"
-                    )
+                    logger.warning("MCP vuln-lookup unavailable, falling back to direct NVD API")
             if not _mcp_ok:
                 nvd_results = await self._query_nvd(cpe)
         except Exception as exc:
@@ -172,9 +172,7 @@ class VulnLookupService:
 
         return findings
 
-    async def _get_cached(
-        self, db: asyncpg.Connection, cpe: str
-    ) -> list | None:
+    async def _get_cached(self, db: asyncpg.Connection, cpe: str) -> list | None:
         """Return cached rows if they exist and haven't expired. None = cache miss."""
         rows = await db.fetch(
             """
@@ -183,14 +181,16 @@ class VulnLookupService:
             WHERE cpe_string = $1
               AND cached_at > NOW() - INTERVAL '1 hours' * $2
             """,
-            cpe, settings.NVD_CACHE_TTL_HOURS,
+            cpe,
+            settings.NVD_CACHE_TTL_HOURS,
         )
         # Return None only if not in cache at all (empty result is still a cache hit)
         # We distinguish by checking if ANY row exists with expired=false
         if rows is not None:  # rows is a list (possibly empty)
             # Check if there's any non-expired entry for this CPE
             count_row = await db.fetchrow(
-                "SELECT COUNT(*) FROM vuln_cache WHERE cpe_string = $1", cpe,
+                "SELECT COUNT(*) FROM vuln_cache WHERE cpe_string = $1",
+                cpe,
             )
             if count_row and count_row[0] > 0:
                 return list(rows)  # Cache hit (may be empty list if no CVEs found)
@@ -207,9 +207,7 @@ class VulnLookupService:
         if manager is None or not manager.is_connected("vuln-lookup"):
             raise ConnectionError("MCP vuln-lookup server is not connected")
 
-        result = await manager.call_tool(
-            "vuln-lookup", "nvd_cve_lookup", {"cpe": cpe}
-        )
+        result = await manager.call_tool("vuln-lookup", "nvd_cve_lookup", {"cpe": cpe})
 
         text_parts = [
             block.get("text", "")
@@ -235,12 +233,14 @@ class VulnLookupService:
             exploit_match = re.search(r"exploit=(true|false)", value)
             desc_match = re.search(r"desc=(.+)$", value)
 
-            results.append({
-                "cve_id": cve_id_match.group(1) if cve_id_match else "",
-                "cvss_score": float(cvss_match.group(1)) if cvss_match else 0.0,
-                "description": desc_match.group(1) if desc_match else "",
-                "exploit_available": exploit_match.group(1) == "true" if exploit_match else False,
-            })
+            results.append(
+                {
+                    "cve_id": cve_id_match.group(1) if cve_id_match else "",
+                    "cvss_score": float(cvss_match.group(1)) if cvss_match else 0.0,
+                    "description": desc_match.group(1) if desc_match else "",
+                    "exploit_available": exploit_match.group(1) == "true" if exploit_match else False,
+                }
+            )
 
         return results
 
@@ -287,17 +287,18 @@ class VulnLookupService:
             # Check for known exploits (weaknesses / references)
             references = cve_data.get("references", [])
             exploit_available = any(
-                "exploit" in ref.get("url", "").lower()
-                or any("exploit" in tag.lower() for tag in ref.get("tags", []))
+                "exploit" in ref.get("url", "").lower() or any("exploit" in tag.lower() for tag in ref.get("tags", []))
                 for ref in references
             )
 
-            results.append({
-                "cve_id": cve_id,
-                "cvss_score": cvss_score,
-                "description": desc[:500],  # truncate for DB
-                "exploit_available": exploit_available,
-            })
+            results.append(
+                {
+                    "cve_id": cve_id,
+                    "cvss_score": cvss_score,
+                    "description": desc[:500],  # truncate for DB
+                    "exploit_available": exploit_available,
+                }
+            )
 
         return results
 
@@ -313,7 +314,9 @@ class VulnLookupService:
                      exploit_available, cached_at)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING
                 """,
-                cache_id, cpe, nvd_item["cve_id"],
+                cache_id,
+                cpe,
+                nvd_item["cve_id"],
                 nvd_item["cvss_score"],
                 _cvss_to_severity(nvd_item["cvss_score"]),
                 nvd_item.get("description", "")[:500],
@@ -336,7 +339,9 @@ class VulnLookupService:
                 VALUES ($1, $2, '__empty__', 0, 'info', 'No CVEs found', FALSE, $3)
                 ON CONFLICT DO NOTHING
                 """,
-                cache_id, cpe, now,
+                cache_id,
+                cpe,
+                now,
             )
         except Exception as exc:
             logger.debug("Cache empty-sentinel insert failed: %s", exc)
@@ -355,8 +360,13 @@ class VulnLookupService:
                 "(id, trait, value, category, source_technique_id, "
                 "source_target_id, operation_id, score, collected_at) "
                 "VALUES ($1, $2, $3, $4, NULL, $5, $6, 1, $7) ON CONFLICT DO NOTHING",
-                fact_id, "vuln.cve", value, "vulnerability",
-                finding.target_id, finding.operation_id, now,
+                fact_id,
+                "vuln.cve",
+                value,
+                "vulnerability",
+                finding.target_id,
+                finding.operation_id,
+                now,
             )
             payload = {
                 "id": fact_id,

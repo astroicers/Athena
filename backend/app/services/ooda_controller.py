@@ -27,13 +27,13 @@ def _get_operation_lock(operation_id: str) -> asyncio.Lock:
         _OODA_LOCKS[operation_id] = asyncio.Lock()
     return _OODA_LOCKS[operation_id]
 
+
 from app.config import settings
-from app.models.enums import NOISE_POINTS
 from app.database import db_manager
-from app.models.enums import OODAPhase
+from app.models.enums import NOISE_POINTS, OODAPhase
+from app.services import constraint_engine as ce
 from app.services.agent_swarm import SwarmExecutor
 from app.services.c5isr_mapper import C5ISRMapper
-from app.services import constraint_engine as ce
 from app.services.decision_engine import DecisionEngine
 from app.services.engine_router import EngineRouter
 from app.services.fact_collector import FactCollector
@@ -56,11 +56,7 @@ _SHELL_CAPABLE_TRAITS = (
 )
 
 # SQL fragment for the compromise gate check
-_SHELL_TRAIT_SQL = (
-    "AND trait IN ("
-    + ", ".join(f"'{t}'" for t in _SHELL_CAPABLE_TRAITS)
-    + ")"
-)
+_SHELL_TRAIT_SQL = "AND trait IN (" + ", ".join(f"'{t}'" for t in _SHELL_CAPABLE_TRAITS) + ")"
 
 
 class OODAController:
@@ -87,9 +83,7 @@ class OODAController:
         self._ws = ws_manager
         self._swarm = swarm_executor
 
-    async def trigger_cycle(
-        self, db: asyncpg.Connection, operation_id: str
-    ) -> dict:
+    async def trigger_cycle(self, db: asyncpg.Connection, operation_id: str) -> dict:
         """
         Trigger one complete OODA iteration:
         1. Observe: fact_collector.collect()
@@ -112,15 +106,12 @@ class OODAController:
         async with lock:
             return await self._trigger_cycle_inner(db, operation_id)
 
-    async def _trigger_cycle_inner(
-        self, db: asyncpg.Connection, operation_id: str
-    ) -> dict:
+    async def _trigger_cycle_inner(self, db: asyncpg.Connection, operation_id: str) -> dict:
         """Internal cycle implementation — caller holds the operation lock."""
 
         # Create new OODA iteration
         row = await db.fetchrow(
-            "SELECT COALESCE(MAX(iteration_number), 0) + 1 AS next_num "
-            "FROM ooda_iterations WHERE operation_id = $1",
+            "SELECT COALESCE(MAX(iteration_number), 0) + 1 AS next_num FROM ooda_iterations WHERE operation_id = $1",
             operation_id,
         )
         next_num = row["next_num"]
@@ -131,12 +122,15 @@ class OODAController:
             "INSERT INTO ooda_iterations "
             "(id, operation_id, iteration_number, phase, started_at) "
             "VALUES ($1, $2, $3, 'observe', $4)",
-            ooda_id, operation_id, next_num, now,
+            ooda_id,
+            operation_id,
+            next_num,
+            now,
         )
         await db.execute(
-            "UPDATE operations SET current_ooda_phase = 'observe', "
-            "ooda_iteration_count = $1 WHERE id = $2",
-            next_num, operation_id,
+            "UPDATE operations SET current_ooda_phase = 'observe', ooda_iteration_count = $1 WHERE id = $2",
+            next_num,
+            operation_id,
         )
 
         # Set operation status to active on first cycle
@@ -149,21 +143,27 @@ class OODAController:
         observe_summary = await self._fact_collector.summarize(db, operation_id)
         await db.execute(
             "UPDATE ooda_iterations SET observe_summary = $1 WHERE id = $2",
-            observe_summary[:1000], ooda_id,
+            observe_summary[:1000],
+            ooda_id,
         )
-        await self._write_log(db, operation_id, "info",
-            f"OODA #{next_num} Observe: collected {len(new_facts)} new facts")
+        await self._write_log(
+            db, operation_id, "info", f"OODA #{next_num} Observe: collected {len(new_facts)} new facts"
+        )
 
         # -- 1.1. AUTO-RECON for sparse-intel targets (SPEC-052) --
         # Mission-profile-aware fact threshold: SR=0, CO=2, SP=3, FA=5
         _RECON_FACT_THRESHOLD: dict[str, int] = {
-            "SR": 0, "CO": 2, "SP": 3, "FA": 5,
+            "SR": 0,
+            "CO": 2,
+            "SP": 3,
+            "FA": 5,
         }
         _RECON_NOISE_COST: int = 2  # nmap scan = 2 noise points (T1595.001 low)
 
         try:
             op_profile_row = await db.fetchrow(
-                "SELECT mission_profile FROM operations WHERE id = $1", operation_id,
+                "SELECT mission_profile FROM operations WHERE id = $1",
+                operation_id,
             )
             profile_code = (op_profile_row["mission_profile"] if op_profile_row else None) or "SP"
             fact_threshold = _RECON_FACT_THRESHOLD.get(profile_code, 3)
@@ -176,7 +176,8 @@ class OODAController:
                    WHERE t.operation_id = $1 AND t.is_active = TRUE
                    GROUP BY t.id, t.hostname, t.ip_address
                    HAVING COUNT(f.id) < $2""",
-                operation_id, fact_threshold + 1,  # < threshold+1 means <= threshold, but we want < threshold
+                operation_id,
+                fact_threshold + 1,  # < threshold+1 means <= threshold, but we want < threshold
             )
 
             # Filter to targets strictly below threshold
@@ -190,7 +191,8 @@ class OODAController:
                    WHERE t.operation_id = $1 AND t.is_active = TRUE
                    GROUP BY t.id, t.hostname, t.ip_address
                    HAVING COUNT(f.id) < $2""",
-                operation_id, fact_threshold,
+                operation_id,
+                fact_threshold,
             )
 
             if sparse_targets:
@@ -204,18 +206,25 @@ class OODAController:
 
                 if noise_remaining < _RECON_NOISE_COST:
                     logger.info(
-                        "OODA[%s] Auto-recon deferred: noise budget insufficient "
-                        "(remaining=%d, cost=%d, profile=%s)",
-                        ooda_id[:8], noise_remaining, _RECON_NOISE_COST, profile_code,
+                        "OODA[%s] Auto-recon deferred: noise budget insufficient (remaining=%d, cost=%d, profile=%s)",
+                        ooda_id[:8],
+                        noise_remaining,
+                        _RECON_NOISE_COST,
+                        profile_code,
                     )
-                    await self._write_log(db, operation_id, "warning",
-                        f"OODA #{next_num} Auto-recon deferred: noise budget insufficient")
+                    await self._write_log(
+                        db, operation_id, "warning", f"OODA #{next_num} Auto-recon deferred: noise budget insufficient"
+                    )
                 else:
                     from app.services.recon_engine import ReconEngine
+
                     recon = ReconEngine()
                     # Mission-profile parallel limit
                     _MAX_RECON_PARALLEL: dict[str, int] = {
-                        "SR": 1, "CO": 2, "SP": 3, "FA": 5,
+                        "SR": 1,
+                        "CO": 2,
+                        "SP": 3,
+                        "FA": 5,
                     }
                     max_targets = _MAX_RECON_PARALLEL.get(profile_code, 3)
 
@@ -225,31 +234,42 @@ class OODAController:
                             continue
                         try:
                             recon_result = await recon.scan(
-                                db, operation_id, st["id"],
+                                db,
+                                operation_id,
+                                st["id"],
                             )
                             logger.info(
                                 "OODA[%s] Auto-recon on %s: %d services found",
-                                ooda_id[:8], target_addr,
+                                ooda_id[:8],
+                                target_addr,
                                 len(recon_result.services) if recon_result else 0,
                             )
                         except Exception as recon_exc:
                             logger.warning(
                                 "OODA[%s] Auto-recon failed for %s: %s",
-                                ooda_id[:8], target_addr, recon_exc,
+                                ooda_id[:8],
+                                target_addr,
+                                recon_exc,
                             )
 
                     # Re-collect facts after auto-recon to include new findings
                     new_facts_2 = await self._fact_collector.collect(db, operation_id)
                     if new_facts_2:
                         observe_summary = await self._fact_collector.summarize(
-                            db, operation_id,
+                            db,
+                            operation_id,
                         )
                         await db.execute(
                             "UPDATE ooda_iterations SET observe_summary = $1 WHERE id = $2",
-                            observe_summary[:1000], ooda_id,
+                            observe_summary[:1000],
+                            ooda_id,
                         )
-                        await self._write_log(db, operation_id, "info",
-                            f"OODA #{next_num} Auto-recon: collected {len(new_facts_2)} additional facts")
+                        await self._write_log(
+                            db,
+                            operation_id,
+                            "info",
+                            f"OODA #{next_num} Auto-recon: collected {len(new_facts_2)} additional facts",
+                        )
         except Exception as auto_recon_exc:
             logger.warning("Auto-recon step failed: %s", auto_recon_exc)
 
@@ -257,13 +277,12 @@ class OODAController:
         # Halt the cycle if every active target is already compromised at a
         # high-privilege level — there is nothing left to do.
         _all_targets = await db.fetch(
-            "SELECT is_compromised, privilege_level FROM targets "
-            "WHERE operation_id = $1 AND is_active = TRUE",
+            "SELECT is_compromised, privilege_level FROM targets WHERE operation_id = $1 AND is_active = TRUE",
             operation_id,
         )
         if _all_targets and all(
-            row["is_compromised"] and
-            (row["privilege_level"] or "").lower() in ("root", "administrator", "system", "domain_admin")
+            row["is_compromised"]
+            and (row["privilege_level"] or "").lower() in ("root", "administrator", "system", "domain_admin")
             for row in _all_targets
         ):
             await db.execute(
@@ -281,23 +300,28 @@ class OODAController:
 
         # -- PRE-ORIENT: Evaluate constraints (SPEC-047) --
         op_row = await db.fetchrow(
-            "SELECT mission_profile FROM operations WHERE id = $1", operation_id,
+            "SELECT mission_profile FROM operations WHERE id = $1",
+            operation_id,
         )
         mission_code = (op_row["mission_profile"] if op_row else None) or "SP"
         constraints = await ce.evaluate(db, operation_id, mission_code, ws_manager=self._ws)
         if constraints.warnings or constraints.hard_limits:
-            await self._write_log(db, operation_id, "warning",
+            await self._write_log(
+                db,
+                operation_id,
+                "warning",
                 f"OODA #{next_num} Constraints: {len(constraints.warnings)} warnings, "
                 f"{len(constraints.hard_limits)} hard limits"
-                + (f", forced_mode={constraints.forced_mode}" if constraints.forced_mode else ""))
+                + (f", forced_mode={constraints.forced_mode}" if constraints.forced_mode else ""),
+            )
             try:
-                await self._ws.broadcast(operation_id, "constraint.active",
-                    constraints.model_dump())
+                await self._ws.broadcast(operation_id, "constraint.active", constraints.model_dump())
             except Exception as ws_exc:
                 logger.debug("WS broadcast constraint.active failed: %s", ws_exc)
 
         # -- 1.5. ATTACK GRAPH REBUILD --
         from app.services.attack_graph_engine import AttackGraphEngine
+
         graph_engine = AttackGraphEngine(self._ws)
         attack_graph = await graph_engine.rebuild(db, operation_id)
         graph_summary = graph_engine.build_orient_summary(attack_graph)
@@ -306,15 +330,19 @@ class OODAController:
         await self._update_phase(db, operation_id, ooda_id, OODAPhase.ORIENT)
         logger.info("OODA[%s] Orient phase -- calling PentestGPT", ooda_id[:8])
         from app.services.orient_engine import LLMUnavailableError
+
         try:
             recommendation = await self._orient.analyze(
-                db, operation_id, observe_summary,
+                db,
+                operation_id,
+                observe_summary,
                 attack_graph_summary=graph_summary,
             )
         except LLMUnavailableError as exc:
             logger.warning("OODA[%s] LLM unavailable (%s) — using rule-based orient fallback", ooda_id[:8], exc)
-            await self._write_log(db, operation_id, "warning",
-                f"LLM unavailable ({exc}). Using rule-based orient to continue OODA.")
+            await self._write_log(
+                db, operation_id, "warning", f"LLM unavailable ({exc}). Using rule-based orient to continue OODA."
+            )
             # Rule-based fallback: inspect facts and propose next action
             all_facts = await db.fetch(
                 "SELECT trait, value, source_target_id FROM facts WHERE operation_id = $1",
@@ -368,16 +396,21 @@ class OODAController:
                 recommended_engine = "winrm"
             # Priority 2: DB access on targets with WinRM success, not yet queried
             elif compromised and winrm_success_targets:
-                db_targets_pending = [t for t in compromised
-                                      if t["id"] in winrm_success_targets and t["id"] not in t1213_done_targets]
+                db_targets_pending = [
+                    t for t in compromised if t["id"] in winrm_success_targets and t["id"] not in t1213_done_targets
+                ]
                 if db_targets_pending:
                     db_target = db_targets_pending[0]
-                    situation = f"Rule-based: WinRM confirmed on {db_target['ip_address']}, executing DB collection (T1213)"
+                    situation = (
+                        f"Rule-based: WinRM confirmed on {db_target['ip_address']}, executing DB collection (T1213)"
+                    )
                     next_technique = "T1213"
                     recommended_engine = "winrm"
                 else:
                     # T1213 done but no fact recorded — fallback to T1082 wrap-up
-                    situation = f"Rule-based: T1213 attempted on all compromised WinRM targets, running wrap-up discovery"
+                    situation = (
+                        "Rule-based: T1213 attempted on all compromised WinRM targets, running wrap-up discovery"
+                    )
                     next_technique = "T1082"
                     recommended_engine = "winrm"
             # Priority 3: Credentials available — attempt WinRM on uncompromised targets
@@ -419,21 +452,27 @@ class OODAController:
             recommendation = {
                 "situation_assessment": situation,
                 "recommended_technique_id": next_technique,
-                "options": [{"technique_id": next_technique, "rationale": situation,
-                              "priority": 1, "action": "execute", "risk_level": "medium",
-                              "recommended_engine": recommended_engine}],
-                "selected_option": {"technique_id": next_technique, "rationale": situation,
-                                    "action": "execute"},
+                "options": [
+                    {
+                        "technique_id": next_technique,
+                        "rationale": situation,
+                        "priority": 1,
+                        "action": "execute",
+                        "risk_level": "medium",
+                        "recommended_engine": recommended_engine,
+                    }
+                ],
+                "selected_option": {"technique_id": next_technique, "rationale": situation, "action": "execute"},
                 "confidence": 0.5,
             }
             await db.execute(
                 "UPDATE ooda_iterations SET orient_summary = $1 WHERE id = $2",
-                situation[:1000], ooda_id,
+                situation[:1000],
+                ooda_id,
             )
 
         if not recommendation:
-            await self._write_log(db, operation_id, "warning",
-                "Orient phase aborted: empty recommendation")
+            await self._write_log(db, operation_id, "warning", "Orient phase aborted: empty recommendation")
             await db.execute(
                 "UPDATE ooda_iterations SET phase = 'orient', completed_at = NOW() WHERE id = $1",
                 ooda_id,
@@ -442,12 +481,12 @@ class OODAController:
         orient_summary = recommendation.get("situation_assessment", "")
         await db.execute(
             "UPDATE ooda_iterations SET orient_summary = $1 WHERE id = $2",
-            orient_summary[:1000], ooda_id,
+            orient_summary[:1000],
+            ooda_id,
         )
         await self._advance_mission_step(db, operation_id, step_index=0, status="completed")
         await self._advance_mission_step(db, operation_id, step_index=1, status="running")
-        await self._write_log(db, operation_id, "info",
-            f"OODA #{next_num} Orient: {orient_summary[:80]}")
+        await self._write_log(db, operation_id, "info", f"OODA #{next_num} Orient: {orient_summary[:80]}")
 
         # -- 3. DECIDE --
         await self._update_phase(db, operation_id, ooda_id, OODAPhase.DECIDE)
@@ -456,24 +495,28 @@ class OODAController:
         decide_summary = decision.get("reason", "")
         await db.execute(
             "UPDATE ooda_iterations SET decide_summary = $1 WHERE id = $2",
-            decide_summary[:1000], ooda_id,
+            decide_summary[:1000],
+            ooda_id,
         )
         # Broadcast decision result with confidence breakdown and noise/risk levels
         try:
-            await self._ws.broadcast(operation_id, "decision.result", {
-                "confidence_breakdown": decision.get("confidence_breakdown"),
-                "composite_confidence": decision.get("composite_confidence"),
-                "noise_level": decision.get("noise_level"),
-                "risk_level": decision.get("risk_level"),
-                "auto_approved": decision.get("auto_approved"),
-                "reason": decide_summary,
-            })
+            await self._ws.broadcast(
+                operation_id,
+                "decision.result",
+                {
+                    "confidence_breakdown": decision.get("confidence_breakdown"),
+                    "composite_confidence": decision.get("composite_confidence"),
+                    "noise_level": decision.get("noise_level"),
+                    "risk_level": decision.get("risk_level"),
+                    "auto_approved": decision.get("auto_approved"),
+                    "reason": decide_summary,
+                },
+            )
         except Exception as ws_exc:
             logger.debug("WS broadcast decision.result failed: %s", ws_exc)
         await self._advance_mission_step(db, operation_id, step_index=1, status="completed")
         await self._advance_mission_step(db, operation_id, step_index=2, status="running")
-        await self._write_log(db, operation_id, "info",
-            f"OODA #{next_num} Decide: {decide_summary[:80]}")
+        await self._write_log(db, operation_id, "info", f"OODA #{next_num} Decide: {decide_summary[:80]}")
 
         # -- SPEC-053: Cross-category pivot detection --
         # If the current decision is a T1190 exploit on a target whose most
@@ -483,7 +526,9 @@ class OODAController:
         # badge and so the Operation Brief can note the decision point.
         try:
             pivot_info = await self._detect_cross_category_pivot(
-                db, operation_id, decision,
+                db,
+                operation_id,
+                decision,
             )
             if pivot_info is not None:
                 await self._ws.broadcast(
@@ -505,7 +550,8 @@ class OODAController:
                 )
         except Exception as pivot_exc:
             logger.warning(
-                "ooda.pivot detection failed: %s", pivot_exc,
+                "ooda.pivot detection failed: %s",
+                pivot_exc,
             )
 
         # -- 4. ACT --
@@ -523,9 +569,7 @@ class OODAController:
                     decision["technique_id"],
                 )
                 pre_noise_level = (
-                    pre_noise_row["noise_level"]
-                    if pre_noise_row and pre_noise_row["noise_level"]
-                    else "medium"
+                    pre_noise_row["noise_level"] if pre_noise_row and pre_noise_row["noise_level"] else "medium"
                 )
                 noise_points = noise_map.get(pre_noise_level, NOISE_POINTS["medium"])
                 if noise_budget_remaining - noise_points < 0:
@@ -545,7 +589,9 @@ class OODAController:
                         f"costs {noise_points} pts but only {noise_budget_remaining} pts remaining"
                     )
                     await self._write_log(
-                        db, operation_id, "warning",
+                        db,
+                        operation_id,
+                        "warning",
                         f"OODA #{next_num} PRE-ACT OPSEC: noise budget would be exceeded "
                         f"({pre_noise_level}={noise_points} pts, remaining={noise_budget_remaining}) "
                         f"-- requiring commander confirmation",
@@ -558,11 +604,14 @@ class OODAController:
         if self._swarm and parallel_tasks and len(parallel_tasks) > 1:
             # -- SWARM PATH (SPEC-030 + SPEC-058 prerequisite ordering) --
             from app.services.prerequisite_ordering import order_parallel_tasks
+
             ordered_batches = order_parallel_tasks(parallel_tasks)
             if len(ordered_batches) > 1:
                 logger.info(
                     "OODA[%s] SPEC-058: reordered %d tasks into %d sequential batches",
-                    ooda_id[:8], len(parallel_tasks), len(ordered_batches),
+                    ooda_id[:8],
+                    len(parallel_tasks),
+                    len(ordered_batches),
                 )
             # Flatten back for swarm (swarm already runs its list in parallel internally).
             # We emit batches sequentially: execute batch 0, await, then batch 1, etc.
@@ -585,7 +634,8 @@ class OODAController:
                             "WHERE operation_id = $1 AND source_target_id = $2 "
                             f"{_SHELL_TRAIT_SQL} "
                             "AND trait NOT LIKE '%.invalidated')",
-                            operation_id, st.target_id,
+                            operation_id,
+                            st.target_id,
                         )
                         if has_access:
                             await db.execute(
@@ -593,14 +643,16 @@ class OODAController:
                                 "privilege_level = CASE WHEN privilege_level IN ('Root', 'Administrator', 'System', 'Domain_Admin') THEN privilege_level ELSE 'User' END, "
                                 "access_status = 'active' "
                                 "WHERE id = $1 AND operation_id = $2",
-                                st.target_id, operation_id,
+                                st.target_id,
+                                operation_id,
                             )
                     completed_at_now = datetime.now(timezone.utc)
                     await db.execute(
                         "UPDATE agents SET status = 'alive', last_beacon = $1 "
                         "WHERE operation_id = $2 AND status = 'pending' "
                         "AND ctid = (SELECT ctid FROM agents WHERE operation_id = $2 AND status = 'pending' LIMIT 1)",
-                        completed_at_now, operation_id,
+                        completed_at_now,
+                        operation_id,
                     )
                     await db.execute(
                         "UPDATE operations SET techniques_executed = techniques_executed + 1, "
@@ -610,27 +662,21 @@ class OODAController:
                     )
 
             if swarm_result.all_failed:
-                await self._write_log(db, operation_id, "error",
-                    f"OODA #{next_num} Act: all {swarm_result.total} swarm tasks failed")
+                await self._write_log(
+                    db, operation_id, "error", f"OODA #{next_num} Act: all {swarm_result.total} swarm tasks failed"
+                )
             elif swarm_result.partial_success:
-                await self._write_log(db, operation_id, "warning",
-                    f"OODA #{next_num} Act: {swarm_result.act_summary}")
+                await self._write_log(db, operation_id, "warning", f"OODA #{next_num} Act: {swarm_result.act_summary}")
             else:
-                await self._write_log(db, operation_id, "success",
-                    f"OODA #{next_num} Act: {swarm_result.act_summary}")
+                await self._write_log(db, operation_id, "success", f"OODA #{next_num} Act: {swarm_result.act_summary}")
 
             # ADR-048: After swarm, also execute the primary recommended technique
             # if it wasn't included in parallel_tasks (e.g. T1190 SSRF exploit)
             primary_tid = decision.get("technique_id")
-            primary_in_swarm = any(
-                t.get("technique_id") == primary_tid for t in parallel_tasks
-            ) if primary_tid else True
-            if (
-                not primary_in_swarm
-                and decision.get("auto_approved")
-                and primary_tid
-                and decision.get("target_id")
-            ):
+            primary_in_swarm = (
+                any(t.get("technique_id") == primary_tid for t in parallel_tasks) if primary_tid else True
+            )
+            if not primary_in_swarm and decision.get("auto_approved") and primary_tid and decision.get("target_id"):
                 logger.info("OODA[%s] Act phase -- executing primary %s (not in swarm)", ooda_id[:8], primary_tid)
                 _primary_engine = decision.get("engine", "ssh")
                 if decision.get("mcp_tool") and _primary_engine == "mcp":
@@ -649,7 +695,13 @@ class OODAController:
 
         elif decision.get("auto_approved") and decision.get("technique_id") and decision.get("target_id"):
             # -- SINGLE PATH (existing, unchanged) --
-            logger.warning("OODA[%s] Act phase -- executing %s (auto_approved=%s, target=%s)", ooda_id[:8], decision["technique_id"], decision.get("auto_approved"), decision.get("target_id"))
+            logger.warning(
+                "OODA[%s] Act phase -- executing %s (auto_approved=%s, target=%s)",
+                ooda_id[:8],
+                decision["technique_id"],
+                decision.get("auto_approved"),
+                decision.get("target_id"),
+            )
             _single_engine = decision.get("engine", "ssh")
             if decision.get("mcp_tool") and _single_engine == "mcp":
                 _single_engine = f"mcp_direct:{decision['mcp_tool']}"
@@ -669,7 +721,8 @@ class OODAController:
             if execution_result.get("execution_id"):
                 await db.execute(
                     "UPDATE ooda_iterations SET technique_execution_id = $1 WHERE id = $2",
-                    execution_result["execution_id"], ooda_id,
+                    execution_result["execution_id"],
+                    ooda_id,
                 )
             if execution_result and execution_result.get("status") == "success":
                 # Only mark compromised if we actually have a usable credential or shell
@@ -681,7 +734,8 @@ class OODAController:
                         "WHERE operation_id = $1 AND source_target_id = $2 "
                         f"{_SHELL_TRAIT_SQL} "
                         "AND trait NOT LIKE '%.invalidated')",
-                        operation_id, decision["target_id"],
+                        operation_id,
+                        decision["target_id"],
                     )
                     if has_access:
                         await db.execute(
@@ -689,7 +743,8 @@ class OODAController:
                             "privilege_level = CASE WHEN privilege_level IN ('Root', 'Administrator', 'System', 'Domain_Admin') THEN privilege_level ELSE 'User' END, "
                             "access_status = 'active' "
                             "WHERE id = $1 AND operation_id = $2",
-                            decision["target_id"], operation_id,
+                            decision["target_id"],
+                            operation_id,
                         )
                 # Activate one pending agent
                 completed_at_now = datetime.now(timezone.utc)
@@ -697,7 +752,8 @@ class OODAController:
                     "UPDATE agents SET status = 'alive', last_beacon = $1 "
                     "WHERE operation_id = $2 AND status = 'pending' "
                     "AND ctid = (SELECT ctid FROM agents WHERE operation_id = $2 AND status = 'pending' LIMIT 1)",
-                    completed_at_now, operation_id,
+                    completed_at_now,
+                    operation_id,
                 )
                 # Advance mission steps
                 await self._advance_mission_step(db, operation_id, step_index=2, status="completed")
@@ -709,41 +765,67 @@ class OODAController:
                     "WHERE id = $1",
                     operation_id,
                 )
-                await self._write_log(db, operation_id, "success",
-                    f"OODA #{next_num} Act: {decision['technique_id']} executed successfully on {decision.get('target_id', 'unknown')}")
+                await self._write_log(
+                    db,
+                    operation_id,
+                    "success",
+                    f"OODA #{next_num} Act: {decision['technique_id']} executed successfully on {decision.get('target_id', 'unknown')}",
+                )
 
                 # SPEC-044: Update vulnerability status on successful exploitation
                 try:
                     from app.services.vulnerability_manager import VulnerabilityManager
+
                     vuln_mgr = VulnerabilityManager()
                     # Look up CVEs associated with this technique on this target
                     vuln_cve_rows = await db.fetch(
                         "SELECT DISTINCT cve_id FROM vulnerabilities "
                         "WHERE operation_id = $1 AND target_id = $2 "
                         "AND status IN ('discovered', 'confirmed')",
-                        operation_id, decision["target_id"],
+                        operation_id,
+                        decision["target_id"],
                     )
                     for vcr in vuln_cve_rows:
                         await vuln_mgr.mark_exploited_by_cve(
-                            db, operation_id, vcr["cve_id"], decision["target_id"],
+                            db,
+                            operation_id,
+                            vcr["cve_id"],
+                            decision["target_id"],
                         )
                     if vuln_cve_rows:
                         logger.info(
                             "OODA[%s] SPEC-044: marked %d vulnerabilities as exploited on target %s",
-                            ooda_id[:8], len(vuln_cve_rows), decision["target_id"],
+                            ooda_id[:8],
+                            len(vuln_cve_rows),
+                            decision["target_id"],
                         )
                 except Exception as vuln_exc:
                     logger.warning("Failed to update vulnerability status: %s", vuln_exc)
 
             elif execution_result:
-                await self._write_log(db, operation_id, "warning",
-                    f"OODA #{next_num} Act: {decision['technique_id']} returned {execution_result.get('status', 'unknown')}")
+                await self._write_log(
+                    db,
+                    operation_id,
+                    "warning",
+                    f"OODA #{next_num} Act: {decision['technique_id']} returned {execution_result.get('status', 'unknown')}",
+                )
         else:
             # -- MANUAL APPROVAL (existing, unchanged) --
             act_summary = f"Awaiting commander approval: {decision.get('reason', 'manual required')}"
-            logger.warning("OODA[%s] Act phase -- MANUAL APPROVAL: auto_approved=%s, tech=%s, target=%s, reason=%s", ooda_id[:8], decision.get("auto_approved"), decision.get("technique_id"), decision.get("target_id"), decision.get("reason"))
-            await self._write_log(db, operation_id, "warning",
-                f"OODA #{next_num} Act: awaiting commander approval -- {decision.get('reason', 'manual required')}")
+            logger.warning(
+                "OODA[%s] Act phase -- MANUAL APPROVAL: auto_approved=%s, tech=%s, target=%s, reason=%s",
+                ooda_id[:8],
+                decision.get("auto_approved"),
+                decision.get("technique_id"),
+                decision.get("target_id"),
+                decision.get("reason"),
+            )
+            await self._write_log(
+                db,
+                operation_id,
+                "warning",
+                f"OODA #{next_num} Act: awaiting commander approval -- {decision.get('reason', 'manual required')}",
+            )
 
         # Post-Act MCP enrichment
         if execution_result:
@@ -752,18 +834,19 @@ class OODAController:
         completed_at = datetime.now(timezone.utc)
         await db.execute(
             "UPDATE ooda_iterations SET act_summary = $1, completed_at = $2 WHERE id = $3",
-            act_summary[:1000], completed_at, ooda_id,
+            act_summary[:1000],
+            completed_at,
+            ooda_id,
         )
 
         # -- POST-ACT: OPSEC evaluation (SPEC-048) --
         # Only record noise when a technique was actually executed (not skipped/manual)
         if execution_result is not None:
             try:
-                from app.services import opsec_monitor, threat_level as tl_svc
+                from app.services import opsec_monitor
+                from app.services import threat_level as tl_svc
 
-                exec_success = bool(
-                    execution_result.get("status") == "success"
-                )
+                exec_success = bool(execution_result.get("status") == "success")
                 tech_noise = "medium"  # default
                 if decision.get("technique_id"):
                     noise_row = await db.fetchrow(
@@ -774,7 +857,8 @@ class OODAController:
                         tech_noise = noise_row["noise_level"]
 
                 opsec_status = await opsec_monitor.evaluate_after_act(
-                    db, operation_id,
+                    db,
+                    operation_id,
                     technique_noise=tech_noise,
                     target_id=decision.get("target_id"),
                     technique_id=decision.get("technique_id"),
@@ -784,27 +868,38 @@ class OODAController:
 
                 # Broadcast OPSEC alerts if thresholds exceeded
                 if opsec_status.detection_risk > 60:
-                    await self._ws.broadcast(operation_id, "opsec.alert", {
-                        "detection_risk": opsec_status.detection_risk,
-                        "noise_budget_remaining": opsec_status.noise_budget_remaining,
-                    })
+                    await self._ws.broadcast(
+                        operation_id,
+                        "opsec.alert",
+                        {
+                            "detection_risk": opsec_status.detection_risk,
+                            "noise_budget_remaining": opsec_status.noise_budget_remaining,
+                        },
+                    )
                 if opsec_status.noise_budget_remaining <= 0:
-                    await self._ws.broadcast(operation_id, "opsec.budget_warning", {
-                        "budget_total": opsec_status.noise_budget_total,
-                        "budget_used": opsec_status.noise_budget_used,
-                    })
-                await self._ws.broadcast(operation_id, "threat.update", {
-                    "level": threat.level,
-                    "components": threat.components,
-                })
+                    await self._ws.broadcast(
+                        operation_id,
+                        "opsec.budget_warning",
+                        {
+                            "budget_total": opsec_status.noise_budget_total,
+                            "budget_used": opsec_status.noise_budget_used,
+                        },
+                    )
+                await self._ws.broadcast(
+                    operation_id,
+                    "threat.update",
+                    {
+                        "level": threat.level,
+                        "components": threat.components,
+                    },
+                )
             except Exception as exc:
                 logger.warning("OPSEC post-act evaluation failed: %s", exc)
 
         # -- 5. C5ISR UPDATE --
         logger.info("OODA[%s] C5ISR update", ooda_id[:8])
         await self._c5isr.update(db, operation_id)
-        await self._write_log(db, operation_id, "info",
-            f"OODA #{next_num} complete -- C5ISR domains updated")
+        await self._write_log(db, operation_id, "info", f"OODA #{next_num} complete -- C5ISR domains updated")
 
         # Update operation success rate
         stats = await db.fetchrow(
@@ -817,22 +912,30 @@ class OODAController:
             rate = round(stats["success"] / stats["total"] * 100, 1)
             await db.execute(
                 "UPDATE operations SET success_rate = $1 WHERE id = $2",
-                rate, operation_id,
+                rate,
+                operation_id,
             )
 
         # -- 6. RECORD: Generate Operation Brief --
         logger.info("OODA[%s] Brief generation starting", ooda_id[:8])
         try:
             from app.services.brief_generator import BriefGenerator
+
             brief_gen = BriefGenerator()
             brief_md = await brief_gen.generate(db, operation_id)
             await db.execute(
                 "UPDATE operations SET brief_md = $1, brief_updated_at = $2 WHERE id = $3",
-                brief_md, datetime.now(timezone.utc), operation_id,
+                brief_md,
+                datetime.now(timezone.utc),
+                operation_id,
             )
-            await self._ws.broadcast(operation_id, "brief.updated", {
-                "iteration": next_num,
-            })
+            await self._ws.broadcast(
+                operation_id,
+                "brief.updated",
+                {
+                    "iteration": next_num,
+                },
+            )
             logger.info("OODA[%s] Brief generated: %d chars", ooda_id[:8], len(brief_md))
         except Exception as exc:
             logger.exception("OODA[%s] Brief generation failed: %s", ooda_id[:8], exc)
@@ -840,14 +943,13 @@ class OODAController:
         # Broadcast ooda.completed -- after ALL DB updates are committed
         try:
             await self._ws.broadcast(
-                operation_id, "ooda.completed",
+                operation_id,
+                "ooda.completed",
                 {
                     "iteration_id": ooda_id,
                     "iteration_number": next_num,
                     "technique_executed": decision.get("technique_id"),
-                    "success": bool(
-                        execution_result and execution_result.get("status") == "success"
-                    ),
+                    "success": bool(execution_result and execution_result.get("status") == "success"),
                 },
             )
         except Exception as ws_exc:
@@ -855,44 +957,42 @@ class OODAController:
 
         # Return iteration summary
         final = await db.fetchrow(
-            "SELECT * FROM ooda_iterations WHERE id = $1", ooda_id,
+            "SELECT * FROM ooda_iterations WHERE id = $1",
+            ooda_id,
         )
         return dict(final) if final else {"id": ooda_id}
 
-    async def advance_phase(
-        self, db: asyncpg.Connection, operation_id: str, phase: OODAPhase
-    ):
+    async def advance_phase(self, db: asyncpg.Connection, operation_id: str, phase: OODAPhase):
         """Manual phase advancement (commander override)."""
         row = await db.fetchrow(
-            "SELECT id FROM ooda_iterations WHERE operation_id = $1 "
-            "ORDER BY iteration_number DESC LIMIT 1",
+            "SELECT id FROM ooda_iterations WHERE operation_id = $1 ORDER BY iteration_number DESC LIMIT 1",
             operation_id,
         )
         if row:
             await db.execute(
                 "UPDATE ooda_iterations SET phase = $1 WHERE id = $2",
-                phase.value, row["id"],
+                phase.value,
+                row["id"],
             )
         await db.execute(
             "UPDATE operations SET current_ooda_phase = $1 WHERE id = $2",
-            phase.value, operation_id,
+            phase.value,
+            operation_id,
         )
         await self._broadcast_phase(operation_id, phase)
 
     async def get_current(self, db: asyncpg.Connection, operation_id: str) -> dict | None:
         row = await db.fetchrow(
-            "SELECT * FROM ooda_iterations WHERE operation_id = $1 "
-            "ORDER BY iteration_number DESC LIMIT 1",
+            "SELECT * FROM ooda_iterations WHERE operation_id = $1 ORDER BY iteration_number DESC LIMIT 1",
             operation_id,
         )
         return dict(row) if row else None
 
-    async def _activate_if_planning(
-        self, db: asyncpg.Connection, operation_id: str
-    ):
+    async def _activate_if_planning(self, db: asyncpg.Connection, operation_id: str):
         """Set operation status to 'active' if currently 'planning'."""
         op_row = await db.fetchrow(
-            "SELECT status FROM operations WHERE id = $1", operation_id,
+            "SELECT status FROM operations WHERE id = $1",
+            operation_id,
         )
         if op_row and op_row["status"] == "planning":
             await db.execute(
@@ -901,24 +1001,27 @@ class OODAController:
             )
 
     async def _update_phase(
-        self, db: asyncpg.Connection, operation_id: str,
-        ooda_id: str, phase: OODAPhase,
+        self,
+        db: asyncpg.Connection,
+        operation_id: str,
+        ooda_id: str,
+        phase: OODAPhase,
     ):
         await db.execute(
             "UPDATE ooda_iterations SET phase = $1 WHERE id = $2",
-            phase.value, ooda_id,
+            phase.value,
+            ooda_id,
         )
         await db.execute(
             "UPDATE operations SET current_ooda_phase = $1 WHERE id = $2",
-            phase.value, operation_id,
+            phase.value,
+            operation_id,
         )
         await self._broadcast_phase(operation_id, phase)
 
     async def _broadcast_phase(self, operation_id: str, phase: OODAPhase):
         try:
-            await self._ws.broadcast(
-                operation_id, "ooda.phase", {"phase": phase.value}
-            )
+            await self._ws.broadcast(operation_id, "ooda.phase", {"phase": phase.value})
         except Exception as ws_exc:
             logger.debug("WS broadcast ooda.phase failed: %s", ws_exc)
 
@@ -953,7 +1056,8 @@ class OODAController:
             "AND status = 'failed' AND failure_category = 'auth_failure' "
             "AND (technique_id LIKE 'T1110%' OR technique_id LIKE 'T1078%') "
             "ORDER BY started_at DESC NULLS LAST LIMIT 1",
-            operation_id, target_id,
+            operation_id,
+            target_id,
         )
         if row is None:
             return None
@@ -966,8 +1070,11 @@ class OODAController:
         }
 
     async def _write_log(
-        self, db: asyncpg.Connection, operation_id: str,
-        severity: str, message: str,
+        self,
+        db: asyncpg.Connection,
+        operation_id: str,
+        severity: str,
+        message: str,
     ) -> None:
         """Write a log entry and broadcast via WebSocket."""
         log_id = str(uuid.uuid4())
@@ -976,27 +1083,40 @@ class OODAController:
             "INSERT INTO log_entries "
             "(id, operation_id, timestamp, severity, source, message) "
             "VALUES ($1, $2, $3, $4, 'ooda_controller', $5)",
-            log_id, operation_id, now, severity, message,
+            log_id,
+            operation_id,
+            now,
+            severity,
+            message,
         )
         try:
-            await self._ws.broadcast(operation_id, "log.new", {
-                "id": log_id, "timestamp": now, "severity": severity,
-                "source": "ooda_controller", "message": message,
-            })
+            await self._ws.broadcast(
+                operation_id,
+                "log.new",
+                {
+                    "id": log_id,
+                    "timestamp": now,
+                    "severity": severity,
+                    "source": "ooda_controller",
+                    "message": message,
+                },
+            )
         except Exception as ws_exc:
             logger.debug("WS broadcast log.new failed: %s", ws_exc)
 
     async def _advance_mission_step(
-        self, db: asyncpg.Connection, operation_id: str,
-        step_index: int, status: str,
+        self,
+        db: asyncpg.Connection,
+        operation_id: str,
+        step_index: int,
+        status: str,
     ) -> None:
         """Update a mission step by its order index (0-based)."""
         now = datetime.now(timezone.utc)
         row = await db.fetchrow(
-            "SELECT id FROM mission_steps "
-            "WHERE operation_id = $1 ORDER BY step_number "
-            "LIMIT 1 OFFSET $2",
-            operation_id, step_index,
+            "SELECT id FROM mission_steps WHERE operation_id = $1 ORDER BY step_number LIMIT 1 OFFSET $2",
+            operation_id,
+            step_index,
         )
         if not row:
             return
@@ -1004,22 +1124,25 @@ class OODAController:
         if status == "running":
             await db.execute(
                 "UPDATE mission_steps SET status = $1, started_at = $2 WHERE id = $3",
-                status, now, step_id,
+                status,
+                now,
+                step_id,
             )
         elif status == "completed":
             await db.execute(
                 "UPDATE mission_steps SET status = $1, completed_at = $2 WHERE id = $3",
-                status, now, step_id,
+                status,
+                now,
+                step_id,
             )
         else:
             await db.execute(
                 "UPDATE mission_steps SET status = $1 WHERE id = $2",
-                status, step_id,
+                status,
+                step_id,
             )
 
-    async def _run_mcp_enrichment(
-        self, db, operation_id: str, execution_result: dict
-    ) -> None:
+    async def _run_mcp_enrichment(self, db, operation_id: str, execution_result: dict) -> None:
         """Post-Act hook: log MCP enrichment opportunity for future chaining."""
         if not settings.MCP_ENABLED:
             return

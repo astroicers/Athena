@@ -61,7 +61,7 @@ async def test_call_claude_returns_json():
         '"confidence":0.85,"reasoning_text":"test","options":[{"technique_id":'
         '"T1003.001","technique_name":"LSASS","reasoning":"test","risk_level":'
         '"medium","recommended_engine":"ssh","confidence":0.85,'
-        '"prerequisites":["admin"]}]}'
+        '"prerequisites":["admin"]}]}',
     )
     parsed = json.loads(response)
     assert "situation_assessment" in parsed or "recommended_technique_id" in parsed
@@ -146,9 +146,7 @@ async def test_c2_engine_version_check():
     client = C2EngineClient(settings.C2_ENGINE_URL, settings.C2_ENGINE_API_KEY)
     try:
         version = await client.check_version()
-        assert version.startswith("4.") or version.startswith("5."), (
-            f"Unsupported C2 engine version: {version}"
-        )
+        assert version.startswith("4.") or version.startswith("5."), f"Unsupported C2 engine version: {version}"
     finally:
         await client.aclose()
 
@@ -172,7 +170,7 @@ async def test_c2_engine_list_abilities():
 @pytest.mark.asyncio
 async def test_health_endpoint_real_mode(seeded_db):
     """GET /api/health reports c2_engine as 'connected' in real mode."""
-    from httpx import AsyncClient, ASGITransport
+    from httpx import ASGITransport, AsyncClient
 
     from app.main import app
 

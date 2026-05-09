@@ -6,14 +6,16 @@ Tests the 3-layer defence:
   Layer 3: EngineRouter service parser retries on empty facts
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 
 # ─── T01: Orient prompt includes prerequisite sequencing rule ────────
 
+
 def test_orient_prompt_has_prerequisite_sequencing_rule():
     from app.services.orient_engine import _ORIENT_SYSTEM_PROMPT
+
     assert "7.5 Prerequisite Sequencing" in _ORIENT_SYSTEM_PROMPT
     assert "NEVER include BOTH" in _ORIENT_SYSTEM_PROMPT
     assert "service.open_port" in _ORIENT_SYSTEM_PROMPT
@@ -21,10 +23,12 @@ def test_orient_prompt_has_prerequisite_sequencing_rule():
 
 def test_orient_prompt_mentions_spec058():
     from app.services.orient_engine import _ORIENT_SYSTEM_PROMPT
+
     assert "SPEC-058" in _ORIENT_SYSTEM_PROMPT
 
 
 # ─── T02: DecisionEngine filters T1110 when T1046 in same batch ─────
+
 
 @pytest.mark.asyncio
 async def test_decision_engine_removes_recon_dependent_from_parallel():
@@ -35,11 +39,13 @@ async def test_decision_engine_removes_recon_dependent_from_parallel():
 
     mock_db = AsyncMock()
     # Operation row
-    mock_db.fetchrow = AsyncMock(side_effect=[
-        {"automation_mode": "auto_full", "risk_threshold": "medium"},  # operation
-        {"id": "tgt-1"},  # target (is_active)
-        None,  # target fallback
-    ])
+    mock_db.fetchrow = AsyncMock(
+        side_effect=[
+            {"automation_mode": "auto_full", "risk_threshold": "medium"},  # operation
+            {"id": "tgt-1"},  # target (is_active)
+            None,  # target fallback
+        ]
+    )
     mock_db.fetchval = AsyncMock(return_value=0)  # noise budget
     mock_db.fetch = AsyncMock(return_value=[])
 
@@ -48,8 +54,18 @@ async def test_decision_engine_removes_recon_dependent_from_parallel():
         "confidence": 0.85,
         "options": [
             {"technique_id": "T1046", "risk_level": "low", "recommended_engine": "mcp", "target_id": "tgt-1"},
-            {"technique_id": "T1110.001", "risk_level": "medium", "recommended_engine": "initial_access", "target_id": "tgt-1"},
-            {"technique_id": "T1078.001", "risk_level": "medium", "recommended_engine": "initial_access", "target_id": "tgt-1"},
+            {
+                "technique_id": "T1110.001",
+                "risk_level": "medium",
+                "recommended_engine": "initial_access",
+                "target_id": "tgt-1",
+            },
+            {
+                "technique_id": "T1078.001",
+                "risk_level": "medium",
+                "recommended_engine": "initial_access",
+                "target_id": "tgt-1",
+            },
         ],
     }
 
@@ -69,6 +85,7 @@ async def test_decision_engine_removes_recon_dependent_from_parallel():
 
 # ─── T03: DecisionEngine keeps T1110 when no recon in batch ──────────
 
+
 @pytest.mark.asyncio
 async def test_decision_engine_keeps_credential_tasks_without_recon():
     """If only T1110 is in parallel_tasks (no T1046), it stays."""
@@ -77,11 +94,13 @@ async def test_decision_engine_keeps_credential_tasks_without_recon():
     engine = DecisionEngine()
 
     mock_db = AsyncMock()
-    mock_db.fetchrow = AsyncMock(side_effect=[
-        {"automation_mode": "auto_full", "risk_threshold": "medium"},
-        {"id": "tgt-1"},
-        None,
-    ])
+    mock_db.fetchrow = AsyncMock(
+        side_effect=[
+            {"automation_mode": "auto_full", "risk_threshold": "medium"},
+            {"id": "tgt-1"},
+            None,
+        ]
+    )
     mock_db.fetchval = AsyncMock(return_value=0)
     mock_db.fetch = AsyncMock(return_value=[])
 
@@ -89,7 +108,12 @@ async def test_decision_engine_keeps_credential_tasks_without_recon():
         "recommended_technique_id": "T1110.001",
         "confidence": 0.85,
         "options": [
-            {"technique_id": "T1110.001", "risk_level": "medium", "recommended_engine": "initial_access", "target_id": "tgt-1"},
+            {
+                "technique_id": "T1110.001",
+                "risk_level": "medium",
+                "recommended_engine": "initial_access",
+                "target_id": "tgt-1",
+            },
         ],
     }
 
@@ -105,6 +129,7 @@ async def test_decision_engine_keeps_credential_tasks_without_recon():
 
 
 # ─── T04-T05: EngineRouter service parser retry ─────────────────────
+
 
 @pytest.mark.asyncio
 async def test_engine_router_retries_service_parser():
@@ -139,6 +164,7 @@ async def test_engine_router_retries_service_parser():
 def test_classify_failure_no_targetable_services():
     """'No targetable services found' after all retries → prerequisite_missing."""
     from app.services.engine_router import _classify_failure
+
     # After SPEC-058 retry exhaustion, the error should be 'No targetable services found'
     result = _classify_failure("No targetable services found", "initial_access")
     assert result == "service_unreachable"

@@ -10,15 +10,16 @@
 
 """Unit tests for OSINTEngine — A.2 acceptance criteria."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.services.osint_engine import OSINTEngine, _MOCK_SUBDOMAINS
+import pytest
 
+from app.services.osint_engine import _MOCK_SUBDOMAINS, OSINTEngine
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_mock_db():
     db = AsyncMock()
@@ -33,12 +34,15 @@ def make_mock_db():
 # Tests
 # ---------------------------------------------------------------------------
 
+
 async def test_mock_mode_returns_result():
     """MOCK_C2_ENGINE=True → returns mock OSINTResult without network I/O."""
     db = make_mock_db()
 
-    with patch("app.services.osint_engine.settings") as mock_settings, \
-         patch("app.services.osint_engine.ws_manager.broadcast", new=AsyncMock()):
+    with (
+        patch("app.services.osint_engine.settings") as mock_settings,
+        patch("app.services.osint_engine.ws_manager.broadcast", new=AsyncMock()),
+    ):
         mock_settings.MOCK_C2_ENGINE = True
         mock_settings.OSINT_MAX_SUBDOMAINS = 500
 
@@ -61,8 +65,10 @@ async def test_mock_mode_writes_facts():
 
     db.execute = AsyncMock(side_effect=capture_execute)
 
-    with patch("app.services.osint_engine.settings") as mock_settings, \
-         patch("app.services.osint_engine.ws_manager.broadcast", new=AsyncMock()):
+    with (
+        patch("app.services.osint_engine.settings") as mock_settings,
+        patch("app.services.osint_engine.ws_manager.broadcast", new=AsyncMock()),
+    ):
         mock_settings.MOCK_C2_ENGINE = True
         mock_settings.OSINT_MAX_SUBDOMAINS = 500
 
@@ -81,8 +87,10 @@ async def test_mcp_required_when_not_mock():
     """When MOCK_C2_ENGINE=False and MCP_ENABLED=False, discover raises ConnectionError."""
     db = make_mock_db()
 
-    with patch("app.services.osint_engine.settings") as mock_settings, \
-         patch("app.services.osint_engine.ws_manager.broadcast", new=AsyncMock()):
+    with (
+        patch("app.services.osint_engine.settings") as mock_settings,
+        patch("app.services.osint_engine.ws_manager.broadcast", new=AsyncMock()),
+    ):
         mock_settings.MOCK_C2_ENGINE = False
         mock_settings.MCP_ENABLED = False
         mock_settings.OSINT_MAX_SUBDOMAINS = 500
@@ -95,17 +103,22 @@ async def test_parse_mcp_subdomains():
     """_parse_mcp_subdomains correctly parses osint.subdomain facts from MCP result."""
     engine = OSINTEngine()
     import json
+
     mcp_result = {
-        "content": [{
-            "type": "text",
-            "text": json.dumps({
-                "facts": [
-                    {"trait": "osint.subdomain", "value": "www.example.com"},
-                    {"trait": "osint.subdomain", "value": "api.example.com"},
-                    {"trait": "other.trait", "value": "ignored"},
-                ]
-            }),
-        }],
+        "content": [
+            {
+                "type": "text",
+                "text": json.dumps(
+                    {
+                        "facts": [
+                            {"trait": "osint.subdomain", "value": "www.example.com"},
+                            {"trait": "osint.subdomain", "value": "api.example.com"},
+                            {"trait": "other.trait", "value": "ignored"},
+                        ]
+                    }
+                ),
+            }
+        ],
     }
 
     subs = engine._parse_mcp_subdomains(mcp_result)

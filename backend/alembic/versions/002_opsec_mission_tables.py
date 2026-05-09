@@ -10,6 +10,7 @@ These tables support:
 - Phase 3: opsec_events for OPSEC monitoring, credentials for credential graph
 - Phase 4: mission_objectives for objective tracking
 """
+
 from alembic import op
 
 revision = "002"

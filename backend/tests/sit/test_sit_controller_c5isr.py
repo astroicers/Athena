@@ -26,8 +26,7 @@ async def test_c5isr_updates_six_domains(seeded_db, sit_ws_manager):
 
     # Verify 6 domain records in DB
     rows = await db.fetch(
-        "SELECT domain, health_pct, updated_at FROM c5isr_statuses "
-        "WHERE operation_id = $1",
+        "SELECT domain, health_pct, updated_at FROM c5isr_statuses WHERE operation_id = $1",
         "test-op-1",
     )
     domains = {r["domain"] for r in rows}
@@ -48,8 +47,7 @@ async def test_command_reflects_ooda_throughput(seeded_db, sit_ws_manager):
     # Baseline: 0 iterations
     await mapper.update(db, "test-op-1")
     row_before = await db.fetchrow(
-        "SELECT health_pct FROM c5isr_statuses "
-        "WHERE operation_id = $1 AND domain = 'command'",
+        "SELECT health_pct FROM c5isr_statuses WHERE operation_id = $1 AND domain = 'command'",
         "test-op-1",
     )
     health_before = row_before["health_pct"]
@@ -64,13 +62,15 @@ async def test_command_reflects_ooda_throughput(seeded_db, sit_ws_manager):
         await db.execute(
             "INSERT INTO ooda_iterations (id, operation_id, iteration_number, phase, started_at) "
             "VALUES ($1, $2, $3, 'act', $4)",
-            str(uuid.uuid4()), "test-op-1", i + 1, now,
+            str(uuid.uuid4()),
+            "test-op-1",
+            i + 1,
+            now,
         )
 
     await mapper.update(db, "test-op-1")
     row_after = await db.fetchrow(
-        "SELECT health_pct FROM c5isr_statuses "
-        "WHERE operation_id = $1 AND domain = 'command'",
+        "SELECT health_pct FROM c5isr_statuses WHERE operation_id = $1 AND domain = 'command'",
         "test-op-1",
     )
     health_after = row_after["health_pct"]
@@ -88,25 +88,20 @@ async def test_control_reflects_agent_survival(seeded_db, sit_ws_manager):
     # Baseline with alive agent
     await mapper.update(db, "test-op-1")
     row_alive = await db.fetchrow(
-        "SELECT health_pct FROM c5isr_statuses "
-        "WHERE operation_id = $1 AND domain = 'control'",
+        "SELECT health_pct FROM c5isr_statuses WHERE operation_id = $1 AND domain = 'control'",
         "test-op-1",
     )
 
     # Kill the agent
-    await db.execute(
-        "UPDATE agents SET status = 'dead' WHERE id = 'test-agent-1'"
-    )
+    await db.execute("UPDATE agents SET status = 'dead' WHERE id = 'test-agent-1'")
     await mapper.update(db, "test-op-1")
     row_dead = await db.fetchrow(
-        "SELECT health_pct FROM c5isr_statuses "
-        "WHERE operation_id = $1 AND domain = 'control'",
+        "SELECT health_pct FROM c5isr_statuses WHERE operation_id = $1 AND domain = 'control'",
         "test-op-1",
     )
 
     assert row_dead["health_pct"] < row_alive["health_pct"], (
-        f"Control health should decrease when agent dies: "
-        f"{row_alive['health_pct']} -> {row_dead['health_pct']}"
+        f"Control health should decrease when agent dies: {row_alive['health_pct']} -> {row_dead['health_pct']}"
     )
 
 
@@ -122,14 +117,19 @@ async def test_cyber_reflects_execution_success_rate(seeded_db, sit_ws_manager):
         "INSERT INTO technique_executions "
         "(id, technique_id, target_id, operation_id, engine, status, started_at, completed_at) "
         "VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-        str(uuid.uuid4()), "T1003.001", "test-target-1", "test-op-1",
-        "mcp_ssh", "success", now, now,
+        str(uuid.uuid4()),
+        "T1003.001",
+        "test-target-1",
+        "test-op-1",
+        "mcp_ssh",
+        "success",
+        now,
+        now,
     )
 
     await mapper.update(db, "test-op-1")
     row = await db.fetchrow(
-        "SELECT health_pct FROM c5isr_statuses "
-        "WHERE operation_id = $1 AND domain = 'cyber'",
+        "SELECT health_pct FROM c5isr_statuses WHERE operation_id = $1 AND domain = 'cyber'",
         "test-op-1",
     )
     # With all successes and no failures, Cyber should be positive
@@ -144,7 +144,5 @@ async def test_c5isr_ws_event_broadcast(seeded_db, sit_ws_manager):
 
     await mapper.update(db, "test-op-1")
 
-    c5isr_events = [
-        c for c in sit_ws_manager._calls if c[1] == "c5isr.update"
-    ]
+    c5isr_events = [c for c in sit_ws_manager._calls if c[1] == "c5isr.update"]
     assert len(c5isr_events) >= 1, "Should broadcast c5isr.update event"

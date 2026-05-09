@@ -21,8 +21,8 @@ from app.models import C5ISRStatus
 from app.models.api_schemas import C5ISRUpdate
 from app.models.enums import C5ISRDomain, C5ISRDomainStatus
 from app.routers._deps import ensure_operation
-from app.utils.enum_safety import safe_enum
 from app.services.c5isr_mapper import DomainReport
+from app.utils.enum_safety import safe_enum
 
 router = APIRouter()
 
@@ -46,17 +46,13 @@ def _row_to_c5isr(row: asyncpg.Record) -> C5ISRStatus:
     "/operations/{operation_id}/c5isr",
     response_model=list[C5ISRStatus],
 )
-
-
 async def list_c5isr(
     operation_id: str,
     db: asyncpg.Connection = Depends(get_db),
 ):
     await ensure_operation(db, operation_id)
 
-    rows = await db.fetch(
-        "SELECT * FROM c5isr_statuses WHERE operation_id = $1", operation_id
-    )
+    rows = await db.fetch("SELECT * FROM c5isr_statuses WHERE operation_id = $1", operation_id)
     return [_row_to_c5isr(r) for r in rows]
 
 
@@ -64,8 +60,6 @@ async def list_c5isr(
     "/operations/{operation_id}/c5isr/{domain}",
     response_model=C5ISRStatus,
 )
-
-
 async def update_c5isr(
     operation_id: str,
     domain: str,
@@ -81,7 +75,8 @@ async def update_c5isr(
 
     row = await db.fetchrow(
         "SELECT * FROM c5isr_statuses WHERE operation_id = $1 AND domain = $2",
-        operation_id, domain,
+        operation_id,
+        domain,
     )
     if not row:
         raise HTTPException(status_code=404, detail="C5ISR status not found for domain")
@@ -94,27 +89,25 @@ async def update_c5isr(
     updates["updated_at"] = now
 
     # Serialize enum values
-    set_clause = ", ".join(f"{k} = ${i+1}" for i, k in enumerate(updates))
+    set_clause = ", ".join(f"{k} = ${i + 1}" for i, k in enumerate(updates))
     values = [v.value if hasattr(v, "value") else v for v in updates.values()]
     values.extend([operation_id, domain])
 
     n = len(updates)
     await db.execute(
-        f"UPDATE c5isr_statuses SET {set_clause} "
-        f"WHERE operation_id = ${n+1} AND domain = ${n+2}",
+        f"UPDATE c5isr_statuses SET {set_clause} WHERE operation_id = ${n + 1} AND domain = ${n + 2}",
         *values,
     )
 
     row = await db.fetchrow(
         "SELECT * FROM c5isr_statuses WHERE operation_id = $1 AND domain = $2",
-        operation_id, domain,
+        operation_id,
+        domain,
     )
     return _row_to_c5isr(row)
 
 
 @router.get("/operations/{operation_id}/c5isr/{domain}/report")
-
-
 async def get_c5isr_report(
     operation_id: str,
     domain: str,
@@ -133,9 +126,9 @@ async def get_c5isr_report(
         raise HTTPException(status_code=400, detail="Invalid domain")
 
     row = await db.fetchrow(
-        "SELECT detail, health_pct, status FROM c5isr_statuses "
-        "WHERE operation_id = $1 AND domain = $2",
-        operation_id, domain,
+        "SELECT detail, health_pct, status FROM c5isr_statuses WHERE operation_id = $1 AND domain = $2",
+        operation_id,
+        domain,
     )
     if not row:
         raise HTTPException(status_code=404, detail="C5ISR status not found for domain")
@@ -151,6 +144,7 @@ async def get_c5isr_report(
         )
 
     from dataclasses import asdict
+
     return {
         "domain": domain,
         "operation_id": operation_id,

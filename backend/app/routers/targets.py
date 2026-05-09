@@ -59,8 +59,6 @@ def _row_to_target(row: asyncpg.Record) -> Target:
 
 
 @router.get("/operations/{operation_id}/targets", response_model=list[Target])
-
-
 async def list_targets(
     operation_id: str,
     db: asyncpg.Connection = Depends(get_db),
@@ -75,8 +73,6 @@ async def list_targets(
 
 
 @router.post("/operations/{operation_id}/targets", response_model=Target, status_code=201)
-
-
 async def create_target(
     operation_id: str,
     body: TargetCreate,
@@ -88,7 +84,8 @@ async def create_target(
     # Prevent duplicate IP within the same operation
     dup = await db.fetchrow(
         "SELECT id FROM targets WHERE ip_address = $1 AND operation_id = $2",
-        body.ip_address, operation_id,
+        body.ip_address,
+        operation_id,
     )
     if dup:
         raise HTTPException(
@@ -102,8 +99,14 @@ async def create_target(
         "INSERT INTO targets (id, hostname, ip_address, os, role, "
         "network_segment, is_compromised, privilege_level, is_active, operation_id, created_at) "
         "VALUES ($1, $2, $3, $4, $5, $6, FALSE, NULL, TRUE, $7, $8)",
-        target_id, body.hostname, body.ip_address, body.os, body.role,
-        body.network_segment, operation_id, now,
+        target_id,
+        body.hostname,
+        body.ip_address,
+        body.os,
+        body.role,
+        body.network_segment,
+        operation_id,
+        now,
     )
     row = await db.fetchrow("SELECT * FROM targets WHERE id = $1", target_id)
 
@@ -123,8 +126,6 @@ async def create_target(
 
 
 @router.patch("/operations/{operation_id}/targets/active", response_model=list[Target])
-
-
 async def set_active_target(
     operation_id: str,
     body: TargetSetActive,
@@ -143,7 +144,8 @@ async def set_active_target(
         # Verify target exists in this operation
         row = await db.fetchrow(
             "SELECT id FROM targets WHERE id = $1 AND operation_id = $2",
-            body.target_id, operation_id,
+            body.target_id,
+            operation_id,
         )
         if not row:
             raise HTTPException(status_code=404, detail="Target not found")
@@ -165,8 +167,6 @@ async def set_active_target(
     response_model=BatchImportResult,
     status_code=201,
 )
-
-
 async def batch_create_targets(
     operation_id: str,
     body: TargetBatchCreate,
@@ -185,7 +185,8 @@ async def batch_create_targets(
         # Check duplicate IP within this operation
         dup = await db.fetchrow(
             "SELECT id FROM targets WHERE ip_address = $1 AND operation_id = $2",
-            entry.ip_address, operation_id,
+            entry.ip_address,
+            operation_id,
         )
         if dup:
             skipped_duplicates.append(entry.ip_address)
@@ -217,8 +218,6 @@ async def batch_create_targets(
 
 
 @router.delete("/operations/{operation_id}/targets/{target_id}", status_code=204)
-
-
 async def delete_target(
     operation_id: str,
     target_id: str,
@@ -228,7 +227,8 @@ async def delete_target(
     await ensure_operation(db, operation_id)
     row = await db.fetchrow(
         "SELECT id, is_active FROM targets WHERE id = $1 AND operation_id = $2",
-        target_id, operation_id,
+        target_id,
+        operation_id,
     )
     if not row:
         raise HTTPException(status_code=404, detail="Target not found")
@@ -252,7 +252,8 @@ async def patch_target(
     """Manually update target compromise status and metadata."""
     row = await db.fetchrow(
         "SELECT id FROM targets WHERE id = $1 AND operation_id = $2",
-        target_id, operation_id,
+        target_id,
+        operation_id,
     )
     if not row:
         raise HTTPException(status_code=404, detail="Target not found")
@@ -269,8 +270,7 @@ async def patch_target(
 
     params.extend([target_id, operation_id])
     await db.execute(
-        f"UPDATE targets SET {', '.join(updates)} "
-        f"WHERE id = ${idx} AND operation_id = ${idx + 1}",
+        f"UPDATE targets SET {', '.join(updates)} WHERE id = ${idx} AND operation_id = ${idx + 1}",
         *params,
     )
     row = await db.fetchrow("SELECT * FROM targets WHERE id = $1", target_id)
@@ -281,8 +281,6 @@ async def patch_target(
     "/operations/{operation_id}/targets/{target_id}/summary",
     response_model=NodeSummaryResponse,
 )
-
-
 async def get_target_summary(
     operation_id: str,
     target_id: str,
@@ -299,8 +297,6 @@ async def get_target_summary(
 
 
 @router.get("/operations/{operation_id}/topology", response_model=TopologyData)
-
-
 async def get_topology(
     operation_id: str,
     db: asyncpg.Connection = Depends(get_db),
@@ -319,9 +315,7 @@ async def get_topology(
     ]
 
     # -- Targets -> host nodes (deduplicate by ip_address) --
-    target_rows = await db.fetch(
-        "SELECT * FROM targets WHERE operation_id = $1", operation_id
-    )
+    target_rows = await db.fetch("SELECT * FROM targets WHERE operation_id = $1", operation_id)
 
     seen_ips: set[str] = set()
     target_ids: list[str] = []  # track for phase lookup
@@ -357,21 +351,24 @@ async def get_topology(
         agent = await db.fetchrow(
             "SELECT paw, status, privilege FROM agents "
             "WHERE host_id = $1 AND operation_id = $2 ORDER BY last_beacon DESC LIMIT 1",
-            tid, operation_id,
+            tid,
+            operation_id,
         )
 
         # Technique execution status
         exec_row = await db.fetchrow(
             "SELECT status FROM technique_executions "
             "WHERE target_id = $1 AND operation_id = $2 ORDER BY created_at DESC LIMIT 1",
-            tid, operation_id,
+            tid,
+            operation_id,
         )
 
         # Recon scan status
         scan_row = await db.fetchrow(
             "SELECT status FROM recon_scans "
             "WHERE target_id = $1 AND operation_id = $2 ORDER BY started_at DESC LIMIT 1",
-            tid, operation_id,
+            tid,
+            operation_id,
         )
 
         # Per-node gamification stats
@@ -386,7 +383,12 @@ async def get_topology(
                  WHERE source_target_id = $5 AND operation_id = $6
                    AND trait LIKE 'credential.%') AS credential_count
             """,
-            tid, operation_id, tid, operation_id, tid, operation_id,
+            tid,
+            operation_id,
+            tid,
+            operation_id,
+            tid,
+            operation_id,
         )
         scan_count = stats_row["scan_count"] if stats_row else 0
         fact_count = stats_row["fact_count"] if stats_row else 0
@@ -397,7 +399,8 @@ async def get_topology(
             "SELECT open_ports FROM recon_scans "
             "WHERE target_id = $1 AND operation_id = $2 AND status = 'completed' "
             "ORDER BY completed_at DESC LIMIT 1",
-            tid, operation_id,
+            tid,
+            operation_id,
         )
         open_port_count = 0
         if port_row and port_row["open_ports"]:
@@ -411,7 +414,8 @@ async def get_topology(
             "SELECT COUNT(*) AS cnt FROM facts "
             "WHERE source_target_id = $1 AND operation_id = $2 "
             "AND trait = 'host.persistence'",
-            tid, operation_id,
+            tid,
+            operation_id,
         )
         persistence_count = persist_row["cnt"] if persist_row else 0
 
@@ -472,7 +476,8 @@ async def get_topology(
         if src in target_id_set and dst in target_id_set:
             edges.append(
                 TopologyEdge(
-                    source=src, target=dst,
+                    source=src,
+                    target=dst,
                     label="Lateral",
                     data={"phase": "lateral"},
                 )

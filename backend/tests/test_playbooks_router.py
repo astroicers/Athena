@@ -12,10 +12,10 @@
 
 from httpx import AsyncClient
 
-
 # ---------------------------------------------------------------------------
 # GET /api/playbooks — List
 # ---------------------------------------------------------------------------
+
 
 async def test_list_playbooks(client: AsyncClient):
     """GET /api/playbooks returns 200 with a list of playbooks."""
@@ -68,6 +68,7 @@ async def test_list_playbooks_filter_by_platform(client: AsyncClient):
 # GET /api/playbooks/{id} — Detail
 # ---------------------------------------------------------------------------
 
+
 async def test_get_playbook_by_id(client: AsyncClient):
     """GET /api/playbooks/{id} returns 200 with playbook details."""
     create_resp = await client.post(
@@ -104,6 +105,7 @@ async def test_get_playbook_not_found(client: AsyncClient):
 # ---------------------------------------------------------------------------
 # POST /api/playbooks — Create
 # ---------------------------------------------------------------------------
+
 
 async def test_create_playbook(client: AsyncClient):
     """POST /api/playbooks returns 201 with the created playbook."""
@@ -157,6 +159,7 @@ async def test_create_playbook_invalid_data(client: AsyncClient):
 # PATCH /api/playbooks/{id} — Update
 # ---------------------------------------------------------------------------
 
+
 async def test_update_playbook_command(client: AsyncClient):
     """PATCH /api/playbooks/{id} updates the command field."""
     create_resp = await client.post(
@@ -170,9 +173,7 @@ async def test_update_playbook_command(client: AsyncClient):
     )
     pb_id = create_resp.json()["id"]
 
-    resp = await client.patch(
-        f"/api/playbooks/{pb_id}", json={"command": "new_cmd"}
-    )
+    resp = await client.patch(f"/api/playbooks/{pb_id}", json={"command": "new_cmd"})
     assert resp.status_code == 200
     assert resp.json()["command"] == "new_cmd"
 
@@ -191,9 +192,7 @@ async def test_update_playbook_tags(client: AsyncClient):
     )
     pb_id = create_resp.json()["id"]
 
-    resp = await client.patch(
-        f"/api/playbooks/{pb_id}", json={"tags": ["updated", "new-tag"]}
-    )
+    resp = await client.patch(f"/api/playbooks/{pb_id}", json={"tags": ["updated", "new-tag"]})
     assert resp.status_code == 200
     assert "updated" in resp.json()["tags"]
 
@@ -221,9 +220,7 @@ async def test_update_playbook_clear_output_parser(client: AsyncClient):
     )
     pb_id = create_resp.json()["id"]
 
-    resp = await client.patch(
-        f"/api/playbooks/{pb_id}", json={"output_parser": None}
-    )
+    resp = await client.patch(f"/api/playbooks/{pb_id}", json={"output_parser": None})
     assert resp.status_code == 200
     assert resp.json()["output_parser"] is None
 
@@ -231,6 +228,7 @@ async def test_update_playbook_clear_output_parser(client: AsyncClient):
 # ---------------------------------------------------------------------------
 # DELETE /api/playbooks/{id}
 # ---------------------------------------------------------------------------
+
 
 async def test_delete_playbook(client: AsyncClient):
     """DELETE /api/playbooks/{id} removes a user-created playbook."""
@@ -270,6 +268,7 @@ async def test_delete_seed_playbook_forbidden(client: AsyncClient):
 # ---------------------------------------------------------------------------
 # POST /api/playbooks/bulk — Bulk create
 # ---------------------------------------------------------------------------
+
 
 async def test_bulk_create_playbooks(client: AsyncClient):
     """POST /api/playbooks/bulk creates multiple playbooks."""

@@ -51,6 +51,7 @@ def set_mcp_manager(manager: "MCPClientManager | None") -> None:
 # Circuit Breaker
 # ---------------------------------------------------------------------------
 
+
 class CircuitState(str, Enum):
     CLOSED = "closed"
     OPEN = "open"
@@ -77,7 +78,7 @@ class CircuitBreakerState:
         self.backoff_exponent = 0
 
     def cooldown_elapsed(self, base_interval: float) -> bool:
-        cooldown = min(base_interval * (2 ** self.backoff_exponent), 60.0)
+        cooldown = min(base_interval * (2**self.backoff_exponent), 60.0)
         return (time.monotonic() - self.last_failure_time) >= cooldown
 
     def should_allow_request(self, base_interval: float) -> bool:
@@ -94,6 +95,7 @@ class CircuitBreakerState:
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MCPServerConfig:
@@ -128,29 +130,30 @@ class MCPToolInfo:
 
 _MCP_TOOL_METADATA: dict[str, dict[str, Any]] = {
     # osint-recon
-    "osint-recon_dns_resolve":                    {"category": "reconnaissance",        "mitre": ["T1018", "T1596.001"]},
+    "osint-recon_dns_resolve": {"category": "reconnaissance", "mitre": ["T1018", "T1596.001"]},
     # vuln-lookup
-    "vuln-lookup_banner_to_cpe":                  {"category": "vulnerability_scanning", "mitre": ["T1592.002"]},
+    "vuln-lookup_banner_to_cpe": {"category": "vulnerability_scanning", "mitre": ["T1592.002"]},
     # credential-checker
-    "credential-checker_rdp_credential_check":    {"category": "credential_access",     "mitre": ["T1110.001", "T1021.001"]},
-    "credential-checker_winrm_credential_check":  {"category": "credential_access",     "mitre": ["T1110.001", "T1021.006"]},
+    "credential-checker_rdp_credential_check": {"category": "credential_access", "mitre": ["T1110.001", "T1021.001"]},
+    "credential-checker_winrm_credential_check": {"category": "credential_access", "mitre": ["T1110.001", "T1021.006"]},
     # attack-executor
-    "attack-executor_execute_technique":          {"category": "execution",             "mitre": ["T1059.004"]},
-    "attack-executor_close_sessions":             {"category": "execution",             "mitre": ["T1059.004"]},
+    "attack-executor_execute_technique": {"category": "execution", "mitre": ["T1059.004"]},
+    "attack-executor_close_sessions": {"category": "execution", "mitre": ["T1059.004"]},
     # web-scanner
-    "web-scanner_web_http_probe":                 {"category": "reconnaissance",        "mitre": ["T1595.002"]},
-    "web-scanner_web_vuln_scan":                  {"category": "vulnerability_scanning", "mitre": ["T1595.002", "T1190"]},
-    "web-scanner_web_dir_enum":                   {"category": "reconnaissance",        "mitre": ["T1595.003"]},
-    "web-scanner_web_screenshot":                 {"category": "reconnaissance",        "mitre": ["T1592.004"]},
+    "web-scanner_web_http_probe": {"category": "reconnaissance", "mitre": ["T1595.002"]},
+    "web-scanner_web_vuln_scan": {"category": "vulnerability_scanning", "mitre": ["T1595.002", "T1190"]},
+    "web-scanner_web_dir_enum": {"category": "reconnaissance", "mitre": ["T1595.003"]},
+    "web-scanner_web_screenshot": {"category": "reconnaissance", "mitre": ["T1592.004"]},
     # api-fuzzer
-    "api-fuzzer_api_schema_detect":               {"category": "reconnaissance",        "mitre": ["T1595.002"]},
-    "api-fuzzer_api_endpoint_enum":               {"category": "reconnaissance",        "mitre": ["T1595.002"]},
-    "api-fuzzer_api_auth_test":                   {"category": "credential_access",     "mitre": ["T1110", "T1550"]},
-    "api-fuzzer_api_param_fuzz":                  {"category": "vulnerability_scanning", "mitre": ["T1190"]},
+    "api-fuzzer_api_schema_detect": {"category": "reconnaissance", "mitre": ["T1595.002"]},
+    "api-fuzzer_api_endpoint_enum": {"category": "reconnaissance", "mitre": ["T1595.002"]},
+    "api-fuzzer_api_auth_test": {"category": "credential_access", "mitre": ["T1110", "T1550"]},
+    "api-fuzzer_api_param_fuzz": {"category": "vulnerability_scanning", "mitre": ["T1190"]},
 }
 
 # Manager
 # ---------------------------------------------------------------------------
+
 
 class MCPClientManager:
     """Manages connections to multiple MCP servers.
@@ -252,7 +255,9 @@ class MCPClientManager:
             breaker.record_failure(settings.MCP_MAX_RETRIES)
             logger.exception(
                 "MCP_AUDIT event=connect_failed server=%s circuit=%s failures=%d",
-                config.name, breaker.state.value, breaker.failure_count,
+                config.name,
+                breaker.state.value,
+                breaker.failure_count,
             )
 
     def _get_effective_transport(self, config: MCPServerConfig) -> str:
@@ -285,9 +290,7 @@ class MCPClientManager:
                     # tries to spawn `python -m server` inside the backend
                     # container which doesn't have the tool's deps.
                     # Better to raise and let the health check retry later.
-                    raise ConnectionError(
-                        f"MCP HTTP probe failed for '{config.name}' at {http_url}"
-                    )
+                    raise ConnectionError(f"MCP HTTP probe failed for '{config.name}' at {http_url}")
 
             await self._connect_http(config, http_url)
         else:
@@ -358,15 +361,11 @@ class MCPClientManager:
         except asyncio.TimeoutError:
             stop.set()
             task.cancel()
-            raise ConnectionError(
-                f"MCP server '{config.name}' did not initialize within 10s"
-            )
+            raise ConnectionError(f"MCP server '{config.name}' did not initialize within 10s")
 
         if state["error"] is not None or state["session"] is None:
             # Lifetime task already exited; don't set stop (would deadlock).
-            raise state["error"] or ConnectionError(
-                f"MCP server '{config.name}' session failed to initialize"
-            )
+            raise state["error"] or ConnectionError(f"MCP server '{config.name}' session failed to initialize")
 
         self._sessions[config.name] = state["session"]
         # Keep references to the lifetime-owning task and its stop event so
@@ -396,6 +395,7 @@ class MCPClientManager:
         """
         try:
             import httpx
+
             async with httpx.AsyncClient(timeout=5.0) as client:
                 resp = await client.get(url)
                 return resp.status_code < 500
@@ -490,10 +490,7 @@ class MCPClientManager:
         breaker = self._breakers.get(server_name, CircuitBreakerState())
 
         if not breaker.should_allow_request(settings.MCP_RECONNECT_INTERVAL_SEC):
-            raise ConnectionError(
-                f"MCP server '{server_name}' circuit is OPEN "
-                f"(failures={breaker.failure_count})"
-            )
+            raise ConnectionError(f"MCP server '{server_name}' circuit is OPEN (failures={breaker.failure_count})")
 
         session = self._sessions.get(server_name)
         if session is None:
@@ -517,7 +514,10 @@ class MCPClientManager:
             breaker.record_failure(settings.MCP_MAX_RETRIES)
             logger.warning(
                 "MCP_AUDIT event=call_tool server=%s tool=%s TIMEOUT after %ds circuit=%s",
-                server_name, tool_name, settings.MCP_TOOL_TIMEOUT_SEC, breaker.state.value,
+                server_name,
+                tool_name,
+                settings.MCP_TOOL_TIMEOUT_SEC,
+                breaker.state.value,
             )
             if breaker.state == CircuitState.OPEN:
                 asyncio.create_task(self._soft_delete_server_tools(server_name))
@@ -526,7 +526,9 @@ class MCPClientManager:
             breaker.record_failure(settings.MCP_MAX_RETRIES)
             logger.warning(
                 "MCP_AUDIT event=call_tool server=%s tool=%s ERROR circuit=%s",
-                server_name, tool_name, breaker.state.value,
+                server_name,
+                tool_name,
+                breaker.state.value,
                 exc_info=True,
             )
             if breaker.state == CircuitState.OPEN:
@@ -549,7 +551,11 @@ class MCPClientManager:
 
         logger.info(
             "MCP_AUDIT event=call_tool server=%s tool=%s duration_ms=%d is_error=%s circuit=%s",
-            server_name, tool_name, duration_ms, is_error, breaker.state.value,
+            server_name,
+            tool_name,
+            duration_ms,
+            is_error,
+            breaker.state.value,
         )
 
         return {
@@ -588,7 +594,9 @@ class MCPClientManager:
                         healthy = await self.health_check(name)
                         logger.debug(
                             "MCP_AUDIT event=health_check server=%s healthy=%s circuit=%s",
-                            name, healthy, breaker.state.value,
+                            name,
+                            healthy,
+                            breaker.state.value,
                         )
                         if not healthy:
                             breaker.record_failure(settings.MCP_MAX_RETRIES)
@@ -598,7 +606,8 @@ class MCPClientManager:
                         if breaker.cooldown_elapsed(settings.MCP_RECONNECT_INTERVAL_SEC):
                             logger.info(
                                 "MCP_AUDIT event=reconnect_attempt server=%s circuit=%s",
-                                name, breaker.state.value,
+                                name,
+                                breaker.state.value,
                             )
                             breaker.state = CircuitState.HALF_OPEN
                             await self._connect(config)
@@ -609,9 +618,7 @@ class MCPClientManager:
                     logger.error("Health check error for MCP server '%s'", name, exc_info=True)
 
                 # Broadcast current status
-                await self._broadcast_server_status(
-                    name, connected=name in self._sessions
-                )
+                await self._broadcast_server_status(name, connected=name in self._sessions)
 
     async def health_check(self, server_name: str) -> bool:
         """Check if a server session is alive by listing tools."""
@@ -639,10 +646,12 @@ class MCPClientManager:
 
             async with db_manager.connection() as db:
                 for tool_info in tools:
-                    mcp_config = json.dumps({
-                        "mcp_server": server_name,
-                        "mcp_tool": tool_info.tool_name,
-                    })
+                    mcp_config = json.dumps(
+                        {
+                            "mcp_server": server_name,
+                            "mcp_tool": tool_info.tool_name,
+                        }
+                    )
 
                     # Check if seed/user entry already covers this MCP tool
                     existing = await db.fetchrow(
@@ -669,7 +678,11 @@ class MCPClientManager:
                             params.append(json.dumps(meta["mitre"]))
                             param_idx += 1
                         # Backfill category if still default
-                        if meta.get("category") and existing["category"] == "reconnaissance" and meta["category"] != "reconnaissance":
+                        if (
+                            meta.get("category")
+                            and existing["category"] == "reconnaissance"
+                            and meta["category"] != "reconnaissance"
+                        ):
                             updates.append(f"category = ${param_idx}")
                             params.append(meta["category"])
                             param_idx += 1
@@ -706,7 +719,8 @@ class MCPClientManager:
 
             logger.info(
                 "MCP_AUDIT event=tool_sync server=%s tools_synced=%d",
-                server_name, len(tools),
+                server_name,
+                len(tools),
             )
         except Exception:
             logger.debug("Tool registry sync failed for '%s'", server_name, exc_info=True)
@@ -725,7 +739,8 @@ class MCPClientManager:
                 )
 
             logger.info(
-                "MCP_AUDIT event=tool_soft_delete server=%s", server_name,
+                "MCP_AUDIT event=tool_soft_delete server=%s",
+                server_name,
             )
         except Exception:
             logger.debug("Tool soft-delete failed for '%s'", server_name, exc_info=True)
@@ -734,21 +749,24 @@ class MCPClientManager:
     # WebSocket broadcast helper
     # ------------------------------------------------------------------
 
-    async def _broadcast_server_status(
-        self, server_name: str, *, connected: bool
-    ) -> None:
+    async def _broadcast_server_status(self, server_name: str, *, connected: bool) -> None:
         """Broadcast mcp.server.status WS event."""
         if not self._ws:
             return
         try:
-            await self._ws.broadcast_global("mcp.server.status", {
-                "server": server_name,
-                "connected": connected,
-                "tool_count": len(self._tools.get(server_name, [])),
-            })
+            await self._ws.broadcast_global(
+                "mcp.server.status",
+                {
+                    "server": server_name,
+                    "connected": connected,
+                    "tool_count": len(self._tools.get(server_name, [])),
+                },
+            )
         except Exception:
             logger.debug(
-                "Failed to broadcast MCP status for '%s'", server_name, exc_info=True,
+                "Failed to broadcast MCP status for '%s'",
+                server_name,
+                exc_info=True,
             )
 
     # ------------------------------------------------------------------

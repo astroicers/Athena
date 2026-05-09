@@ -25,11 +25,11 @@ Because the real MetasploitRPCEngine needs a running msfrpcd, we patch
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.clients.metasploit_client import MetasploitRPCEngine
+import pytest
 
+from app.clients.metasploit_client import MetasploitRPCEngine
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -143,10 +143,12 @@ async def test_t03_run_exploit_releases_session_after_probe() -> None:
     engine = MetasploitRPCEngine()
 
     # Patch _connect to return our stub client
-    with patch.object(engine, "_connect", return_value=client), \
-         patch("app.clients.metasploit_client.asyncio.sleep", new_callable=AsyncMock), \
-         patch.object(settings, "MOCK_METASPLOIT", False), \
-         patch.object(settings, "METASPLOIT_SESSION_WAIT_SEC", 2):
+    with (
+        patch.object(engine, "_connect", return_value=client),
+        patch("app.clients.metasploit_client.asyncio.sleep", new_callable=AsyncMock),
+        patch.object(settings, "MOCK_METASPLOIT", False),
+        patch.object(settings, "METASPLOIT_SESSION_WAIT_SEC", 2),
+    ):
         result = await engine._run_exploit(
             "exploit/unix/ftp/vsftpd_234_backdoor",
             "cmd/unix/interact",
@@ -159,9 +161,7 @@ async def test_t03_run_exploit_releases_session_after_probe() -> None:
 
     # The SPEC-053 invariant: session was stopped after probe
     assert len(opened_sess) == 1
-    assert opened_sess[0].stopped is True, (
-        "one-shot mode must call shell.stop() to release the session"
-    )
+    assert opened_sess[0].stopped is True, "one-shot mode must call shell.stop() to release the session"
     # Probe command was the default
     assert any("id; uname -a; hostname" in w for w in opened_sess[0].writes)
 
@@ -181,9 +181,11 @@ async def test_t03_custom_probe_cmd_is_used() -> None:
 
     engine = MetasploitRPCEngine()
 
-    with patch.object(engine, "_connect", return_value=client), \
-         patch.object(engine, "_read_shell_output", new=AsyncMock(return_value="ok")), \
-         patch.object(settings, "MOCK_METASPLOIT", False):
+    with (
+        patch.object(engine, "_connect", return_value=client),
+        patch.object(engine, "_read_shell_output", new=AsyncMock(return_value="ok")),
+        patch.object(settings, "MOCK_METASPLOIT", False),
+    ):
         result = await engine._run_exploit(
             "exploit/unix/ftp/vsftpd_234_backdoor",
             "cmd/unix/interact",
@@ -209,11 +211,14 @@ async def test_t04_connect_failure_returns_structured_reason() -> None:
 
     engine = MetasploitRPCEngine()
 
-    with patch.object(
-        engine,
-        "_connect",
-        side_effect=ConnectionError("Connection refused"),
-    ), patch.object(settings, "MOCK_METASPLOIT", False):
+    with (
+        patch.object(
+            engine,
+            "_connect",
+            side_effect=ConnectionError("Connection refused"),
+        ),
+        patch.object(settings, "MOCK_METASPLOIT", False),
+    ):
         result = await engine._run_exploit(
             "exploit/unix/ftp/vsftpd_234_backdoor",
             "cmd/unix/interact",
@@ -237,9 +242,11 @@ async def test_t04_no_session_within_timeout_returns_exploit_failed_reason() -> 
 
     engine = MetasploitRPCEngine()
 
-    with patch.object(engine, "_connect", return_value=client), \
-         patch.object(settings, "MOCK_METASPLOIT", False), \
-         patch.object(settings, "METASPLOIT_SESSION_WAIT_SEC", 2):
+    with (
+        patch.object(engine, "_connect", return_value=client),
+        patch.object(settings, "MOCK_METASPLOIT", False),
+        patch.object(settings, "METASPLOIT_SESSION_WAIT_SEC", 2),
+    ):
         result = await engine._run_exploit(
             "exploit/unix/ftp/vsftpd_234_backdoor",
             "cmd/unix/interact",
@@ -279,9 +286,11 @@ async def test_one_shot_does_not_reuse_pre_existing_session() -> None:
 
     engine = MetasploitRPCEngine()
 
-    with patch.object(engine, "_connect", return_value=client), \
-         patch.object(engine, "_read_shell_output", new=AsyncMock(return_value="ok")), \
-         patch.object(settings, "MOCK_METASPLOIT", False):
+    with (
+        patch.object(engine, "_connect", return_value=client),
+        patch.object(engine, "_read_shell_output", new=AsyncMock(return_value="ok")),
+        patch.object(settings, "MOCK_METASPLOIT", False),
+    ):
         result = await engine._run_exploit(
             "exploit/unix/ftp/vsftpd_234_backdoor",
             "cmd/unix/interact",
@@ -289,9 +298,5 @@ async def test_one_shot_does_not_reuse_pre_existing_session() -> None:
         )
 
     # The returned session must be the fresh one, not the stale one
-    assert result["shell"] == "fresh_02", (
-        "one-shot mode must not reuse pre-existing sessions"
-    )
-    assert stale.stopped is False, (
-        "one-shot mode must not touch unrelated stale sessions"
-    )
+    assert result["shell"] == "fresh_02", "one-shot mode must not reuse pre-existing sessions"
+    assert stale.stopped is False, "one-shot mode must not touch unrelated stale sessions"

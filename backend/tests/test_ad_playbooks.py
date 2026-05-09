@@ -18,7 +18,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-
 AD_TECHNIQUE_IDS = ["T1069.002", "T1558.003", "T1003.001", "T1003.003", "T1018"]
 
 
@@ -44,8 +43,9 @@ def test_mcp_attack_executor_has_ad_techniques():
 
 async def test_windows_ad_playbooks_seeded(seeded_db):
     """After seeding, Windows AD playbooks should exist in technique_playbooks."""
-    from app.database.seed import TECHNIQUE_PLAYBOOK_SEEDS
     from uuid import uuid4
+
+    from app.database.seed import TECHNIQUE_PLAYBOOK_SEEDS
 
     count = await seeded_db.fetchval("SELECT COUNT(*) FROM technique_playbooks")
     if count == 0:
@@ -55,14 +55,16 @@ async def test_windows_ad_playbooks_seeded(seeded_db):
                    (id, mitre_id, platform, command, output_parser, facts_traits, source, tags)
                    VALUES ($1, $2, $3, $4, $5, $6, 'seed', $7)
                    ON CONFLICT DO NOTHING""",
-                str(uuid4()), seed["mitre_id"], seed["platform"],
-                seed["command"], seed.get("output_parser"),
-                seed["facts_traits"], seed["tags"],
+                str(uuid4()),
+                seed["mitre_id"],
+                seed["platform"],
+                seed["command"],
+                seed.get("output_parser"),
+                seed["facts_traits"],
+                seed["tags"],
             )
 
-    rows = await seeded_db.fetch(
-        "SELECT mitre_id FROM technique_playbooks WHERE platform = 'windows'"
-    )
+    rows = await seeded_db.fetch("SELECT mitre_id FROM technique_playbooks WHERE platform = 'windows'")
     seeded_ids = {r["mitre_id"] for r in rows}
 
     for tid in ["T1069.002", "T1558.003", "T1003.003", "T1018"]:
@@ -71,11 +73,14 @@ async def test_windows_ad_playbooks_seeded(seeded_db):
 
 async def test_technique_seeds_exist(seeded_db):
     """After seeding, AD technique definitions should exist in techniques table."""
-    from app.database.seed import TECHNIQUE_SEEDS
     from uuid import uuid4
 
+    from app.database.seed import TECHNIQUE_SEEDS
+
     # Seed techniques if needed
-    count = await seeded_db.fetchval("SELECT COUNT(*) FROM techniques WHERE mitre_id IN ('T1069.002','T1558.003','T1003.003','T1018')")
+    count = await seeded_db.fetchval(
+        "SELECT COUNT(*) FROM techniques WHERE mitre_id IN ('T1069.002','T1558.003','T1003.003','T1018')"
+    )
     if count == 0:
         for seed in TECHNIQUE_SEEDS:
             if seed.get("mitre_id") in ("T1069.002", "T1558.003", "T1003.003", "T1018"):
@@ -83,8 +88,12 @@ async def test_technique_seeds_exist(seeded_db):
                     """INSERT INTO techniques (id, mitre_id, name, tactic, tactic_id, risk_level)
                        VALUES ($1, $2, $3, $4, $5, $6)
                        ON CONFLICT DO NOTHING""",
-                    str(uuid4()), seed["mitre_id"], seed["name"],
-                    seed["tactic"], seed["tactic_id"], seed.get("risk_level", "medium"),
+                    str(uuid4()),
+                    seed["mitre_id"],
+                    seed["name"],
+                    seed["tactic"],
+                    seed["tactic_id"],
+                    seed.get("risk_level", "medium"),
                 )
 
     rows = await seeded_db.fetch(
@@ -95,4 +104,4 @@ async def test_technique_seeds_exist(seeded_db):
     assert found.get("T1069.002") == "TA0007"  # Discovery
     assert found.get("T1558.003") == "TA0006"  # Credential Access
     assert found.get("T1003.003") == "TA0006"  # Credential Access
-    assert found.get("T1018") == "TA0007"      # Discovery
+    assert found.get("T1018") == "TA0007"  # Discovery

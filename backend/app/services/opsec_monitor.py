@@ -18,8 +18,8 @@ from uuid import uuid4
 
 import asyncpg
 
-from app.models.opsec import OPSECEvent, OPSECStatus
 from app.models.enums import NOISE_POINTS
+from app.models.opsec import OPSECEvent, OPSECStatus
 from app.services.mission_profile_loader import get_profile
 
 logger = logging.getLogger(__name__)
@@ -48,13 +48,19 @@ async def record_event(
     """Insert an OPSEC event and return its ID."""
     event_id = str(uuid4())
     import json
+
     await db.execute(
         """INSERT INTO opsec_events
            (id, operation_id, event_type, severity, detail, target_id, technique_id, noise_points)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)""",
-        event_id, operation_id, event_type, severity,
+        event_id,
+        operation_id,
+        event_type,
+        severity,
         json.dumps(detail or {}),
-        target_id, technique_id, noise_points,
+        target_id,
+        technique_id,
+        noise_points,
     )
     return event_id
 
@@ -78,7 +84,9 @@ async def evaluate_after_act(
 
     # Record the execution noise
     await record_event(
-        db, operation_id, "execution_noise",
+        db,
+        operation_id,
+        "execution_noise",
         severity="info" if technique_noise == "low" else "warning",
         detail={"noise_level": technique_noise, "success": execution_success},
         target_id=target_id,
@@ -94,7 +102,9 @@ async def evaluate_after_act(
     )
     if burst_count and burst_count > 5:
         await record_event(
-            db, operation_id, "burst",
+            db,
+            operation_id,
+            "burst",
             severity="warning",
             detail={"ops_in_10min": burst_count},
             noise_points=1,
@@ -103,7 +113,9 @@ async def evaluate_after_act(
     # Record auth failure events
     if not execution_success:
         await record_event(
-            db, operation_id, "auth_failure",
+            db,
+            operation_id,
+            "auth_failure",
             severity="warning",
             detail={"technique_id": technique_id},
             target_id=target_id,
@@ -170,15 +182,13 @@ async def compute_status(
 
     # 5. Composite detection risk
     detection_risk = (
-        _W_NOISE * noise_score
-        + _W_DWELL * dwell_score
-        + _W_EXPOSURE * exposure_score
-        + _W_ARTIFACT * artifact_score
+        _W_NOISE * noise_score + _W_DWELL * dwell_score + _W_EXPOSURE * exposure_score + _W_ARTIFACT * artifact_score
     )
 
     # Get mission profile for budget info
     op_row = await db.fetchrow(
-        "SELECT mission_profile FROM operations WHERE id = $1", operation_id,
+        "SELECT mission_profile FROM operations WHERE id = $1",
+        operation_id,
     )
     mission_code = op_row["mission_profile"] if op_row and op_row["mission_profile"] else "SP"
     profile = get_profile(mission_code)

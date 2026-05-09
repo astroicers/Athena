@@ -21,8 +21,6 @@ router = APIRouter()
 
 
 @router.websocket("/ws/{operation_id}")
-
-
 async def websocket_endpoint(websocket: WebSocket, operation_id: str):
     await ws_manager.connect(operation_id, websocket)
     try:
@@ -31,11 +29,13 @@ async def websocket_endpoint(websocket: WebSocket, operation_id: str):
             data = await websocket.receive_text()
             # Echo back for debug / heartbeat
             await websocket.send_text(
-                json.dumps({
-                    "event": "echo",
-                    "data": {"received": data},
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                })
+                json.dumps(
+                    {
+                        "event": "echo",
+                        "data": {"received": data},
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    }
+                )
             )
     except WebSocketDisconnect:
         ws_manager.disconnect(operation_id, websocket)

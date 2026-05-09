@@ -10,9 +10,9 @@
 
 """SPEC-044: Vulnerability management API endpoints."""
 
+import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-import asyncpg
 
 from app.database import get_db
 from app.routers._deps import ensure_operation

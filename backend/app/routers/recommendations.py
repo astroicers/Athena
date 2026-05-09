@@ -44,8 +44,6 @@ def _row_to_recommendation(row: asyncpg.Record) -> OrientRecommendation:
     "/operations/{operation_id}/recommendations/latest",
     response_model=OrientRecommendation | None,
 )
-
-
 async def get_latest_recommendation(
     operation_id: str,
     db: asyncpg.Connection = Depends(get_db),
@@ -53,8 +51,7 @@ async def get_latest_recommendation(
     await ensure_operation(db, operation_id)
 
     row = await db.fetchrow(
-        "SELECT * FROM recommendations WHERE operation_id = $1 "
-        "ORDER BY created_at DESC LIMIT 1",
+        "SELECT * FROM recommendations WHERE operation_id = $1 ORDER BY created_at DESC LIMIT 1",
         operation_id,
     )
     if not row:
@@ -66,8 +63,6 @@ async def get_latest_recommendation(
     "/operations/{operation_id}/recommendations",
     response_model=list[OrientRecommendation],
 )
-
-
 async def list_recommendations(
     operation_id: str,
     limit: int = Query(20, ge=1, le=100),
@@ -77,9 +72,9 @@ async def list_recommendations(
     await ensure_operation(db, operation_id)
 
     rows = await db.fetch(
-        "SELECT * FROM recommendations WHERE operation_id = $1 "
-        "ORDER BY created_at DESC LIMIT $2",
-        operation_id, limit,
+        "SELECT * FROM recommendations WHERE operation_id = $1 ORDER BY created_at DESC LIMIT $2",
+        operation_id,
+        limit,
     )
     return [_row_to_recommendation(r) for r in rows]
 
@@ -88,8 +83,6 @@ async def list_recommendations(
     "/operations/{operation_id}/recommendations/{recommendation_id}/accept",
     response_model=OrientRecommendation,
 )
-
-
 async def accept_recommendation(
     operation_id: str,
     recommendation_id: str,
@@ -99,7 +92,8 @@ async def accept_recommendation(
 
     row = await db.fetchrow(
         "SELECT * FROM recommendations WHERE id = $1 AND operation_id = $2",
-        recommendation_id, operation_id,
+        recommendation_id,
+        operation_id,
     )
     if not row:
         raise HTTPException(status_code=404, detail="Recommendation not found")
@@ -109,7 +103,5 @@ async def accept_recommendation(
         recommendation_id,
     )
 
-    row = await db.fetchrow(
-        "SELECT * FROM recommendations WHERE id = $1", recommendation_id
-    )
+    row = await db.fetchrow("SELECT * FROM recommendations WHERE id = $1", recommendation_id)
     return _row_to_recommendation(row)

@@ -19,11 +19,10 @@ import pytest
 async def test_health_includes_mcp_servers(client):
     """When MCP_ENABLED, health response includes mcp_servers."""
     mock_mgr = MagicMock()
-    mock_mgr.list_servers.return_value = [
-        {"name": "nmap-scanner", "connected": True, "tool_count": 1}
-    ]
-    with patch("app.routers.health.settings") as s, patch(
-        "app.routers.health.get_mcp_manager", return_value=mock_mgr, create=True
+    mock_mgr.list_servers.return_value = [{"name": "nmap-scanner", "connected": True, "tool_count": 1}]
+    with (
+        patch("app.routers.health.settings") as s,
+        patch("app.routers.health.get_mcp_manager", return_value=mock_mgr, create=True),
     ):
         s.MOCK_C2_ENGINE = True
         s.MOCK_LLM = True

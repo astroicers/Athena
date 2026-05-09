@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 
 import asyncpg
 
-from app.config import settings, get_task_model_map
+from app.config import get_task_model_map, settings
 from app.services.llm_client import get_llm_client
 
 logger = logging.getLogger(__name__)
@@ -139,13 +139,13 @@ def _build_user_prompt(target: dict, facts: list[dict]) -> str:
     """Build the user prompt with target info and grouped facts."""
     is_compromised = "是" if target.get("is_compromised") else "否"
     prompt = f"""## 目標主機資訊
-- 主機名稱：{target.get('hostname', '—')}
-- IP 位址：{target.get('ip_address', '—')}
-- 作業系統：{target.get('os') or '—'}
-- 角色：{target.get('role') or '—'}
+- 主機名稱：{target.get("hostname", "—")}
+- IP 位址：{target.get("ip_address", "—")}
+- 作業系統：{target.get("os") or "—"}
+- 角色：{target.get("role") or "—"}
 - 已滲透：{is_compromised}
-- 權限等級：{target.get('privilege_level') or '—'}
-- 網路區段：{target.get('network_segment') or '—'}
+- 權限等級：{target.get("privilege_level") or "—"}
+- 網路區段：{target.get("network_segment") or "—"}
 
 ## 收集情報（{len(facts)} 項）
 """
@@ -208,7 +208,8 @@ async def get_node_summary(
     # Verify target exists
     target_row = await db.fetchrow(
         "SELECT * FROM targets WHERE id = $1 AND operation_id = $2",
-        target_id, operation_id,
+        target_id,
+        operation_id,
     )
     if not target_row:
         return None
@@ -220,7 +221,9 @@ async def get_node_summary(
         "SELECT trait, value, category FROM facts "
         "WHERE operation_id = $1 AND source_target_id = $2 "
         "ORDER BY collected_at DESC LIMIT $3",
-        operation_id, target_id, _TOTAL_FACTS_LIMIT,
+        operation_id,
+        target_id,
+        _TOTAL_FACTS_LIMIT,
     )
     facts = [dict(r) for r in fact_rows]
 

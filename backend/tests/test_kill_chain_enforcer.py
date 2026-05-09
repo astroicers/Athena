@@ -33,23 +33,33 @@ TARGET_ID = "test-target-1"
 #  Helpers
 # ---------------------------------------------------------------------------
 
+
 async def _seed_operation(db):
     """Insert a minimal operation row."""
     await db.execute(
         "INSERT INTO operations (id, code, name, codename, strategic_intent, "
         "status, current_ooda_phase) "
         "VALUES ($1, $2, $3, $4, $5, $6, $7)",
-        OP_ID, "OP-001", "Test", "PHANTOM", "intent", "active", "observe",
+        OP_ID,
+        "OP-001",
+        "Test",
+        "PHANTOM",
+        "intent",
+        "active",
+        "observe",
     )
 
 
 async def _seed_target(db, target_id: str = TARGET_ID):
     """Insert a minimal target row."""
     await db.execute(
-        "INSERT INTO targets (id, hostname, ip_address, os, role, operation_id) "
-        "VALUES ($1, $2, $3, $4, $5, $6)",
-        target_id, "DC-01", "10.0.1.5", "Windows Server 2022",
-        "Domain Controller", OP_ID,
+        "INSERT INTO targets (id, hostname, ip_address, os, role, operation_id) VALUES ($1, $2, $3, $4, $5, $6)",
+        target_id,
+        "DC-01",
+        "10.0.1.5",
+        "Windows Server 2022",
+        "Domain Controller",
+        OP_ID,
     )
 
 
@@ -70,19 +80,31 @@ async def _mark_tactic_completed(
         "INSERT INTO technique_executions "
         "(id, technique_id, target_id, operation_id, engine, status) "
         "VALUES ($1, $2, $3, $4, $5, $6)",
-        exec_id, tech_id, target_id, OP_ID, "mock", "success",
+        exec_id,
+        tech_id,
+        target_id,
+        OP_ID,
+        "mock",
+        "success",
     )
     await db.execute(
         "INSERT INTO attack_graph_nodes "
         "(id, operation_id, target_id, technique_id, tactic_id, status, confidence) "
         "VALUES ($1, $2, $3, $4, $5, $6, $7)",
-        node_id, OP_ID, target_id, tech_id, tactic_id, "completed", 0.9,
+        node_id,
+        OP_ID,
+        target_id,
+        tech_id,
+        tactic_id,
+        "completed",
+        0.9,
     )
 
 
 # ---------------------------------------------------------------------------
 #  TC-C1: No skip -> penalty = 0.0
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_no_skip_penalty_zero(tmp_db):
@@ -107,6 +129,7 @@ async def test_no_skip_penalty_zero(tmp_db):
 #  TC-C2: Skip 1 required stage -> penalty = 0.05
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_skip_one_required_stage(tmp_db):
     """Recommend TA0002 (Execution). Only TA0043 completed; TA0001 (Initial
@@ -128,6 +151,7 @@ async def test_skip_one_required_stage(tmp_db):
 # ---------------------------------------------------------------------------
 #  TC-C3: Skip optional stage -> penalty = 0.0
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_skip_optional_stage_no_penalty(tmp_db):
@@ -153,6 +177,7 @@ async def test_skip_optional_stage_no_penalty(tmp_db):
 #  TC-C4: Max penalty -> 0.25
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_max_penalty_capped(tmp_db):
     """Recommend TA0040 (Impact, stage 13) with nothing completed.
@@ -174,6 +199,7 @@ async def test_max_penalty_capped(tmp_db):
 #  TC-C5: Unknown tactic_id -> penalty = 0.0
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_unknown_tactic_id_penalty_zero(tmp_db):
     """tactic_id = 'TA9999' is not in the Kill Chain mapping -> penalty = 0.0."""
@@ -190,6 +216,7 @@ async def test_unknown_tactic_id_penalty_zero(tmp_db):
 # ---------------------------------------------------------------------------
 #  TC-C6: target_id is None -> operation-level query
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_target_id_none_operation_level(tmp_db):
@@ -214,6 +241,7 @@ async def test_target_id_none_operation_level(tmp_db):
 #  TC-C7: tactic_id is None -> penalty = 0.0
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_tactic_id_none_penalty_zero(tmp_db):
     """tactic_id = None -> early return with penalty = 0.0."""
@@ -230,6 +258,7 @@ async def test_tactic_id_none_penalty_zero(tmp_db):
 # ---------------------------------------------------------------------------
 #  TC-C8: Recommend stage 0 (TA0043) -> penalty = 0.0
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_recommend_stage_zero_no_penalty(tmp_db):

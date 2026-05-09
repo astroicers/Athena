@@ -25,6 +25,7 @@ Usage:
     # Testing — override a specific engine:
     engine_registry.register("c2", FakeC2Client())
 """
+
 from __future__ import annotations
 
 import logging
@@ -38,9 +39,7 @@ _registry: dict[str, BaseEngineClient] = {}
 def register(name: str, client: BaseEngineClient) -> None:
     """Register an engine by name. Last-write-wins (supports test overrides)."""
     _registry[name] = client
-    logger.debug(
-        "engine_registry: registered '%s' (%s)", name, type(client).__name__
-    )
+    logger.debug("engine_registry: registered '%s' (%s)", name, type(client).__name__)
 
 
 def get(name: str) -> BaseEngineClient | None:

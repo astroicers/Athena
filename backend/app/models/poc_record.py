@@ -1,8 +1,8 @@
 """PoC Record dataclass for auto-generated attack reproduction steps."""
 
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
 import json
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 
 
 @dataclass
@@ -15,9 +15,7 @@ class PoCRecord:
     input_params: dict
     output_snippet: str
     environment: dict
-    timestamp: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     reproducible: bool = True
 
     def to_json(self) -> str:

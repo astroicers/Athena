@@ -12,7 +12,8 @@ from fastapi import APIRouter, Depends
 
 from app.database import get_db
 from app.routers._deps import ensure_operation
-from app.services import opsec_monitor, threat_level as tl_service
+from app.services import opsec_monitor
+from app.services import threat_level as tl_service
 
 router = APIRouter()
 

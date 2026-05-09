@@ -25,9 +25,7 @@ def _parse_credential(cred_value: str) -> tuple[str, str, str, int]:
     (e.g. command output accidentally stored with the wrong fact trait).
     """
     if cred_value.startswith("uid=") or "\n" in cred_value:
-        raise ValueError(
-            f"Value does not look like a credential: {cred_value[:80]}"
-        )
+        raise ValueError(f"Value does not look like a credential: {cred_value[:80]}")
     host = ""
     port = 22
     if "@" in cred_value:

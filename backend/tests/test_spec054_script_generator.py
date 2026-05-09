@@ -29,7 +29,6 @@ from unittest.mock import patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -80,7 +79,7 @@ def test_p3_generate_script_with_valid_settings(
     # Tunnel command
     assert "ssh -N" in stdout
     assert "ExitOnForwardFailure=yes" in stdout
-    assert 'ServerAliveInterval=30' in stdout
+    assert "ServerAliveInterval=30" in stdout
     # Reverse tunnel spec — the LPORT variable is referenced in the bash
     # string (variable syntax), so assert on a stable substring
     assert '-R "0.0.0.0:${LPORT}:${ATHENA_HOST}:${LPORT}"' in stdout

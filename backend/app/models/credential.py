@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 
 class Credential(BaseModel):
     """A harvested credential."""
+
     id: str = ""
     operation_id: str
     username: str | None = None
@@ -30,6 +31,7 @@ class Credential(BaseModel):
 
 class CredentialGraphNode(BaseModel):
     """Node in the credential reuse graph."""
+
     id: str
     label: str
     node_type: str  # "credential" | "target" | "user"
@@ -38,6 +40,7 @@ class CredentialGraphNode(BaseModel):
 
 class CredentialGraphEdge(BaseModel):
     """Edge in the credential reuse graph."""
+
     source: str
     target: str
     relation: str  # "harvested_from" | "tested_on" | "valid_on"
@@ -46,6 +49,7 @@ class CredentialGraphEdge(BaseModel):
 
 class CredentialGraph(BaseModel):
     """Full credential reuse graph for an operation."""
+
     operation_id: str
     nodes: list[CredentialGraphNode] = Field(default_factory=list)
     edges: list[CredentialGraphEdge] = Field(default_factory=list)

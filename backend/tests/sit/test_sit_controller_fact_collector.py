@@ -19,7 +19,8 @@ pytestmark = pytest.mark.asyncio
 
 # ── 1.1 Observe collects facts from completed executions ──────────────────
 async def test_observe_collects_facts_from_execution(
-    sit_seeded_with_execution, sit_ws_manager,
+    sit_seeded_with_execution,
+    sit_ws_manager,
 ):
     """FactCollector.collect() extracts facts from a successful execution
     and writes them to the facts table; observe_summary is non-empty."""
@@ -31,8 +32,7 @@ async def test_observe_collects_facts_from_execution(
 
     # Verify fact persisted in DB
     row = await db.fetchrow(
-        "SELECT trait, value, category FROM facts "
-        "WHERE operation_id = $1 AND trait LIKE 'execution.%'",
+        "SELECT trait, value, category FROM facts WHERE operation_id = $1 AND trait LIKE 'execution.%'",
         "test-op-1",
     )
     assert row is not None
@@ -46,7 +46,8 @@ async def test_observe_collects_facts_from_execution(
 
 # ── 1.2 Duplicate collect produces no new facts ──────────────────────────
 async def test_duplicate_collect_no_new_facts(
-    sit_seeded_with_execution, sit_ws_manager,
+    sit_seeded_with_execution,
+    sit_ws_manager,
 ):
     """Second call to collect() for the same operation returns empty list
     (dedup by trait+value)."""
@@ -62,7 +63,8 @@ async def test_duplicate_collect_no_new_facts(
 
 # ── 1.3 Fact category auto-inferred for credential ──────────────────────
 async def test_fact_category_inferred_credential(
-    sit_seeded_with_execution, sit_ws_manager,
+    sit_seeded_with_execution,
+    sit_ws_manager,
 ):
     """T1003.001 execution with 'hash' in summary -> category='credential'."""
     db = sit_seeded_with_execution
@@ -91,8 +93,13 @@ async def test_observe_summary_truncated(seeded_db, sit_ws_manager):
             "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
             str(uuid.uuid4()),
             f"service.port_{i}",
-            f"Port {i}/tcp running service with a fairly long description here x{i*100}",
-            "service", "T1003.001", "test-target-1", "test-op-1", 1, now,
+            f"Port {i}/tcp running service with a fairly long description here x{i * 100}",
+            "service",
+            "T1003.001",
+            "test-target-1",
+            "test-op-1",
+            1,
+            now,
         )
 
     summary = await fc.summarize(db, "test-op-1")
@@ -110,12 +117,8 @@ async def test_fact_new_ws_event(sit_seeded_with_execution, sit_ws_manager):
     new_facts = await fc.collect(db, "test-op-1")
     assert len(new_facts) >= 1
 
-    fact_events = [
-        c for c in sit_ws_manager._calls if c[1] == "fact.new"
-    ]
-    assert len(fact_events) == len(new_facts), (
-        f"Expected {len(new_facts)} fact.new events, got {len(fact_events)}"
-    )
+    fact_events = [c for c in sit_ws_manager._calls if c[1] == "fact.new"]
+    assert len(fact_events) == len(new_facts), f"Expected {len(new_facts)} fact.new events, got {len(fact_events)}"
 
 
 # ── 1.6 collect_from_result stores raw facts directly ────────────────────
@@ -131,14 +134,21 @@ async def test_collect_from_result_stores_raw_facts(seeded_db, sit_ws_manager):
     ]
 
     result = await fc.collect_from_result(
-        db, "test-op-1", "T1003.001", "test-target-1", raw_facts,
+        db,
+        "test-op-1",
+        "T1003.001",
+        "test-target-1",
+        raw_facts,
     )
     assert len(result) == 3
 
     # Verify all facts in DB
     count = await db.fetchval(
         "SELECT COUNT(*) FROM facts WHERE operation_id = $1 AND trait IN ($2, $3, $4)",
-        "test-op-1", "credential.ssh", "service.banner", "host.kernel",
+        "test-op-1",
+        "credential.ssh",
+        "service.banner",
+        "host.kernel",
     )
     assert count == 3
 

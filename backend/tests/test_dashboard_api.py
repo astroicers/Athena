@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # GET /operations/{id}/dashboard
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_dashboard_aggregate(client):
@@ -58,6 +58,7 @@ async def test_dashboard_targets_stats(client):
 # GET /operations/{id}/targets/{tid}/kill-chain
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_kill_chain(client):
     """GET kill-chain returns attack graph nodes for the target."""
@@ -80,6 +81,7 @@ async def test_kill_chain_404_op(client):
 # GET /operations/{id}/attack-surface
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_attack_surface(client):
     """GET attack-surface returns per-target vuln distribution."""
@@ -96,6 +98,7 @@ async def test_attack_surface(client):
 # ---------------------------------------------------------------------------
 # GET /operations/{id}/metrics/time-series
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_time_series_c5isr(client):
@@ -137,6 +140,7 @@ async def test_time_series_404(client):
 # GET /operations/{id}/credential-graph
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_credential_graph_empty(client):
     """GET credential-graph with no credentials returns empty graph."""
@@ -152,12 +156,19 @@ async def test_credential_graph_empty(client):
 async def test_credential_graph_with_data(client, seeded_db):
     """GET credential-graph with seeded credentials returns nodes and edges."""
     import json
+
     await seeded_db.execute(
         """INSERT INTO credentials (id, operation_id, username, secret_type, secret_value,
                domain, source_target_id, tested_targets)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)""",
-        "cred-1", "test-op-1", "admin", "ntlm_hash", "aad3b435...",
-        "CORP", "test-target-1", json.dumps([{"target_id": "test-target-1", "result": "success"}]),
+        "cred-1",
+        "test-op-1",
+        "admin",
+        "ntlm_hash",
+        "aad3b435...",
+        "CORP",
+        "test-target-1",
+        json.dumps([{"target_id": "test-target-1", "result": "success"}]),
     )
     resp = await client.get("/api/operations/test-op-1/credential-graph")
     data = resp.json()

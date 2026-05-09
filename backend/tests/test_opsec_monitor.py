@@ -10,29 +10,32 @@ from __future__ import annotations
 import pytest
 
 from app.services import opsec_monitor
+from app.services import threat_level as tl_service
 from app.services.opsec_monitor import (
     compute_opsec_confidence_factor,
     compute_opsec_penalty,
 )
-from app.services import threat_level as tl_service
-
 
 # ---------------------------------------------------------------------------
 # record_event
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_record_event_inserts_row(seeded_db):
     """record_event should insert into opsec_events and return an id."""
     eid = await opsec_monitor.record_event(
-        seeded_db, "test-op-1", "high_noise",
+        seeded_db,
+        "test-op-1",
+        "high_noise",
         severity="warning",
         detail={"technique": "T1595.001"},
         noise_points=8,
     )
     assert eid  # non-empty string
     row = await seeded_db.fetchrow(
-        "SELECT * FROM opsec_events WHERE id = $1", eid,
+        "SELECT * FROM opsec_events WHERE id = $1",
+        eid,
     )
     assert row is not None
     assert row["event_type"] == "high_noise"
@@ -44,13 +47,16 @@ async def test_record_event_inserts_row(seeded_db):
 async def test_record_event_with_target(seeded_db):
     """record_event should store optional target/technique ids."""
     eid = await opsec_monitor.record_event(
-        seeded_db, "test-op-1", "auth_failure",
+        seeded_db,
+        "test-op-1",
+        "auth_failure",
         target_id="test-target-1",
         technique_id="T1003.001",
         noise_points=1,
     )
     row = await seeded_db.fetchrow(
-        "SELECT target_id, technique_id FROM opsec_events WHERE id = $1", eid,
+        "SELECT target_id, technique_id FROM opsec_events WHERE id = $1",
+        eid,
     )
     assert row["target_id"] == "test-target-1"
     assert row["technique_id"] == "T1003.001"
@@ -59,6 +65,7 @@ async def test_record_event_with_target(seeded_db):
 # ---------------------------------------------------------------------------
 # compute_status
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_compute_status_clean(seeded_db):
@@ -77,7 +84,9 @@ async def test_compute_status_with_noise(seeded_db):
     """noise_score should reflect accumulated noise_points."""
     for _ in range(3):
         await opsec_monitor.record_event(
-            seeded_db, "test-op-1", "execution_noise",
+            seeded_db,
+            "test-op-1",
+            "execution_noise",
             noise_points=8,
         )
     status = await opsec_monitor.compute_status(seeded_db, "test-op-1")
@@ -90,13 +99,22 @@ async def test_compute_status_with_noise(seeded_db):
 async def test_compute_status_exposure_count(seeded_db):
     """exposure_count should tally auth_failure/burst/detection events."""
     await opsec_monitor.record_event(
-        seeded_db, "test-op-1", "auth_failure", noise_points=1,
+        seeded_db,
+        "test-op-1",
+        "auth_failure",
+        noise_points=1,
     )
     await opsec_monitor.record_event(
-        seeded_db, "test-op-1", "burst", noise_points=1,
+        seeded_db,
+        "test-op-1",
+        "burst",
+        noise_points=1,
     )
     await opsec_monitor.record_event(
-        seeded_db, "test-op-1", "execution_noise", noise_points=3,
+        seeded_db,
+        "test-op-1",
+        "execution_noise",
+        noise_points=3,
     )
     status = await opsec_monitor.compute_status(seeded_db, "test-op-1")
     # Only auth_failure + burst count as exposure (not execution_noise)
@@ -108,7 +126,10 @@ async def test_compute_status_recent_events(seeded_db):
     """recent_events should return the last N events."""
     for i in range(3):
         await opsec_monitor.record_event(
-            seeded_db, "test-op-1", f"event_{i}", noise_points=1,
+            seeded_db,
+            "test-op-1",
+            f"event_{i}",
+            noise_points=1,
         )
     status = await opsec_monitor.compute_status(seeded_db, "test-op-1")
     assert len(status.recent_events) == 3
@@ -118,11 +139,13 @@ async def test_compute_status_recent_events(seeded_db):
 # evaluate_after_act
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_evaluate_after_act_records_noise(seeded_db):
     """evaluate_after_act should record execution_noise event."""
     status = await opsec_monitor.evaluate_after_act(
-        seeded_db, "test-op-1",
+        seeded_db,
+        "test-op-1",
         technique_noise="high",
         target_id="test-target-1",
         technique_id="T1003.001",
@@ -140,7 +163,8 @@ async def test_evaluate_after_act_records_noise(seeded_db):
 async def test_evaluate_after_act_failure_records_auth_failure(seeded_db):
     """Failed execution should also record an auth_failure event."""
     await opsec_monitor.evaluate_after_act(
-        seeded_db, "test-op-1",
+        seeded_db,
+        "test-op-1",
         technique_noise="medium",
         execution_success=False,
     )
@@ -157,10 +181,14 @@ async def test_evaluate_after_act_burst_detection(seeded_db):
     # Create 6 prior events
     for _ in range(6):
         await opsec_monitor.record_event(
-            seeded_db, "test-op-1", "execution_noise", noise_points=1,
+            seeded_db,
+            "test-op-1",
+            "execution_noise",
+            noise_points=1,
         )
     await opsec_monitor.evaluate_after_act(
-        seeded_db, "test-op-1",
+        seeded_db,
+        "test-op-1",
         technique_noise="low",
     )
     burst = await seeded_db.fetchrow(
@@ -174,17 +202,21 @@ async def test_evaluate_after_act_burst_detection(seeded_db):
 # compute_opsec_penalty (pure function)
 # ---------------------------------------------------------------------------
 
+
 def test_opsec_penalty_low_risk():
     assert compute_opsec_penalty(30.0) == 1.0
+
 
 def test_opsec_penalty_medium_risk():
     assert compute_opsec_penalty(65.0) == 0.85
 
+
 def test_opsec_penalty_high_risk():
     assert compute_opsec_penalty(85.0) == 0.70
 
+
 def test_opsec_penalty_boundary():
-    assert compute_opsec_penalty(60.0) == 1.0   # <= 60 is OK
+    assert compute_opsec_penalty(60.0) == 1.0  # <= 60 is OK
     assert compute_opsec_penalty(60.1) == 0.85
 
 
@@ -192,14 +224,18 @@ def test_opsec_penalty_boundary():
 # compute_opsec_confidence_factor (pure function)
 # ---------------------------------------------------------------------------
 
+
 def test_confidence_factor_clean():
     assert compute_opsec_confidence_factor(10.0) == 1.0
+
 
 def test_confidence_factor_moderate():
     assert compute_opsec_confidence_factor(50.0) == 0.7
 
+
 def test_confidence_factor_high():
     assert compute_opsec_confidence_factor(70.0) == 0.4
+
 
 def test_confidence_factor_critical():
     assert compute_opsec_confidence_factor(90.0) == 0.1
@@ -208,6 +244,7 @@ def test_confidence_factor_critical():
 # ---------------------------------------------------------------------------
 # threat_level.compute_threat_level
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_threat_level_clean(seeded_db):
@@ -226,7 +263,10 @@ async def test_threat_level_with_noise(seeded_db):
     """Noise events should increase threat_level."""
     for _ in range(5):
         await opsec_monitor.record_event(
-            seeded_db, "test-op-1", "execution_noise", noise_points=8,
+            seeded_db,
+            "test-op-1",
+            "execution_noise",
+            noise_points=8,
         )
     result = await tl_service.compute_threat_level(seeded_db, "test-op-1")
     # 5 * 8 = 40 pts / 50.0 = 0.8 noise_factor * 0.35 weight = 0.28
@@ -239,11 +279,15 @@ async def test_threat_level_updates_operations(seeded_db):
     """compute_threat_level should write level to operations.threat_level."""
     for _ in range(3):
         await opsec_monitor.record_event(
-            seeded_db, "test-op-1", "execution_noise", noise_points=8,
+            seeded_db,
+            "test-op-1",
+            "execution_noise",
+            noise_points=8,
         )
     result = await tl_service.compute_threat_level(seeded_db, "test-op-1")
     row = await seeded_db.fetchrow(
-        "SELECT threat_level FROM operations WHERE id = $1", "test-op-1",
+        "SELECT threat_level FROM operations WHERE id = $1",
+        "test-op-1",
     )
     assert abs(row["threat_level"] - result.level) < 0.001
 
@@ -253,7 +297,10 @@ async def test_threat_level_auth_failures(seeded_db):
     """Auth failure events should contribute to threat_level."""
     for _ in range(10):
         await opsec_monitor.record_event(
-            seeded_db, "test-op-1", "auth_failure", noise_points=1,
+            seeded_db,
+            "test-op-1",
+            "auth_failure",
+            noise_points=1,
         )
     result = await tl_service.compute_threat_level(seeded_db, "test-op-1")
     # 10 / 20.0 = 0.5 auth_factor

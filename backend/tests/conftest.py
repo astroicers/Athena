@@ -104,20 +104,40 @@ _DDL_STATEMENTS: list[str] = _extract_ddl_statements()
 
 # All table names in reverse dependency order for TRUNCATE
 _ALL_TABLES: list[str] = [
-    "mission_objectives", "credentials", "opsec_events", "event_store",
+    "mission_objectives",
+    "credentials",
+    "opsec_events",
+    "event_store",
     "c5isr_status_history",
-    "vulnerabilities", "swarm_tasks", "attack_graph_edges", "attack_graph_nodes",
-    "tool_registry", "technique_playbooks", "vuln_cache", "engagements",
-    "recon_scans", "log_entries", "c5isr_statuses", "mission_steps",
-    "recommendations", "ooda_directives", "ooda_iterations", "facts",
-    "technique_executions", "techniques", "agents", "targets",
-    "operations", "users",
+    "vulnerabilities",
+    "swarm_tasks",
+    "attack_graph_edges",
+    "attack_graph_nodes",
+    "tool_registry",
+    "technique_playbooks",
+    "vuln_cache",
+    "engagements",
+    "recon_scans",
+    "log_entries",
+    "c5isr_statuses",
+    "mission_steps",
+    "recommendations",
+    "ooda_directives",
+    "ooda_iterations",
+    "facts",
+    "technique_executions",
+    "techniques",
+    "agents",
+    "targets",
+    "operations",
+    "users",
 ]
 
 
 # ---------------------------------------------------------------------------
 # Marker: skip when PostgreSQL is not available
 # ---------------------------------------------------------------------------
+
 
 async def _pg_is_reachable() -> bool:
     """Return True if we can connect to the system PostgreSQL instance."""
@@ -128,13 +148,12 @@ async def _pg_is_reachable() -> bool:
     except (OSError, asyncpg.PostgresError, asyncio.TimeoutError):
         return False
 
+
 import asyncio  # noqa: E402 (needed for _pg_is_reachable)
 
 
 def pytest_configure(config):
-    config.addinivalue_line(
-        "markers", "requires_pg: mark test as needing a live PostgreSQL instance"
-    )
+    config.addinivalue_line("markers", "requires_pg: mark test as needing a live PostgreSQL instance")
 
 
 def pytest_collection_modifyitems(config, items):
@@ -313,15 +332,18 @@ async def client(seeded_db: asyncpg.Connection):
     * Dependency override is removed after the test to avoid leaking
       state into other tests.
     """
+    from uuid import uuid4
+
     from app.database import get_db  # noqa: E402
-    from app.database.seed import seed_if_empty  # noqa: E402
-    from app.main import app  # noqa: E402
 
     # Seed technique_playbooks for playbook API tests.
     # We wrap the connection in a minimal DatabaseManager-like object so
     # seed_if_empty can call conn.fetchval / conn.execute.
-    from app.database.seed import TECHNIQUE_PLAYBOOK_SEEDS
-    from uuid import uuid4
+    from app.database.seed import (
+        TECHNIQUE_PLAYBOOK_SEEDS,
+        seed_if_empty,  # noqa: E402
+    )
+    from app.main import app  # noqa: E402
 
     count = await seeded_db.fetchval("SELECT COUNT(*) FROM technique_playbooks")
     if count == 0:
@@ -331,9 +353,13 @@ async def client(seeded_db: asyncpg.Connection):
                    (id, mitre_id, platform, command, output_parser, facts_traits, source, tags)
                    VALUES ($1, $2, $3, $4, $5, $6, 'seed', $7)
                    ON CONFLICT DO NOTHING""",
-                str(uuid4()), seed["mitre_id"], seed["platform"],
-                seed["command"], seed.get("output_parser"),
-                seed["facts_traits"], seed["tags"],
+                str(uuid4()),
+                seed["mitre_id"],
+                seed["platform"],
+                seed["command"],
+                seed.get("output_parser"),
+                seed["facts_traits"],
+                seed["tags"],
             )
 
     async def _override_get_db():

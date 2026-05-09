@@ -53,8 +53,10 @@ class TechniqueRule:
 # Pydantic schemas for YAML validation — SPEC-039
 # ---------------------------------------------------------------------------
 
+
 class TechniqueRuleSchema(BaseModel):
     """Pydantic schema for YAML rule validation."""
+
     technique_id: str = Field(..., pattern=r"^T\d{4}(\.\d{3})?$")
     tactic_id: str = Field(..., pattern=r"^TA\d{4}$")
     required_facts: list[str]
@@ -71,6 +73,7 @@ class TechniqueRuleSchema(BaseModel):
 
 class TechniqueRulesFile(BaseModel):
     """Top-level YAML file schema."""
+
     version: Literal["1.0"]
     rules: list[TechniqueRuleSchema] = Field(..., min_length=1)
 

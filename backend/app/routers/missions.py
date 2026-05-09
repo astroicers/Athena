@@ -42,8 +42,6 @@ def _row_to_step(row: asyncpg.Record) -> MissionStep:
     "/operations/{operation_id}/mission/steps",
     response_model=list[MissionStep],
 )
-
-
 async def list_mission_steps(
     operation_id: str,
     db: asyncpg.Connection = Depends(get_db),
@@ -62,8 +60,6 @@ async def list_mission_steps(
     response_model=MissionStep,
     status_code=201,
 )
-
-
 async def create_mission_step(
     operation_id: str,
     body: MissionStepCreate,
@@ -98,8 +94,6 @@ async def create_mission_step(
     "/operations/{operation_id}/mission/steps/{step_id}",
     response_model=MissionStep,
 )
-
-
 async def update_mission_step(
     operation_id: str,
     step_id: str,
@@ -110,7 +104,8 @@ async def update_mission_step(
 
     row = await db.fetchrow(
         "SELECT * FROM mission_steps WHERE id = $1 AND operation_id = $2",
-        step_id, operation_id,
+        step_id,
+        operation_id,
     )
     if not row:
         raise HTTPException(status_code=404, detail="Mission step not found")
@@ -132,7 +127,7 @@ async def update_mission_step(
         elif status_val in ("completed", "failed", "skipped"):
             updates["completed_at"] = now
 
-    set_clause = ", ".join(f"{k} = ${i+1}" for i, k in enumerate(updates))
+    set_clause = ", ".join(f"{k} = ${i + 1}" for i, k in enumerate(updates))
     values = list(updates.values())
     values.append(step_id)
 

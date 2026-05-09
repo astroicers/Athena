@@ -14,13 +14,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.clients import BaseEngineClient, ExecutionResult
+from app.services.agent_swarm import SwarmExecutor
 from app.services.c5isr_mapper import C5ISRMapper
 from app.services.decision_engine import DecisionEngine
 from app.services.engine_router import EngineRouter
 from app.services.fact_collector import FactCollector
-from app.services.orient_engine import OrientEngine
-from app.services.agent_swarm import SwarmExecutor
 from app.services.ooda_controller import OODAController
+from app.services.orient_engine import OrientEngine
 
 pytestmark = pytest.mark.asyncio
 
@@ -59,10 +59,15 @@ async def _seed_execution_for_observe(db):
         "(id, technique_id, target_id, operation_id, engine, status, "
         "result_summary, started_at, completed_at) "
         "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-        str(uuid.uuid4()), "T1595.001", "test-target-1", "test-op-1",
-        "mcp_recon", "success",
+        str(uuid.uuid4()),
+        "T1595.001",
+        "test-target-1",
+        "test-op-1",
+        "mcp_recon",
+        "success",
         "Nmap scan: 22/tcp SSH OpenSSH 8.9, 445/tcp SMB",
-        datetime.now(timezone.utc), datetime.now(timezone.utc),
+        datetime.now(timezone.utc),
+        datetime.now(timezone.utc),
     )
 
 
@@ -72,8 +77,14 @@ async def _seed_credential_for_act(db):
         "INSERT INTO facts (id, trait, value, category, "
         "source_technique_id, source_target_id, operation_id, score, collected_at) "
         "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT DO NOTHING",
-        str(uuid.uuid4()), "credential.ssh", "root:toor", "credential",
-        "T1003.001", "test-target-1", "test-op-1", 1,
+        str(uuid.uuid4()),
+        "credential.ssh",
+        "root:toor",
+        "credential",
+        "T1003.001",
+        "test-target-1",
+        "test-op-1",
+        1,
         datetime.now(timezone.utc),
     )
 
@@ -116,17 +127,12 @@ async def test_full_cycle_ws_event_sequence(seeded_db, sit_ws_manager, mock_engi
     await controller.trigger_cycle(db, "test-op-1")
 
     # Extract phase events
-    phase_events = [
-        c[2].get("phase") for c in sit_ws_manager._calls
-        if c[1] == "ooda.phase"
-    ]
+    phase_events = [c[2].get("phase") for c in sit_ws_manager._calls if c[1] == "ooda.phase"]
 
     # Should see at least observe, orient, decide, act in order
     expected_phases = ["observe", "orient", "decide", "act"]
     for phase in expected_phases:
-        assert phase in phase_events, (
-            f"Phase '{phase}' missing from WS events: {phase_events}"
-        )
+        assert phase in phase_events, f"Phase '{phase}' missing from WS events: {phase_events}"
 
     # Verify order: observe before orient before decide before act
     idx = {p: phase_events.index(p) for p in expected_phases}
@@ -154,8 +160,7 @@ async def test_consecutive_cycles_increment(seeded_db, sit_ws_manager, mock_engi
 
     # Verify iteration numbers
     rows = await db.fetch(
-        "SELECT iteration_number FROM ooda_iterations "
-        "WHERE operation_id = $1 ORDER BY iteration_number",
+        "SELECT iteration_number FROM ooda_iterations WHERE operation_id = $1 ORDER BY iteration_number",
         "test-op-1",
     )
     numbers = [r["iteration_number"] for r in rows]
@@ -175,6 +180,7 @@ async def test_concurrent_trigger_skipped(seeded_db, sit_ws_manager, mock_engine
 
     # Manually acquire the lock to simulate a running cycle
     from app.services.ooda_controller import _get_operation_lock
+
     lock = _get_operation_lock("test-op-1")
 
     async with lock:
@@ -194,8 +200,10 @@ async def test_orient_failure_aborts_cycle(seeded_db, sit_ws_manager, mock_engin
 
     # Patch orient.analyze to return None (simulating LLM failure)
     with patch.object(
-        controller._orient, "analyze",
-        new_callable=AsyncMock, return_value=None,
+        controller._orient,
+        "analyze",
+        new_callable=AsyncMock,
+        return_value=None,
     ):
         result = await controller.trigger_cycle(db, "test-op-1")
 
@@ -232,8 +240,7 @@ async def test_operation_phase_updated(seeded_db, sit_ws_manager, mock_engine_cl
     await controller.trigger_cycle(db, "test-op-1")
 
     op = await db.fetchrow(
-        "SELECT current_ooda_phase, ooda_iteration_count FROM operations "
-        "WHERE id = $1",
+        "SELECT current_ooda_phase, ooda_iteration_count FROM operations WHERE id = $1",
         "test-op-1",
     )
     assert op is not None

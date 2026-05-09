@@ -10,13 +10,12 @@
 
 """Integration tests for Tool Registry CRUD API (GET/POST/PATCH/DELETE)."""
 
-import pytest
 from uuid import uuid4
 
+import asyncpg
+import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-
-import asyncpg
 
 
 # ---------------------------------------------------------------------------
@@ -42,9 +41,13 @@ async def tools_client(seeded_db: asyncpg.Connection):
                    (id, mitre_id, platform, command, output_parser, facts_traits, source, tags)
                    VALUES ($1, $2, $3, $4, $5, $6, 'seed', $7)
                    ON CONFLICT DO NOTHING""",
-                str(uuid4()), seed["mitre_id"], seed["platform"],
-                seed["command"], seed.get("output_parser"),
-                seed["facts_traits"], seed["tags"],
+                str(uuid4()),
+                seed["mitre_id"],
+                seed["platform"],
+                seed["command"],
+                seed.get("output_parser"),
+                seed["facts_traits"],
+                seed["tags"],
             )
 
     # Seed tool_registry if needed
@@ -57,10 +60,16 @@ async def tools_client(seeded_db: asyncpg.Connection):
                     mitre_techniques, risk_level, output_traits, config_json, source)
                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'seed')
                    ON CONFLICT (tool_id) DO NOTHING""",
-                str(uuid4()), seed["tool_id"], seed["name"],
-                seed["kind"], seed["category"], seed["description"],
-                seed["mitre_techniques"], seed["risk_level"],
-                seed["output_traits"], seed.get("config_json", "{}"),
+                str(uuid4()),
+                seed["tool_id"],
+                seed["name"],
+                seed["kind"],
+                seed["category"],
+                seed["description"],
+                seed["mitre_techniques"],
+                seed["risk_level"],
+                seed["output_traits"],
+                seed.get("config_json", "{}"),
             )
 
     async def _override_get_db():

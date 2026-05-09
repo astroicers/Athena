@@ -11,16 +11,16 @@
 """SPEC-044: ValidationEngine unit tests (10+ test cases)."""
 
 import uuid
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from app.services.validation_engine import ValidationEngine, ValidationResult
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _uid() -> str:
     return str(uuid.uuid4())
@@ -31,7 +31,8 @@ async def _ensure_op(db, op_id: str) -> None:
     await db.execute(
         "INSERT INTO operations (id, code, name, codename, strategic_intent) "
         "VALUES ($1, $2, 'Test', 'TEST', 'test') ON CONFLICT DO NOTHING",
-        op_id, f"OP-{op_id[:8]}",
+        op_id,
+        f"OP-{op_id[:8]}",
     )
 
 
@@ -43,6 +44,7 @@ def engine():
 # ---------------------------------------------------------------------------
 # Tests: Non-exploit tactic -> skipped
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_non_exploit_tactic_skipped(tmp_db, engine):
@@ -63,6 +65,7 @@ async def test_non_exploit_tactic_skipped(tmp_db, engine):
 # ---------------------------------------------------------------------------
 # Tests: No target_ip -> skipped
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_no_target_ip_skipped(tmp_db, engine):
@@ -99,6 +102,7 @@ async def test_no_target_id_skipped(tmp_db, engine):
 # Tests: Port reachability
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_port_reachability_passed(tmp_db, engine):
     """Mock socket connect success -> port_reachability passed."""
@@ -113,12 +117,15 @@ async def test_port_reachability_passed(tmp_db, engine):
     await tmp_db.execute(
         "INSERT INTO targets (id, hostname, ip_address, role, operation_id) "
         "VALUES ($1, 'host1', '10.0.1.5', 'server', $2)",
-        target_id, op_id,
+        target_id,
+        op_id,
     )
     await tmp_db.execute(
         "INSERT INTO facts (id, trait, value, operation_id, source_target_id) "
         "VALUES ($1, 'service.open_port', '21/tcp vsftpd 2.3.4', $2, $3)",
-        _uid(), op_id, target_id,
+        _uid(),
+        op_id,
+        target_id,
     )
 
     rec = {"recommended_technique_id": "T1190c", "target_id": target_id}
@@ -149,12 +156,15 @@ async def test_port_reachability_failed(tmp_db, engine):
     await tmp_db.execute(
         "INSERT INTO targets (id, hostname, ip_address, role, operation_id) "
         "VALUES ($1, 'host1', '10.0.1.5', 'server', $2)",
-        target_id, op_id,
+        target_id,
+        op_id,
     )
     await tmp_db.execute(
         "INSERT INTO facts (id, trait, value, operation_id, source_target_id) "
         "VALUES ($1, 'service.open_port', '21/tcp vsftpd 2.3.4', $2, $3)",
-        _uid(), op_id, target_id,
+        _uid(),
+        op_id,
+        target_id,
     )
 
     rec = {"recommended_technique_id": "T1190d", "target_id": target_id}
@@ -174,6 +184,7 @@ async def test_port_reachability_failed(tmp_db, engine):
 # Tests: Service banner
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_service_banner_match(tmp_db, engine):
     """Banner matches -> service_banner passed."""
@@ -188,12 +199,15 @@ async def test_service_banner_match(tmp_db, engine):
     await tmp_db.execute(
         "INSERT INTO targets (id, hostname, ip_address, role, operation_id) "
         "VALUES ($1, 'host1', '10.0.1.5', 'server', $2)",
-        target_id, op_id,
+        target_id,
+        op_id,
     )
     await tmp_db.execute(
         "INSERT INTO facts (id, trait, value, operation_id, source_target_id) "
         "VALUES ($1, 'service.open_port', '21/tcp banner: vsftpd 2.3.4', $2, $3)",
-        _uid(), op_id, target_id,
+        _uid(),
+        op_id,
+        target_id,
     )
 
     rec = {"recommended_technique_id": "T1190e", "target_id": target_id}
@@ -204,7 +218,8 @@ async def test_service_banner_match(tmp_db, engine):
         mock_sock.connect.return_value = None
 
         with patch.object(
-            ValidationEngine, "_grab_banner",
+            ValidationEngine,
+            "_grab_banner",
             return_value="220 21/tcp banner: vsftpd 2.3.4",
         ):
             result = await engine.validate(tmp_db, rec, op_id)
@@ -228,12 +243,15 @@ async def test_service_banner_mismatch(tmp_db, engine):
     await tmp_db.execute(
         "INSERT INTO targets (id, hostname, ip_address, role, operation_id) "
         "VALUES ($1, 'host1', '10.0.1.5', 'server', $2)",
-        target_id, op_id,
+        target_id,
+        op_id,
     )
     await tmp_db.execute(
         "INSERT INTO facts (id, trait, value, operation_id, source_target_id) "
         "VALUES ($1, 'service.open_port', '21/tcp banner: vsftpd 2.3.4', $2, $3)",
-        _uid(), op_id, target_id,
+        _uid(),
+        op_id,
+        target_id,
     )
 
     rec = {"recommended_technique_id": "T1190f", "target_id": target_id}
@@ -253,6 +271,7 @@ async def test_service_banner_mismatch(tmp_db, engine):
 # ---------------------------------------------------------------------------
 # Tests: Version range (SPEC-028 Phase 4)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_version_range_known_vulnerable(tmp_db, engine):
@@ -324,6 +343,7 @@ async def test_version_range_samba_sambacry(tmp_db, engine):
 # Tests: Overall outcome logic
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_all_passed_delta_positive(tmp_db, engine):
     """When port and banner both pass, delta should be +0.15."""
@@ -338,12 +358,15 @@ async def test_all_passed_delta_positive(tmp_db, engine):
     await tmp_db.execute(
         "INSERT INTO targets (id, hostname, ip_address, role, operation_id) "
         "VALUES ($1, 'host1', '10.0.1.5', 'server', $2)",
-        target_id, op_id,
+        target_id,
+        op_id,
     )
     await tmp_db.execute(
         "INSERT INTO facts (id, trait, value, operation_id, source_target_id) "
         "VALUES ($1, 'service.open_port', '21/tcp banner: vsftpd 2.3.4', $2, $3)",
-        _uid(), op_id, target_id,
+        _uid(),
+        op_id,
+        target_id,
     )
 
     rec = {"recommended_technique_id": "T1190g", "target_id": target_id}
@@ -354,7 +377,8 @@ async def test_all_passed_delta_positive(tmp_db, engine):
         mock_sock.connect.return_value = None
 
         with patch.object(
-            ValidationEngine, "_grab_banner",
+            ValidationEngine,
+            "_grab_banner",
             return_value="220 21/tcp banner: vsftpd 2.3.4",
         ):
             result = await engine.validate(tmp_db, rec, op_id)
@@ -377,7 +401,8 @@ async def test_all_skipped_delta_zero(tmp_db, engine):
     await tmp_db.execute(
         "INSERT INTO targets (id, hostname, ip_address, role, operation_id) "
         "VALUES ($1, 'host1', '10.0.1.5', 'server', $2)",
-        target_id, op_id,
+        target_id,
+        op_id,
     )
 
     rec = {"recommended_technique_id": "T1190h", "target_id": target_id}
@@ -408,6 +433,7 @@ async def test_confidence_clamped_low(tmp_db, engine):
 # ---------------------------------------------------------------------------
 # Tests: extract helpers
 # ---------------------------------------------------------------------------
+
 
 def test_extract_port_tcp_format():
     engine = ValidationEngine()

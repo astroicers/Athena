@@ -55,13 +55,15 @@ class AgentCapabilityMatcher:
                 "SELECT paw, privilege FROM agents "
                 "WHERE host_id = $1 AND operation_id = $2 AND status = 'alive' "
                 "AND LOWER(platform) = LOWER($3)",
-                target_id, operation_id, required_platform,
+                target_id,
+                operation_id,
+                required_platform,
             )
         else:
             rows = await db.fetch(
-                "SELECT paw, privilege FROM agents "
-                "WHERE host_id = $1 AND operation_id = $2 AND status = 'alive'",
-                target_id, operation_id,
+                "SELECT paw, privilege FROM agents WHERE host_id = $1 AND operation_id = $2 AND status = 'alive'",
+                target_id,
+                operation_id,
             )
 
         if not rows:
@@ -73,9 +75,7 @@ class AgentCapabilityMatcher:
         best = max(rows, key=_rank)
         return best["paw"]
 
-    async def _technique_platform(
-        self, db: asyncpg.Connection, technique_id: str
-    ) -> str | None:
+    async def _technique_platform(self, db: asyncpg.Connection, technique_id: str) -> str | None:
         """Return canonical platform ('windows' or 'linux') for technique, or None.
 
         If a technique has playbooks for multiple platforms, returns the

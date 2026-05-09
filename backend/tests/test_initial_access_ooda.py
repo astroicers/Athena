@@ -18,10 +18,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import pytest_asyncio
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_ws() -> MagicMock:
     ws = MagicMock()
@@ -79,6 +79,7 @@ def _mock_recommendation(
 # Test 6: Orient recommends T1110 after recon
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_orient_recommends_t1110_after_recon(seeded_db):
     """Orient should recommend T1110 when open SSH port is in facts."""
@@ -117,6 +118,7 @@ async def test_orient_recommends_t1110_after_recon(seeded_db):
 # Test 7: Initial access through Decide → Act
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_initial_access_through_decide_act(seeded_db):
     """T1110.001 recommendation should be evaluated by DecisionEngine normally."""
@@ -135,7 +137,9 @@ async def test_initial_access_through_decide_act(seeded_db):
     decision = DecisionEngine()
 
     result = await decision.evaluate(
-        seeded_db, "test-op-1", recommendation,
+        seeded_db,
+        "test-op-1",
+        recommendation,
     )
 
     # DecisionEngine should return a decision dict with standard fields
@@ -152,6 +156,7 @@ async def test_initial_access_through_decide_act(seeded_db):
 # ---------------------------------------------------------------------------
 # Test 8: EngineRouter routes T1110 to InitialAccessEngine
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_engine_router_routes_t1110_to_initial_access(seeded_db):
@@ -179,12 +184,14 @@ async def test_engine_router_routes_t1110_to_initial_access(seeded_db):
     # Patch InitialAccessEngine to verify routing
     with patch("app.services.initial_access_engine.InitialAccessEngine") as MockIAClass:
         mock_ia = MagicMock()
-        mock_ia.try_initial_access = AsyncMock(return_value={
-            "success": True,
-            "method": "ssh",
-            "credential": "root:toor",
-            "agent_deployed": False,
-        })
+        mock_ia.try_initial_access = AsyncMock(
+            return_value={
+                "success": True,
+                "method": "ssh",
+                "credential": "root:toor",
+                "agent_deployed": False,
+            }
+        )
         MockIAClass.return_value = mock_ia
 
         result = await router.execute(
@@ -204,6 +211,7 @@ async def test_engine_router_routes_t1110_to_initial_access(seeded_db):
 # ---------------------------------------------------------------------------
 # Test 9: C2 bootstrap only in Act phase
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_c2_bootstrap_only_in_act_phase(seeded_db):
@@ -232,16 +240,20 @@ async def test_c2_bootstrap_only_in_act_phase(seeded_db):
     # Mock InitialAccessEngine returning SSH success with credential
     with patch("app.services.initial_access_engine.InitialAccessEngine") as MockIAClass:
         mock_ia = MagicMock()
-        mock_ia.try_initial_access = AsyncMock(return_value={
-            "success": True,
-            "method": "ssh",
-            "credential": "root:toor@10.0.1.5:22",
-            "agent_deployed": False,
-        })
-        mock_ia.bootstrap_c2_agent = AsyncMock(return_value={
-            "success": True,
-            "paw": "new-agent-001",
-        })
+        mock_ia.try_initial_access = AsyncMock(
+            return_value={
+                "success": True,
+                "method": "ssh",
+                "credential": "root:toor@10.0.1.5:22",
+                "agent_deployed": False,
+            }
+        )
+        mock_ia.bootstrap_c2_agent = AsyncMock(
+            return_value={
+                "success": True,
+                "paw": "new-agent-001",
+            }
+        )
         MockIAClass.return_value = mock_ia
 
         # Patch settings to enable C2 bootstrap

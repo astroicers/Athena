@@ -39,8 +39,6 @@ def _is_dangerous(cmd: str) -> bool:
 
 
 @router.websocket("/ws/{operation_id}/targets/{target_id}/terminal")
-
-
 async def ssh_terminal(
     operation_id: str,
     target_id: str,
@@ -55,12 +53,10 @@ async def ssh_terminal(
     await websocket.accept()
 
     async with db_manager.connection() as db:
-
         # Verify target exists and is compromised
         # operation_id from frontend may be empty string; look up by id only.
         target = await db.fetchrow(
-            "SELECT id, hostname, ip_address, is_compromised FROM targets "
-            "WHERE id = $1",
+            "SELECT id, hostname, ip_address, is_compromised FROM targets WHERE id = $1",
             target_id,
         )
         if not target:
@@ -85,14 +81,17 @@ async def ssh_terminal(
                     "SELECT value FROM facts "
                     "WHERE source_target_id = $1 AND trait = $2 AND value LIKE $3 "
                     "ORDER BY collected_at DESC LIMIT 1",
-                    target_id, trait, value_like,
+                    target_id,
+                    trait,
+                    value_like,
                 )
             else:
                 row = await db.fetchrow(
                     "SELECT value FROM facts "
                     "WHERE source_target_id = $1 AND trait = $2 "
                     "ORDER BY collected_at DESC LIMIT 1",
-                    target_id, trait,
+                    target_id,
+                    trait,
                 )
             if row:
                 return row
@@ -102,18 +101,19 @@ async def ssh_terminal(
                     "SELECT value FROM facts "
                     "WHERE trait = $1 AND value LIKE $2 AND value LIKE $3 "
                     "ORDER BY collected_at DESC LIMIT 1",
-                    trait, f"%{ip_address}%", value_like,
+                    trait,
+                    f"%{ip_address}%",
+                    value_like,
                 )
             return await db.fetchrow(
-                "SELECT value FROM facts "
-                "WHERE trait = $1 AND value LIKE $2 "
-                "ORDER BY collected_at DESC LIMIT 1",
-                trait, f"%{ip_address}%",
+                "SELECT value FROM facts WHERE trait = $1 AND value LIKE $2 ORDER BY collected_at DESC LIMIT 1",
+                trait,
+                f"%{ip_address}%",
             )
 
-        cred_row    = await _find_cred("credential.ssh")
-        msf_row     = await _find_cred("credential.root_shell")
-        winrm_row   = await _find_cred("credential.winrm")
+        cred_row = await _find_cred("credential.ssh")
+        msf_row = await _find_cred("credential.root_shell")
+        winrm_row = await _find_cred("credential.winrm")
         pg_shell_row = await _find_cred("credential.shell", "postgresql%")
 
     # Decide backend: SSH > WinRM > PostgreSQL > Metasploit
@@ -128,6 +128,7 @@ async def ssh_terminal(
     if cred_row:
         # Try SSH first
         from app.clients._ssh_common import _parse_credential  # noqa: PLC0415
+
         try:
             user, password, host, port = _parse_credential(cred_row["value"])
             if not host:
@@ -138,6 +139,7 @@ async def ssh_terminal(
 
     if cred_row:
         import asyncssh  # noqa: PLC0415
+
         _MAX_RETRIES = 3
         _RETRY_DELAYS = (1, 3, 5)
         conn = None
@@ -145,21 +147,31 @@ async def ssh_terminal(
         for attempt in range(_MAX_RETRIES):
             try:
                 conn = await asyncssh.connect(
-                    host, port=port, username=user, password=password,
-                    known_hosts=None, connect_timeout=15,
-                    server_host_key_algs=["ssh-rsa", "ssh-dss", "ecdsa-sha2-nistp256",
-                                          "rsa-sha2-256", "rsa-sha2-512"],
-                    kex_algs=["diffie-hellman-group14-sha1",
-                              "diffie-hellman-group-exchange-sha256",
-                              "diffie-hellman-group14-sha256",
-                              "ecdh-sha2-nistp256"],
+                    host,
+                    port=port,
+                    username=user,
+                    password=password,
+                    known_hosts=None,
+                    connect_timeout=15,
+                    server_host_key_algs=["ssh-rsa", "ssh-dss", "ecdsa-sha2-nistp256", "rsa-sha2-256", "rsa-sha2-512"],
+                    kex_algs=[
+                        "diffie-hellman-group14-sha1",
+                        "diffie-hellman-group-exchange-sha256",
+                        "diffie-hellman-group14-sha256",
+                        "ecdh-sha2-nistp256",
+                    ],
                 )
                 break
             except Exception as exc:  # noqa: BLE001
                 last_error = exc
                 logger.warning(
                     "SSH terminal attempt %d/%d failed for %s@%s:%s: %s",
-                    attempt + 1, _MAX_RETRIES, user, host, port, exc,
+                    attempt + 1,
+                    _MAX_RETRIES,
+                    user,
+                    host,
+                    port,
+                    exc,
                 )
                 if attempt < _MAX_RETRIES - 1:
                     await asyncio.sleep(_RETRY_DELAYS[attempt])
@@ -169,9 +181,7 @@ async def ssh_terminal(
             await _run_ssh_terminal(websocket, conn, user, hostname, host)
             return
         else:
-            logger.warning(
-                "SSH failed after %d attempts, checking Metasploit fallback", _MAX_RETRIES
-            )
+            logger.warning("SSH failed after %d attempts, checking Metasploit fallback", _MAX_RETRIES)
 
     # Fallback 1: WinRM (Windows targets)
     if winrm_row:
@@ -187,27 +197,33 @@ async def ssh_terminal(
     if msf_row:
         use_msf = True
     else:
-        await websocket.send_text(json.dumps({
-            "error": "No valid credential found — SSH failed and no Metasploit shell available"
-        }))
+        await websocket.send_text(
+            json.dumps({"error": "No valid credential found — SSH failed and no Metasploit shell available"})
+        )
         await websocket.close()
         return
 
     if use_msf:
         await _run_msf_terminal(
-            websocket, ip_address, hostname, target_id, operation_id,
+            websocket,
+            ip_address,
+            hostname,
+            target_id,
+            operation_id,
         )
 
 
-async def _run_ssh_terminal(
-    websocket: WebSocket, conn, user: str, hostname: str, host: str
-) -> None:
+async def _run_ssh_terminal(websocket: WebSocket, conn, user: str, hostname: str, host: str) -> None:
     """Run interactive SSH terminal loop."""
-    await websocket.send_text(json.dumps({
-        "output": f"Connected to {hostname} ({host}) as {user}\r\n",
-        "exit_code": 0,
-        "prompt": f"{user}@{hostname}:~$ ",
-    }))
+    await websocket.send_text(
+        json.dumps(
+            {
+                "output": f"Connected to {hostname} ({host}) as {user}\r\n",
+                "exit_code": 0,
+                "prompt": f"{user}@{hostname}:~$ ",
+            }
+        )
+    )
     try:
         async for message in websocket.iter_text():
             try:
@@ -232,11 +248,15 @@ async def _run_ssh_terminal(
                 stderr = result.stderr or ""
                 output = stdout if stdout else stderr
                 exit_code = result.exit_status if result.exit_status is not None else 0
-                await websocket.send_text(json.dumps({
-                    "output": output,
-                    "exit_code": exit_code,
-                    "prompt": f"{user}@{hostname}:~$ ",
-                }))
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "output": output,
+                            "exit_code": exit_code,
+                            "prompt": f"{user}@{hostname}:~$ ",
+                        }
+                    )
+                )
             except Exception as exc:
                 await websocket.send_text(json.dumps({"error": str(exc)}))
     except WebSocketDisconnect:
@@ -250,9 +270,7 @@ async def _run_ssh_terminal(
         logger.info("SSH terminal session closed for %s", hostname)
 
 
-async def _run_winrm_terminal(
-    websocket: WebSocket, cred_value: str, hostname: str, ip_address: str
-) -> None:
+async def _run_winrm_terminal(websocket: WebSocket, cred_value: str, hostname: str, ip_address: str) -> None:
     """Run interactive terminal via WinRM (Windows targets).
 
     Credential format: user:password@host:port
@@ -265,10 +283,10 @@ async def _run_winrm_terminal(
     try:
         at_idx = cred_value.rfind("@")
         user_pass = cred_value[:at_idx]
-        host_port = cred_value[at_idx + 1:]
+        host_port = cred_value[at_idx + 1 :]
         colon_idx = user_pass.find(":")
         username = user_pass[:colon_idx]
-        password = user_pass[colon_idx + 1:]
+        password = user_pass[colon_idx + 1 :]
         if ":" in host_port:
             host, port_s = host_port.rsplit(":", 1)
             port = int(port_s)
@@ -283,15 +301,19 @@ async def _run_winrm_terminal(
     if not host:
         host = ip_address
 
-    await websocket.send_text(json.dumps({
-        "output": (
-            f"Connected to {hostname} ({host}) via WinRM as {username}\r\n"
-            f"[athena] Mode: WinRM one-shot exec (non-persistent PTY)\r\n"
-            f"[athena] Each command is a fresh WinRM run_cmd call.\r\n"
-        ),
-        "exit_code": 0,
-        "prompt": f"PS {hostname}> ",
-    }))
+    await websocket.send_text(
+        json.dumps(
+            {
+                "output": (
+                    f"Connected to {hostname} ({host}) via WinRM as {username}\r\n"
+                    f"[athena] Mode: WinRM one-shot exec (non-persistent PTY)\r\n"
+                    f"[athena] Each command is a fresh WinRM run_cmd call.\r\n"
+                ),
+                "exit_code": 0,
+                "prompt": f"PS {hostname}> ",
+            }
+        )
+    )
 
     try:
         async for message in websocket.iter_text():
@@ -332,11 +354,15 @@ async def _run_winrm_terminal(
                     return out or err or "(no output)\r\n", r.status_code
 
                 output, exit_code = await loop.run_in_executor(None, _winrm_exec)
-                await websocket.send_text(json.dumps({
-                    "output": output,
-                    "exit_code": exit_code,
-                    "prompt": f"PS {hostname}> ",
-                }))
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "output": output,
+                            "exit_code": exit_code,
+                            "prompt": f"PS {hostname}> ",
+                        }
+                    )
+                )
             except Exception as exc:
                 await websocket.send_text(json.dumps({"error": f"WinRM error: {exc}"}))
     except WebSocketDisconnect:
@@ -363,13 +389,13 @@ def _parse_pg_shell_credential(value: str) -> tuple[str, str, str, int]:
     if at_idx < 0:
         raise ValueError(f"No '@' in pg credential: {value}")
     user_pass = rest[:at_idx]
-    host_port = rest[at_idx + 1:]
+    host_port = rest[at_idx + 1 :]
 
     colon_idx = user_pass.find(":")
     if colon_idx < 0:
         raise ValueError(f"No ':' separating user:pass in pg credential: {value}")
     username = user_pass[:colon_idx]
-    password = user_pass[colon_idx + 1:]
+    password = user_pass[colon_idx + 1 :]
 
     if ":" in host_port:
         host, port_s = host_port.rsplit(":", 1)
@@ -381,9 +407,7 @@ def _parse_pg_shell_credential(value: str) -> tuple[str, str, str, int]:
     return username, password, host, port
 
 
-async def _run_pg_terminal(
-    websocket: WebSocket, cred_value: str, hostname: str, ip_address: str
-) -> None:
+async def _run_pg_terminal(websocket: WebSocket, cred_value: str, hostname: str, ip_address: str) -> None:
     """Run interactive terminal via PostgreSQL COPY TO PROGRAM.
 
     Each command is executed by connecting to PostgreSQL and running
@@ -394,23 +418,24 @@ async def _run_pg_terminal(
         username, password, host, port = _parse_pg_shell_credential(cred_value)
     except (ValueError, IndexError) as exc:
         logger.warning("Failed to parse PostgreSQL shell credential: %s", exc)
-        await websocket.send_text(json.dumps({
-            "error": f"Invalid PostgreSQL shell credential format: {exc}"
-        }))
+        await websocket.send_text(json.dumps({"error": f"Invalid PostgreSQL shell credential format: {exc}"}))
         await websocket.close()
         return
 
     if not host:
         host = ip_address
 
-    await websocket.send_text(json.dumps({
-        "output": (
-            f"Connected to {hostname} ({host}) via PostgreSQL superuser\r\n"
-            f"User: {username} | Port: {port}\r\n"
-        ),
-        "exit_code": 0,
-        "prompt": f"{username}@{hostname}:~$ ",
-    }))
+    await websocket.send_text(
+        json.dumps(
+            {
+                "output": (
+                    f"Connected to {hostname} ({host}) via PostgreSQL superuser\r\nUser: {username} | Port: {port}\r\n"
+                ),
+                "exit_code": 0,
+                "prompt": f"{username}@{hostname}:~$ ",
+            }
+        )
+    )
 
     try:
         async for message in websocket.iter_text():
@@ -424,36 +449,50 @@ async def _run_pg_terminal(
             if not cmd:
                 continue
             if len(cmd) > MAX_CMD_LEN:
-                await websocket.send_text(json.dumps({
-                    "error": "Command too long (max 1024 chars)",
-                }))
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "error": "Command too long (max 1024 chars)",
+                        }
+                    )
+                )
                 continue
             if _is_dangerous(cmd):
-                await websocket.send_text(json.dumps({
-                    "error": "Command refused: potentially destructive operation",
-                }))
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "error": "Command refused: potentially destructive operation",
+                        }
+                    )
+                )
                 continue
 
             try:
                 output = await _pg_exec_command(host, port, username, password, cmd)
-                await websocket.send_text(json.dumps({
-                    "output": output or "(no output)\r\n",
-                    "exit_code": 0,
-                    "prompt": f"{username}@{hostname}:~$ ",
-                }))
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "output": output or "(no output)\r\n",
+                            "exit_code": 0,
+                            "prompt": f"{username}@{hostname}:~$ ",
+                        }
+                    )
+                )
             except Exception as exc:
-                await websocket.send_text(json.dumps({
-                    "error": f"PostgreSQL exec error: {exc}",
-                }))
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "error": f"PostgreSQL exec error: {exc}",
+                        }
+                    )
+                )
     except WebSocketDisconnect:
         pass
     finally:
         logger.info("PostgreSQL terminal session closed for %s", hostname)
 
 
-async def _pg_exec_command(
-    host: str, port: int, username: str, password: str, command: str
-) -> str:
+async def _pg_exec_command(host: str, port: int, username: str, password: str, command: str) -> str:
     """Execute a command via PostgreSQL superuser access.
 
     Strategy (ordered by PostgreSQL version support):
@@ -467,7 +506,10 @@ async def _pg_exec_command(
 
     def _exec():
         conn = psycopg2.connect(
-            host=host, port=port, user=username, password=password,
+            host=host,
+            port=port,
+            user=username,
+            password=password,
             connect_timeout=10,
         )
         conn.autocommit = True
@@ -509,7 +551,7 @@ async def _pg_exec_command(
 
             # Method 4: Try common read-equivalent translations
             file_commands = {
-                "id": "/etc/passwd",        # show users as substitute
+                "id": "/etc/passwd",  # show users as substitute
                 "uname -a": "/proc/version",
                 "hostname": "/etc/hostname",
                 "ifconfig": "/proc/net/if_inet6",
@@ -523,11 +565,11 @@ async def _pg_exec_command(
                     return _pg_read_file(conn, cursor, fpath)
 
             return (
-                f"[athena] PostgreSQL 8.x: COPY TO PROGRAM not supported.\r\n"
-                f"Available commands:\r\n"
-                f"  cat <filepath>  - Read a file (via lo_import)\r\n"
-                f"  SELECT ...      - Run SQL queries\r\n"
-                f"  id / uname -a / hostname / whoami - System info\r\n"
+                "[athena] PostgreSQL 8.x: COPY TO PROGRAM not supported.\r\n"
+                "Available commands:\r\n"
+                "  cat <filepath>  - Read a file (via lo_import)\r\n"
+                "  SELECT ...      - Run SQL queries\r\n"
+                "  id / uname -a / hostname / whoami - System info\r\n"
             )
         finally:
             conn.close()
@@ -538,6 +580,7 @@ async def _pg_exec_command(
 def _pg_read_file(conn, cursor, filepath: str) -> str:
     """Read a file via PostgreSQL lo_import (works on 8.x+)."""
     import psycopg2  # noqa: PLC0415
+
     try:
         conn.autocommit = False
         cursor.execute("SELECT lo_import(%s)", (filepath,))
@@ -579,11 +622,15 @@ async def _run_msf_terminal(
     from app.config import settings  # noqa: PLC0415
 
     if settings.MOCK_METASPLOIT:
-        await websocket.send_text(json.dumps({
-            "output": f"[mock] Connected to {hostname} ({target_ip}) via Metasploit shell\r\n",
-            "exit_code": 0,
-            "prompt": f"root@{hostname}:~# ",
-        }))
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "output": f"[mock] Connected to {hostname} ({target_ip}) via Metasploit shell\r\n",
+                    "exit_code": 0,
+                    "prompt": f"root@{hostname}:~# ",
+                }
+            )
+        )
         try:
             async for message in websocket.iter_text():
                 try:
@@ -592,11 +639,15 @@ async def _run_msf_terminal(
                 except (json.JSONDecodeError, AttributeError):
                     continue
                 if cmd:
-                    await websocket.send_text(json.dumps({
-                        "output": f"[mock] {cmd}: command executed\r\n",
-                        "exit_code": 0,
-                        "prompt": f"root@{hostname}:~# ",
-                    }))
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "output": f"[mock] {cmd}: command executed\r\n",
+                                "exit_code": 0,
+                                "prompt": f"root@{hostname}:~# ",
+                            }
+                        )
+                    )
         except WebSocketDisconnect:
             pass
         return
@@ -650,14 +701,18 @@ async def _run_msf_terminal(
             pre_existing_sid = s_id
             logger.info(
                 "Terminal reusing pre-existing session %s for %s",
-                pre_existing_sid, target_ip,
+                pre_existing_sid,
+                target_ip,
             )
             break
 
     if pre_existing_shell is not None:
         await _run_msf_terminal_with_session(
-            websocket, pre_existing_shell, pre_existing_sid,
-            target_ip, hostname,
+            websocket,
+            pre_existing_shell,
+            pre_existing_sid,
+            target_ip,
+            hostname,
         )
         return
 
@@ -668,9 +723,9 @@ async def _run_msf_terminal(
 
     async with _db_mgr.connection() as _db:
         rows = await _db.fetch(
-            "SELECT value FROM facts WHERE source_target_id = $1 "
-            "AND operation_id = $2 AND trait = 'service.open_port'",
-            target_id, operation_id,
+            "SELECT value FROM facts WHERE source_target_id = $1 AND operation_id = $2 AND trait = 'service.open_port'",
+            target_id,
+            operation_id,
         )
     inferred_service: "str | None" = None
     for row in rows:
@@ -683,37 +738,42 @@ async def _run_msf_terminal(
             break
 
     if inferred_service is None:
-        await websocket.send_text(json.dumps({
-            "error": (
-                f"No active Metasploit session for {target_ip} and no "
-                "exploitable banner found to re-establish shell"
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "error": (
+                        f"No active Metasploit session for {target_ip} and no "
+                        "exploitable banner found to re-establish shell"
+                    )
+                }
             )
-        }))
+        )
         await websocket.close()
         return
 
     msf = MetasploitRPCEngine()
     exploit_fn = msf.get_exploit_for_service(inferred_service)
     if exploit_fn is None:
-        await websocket.send_text(json.dumps({
-            "error": (
-                f"No exploit handler for inferred service "
-                f"{inferred_service!r}"
-            )
-        }))
+        await websocket.send_text(
+            json.dumps({"error": (f"No exploit handler for inferred service {inferred_service!r}")})
+        )
         await websocket.close()
         return
 
-    await websocket.send_text(json.dumps({
-        "output": (
-            f"[athena] Metasploit one-shot mode active for {hostname}.\r\n"
-            f"[athena] Each command triggers a fresh "
-            f"{inferred_service} exploit cycle (exploit -> probe -> "
-            f"release). Type a shell command and press enter.\r\n"
-        ),
-        "exit_code": 0,
-        "prompt": f"root@{hostname}:~# ",
-    }))
+    await websocket.send_text(
+        json.dumps(
+            {
+                "output": (
+                    f"[athena] Metasploit one-shot mode active for {hostname}.\r\n"
+                    f"[athena] Each command triggers a fresh "
+                    f"{inferred_service} exploit cycle (exploit -> probe -> "
+                    f"release). Type a shell command and press enter.\r\n"
+                ),
+                "exit_code": 0,
+                "prompt": f"root@{hostname}:~# ",
+            }
+        )
+    )
 
     try:
         async for message in websocket.iter_text():
@@ -727,16 +787,22 @@ async def _run_msf_terminal(
             if not cmd:
                 continue
             if len(cmd) > MAX_CMD_LEN:
-                await websocket.send_text(json.dumps({
-                    "error": "Command too long (max 1024 chars)",
-                }))
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "error": "Command too long (max 1024 chars)",
+                        }
+                    )
+                )
                 continue
             if _is_dangerous(cmd):
-                await websocket.send_text(json.dumps({
-                    "error": (
-                        "Command refused: potentially destructive operation"
-                    ),
-                }))
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "error": ("Command refused: potentially destructive operation"),
+                        }
+                    )
+                )
                 continue
 
             # Re-exploit via the bound method returned by
@@ -748,30 +814,41 @@ async def _run_msf_terminal(
             try:
                 result = await exploit_fn(target_ip, probe_cmd=cmd)
             except Exception as exc:
-                await websocket.send_text(json.dumps({
-                    "error": f"Re-exploit failed: {exc}",
-                }))
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "error": f"Re-exploit failed: {exc}",
+                        }
+                    )
+                )
                 continue
 
             if result.get("status") != "success":
-                await websocket.send_text(json.dumps({
-                    "error": (
-                        f"Exploit failed: {result.get('reason', 'unknown')}"
-                    ),
-                }))
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "error": (f"Exploit failed: {result.get('reason', 'unknown')}"),
+                        }
+                    )
+                )
                 continue
 
-            await websocket.send_text(json.dumps({
-                "output": result.get("output") or "(no output)\r\n",
-                "exit_code": 0,
-                "prompt": f"root@{hostname}:~# ",
-            }))
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "output": result.get("output") or "(no output)\r\n",
+                        "exit_code": 0,
+                        "prompt": f"root@{hostname}:~# ",
+                    }
+                )
+            )
     except WebSocketDisconnect:
         pass
     finally:
         logger.info(
             "Metasploit one-shot terminal session closed for %s (%s)",
-            hostname, target_ip,
+            hostname,
+            target_ip,
         )
 
 
@@ -785,6 +862,7 @@ def _exploit_module_and_payload(service: str) -> tuple[str, str]:
     defensive only.
     """
     from app.clients.metasploit_client import _EXPLOIT_MAP  # noqa: PLC0415
+
     return _EXPLOIT_MAP.get(service, _EXPLOIT_MAP["vsftpd"])
 
 
@@ -803,14 +881,15 @@ async def _run_msf_terminal_with_session(
     open). The shell is NOT stopped on close — the OODA cycle that
     created it is responsible for its lifecycle.
     """
-    await websocket.send_text(json.dumps({
-        "output": (
-            f"Connected to {hostname} ({target_ip}) via Metasploit "
-            f"shell (session {sid})\r\n"
-        ),
-        "exit_code": 0,
-        "prompt": f"root@{hostname}:~# ",
-    }))
+    await websocket.send_text(
+        json.dumps(
+            {
+                "output": (f"Connected to {hostname} ({target_ip}) via Metasploit shell (session {sid})\r\n"),
+                "exit_code": 0,
+                "prompt": f"root@{hostname}:~# ",
+            }
+        )
+    )
 
     try:
         async for message in websocket.iter_text():
@@ -824,16 +903,22 @@ async def _run_msf_terminal_with_session(
             if not cmd:
                 continue
             if len(cmd) > MAX_CMD_LEN:
-                await websocket.send_text(json.dumps({
-                    "error": "Command too long (max 1024 chars)",
-                }))
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "error": "Command too long (max 1024 chars)",
+                        }
+                    )
+                )
                 continue
             if _is_dangerous(cmd):
-                await websocket.send_text(json.dumps({
-                    "error": (
-                        "Command refused: potentially destructive operation"
-                    ),
-                }))
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "error": ("Command refused: potentially destructive operation"),
+                        }
+                    )
+                )
                 continue
 
             try:
@@ -844,19 +929,28 @@ async def _run_msf_terminal_with_session(
                 # Wait for output
                 await asyncio.sleep(2)
                 output = shell.read()
-                await websocket.send_text(json.dumps({
-                    "output": output or "(no output)\r\n",
-                    "exit_code": 0,
-                    "prompt": f"root@{hostname}:~# ",
-                }))
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "output": output or "(no output)\r\n",
+                            "exit_code": 0,
+                            "prompt": f"root@{hostname}:~# ",
+                        }
+                    )
+                )
             except Exception as exc:
-                await websocket.send_text(json.dumps({
-                    "error": f"Shell error: {exc}",
-                }))
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "error": f"Shell error: {exc}",
+                        }
+                    )
+                )
     except WebSocketDisconnect:
         pass
     finally:
         logger.info(
             "Metasploit terminal session closed for %s (session %s)",
-            hostname, sid,
+            hostname,
+            sid,
         )

@@ -64,9 +64,7 @@ async def test_auto_reconnect_on_disconnected_session():
     from app.services.mcp_client_manager import MCPClientManager, MCPServerConfig
 
     manager = MCPClientManager()
-    config = MCPServerConfig(
-        name="srv", transport="stdio", command="python", args=["-m", "server"]
-    )
+    config = MCPServerConfig(name="srv", transport="stdio", command="python", args=["-m", "server"])
     manager._configs["srv"] = config
 
     async def mock_connect(cfg):
@@ -94,9 +92,7 @@ async def test_http_transport_config_available():
 
     config_path = Path(__file__).resolve().parent.parent.parent / "mcp_servers.json"
     raw = json.loads(config_path.read_text())
-    http_url_servers = {
-        k: v for k, v in raw["servers"].items() if v.get("http_url")
-    }
+    http_url_servers = {k: v for k, v in raw["servers"].items() if v.get("http_url")}
     # At least nmap-scanner, osint-recon, vuln-lookup have http_url
     assert len(http_url_servers) >= 3
 
@@ -113,9 +109,7 @@ async def test_broadcast_global_sends_to_all_operations():
     ws_mgr._connections["op1"] = {mock_ws1}
     ws_mgr._connections["op2"] = {mock_ws2}
 
-    await ws_mgr.broadcast_global(
-        "mcp.server.status", {"server": "s", "connected": True}
-    )
+    await ws_mgr.broadcast_global("mcp.server.status", {"server": "s", "connected": True})
 
     mock_ws1.send_text.assert_awaited_once()
     mock_ws2.send_text.assert_awaited_once()

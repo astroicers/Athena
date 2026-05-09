@@ -18,6 +18,7 @@ import pytest
 async def test_orient_includes_rdp_winrm_creds(seeded_db):
     """Section 7.7 should pick up credential.rdp and credential.winrm facts."""
     from unittest.mock import AsyncMock, MagicMock
+
     from app.services.orient_engine import OrientEngine
 
     # Insert multi-protocol credential facts
@@ -25,7 +26,8 @@ async def test_orient_includes_rdp_winrm_creds(seeded_db):
         await seeded_db.execute(
             "INSERT INTO facts (id, operation_id, source_target_id, trait, value, category, score) "
             "VALUES ($1, 'test-op-1', 'test-target-1', $2, 'admin:pass@10.0.0.1', 'credential', 1)",
-            str(uuid.uuid4()), trait,
+            str(uuid.uuid4()),
+            trait,
         )
 
     ws = MagicMock()

@@ -9,12 +9,14 @@
 # For commercial licensing, contact: azz093093.830330@gmail.com
 
 """Tests for PersistenceEngine."""
+
 import pytest
 
 
 async def test_persistence_probe_disabled_by_default():
     """PERSISTENCE_ENABLED=false 時，probe 直接回傳 {cron: False, systemd: False}，不建立 SSH 連線。"""
     from app.services.persistence_engine import PersistenceEngine
+
     engine = PersistenceEngine()
     result = await engine.probe("/tmp/test_athena.db", "op-1", "tgt-1", "user:pass@10.0.0.1:22")
     assert result == {"cron": False, "systemd": False}
@@ -24,6 +26,7 @@ def test_technique_executors_has_persistence_techniques():
     """MCP attack-executor TECHNIQUE_EXECUTORS should contain persistence techniques."""
     import importlib.util
     from pathlib import Path
+
     server_path = Path(__file__).resolve().parent.parent.parent / "tools" / "attack-executor" / "server.py"
     spec = importlib.util.spec_from_file_location("attack_executor_server", server_path)
     mod = importlib.util.module_from_spec(spec)
@@ -47,6 +50,7 @@ async def test_persistence_probe_enabled_ssh_failure_is_graceful(monkeypatch):
     """PERSISTENCE_ENABLED=true 但 SSH 連線失敗時，probe 應 graceful 回傳 False，不拋出異常。"""
     monkeypatch.setattr("app.config.settings.PERSISTENCE_ENABLED", True)
     from app.services.persistence_engine import PersistenceEngine
+
     engine = PersistenceEngine()
     # 傳入格式正確但無法連線的目標
     result = await engine.probe("/tmp/test_athena.db", "op-1", "tgt-1", "user:pass@127.0.0.1:19999")

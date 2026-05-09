@@ -14,7 +14,7 @@ import logging
 
 import asyncpg
 
-from app.models.enums import AutomationMode, NOISE_POINTS, NoiseLevel, RiskLevel
+from app.models.enums import NOISE_POINTS, AutomationMode, NoiseLevel, RiskLevel
 from app.services.kill_chain_enforcer import KillChainEnforcer
 from app.services.knowledge_base import get_noise_risk_matrix
 from app.services.validation_engine import ValidationEngine
@@ -32,6 +32,7 @@ _RISK_ORDER = {
 # Noise points per noise_level for budget tracking (NR2)
 _NOISE_POINTS = NOISE_POINTS
 
+
 # Noise x Risk decision matrix per mission profile (NR1)
 # True = auto-approvable, False = needs_confirmation, None = needs_manual
 def _build_noise_matrix() -> dict[str, dict[tuple[str, str], bool | None]]:
@@ -39,11 +40,9 @@ def _build_noise_matrix() -> dict[str, dict[tuple[str, str], bool | None]]:
     raw = get_noise_risk_matrix()
     result: dict[str, dict[tuple[str, str], bool | None]] = {}
     for profile, entries in raw.items():
-        result[profile] = {
-            tuple(k.split("_", 1)): v
-            for k, v in entries.items()
-        }
+        result[profile] = {tuple(k.split("_", 1)): v for k, v in entries.items()}
     return result
+
 
 _NOISE_RISK_MATRIX = _build_noise_matrix()
 
@@ -60,7 +59,10 @@ class DecisionEngine:
         self._validation_engine = validation_engine or ValidationEngine()
 
     async def evaluate(
-        self, db: asyncpg.Connection, operation_id: str, recommendation: dict,
+        self,
+        db: asyncpg.Connection,
+        operation_id: str,
+        recommendation: dict,
         constraints=None,
     ) -> dict:
         """
@@ -97,9 +99,7 @@ class DecisionEngine:
         if not selected_option and options:
             selected_option = options[0]
 
-        technique_risk = RiskLevel(
-            (selected_option or {}).get("risk_level", "medium")
-        )
+        technique_risk = RiskLevel((selected_option or {}).get("risk_level", "medium"))
         engine = (selected_option or {}).get("recommended_engine", "ssh")
         mcp_tool = (selected_option or {}).get("mcp_tool")
 
@@ -129,26 +129,28 @@ class DecisionEngine:
 
         # -- SPEC-044: Dynamic Validation before composite confidence --
         validation_result = await self._validation_engine.validate(
-            db, recommendation, operation_id,
+            db,
+            recommendation,
+            operation_id,
         )
         original_confidence = raw_confidence
         raw_confidence = max(
-            0.0, min(1.0, raw_confidence + validation_result.delta),
+            0.0,
+            min(1.0, raw_confidence + validation_result.delta),
         )
         recommendation["confidence"] = raw_confidence
         if validation_result.outcome != "skipped":
             logger.info(
-                "SPEC-044 validation: outcome=%s, delta=%.2f, "
-                "confidence %.2f->%.2f, checks=%s",
-                validation_result.outcome, validation_result.delta,
-                original_confidence, raw_confidence,
+                "SPEC-044 validation: outcome=%s, delta=%.2f, confidence %.2f->%.2f, checks=%s",
+                validation_result.outcome,
+                validation_result.delta,
+                original_confidence,
+                raw_confidence,
                 validation_result.checks,
             )
 
         # -- Composite confidence (SPEC-040) --
-        tactic_id = await self._resolve_tactic_id(
-            db, operation_id, rec_technique_id, target_id
-        )
+        tactic_id = await self._resolve_tactic_id(db, operation_id, rec_technique_id, target_id)
         composite, confidence_breakdown = await self._compute_composite_confidence(
             db, operation_id, rec_technique_id, target_id, raw_confidence, tactic_id
         )
@@ -192,9 +194,7 @@ class DecisionEngine:
         technique_noise = await self._get_technique_noise_level(db, rec_technique_id)
         mission_code = await self._get_mission_code(db, operation_id)
         matrix = _NOISE_RISK_MATRIX.get(mission_code, _NOISE_RISK_MATRIX["SP"])
-        nr_decision = matrix.get(
-            (technique_noise, technique_risk.value), False
-        )
+        nr_decision = matrix.get((technique_noise, technique_risk.value), False)
         noise_points = _NOISE_POINTS.get(technique_noise, _NOISE_POINTS["medium"])
 
         # -- NR2: Noise budget enforcement --
@@ -232,7 +232,9 @@ class DecisionEngine:
         if noise_budget_remaining < noise_points:
             logger.warning(
                 "Noise budget low (%d remaining, technique needs %d) for %s",
-                noise_budget_remaining, noise_points, operation_id,
+                noise_budget_remaining,
+                noise_points,
+                operation_id,
             )
             # Don't block but force confirmation
             nr_decision = False
@@ -285,13 +287,15 @@ class DecisionEngine:
                 # SPEC-047: Skip blocked targets
                 if opt_target in blocked_targets:
                     continue
-                parallel_tasks.append({
-                    "technique_id": opt.get("technique_id"),
-                    "target_id": opt_target,
-                    "engine": opt.get("recommended_engine", "ssh"),
-                    "mcp_tool": opt.get("mcp_tool"),
-                    "risk_level": opt_risk.value,
-                })
+                parallel_tasks.append(
+                    {
+                        "technique_id": opt.get("technique_id"),
+                        "target_id": opt_target,
+                        "engine": opt.get("recommended_engine", "ssh"),
+                        "mcp_tool": opt.get("mcp_tool"),
+                        "risk_level": opt_risk.value,
+                    }
+                )
             # Deduplicate
             seen: set[tuple[str, str]] = set()
             deduped: list[dict] = []
@@ -307,20 +311,17 @@ class DecisionEngine:
             # to provide service.open_port facts for InitialAccessEngine)
             _RECON_TECHNIQUES = {"T1046", "T1018", "T1595"}
             _RECON_DEPENDENT_PREFIXES = ("T1110", "T1078", "T1190")
-            has_recon = any(
-                t["technique_id"] in _RECON_TECHNIQUES for t in parallel_tasks
-            )
+            has_recon = any(t["technique_id"] in _RECON_TECHNIQUES for t in parallel_tasks)
             if has_recon:
                 before_count = len(parallel_tasks)
                 parallel_tasks = [
-                    t for t in parallel_tasks
-                    if not t["technique_id"].startswith(_RECON_DEPENDENT_PREFIXES)
+                    t for t in parallel_tasks if not t["technique_id"].startswith(_RECON_DEPENDENT_PREFIXES)
                 ]
                 removed = before_count - len(parallel_tasks)
                 if removed:
                     logger.warning(
-                        "SPEC-058: removed %d recon-dependent tasks from parallel batch "
-                        "(recon must complete first)", removed,
+                        "SPEC-058: removed %d recon-dependent tasks from parallel batch (recon must complete first)",
+                        removed,
                     )
 
         base = {
@@ -422,8 +423,7 @@ class DecisionEngine:
             "needs_confirmation": True,
             "needs_manual": False,
             "reason": (
-                f"Risk ({technique_risk.value}) exceeds threshold ({risk_threshold})"
-                " -- requires commander approval"
+                f"Risk ({technique_risk.value}) exceeds threshold ({risk_threshold}) -- requires commander approval"
             ),
             "parallel_tasks": [],
         }
@@ -443,25 +443,24 @@ class DecisionEngine:
         raw_confidence = max(0.0, min(1.0, raw_confidence))
 
         hist_rate = await self._get_historical_success_rate(db, technique_id)
-        graph_conf = await self._get_graph_node_confidence(
-            db, operation_id, technique_id, target_id
-        )
+        graph_conf = await self._get_graph_node_confidence(db, operation_id, technique_id, target_id)
         target_score = await self._get_target_state_score(db, target_id)
 
         # SPEC-048: OPSEC confidence factor
         try:
             from app.services.opsec_monitor import (
                 compute_opsec_confidence_factor,
+            )
+            from app.services.opsec_monitor import (
                 compute_status as _opsec_status,
             )
+
             _ost = await _opsec_status(db, operation_id)
             opsec_factor = compute_opsec_confidence_factor(_ost.detection_risk)
         except Exception:
             opsec_factor = 1.0  # graceful degradation
 
-        kc_result = await self._enforcer.evaluate_skip(
-            db, operation_id, tactic_id, target_id
-        )
+        kc_result = await self._enforcer.evaluate_skip(db, operation_id, tactic_id, target_id)
 
         composite = (
             0.25 * raw_confidence
@@ -483,9 +482,7 @@ class DecisionEngine:
         }
         return composite, breakdown
 
-    async def _get_historical_success_rate(
-        self, db: asyncpg.Connection, technique_id: str
-    ) -> float:
+    async def _get_historical_success_rate(self, db: asyncpg.Connection, technique_id: str) -> float:
         """Query success rate from technique_executions for the given technique."""
         row = await db.fetchrow(
             "SELECT COUNT(*) as total, "
@@ -500,8 +497,11 @@ class DecisionEngine:
         return (successes or 0) / total
 
     async def _get_graph_node_confidence(
-        self, db: asyncpg.Connection,
-        operation_id: str, technique_id: str, target_id: str | None,
+        self,
+        db: asyncpg.Connection,
+        operation_id: str,
+        technique_id: str,
+        target_id: str | None,
     ) -> float:
         """Read node confidence from attack_graph_nodes."""
         if not target_id:
@@ -510,33 +510,32 @@ class DecisionEngine:
             "SELECT confidence FROM attack_graph_nodes "
             "WHERE operation_id = $1 AND technique_id = $2 AND target_id = $3 "
             "ORDER BY updated_at DESC LIMIT 1",
-            operation_id, technique_id, target_id,
+            operation_id,
+            technique_id,
+            target_id,
         )
         if not row:
             return 0.5
         return row["confidence"] if isinstance(row, dict) else row[0]
 
     async def _get_target_state_score(
-        self, db: asyncpg.Connection, target_id: str | None,
+        self,
+        db: asyncpg.Connection,
+        target_id: str | None,
     ) -> float:
         """Compute target state score from targets + facts tables."""
         if not target_id:
             return 0.5
         row = await db.fetchrow(
-            "SELECT is_compromised, privilege_level, access_status "
-            "FROM targets WHERE id = $1",
+            "SELECT is_compromised, privilege_level, access_status FROM targets WHERE id = $1",
             target_id,
         )
         if not row:
             return 0.5
 
         is_compromised = row["is_compromised"] if isinstance(row, dict) else row[0]
-        privilege = (
-            (row["privilege_level"] if isinstance(row, dict) else row[1]) or ""
-        )
-        access_status = (
-            (row["access_status"] if isinstance(row, dict) else row[2]) or ""
-        )
+        privilege = (row["privilege_level"] if isinstance(row, dict) else row[1]) or ""
+        access_status = (row["access_status"] if isinstance(row, dict) else row[2]) or ""
 
         score = 0.5
         if is_compromised:
@@ -548,8 +547,7 @@ class DecisionEngine:
 
         # EDR detection from facts table
         edr_row = await db.fetchrow(
-            "SELECT COUNT(*) FROM facts "
-            "WHERE source_target_id = $1 AND trait IN ('host.edr', 'host.av')",
+            "SELECT COUNT(*) FROM facts WHERE source_target_id = $1 AND trait IN ('host.edr', 'host.av')",
             target_id,
         )
         edr_count = edr_row[0] if edr_row else 0
@@ -559,7 +557,9 @@ class DecisionEngine:
         return max(0.0, min(1.0, score))
 
     async def _get_technique_noise_level(
-        self, db: asyncpg.Connection, technique_id: str,
+        self,
+        db: asyncpg.Connection,
+        technique_id: str,
     ) -> str:
         """Look up noise_level from techniques table, default 'medium'."""
         row = await db.fetchrow(
@@ -571,7 +571,9 @@ class DecisionEngine:
         return "medium"
 
     async def _get_mission_code(
-        self, db: asyncpg.Connection, operation_id: str,
+        self,
+        db: asyncpg.Connection,
+        operation_id: str,
     ) -> str:
         """Look up mission_profile from operations table, default 'SP'."""
         row = await db.fetchrow(
@@ -583,8 +585,11 @@ class DecisionEngine:
         return "SP"
 
     async def _resolve_tactic_id(
-        self, db: asyncpg.Connection,
-        operation_id: str, technique_id: str, target_id: str | None,
+        self,
+        db: asyncpg.Connection,
+        operation_id: str,
+        technique_id: str,
+        target_id: str | None,
     ) -> str | None:
         """Resolve tactic_id from attack_graph_nodes, falling back to _RULE_BY_TECHNIQUE."""
         if target_id:
@@ -592,11 +597,14 @@ class DecisionEngine:
                 "SELECT tactic_id FROM attack_graph_nodes "
                 "WHERE operation_id = $1 AND technique_id = $2 AND target_id = $3 "
                 "LIMIT 1",
-                operation_id, technique_id, target_id,
+                operation_id,
+                technique_id,
+                target_id,
             )
             if row:
                 return row["tactic_id"] if isinstance(row, dict) else row[0]
         # Fallback to static rule table
         from app.services.attack_graph_engine import _RULE_BY_TECHNIQUE  # noqa: PLC0415
+
         rule = _RULE_BY_TECHNIQUE.get(technique_id)
         return rule.tactic_id if rule else None

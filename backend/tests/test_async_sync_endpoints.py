@@ -21,7 +21,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # POST /operations/{op_id}/agents/sync → 202 Accepted
 # ---------------------------------------------------------------------------
@@ -76,9 +75,7 @@ async def test_sync_agents_background_broadcasts_synced_on_mock_mode():
     """_sync_agents_background broadcasts agents.synced in MOCK_C2_ENGINE mode."""
     from app.routers.agents import _sync_agents_background
 
-    with patch("app.routers.agents.settings") as mock_settings, \
-         patch("app.routers.agents.ws_manager") as mock_ws:
-
+    with patch("app.routers.agents.settings") as mock_settings, patch("app.routers.agents.ws_manager") as mock_ws:
         mock_settings.MOCK_C2_ENGINE = True
         mock_ws.broadcast = AsyncMock()
 
@@ -102,10 +99,11 @@ async def test_sync_agents_background_broadcasts_sync_failed_on_exception():
     """_sync_agents_background broadcasts agents.sync_failed when C2 client raises."""
     from app.routers.agents import _sync_agents_background
 
-    with patch("app.routers.agents.settings") as mock_settings, \
-         patch("app.routers.agents.ws_manager") as mock_ws, \
-         patch("app.routers.agents.C2EngineClient", create=True) as mock_c2_cls:
-
+    with (
+        patch("app.routers.agents.settings") as mock_settings,
+        patch("app.routers.agents.ws_manager") as mock_ws,
+        patch("app.routers.agents.C2EngineClient", create=True) as mock_c2_cls,
+    ):
         mock_settings.MOCK_C2_ENGINE = False
         mock_settings.C2_ENGINE_URL = "http://fake-c2"
         mock_settings.C2_ENGINE_API_KEY = "fake-key"
@@ -117,9 +115,7 @@ async def test_sync_agents_background_broadcasts_sync_failed_on_exception():
         mock_c2_cls.return_value = mock_client
 
         # Patch the import inside the function
-        with patch.dict("sys.modules", {"app.clients.c2_client": MagicMock(
-            C2EngineClient=mock_c2_cls
-        )}):
+        with patch.dict("sys.modules", {"app.clients.c2_client": MagicMock(C2EngineClient=mock_c2_cls)}):
             await _sync_agents_background("op-fail-1")
 
     mock_ws.broadcast.assert_awaited_once()
@@ -170,9 +166,10 @@ async def test_sync_techniques_background_mock_mode_noop():
     """_sync_techniques_background exits silently in MOCK_C2_ENGINE mode."""
     from app.routers.techniques import _sync_techniques_background
 
-    with patch("app.routers.techniques.settings") as mock_settings, \
-         patch("app.routers.techniques.ws_manager") as mock_ws:
-
+    with (
+        patch("app.routers.techniques.settings") as mock_settings,
+        patch("app.routers.techniques.ws_manager") as mock_ws,
+    ):
         mock_settings.MOCK_C2_ENGINE = True
         mock_ws.broadcast = AsyncMock()
 
@@ -190,19 +187,26 @@ async def test_sync_techniques_background_mock_mode_noop():
 async def test_sync_techniques_background_logs_on_exception(caplog):
     """_sync_techniques_background logs the exception and does not re-raise."""
     import logging
+
     from app.routers.techniques import _sync_techniques_background
 
-    with patch("app.routers.techniques.settings") as mock_settings, \
-         patch("app.routers.techniques.ws_manager") as mock_ws, \
-         patch.dict("sys.modules", {"app.clients.c2_client": MagicMock(
-             C2EngineClient=MagicMock(
-                 return_value=MagicMock(
-                     list_abilities=AsyncMock(side_effect=RuntimeError("C2 engine down")),
-                     aclose=AsyncMock(),
-                 )
-             )
-         )}):
-
+    with (
+        patch("app.routers.techniques.settings") as mock_settings,
+        patch("app.routers.techniques.ws_manager") as mock_ws,
+        patch.dict(
+            "sys.modules",
+            {
+                "app.clients.c2_client": MagicMock(
+                    C2EngineClient=MagicMock(
+                        return_value=MagicMock(
+                            list_abilities=AsyncMock(side_effect=RuntimeError("C2 engine down")),
+                            aclose=AsyncMock(),
+                        )
+                    )
+                )
+            },
+        ),
+    ):
         mock_settings.MOCK_C2_ENGINE = False
         mock_settings.C2_ENGINE_URL = "http://fake"
         mock_settings.C2_ENGINE_API_KEY = "key"
@@ -214,5 +218,4 @@ async def test_sync_techniques_background_logs_on_exception(caplog):
     # Must not have called ws_manager.broadcast (no op_id available)
     mock_ws.broadcast.assert_not_awaited()
     # Must have logged the failure
-    assert any("C2 engine down" in r.message or "background failed" in r.message
-               for r in caplog.records)
+    assert any("C2 engine down" in r.message or "background failed" in r.message for r in caplog.records)

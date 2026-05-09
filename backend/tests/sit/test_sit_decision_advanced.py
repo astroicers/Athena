@@ -3,6 +3,7 @@
 Verifies DecisionEngine.evaluate() with real DB state and various
 automation modes, noise×risk matrix outcomes, and constraint overrides.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -25,15 +26,17 @@ def _recommendation(
         "recommended_technique_id": technique_id,
         "confidence": confidence,
         "reasoning_text": "test",
-        "options": [{
-            "technique_id": technique_id,
-            "technique_name": "Test Technique",
-            "reasoning": "test",
-            "risk_level": risk_level,
-            "recommended_engine": engine,
-            "confidence": confidence,
-            "prerequisites": [],
-        }],
+        "options": [
+            {
+                "technique_id": technique_id,
+                "technique_name": "Test Technique",
+                "reasoning": "test",
+                "risk_level": risk_level,
+                "recommended_engine": engine,
+                "confidence": confidence,
+                "prerequisites": [],
+            }
+        ],
     }
 
 
@@ -44,8 +47,7 @@ async def test_auto_full_bypasses_confidence_floor(sit_services):
 
     # Set operation to auto_full mode
     await db.execute(
-        "UPDATE operations SET automation_mode = 'auto_full', "
-        "risk_threshold = 'medium' WHERE id = 'test-op-1'"
+        "UPDATE operations SET automation_mode = 'auto_full', risk_threshold = 'medium' WHERE id = 'test-op-1'"
     )
 
     rec = _recommendation(confidence=0.3, risk_level="low")
@@ -86,10 +88,7 @@ async def test_manual_mode_never_auto_approves(sit_services):
     """MANUAL mode should always require commander approval, even for low risk."""
     db = sit_services.db
 
-    await db.execute(
-        "UPDATE operations SET automation_mode = 'manual', "
-        "risk_threshold = 'high' WHERE id = 'test-op-1'"
-    )
+    await db.execute("UPDATE operations SET automation_mode = 'manual', risk_threshold = 'high' WHERE id = 'test-op-1'")
 
     rec = _recommendation(risk_level="low", confidence=0.95)
     result = await sit_services.decision.evaluate(db, "test-op-1", rec)
@@ -105,8 +104,7 @@ async def test_blocked_target_rejects_decision(sit_services):
     db = sit_services.db
 
     await db.execute(
-        "UPDATE operations SET automation_mode = 'semi_auto', "
-        "risk_threshold = 'medium' WHERE id = 'test-op-1'"
+        "UPDATE operations SET automation_mode = 'semi_auto', risk_threshold = 'medium' WHERE id = 'test-op-1'"
     )
 
     # Create constraints with blocked target
@@ -117,7 +115,10 @@ async def test_blocked_target_rejects_decision(sit_services):
 
     rec = _recommendation(risk_level="low", confidence=0.9)
     result = await sit_services.decision.evaluate(
-        db, "test-op-1", rec, constraints=constraints,
+        db,
+        "test-op-1",
+        rec,
+        constraints=constraints,
     )
 
     assert result["auto_approved"] is False
@@ -131,12 +132,12 @@ async def test_validation_engine_delta_lowers_confidence(sit_services):
     db = sit_services.db
 
     await db.execute(
-        "UPDATE operations SET automation_mode = 'semi_auto', "
-        "risk_threshold = 'medium' WHERE id = 'test-op-1'"
+        "UPDATE operations SET automation_mode = 'semi_auto', risk_threshold = 'medium' WHERE id = 'test-op-1'"
     )
 
     # Patch ValidationEngine to return a negative delta
     from app.services.validation_engine import ValidationResult
+
     mock_val_result = ValidationResult(
         outcome="failed",
         delta=-0.4,

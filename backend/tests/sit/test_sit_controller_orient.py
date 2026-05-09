@@ -26,7 +26,10 @@ async def _setup_ooda_iteration(db, op_id="test-op-1"):
         "INSERT INTO ooda_iterations "
         "(id, operation_id, iteration_number, phase, started_at, observe_summary) "
         "VALUES ($1, $2, 1, 'orient', $3, $4)",
-        ooda_id, op_id, now, "Test observe summary with 3 intelligence items",
+        ooda_id,
+        op_id,
+        now,
+        "Test observe summary with 3 intelligence items",
     )
     return ooda_id
 
@@ -39,7 +42,9 @@ async def test_orient_produces_recommendation(seeded_db, sit_ws_manager):
     orient = OrientEngine(sit_ws_manager)
 
     rec = await orient.analyze(
-        db, "test-op-1", "Collected 3 intelligence items",
+        db,
+        "test-op-1",
+        "Collected 3 intelligence items",
     )
     assert rec is not None
     assert "recommended_technique_id" in rec
@@ -67,8 +72,7 @@ async def test_recommendation_links_to_iteration(seeded_db, sit_ws_manager):
     assert rec is not None
 
     rec_row = await db.fetchrow(
-        "SELECT ooda_iteration_id FROM recommendations "
-        "WHERE operation_id = $1 ORDER BY created_at DESC LIMIT 1",
+        "SELECT ooda_iteration_id FROM recommendations WHERE operation_id = $1 ORDER BY created_at DESC LIMIT 1",
         "test-op-1",
     )
     assert rec_row["ooda_iteration_id"] == ooda_id
@@ -103,7 +107,9 @@ async def test_orient_receives_attack_graph_summary(seeded_db, sit_ws_manager):
     orient = OrientEngine(sit_ws_manager)
 
     rec = await orient.analyze(
-        db, "test-op-1", "summary",
+        db,
+        "test-op-1",
+        "summary",
         attack_graph_summary="Graph coverage: 60% (3/5 nodes explored)",
     )
     assert rec is not None
@@ -121,15 +127,18 @@ async def test_directive_consumed_by_build_prompt(seeded_db, sit_ws_manager):
     # Insert an unconsumed directive
     dir_id = str(uuid.uuid4())
     await db.execute(
-        "INSERT INTO ooda_directives (id, operation_id, directive, created_at) "
-        "VALUES ($1, $2, $3, $4)",
-        dir_id, "test-op-1", "Focus on lateral movement to DC-02",
+        "INSERT INTO ooda_directives (id, operation_id, directive, created_at) VALUES ($1, $2, $3, $4)",
+        dir_id,
+        "test-op-1",
+        "Focus on lateral movement to DC-02",
         datetime.now(timezone.utc),
     )
 
     orient = OrientEngine(sit_ws_manager)
     system_prompt, user_prompt = await orient._build_prompt(
-        db, "test-op-1", "3 facts collected",
+        db,
+        "test-op-1",
+        "3 facts collected",
     )
     assert "OPERATOR DIRECTIVE" in user_prompt
 

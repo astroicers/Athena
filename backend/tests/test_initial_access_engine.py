@@ -10,15 +10,16 @@
 
 """Unit tests for InitialAccessEngine — SPEC-018 Phase 12 acceptance criteria."""
 
+from unittest.mock import AsyncMock, MagicMock, call, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch, call
 
 from app.services.initial_access_engine import InitialAccessEngine
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_mock_db():
     """Return a fully-mocked asyncpg connection."""
@@ -34,18 +35,18 @@ def make_mock_db():
 # Test 1: SSH in mock mode returns a successful result
 # ---------------------------------------------------------------------------
 
+
 async def test_ssh_mock_returns_success():
     """MOCK_C2_ENGINE=True → success=True, method='ssh_credential', credential='msfadmin:msfadmin'."""
     db = make_mock_db()
 
-    with patch("app.services.initial_access_engine.settings") as mock_settings, \
-         patch("app.services.initial_access_engine.ws_manager.broadcast", new=AsyncMock()):
-
+    with (
+        patch("app.services.initial_access_engine.settings") as mock_settings,
+        patch("app.services.initial_access_engine.ws_manager.broadcast", new=AsyncMock()),
+    ):
         mock_settings.MOCK_C2_ENGINE = True
 
-        result = await InitialAccessEngine().try_ssh_login(
-            db, "op-001", "tgt-001", "192.168.1.100"
-        )
+        result = await InitialAccessEngine().try_ssh_login(db, "op-001", "tgt-001", "192.168.1.100")
 
     assert result.success is True
     assert result.method == "ssh_credential"
@@ -56,6 +57,7 @@ async def test_ssh_mock_returns_success():
 # ---------------------------------------------------------------------------
 # Test 2: SSH in mock mode inserts a credential.ssh fact
 # ---------------------------------------------------------------------------
+
 
 async def test_ssh_mock_writes_credential_fact():
     """MOCK_C2_ENGINE=True → db.execute is called with trait='credential.ssh'."""
@@ -68,33 +70,27 @@ async def test_ssh_mock_writes_credential_fact():
 
     db.execute = AsyncMock(side_effect=capture_execute)
 
-    with patch("app.services.initial_access_engine.settings") as mock_settings, \
-         patch("app.services.initial_access_engine.ws_manager.broadcast", new=AsyncMock()):
-
+    with (
+        patch("app.services.initial_access_engine.settings") as mock_settings,
+        patch("app.services.initial_access_engine.ws_manager.broadcast", new=AsyncMock()),
+    ):
         mock_settings.MOCK_C2_ENGINE = True
 
-        await InitialAccessEngine().try_ssh_login(
-            db, "op-001", "tgt-001", "192.168.1.100"
-        )
+        await InitialAccessEngine().try_ssh_login(db, "op-001", "tgt-001", "192.168.1.100")
 
     # At least one INSERT into facts should contain 'credential.ssh'
-    insert_calls = [
-        (sql, params)
-        for sql, params in captured_calls
-        if "INSERT" in sql and "facts" in sql
-    ]
+    insert_calls = [(sql, params) for sql, params in captured_calls if "INSERT" in sql and "facts" in sql]
     assert len(insert_calls) >= 1, "Expected at least one INSERT INTO facts call"
 
     # The params tuple must contain the trait value 'credential.ssh'
     _, params = insert_calls[0]
-    assert "credential.ssh" in params, (
-        f"'credential.ssh' not found in INSERT params: {params}"
-    )
+    assert "credential.ssh" in params, f"'credential.ssh' not found in INSERT params: {params}"
 
 
 # ---------------------------------------------------------------------------
 # Test 3: SSH in real mode — first credential succeeds
 # ---------------------------------------------------------------------------
+
 
 async def test_ssh_real_success():
     """MOCK_C2_ENGINE=False, asyncssh.connect succeeds for msfadmin:msfadmin."""
@@ -105,20 +101,20 @@ async def test_ssh_real_success():
     mock_conn.__aenter__ = AsyncMock(return_value=mock_conn)
     mock_conn.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("app.services.initial_access_engine.settings") as mock_settings, \
-         patch("app.services.initial_access_engine.ws_manager.broadcast", new=AsyncMock()), \
-         patch.dict("sys.modules", {"asyncssh": MagicMock()}):
-
+    with (
+        patch("app.services.initial_access_engine.settings") as mock_settings,
+        patch("app.services.initial_access_engine.ws_manager.broadcast", new=AsyncMock()),
+        patch.dict("sys.modules", {"asyncssh": MagicMock()}),
+    ):
         mock_settings.MOCK_C2_ENGINE = False
 
         import sys
+
         mock_asyncssh = sys.modules["asyncssh"]
         mock_asyncssh.connect = AsyncMock(return_value=mock_conn)
         mock_asyncssh.Error = Exception
 
-        result = await InitialAccessEngine().try_ssh_login(
-            db, "op-001", "tgt-001", "192.168.1.100"
-        )
+        result = await InitialAccessEngine().try_ssh_login(db, "op-001", "tgt-001", "192.168.1.100")
 
     assert result.success is True
     # First credential attempted is now "vagrant:vagrant" (generic list sorted by likelihood)
@@ -129,17 +125,20 @@ async def test_ssh_real_success():
 # Test 4: SSH in real mode — all credentials fail
 # ---------------------------------------------------------------------------
 
+
 async def test_ssh_real_all_fail():
     """MOCK_C2_ENGINE=False, asyncssh.connect always raises → success=False, method='none'."""
     db = make_mock_db()
 
-    with patch("app.services.initial_access_engine.settings") as mock_settings, \
-         patch("app.services.initial_access_engine.ws_manager.broadcast", new=AsyncMock()), \
-         patch.dict("sys.modules", {"asyncssh": MagicMock()}):
-
+    with (
+        patch("app.services.initial_access_engine.settings") as mock_settings,
+        patch("app.services.initial_access_engine.ws_manager.broadcast", new=AsyncMock()),
+        patch.dict("sys.modules", {"asyncssh": MagicMock()}),
+    ):
         mock_settings.MOCK_C2_ENGINE = False
 
         import sys
+
         mock_asyncssh = sys.modules["asyncssh"]
 
         # Make asyncssh.Error a real exception subclass so except clauses work
@@ -147,13 +146,9 @@ async def test_ssh_real_all_fail():
             pass
 
         mock_asyncssh.Error = FakeAsyncSSHError
-        mock_asyncssh.connect = AsyncMock(
-            side_effect=FakeAsyncSSHError("Connection refused")
-        )
+        mock_asyncssh.connect = AsyncMock(side_effect=FakeAsyncSSHError("Connection refused"))
 
-        result = await InitialAccessEngine().try_ssh_login(
-            db, "op-001", "tgt-001", "192.168.1.100"
-        )
+        result = await InitialAccessEngine().try_ssh_login(db, "op-001", "tgt-001", "192.168.1.100")
 
     assert result.success is False
     assert result.method == "none"
@@ -163,16 +158,19 @@ async def test_ssh_real_all_fail():
 # Test 5: Harvested credentials are loaded and ordered first
 # ---------------------------------------------------------------------------
 
+
 async def test_load_harvested_creds_parses_format():
     """_load_harvested_creds correctly parses 'user:pass@host:port' format."""
     db = AsyncMock()
 
     # Mock fetch with credential rows
-    db.fetch = AsyncMock(return_value=[
-        {"value": "admin:secret@192.168.1.1:22"},
-        {"value": "root:toor@192.168.1.2:22"},
-        {"value": "vagrant:vagrant"},  # without @host:port
-    ])
+    db.fetch = AsyncMock(
+        return_value=[
+            {"value": "admin:secret@192.168.1.1:22"},
+            {"value": "root:toor@192.168.1.2:22"},
+            {"value": "vagrant:vagrant"},  # without @host:port
+        ]
+    )
 
     creds = await InitialAccessEngine()._load_harvested_creds(db, "op-001")
 
@@ -185,10 +183,12 @@ async def test_load_harvested_creds_parses_format():
 async def test_load_harvested_creds_deduplicates():
     """Duplicate credentials are returned only once."""
     db = AsyncMock()
-    db.fetch = AsyncMock(return_value=[
-        {"value": "admin:secret@192.168.1.1:22"},
-        {"value": "admin:secret@192.168.1.2:22"},  # same creds, different host
-    ])
+    db.fetch = AsyncMock(
+        return_value=[
+            {"value": "admin:secret@192.168.1.1:22"},
+            {"value": "admin:secret@192.168.1.2:22"},  # same creds, different host
+        ]
+    )
 
     creds = await InitialAccessEngine()._load_harvested_creds(db, "op-001")
 

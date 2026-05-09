@@ -28,7 +28,6 @@ import pytest
 
 from app.routers import terminal as terminal_module
 
-
 # ---------------------------------------------------------------------------
 # Static analysis of the terminal router source
 # ---------------------------------------------------------------------------

@@ -25,13 +25,12 @@ from app.services.c5isr_mapper import (
     RiskVector,
 )
 
-
 # ---------------------------------------------------------------------------
 #  Helpers
 # ---------------------------------------------------------------------------
 
-def _mock_ws(*, connection_count: int = 0, broadcast_total: int = 0,
-             broadcast_success: int = 0):
+
+def _mock_ws(*, connection_count: int = 0, broadcast_total: int = 0, broadcast_success: int = 0):
     """Create a mock WebSocketManager with configurable counters."""
     ws = MagicMock()
     ws.broadcast = AsyncMock()
@@ -50,13 +49,19 @@ async def _seed_operation(db, *, ooda_count=0, max_iter=20):
         "INSERT INTO operations (id, code, name, codename, strategic_intent, "
         "status, current_ooda_phase, ooda_iteration_count, max_iterations) "
         "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-        OP_ID, "OP-001", "Test", "PHANTOM", "intent", "active", "observe",
-        ooda_count, max_iter,
+        OP_ID,
+        "OP-001",
+        "Test",
+        "PHANTOM",
+        "intent",
+        "active",
+        "observe",
+        ooda_count,
+        max_iter,
     )
 
 
-async def _insert_recommendation(db, *, accepted=None, confidence=0.8,
-                                 created_at=None):
+async def _insert_recommendation(db, *, accepted=None, confidence=0.8, created_at=None):
     rid = str(uuid.uuid4())
     ts = created_at or datetime.now(timezone.utc)
     # Convert integer 0/1 to bool for PG BOOLEAN column
@@ -65,8 +70,15 @@ async def _insert_recommendation(db, *, accepted=None, confidence=0.8,
         "INSERT INTO recommendations (id, operation_id, situation_assessment, "
         "recommended_technique_id, confidence, options, reasoning_text, "
         "accepted, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-        rid, OP_ID, "assess", "T1003.001", confidence, "[]", "reason",
-        accepted_bool, ts,
+        rid,
+        OP_ID,
+        "assess",
+        "T1003.001",
+        confidence,
+        "[]",
+        "reason",
+        accepted_bool,
+        ts,
     )
 
 
@@ -74,9 +86,11 @@ async def _insert_directive(db, *, consumed=False):
     did = str(uuid.uuid4())
     consumed_at = datetime.now(timezone.utc) if consumed else None
     await db.execute(
-        "INSERT INTO ooda_directives (id, operation_id, directive, consumed_at) "
-        "VALUES ($1, $2, $3, $4)",
-        did, OP_ID, "test directive", consumed_at,
+        "INSERT INTO ooda_directives (id, operation_id, directive, consumed_at) VALUES ($1, $2, $3, $4)",
+        did,
+        OP_ID,
+        "test directive",
+        consumed_at,
     )
 
 
@@ -84,45 +98,59 @@ async def _insert_agent(db, *, status="alive", last_beacon=None):
     aid = str(uuid.uuid4())
     paw = f"paw-{aid[:8]}"
     await db.execute(
-        "INSERT INTO agents (id, paw, status, last_beacon, operation_id) "
-        "VALUES ($1, $2, $3, $4, $5)",
-        aid, paw, status, last_beacon, OP_ID,
+        "INSERT INTO agents (id, paw, status, last_beacon, operation_id) VALUES ($1, $2, $3, $4, $5)",
+        aid,
+        paw,
+        status,
+        last_beacon,
+        OP_ID,
     )
 
 
-async def _insert_target(db, *, compromised=False, privilege="User",
-                         access_status="unknown"):
+async def _insert_target(db, *, compromised=False, privilege="User", access_status="unknown"):
     tid = str(uuid.uuid4())
     await db.execute(
         "INSERT INTO targets (id, hostname, ip_address, role, is_compromised, "
         "privilege_level, access_status, operation_id) "
         "VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-        tid, f"host-{tid[:6]}", f"10.0.0.{hash(tid) % 255}", "target",
-        compromised, privilege, access_status, OP_ID,
+        tid,
+        f"host-{tid[:6]}",
+        f"10.0.0.{hash(tid) % 255}",
+        "target",
+        compromised,
+        privilege,
+        access_status,
+        OP_ID,
     )
     return tid
 
 
-async def _insert_technique(db, *, mitre_id="T1003.001", tactic="Credential Access",
-                            kill_chain="exploit"):
+async def _insert_technique(db, *, mitre_id="T1003.001", tactic="Credential Access", kill_chain="exploit"):
     """Insert or ignore a technique row."""
     await db.execute(
         "INSERT INTO techniques (id, mitre_id, name, tactic, tactic_id, "
         "kill_chain_stage) VALUES ($1, $2, $3, $4, $5, $6) "
         "ON CONFLICT DO NOTHING",
-        f"tech-{mitre_id}", mitre_id, f"Tech {mitre_id}", tactic,
-        "TA0006", kill_chain,
+        f"tech-{mitre_id}",
+        mitre_id,
+        f"Tech {mitre_id}",
+        tactic,
+        "TA0006",
+        kill_chain,
     )
 
 
-async def _insert_execution(db, *, technique_id="T1003.001", status="success",
-                            created_at=None):
+async def _insert_execution(db, *, technique_id="T1003.001", status="success", created_at=None):
     eid = str(uuid.uuid4())
     ts = created_at or datetime.now(timezone.utc)
     await db.execute(
         "INSERT INTO technique_executions (id, technique_id, operation_id, "
         "status, created_at) VALUES ($1, $2, $3, $4, $5)",
-        eid, technique_id, OP_ID, status, ts,
+        eid,
+        technique_id,
+        OP_ID,
+        status,
+        ts,
     )
 
 
@@ -130,9 +158,12 @@ async def _insert_fact(db, *, category="host", trait="os.version"):
     fid = str(uuid.uuid4())
     # Use unique value per fact to avoid idx_facts_dedup constraint
     await db.execute(
-        "INSERT INTO facts (id, trait, value, category, operation_id) "
-        "VALUES ($1, $2, $3, $4, $5)",
-        fid, trait, f"value-{fid[:8]}", category, OP_ID,
+        "INSERT INTO facts (id, trait, value, category, operation_id) VALUES ($1, $2, $3, $4, $5)",
+        fid,
+        trait,
+        f"value-{fid[:8]}",
+        category,
+        OP_ID,
     )
 
 
@@ -141,22 +172,30 @@ async def _insert_attack_graph_node(db, *, status="unreachable"):
     await db.execute(
         "INSERT INTO attack_graph_nodes (id, operation_id, technique_id, "
         "tactic_id, status) VALUES ($1, $2, $3, $4, $5)",
-        nid, OP_ID, "T1003.001", "TA0006", status,
+        nid,
+        OP_ID,
+        "T1003.001",
+        "TA0006",
+        status,
     )
 
 
 async def _insert_tool(db, *, enabled=True):
     tid = str(uuid.uuid4())
     await db.execute(
-        "INSERT INTO tool_registry (id, tool_id, name, kind, enabled) "
-        "VALUES ($1, $2, $3, $4, $5)",
-        tid, f"tool-{tid[:6]}", f"Tool {tid[:6]}", "tool", enabled,
+        "INSERT INTO tool_registry (id, tool_id, name, kind, enabled) VALUES ($1, $2, $3, $4, $5)",
+        tid,
+        f"tool-{tid[:6]}",
+        f"Tool {tid[:6]}",
+        "tool",
+        enabled,
     )
 
 
 # ===========================================================================
 #  DomainReport serialization
 # ===========================================================================
+
 
 class TestDomainReportSerialization:
     def test_to_json_from_json_roundtrip(self):
@@ -207,6 +246,7 @@ class TestDomainReportSerialization:
 #  _build_command_report
 # ===========================================================================
 
+
 class TestBuildCommandReport:
     @pytest.mark.asyncio
     async def test_normal_data(self, tmp_db):
@@ -252,7 +292,7 @@ class TestBuildCommandReport:
         """Stall penalty: old recommendations reduce decision_throughput."""
         await _seed_operation(tmp_db, ooda_count=5, max_iter=20)
         # Insert old recommendations (well beyond stall threshold)
-        old_time = (datetime.now(timezone.utc) - timedelta(hours=1))
+        old_time = datetime.now(timezone.utc) - timedelta(hours=1)
         await _insert_recommendation(tmp_db, accepted=1, created_at=old_time)
         await _insert_recommendation(tmp_db, accepted=1, created_at=old_time)
         await _insert_recommendation(tmp_db, accepted=1, created_at=old_time)
@@ -267,6 +307,7 @@ class TestBuildCommandReport:
 # ===========================================================================
 #  _build_control_report
 # ===========================================================================
+
 
 class TestBuildControlReport:
     @pytest.mark.asyncio
@@ -301,7 +342,7 @@ class TestBuildControlReport:
     @pytest.mark.asyncio
     async def test_stale_beacon_penalty(self, tmp_db):
         await _seed_operation(tmp_db)
-        old_beacon = (datetime.now(timezone.utc) - timedelta(minutes=10))
+        old_beacon = datetime.now(timezone.utc) - timedelta(minutes=10)
         await _insert_agent(tmp_db, status="alive", last_beacon=old_beacon)
 
         mapper = C5ISRMapper(_mock_ws())
@@ -314,6 +355,7 @@ class TestBuildControlReport:
 # ===========================================================================
 #  _build_comms_report
 # ===========================================================================
+
 
 class TestBuildCommsReport:
     @pytest.mark.asyncio
@@ -364,6 +406,7 @@ class TestBuildCommsReport:
 # ===========================================================================
 #  _build_computers_report
 # ===========================================================================
+
 
 class TestBuildComputersReport:
     @pytest.mark.asyncio
@@ -416,6 +459,7 @@ class TestBuildComputersReport:
 #  _build_cyber_report
 # ===========================================================================
 
+
 class TestBuildCyberReport:
     @pytest.mark.asyncio
     async def test_normal(self, tmp_db):
@@ -453,7 +497,7 @@ class TestBuildCyberReport:
         await _seed_operation(tmp_db)
         await _insert_technique(tmp_db, mitre_id="T1003.001")
         # 10 old successes
-        old_time = (datetime.now(timezone.utc) - timedelta(hours=1))
+        old_time = datetime.now(timezone.utc) - timedelta(hours=1)
         for _ in range(10):
             await _insert_execution(tmp_db, status="success", created_at=old_time)
         # 5 recent failures
@@ -473,6 +517,7 @@ class TestBuildCyberReport:
 # ===========================================================================
 #  _build_isr_report
 # ===========================================================================
+
 
 class TestBuildISRReport:
     @pytest.mark.asyncio
@@ -529,6 +574,7 @@ class TestBuildISRReport:
 #  Full update() integration
 # ===========================================================================
 
+
 class TestC5ISRMapperUpdate:
     @pytest.mark.asyncio
     async def test_full_update_produces_six_reports(self, tmp_db):
@@ -537,8 +583,7 @@ class TestC5ISRMapperUpdate:
         await _insert_recommendation(tmp_db, accepted=1, confidence=0.75)
         beacon = datetime.now(timezone.utc)
         await _insert_agent(tmp_db, status="alive", last_beacon=beacon)
-        await _insert_target(tmp_db, compromised=True, privilege="Root",
-                            access_status="active")
+        await _insert_target(tmp_db, compromised=True, privilege="Root", access_status="active")
         await _insert_technique(tmp_db, mitre_id="T1003.001")
         await _insert_execution(tmp_db, status="success")
         await _insert_fact(tmp_db, category="host")
@@ -562,9 +607,7 @@ class TestC5ISRMapperUpdate:
             assert len(report["metrics"]) >= 2
             assert isinstance(report["health_pct"], float)
             # health_pct matches weighted sum
-            expected_h = round(
-                sum(m["value"] * m["weight"] for m in report["metrics"]), 1
-            )
+            expected_h = round(sum(m["value"] * m["weight"] for m in report["metrics"]), 1)
             assert abs(report["health_pct"] - expected_h) <= 0.1
 
         # Verify broadcast was called

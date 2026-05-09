@@ -14,7 +14,6 @@ import logging
 from typing import Any
 
 # Force scheduler logs to WARNING so they survive uvicorn's default level filter
-
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.config import settings
@@ -85,7 +84,8 @@ async def start_auto_loop(
             if isinstance(result, dict) and result.get("status") == "halted":
                 logger.error(
                     "OODA auto-cycle halted for operation %s (reason=%s) -- stopping auto loop",
-                    operation_id, result.get("reason"),
+                    operation_id,
+                    result.get("reason"),
                 )
                 await stop_auto_loop(operation_id)
                 return

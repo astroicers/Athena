@@ -7,14 +7,13 @@
 # Unauthorized copying or distribution is prohibited.
 
 """Router tests for agent endpoints:
-    GET  /api/operations/{op_id}/agents
-    POST /api/operations/{op_id}/agents/sync
+GET  /api/operations/{op_id}/agents
+POST /api/operations/{op_id}/agents/sync
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # GET /api/operations/{op_id}/agents -> 200

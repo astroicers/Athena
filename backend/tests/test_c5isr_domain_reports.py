@@ -36,13 +36,12 @@ from app.services.c5isr_mapper import (
 )
 from app.ws_manager import WebSocketManager
 
-
 # ---------------------------------------------------------------------------
 #  Helpers
 # ---------------------------------------------------------------------------
 
-def _mock_ws(*, connection_count: int = 0, broadcast_total: int = 0,
-             broadcast_success: int = 0):
+
+def _mock_ws(*, connection_count: int = 0, broadcast_total: int = 0, broadcast_success: int = 0):
     """Create a mock WebSocketManager with configurable counters."""
     ws = MagicMock()
     ws.broadcast = AsyncMock()
@@ -61,13 +60,19 @@ async def _seed_operation(db, *, ooda_count=0, max_iter=20):
         "INSERT INTO operations (id, code, name, codename, strategic_intent, "
         "status, current_ooda_phase, ooda_iteration_count, max_iterations) "
         "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-        OP_ID, "OP-DR-001", "DomainReportTest", "PHANTOM-DR", "intent",
-        "active", "observe", ooda_count, max_iter,
+        OP_ID,
+        "OP-DR-001",
+        "DomainReportTest",
+        "PHANTOM-DR",
+        "intent",
+        "active",
+        "observe",
+        ooda_count,
+        max_iter,
     )
 
 
-async def _insert_recommendation(db, *, accepted=None, confidence=0.8,
-                                 created_at=None):
+async def _insert_recommendation(db, *, accepted=None, confidence=0.8, created_at=None):
     rid = str(uuid.uuid4())
     ts = created_at or datetime.now(timezone.utc)
     accepted_bool = bool(accepted) if accepted is not None else None
@@ -75,8 +80,15 @@ async def _insert_recommendation(db, *, accepted=None, confidence=0.8,
         "INSERT INTO recommendations (id, operation_id, situation_assessment, "
         "recommended_technique_id, confidence, options, reasoning_text, "
         "accepted, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-        rid, OP_ID, "assess", "T1003.001", confidence, "[]", "reason",
-        accepted_bool, ts,
+        rid,
+        OP_ID,
+        "assess",
+        "T1003.001",
+        confidence,
+        "[]",
+        "reason",
+        accepted_bool,
+        ts,
     )
 
 
@@ -84,9 +96,11 @@ async def _insert_directive(db, *, consumed=False):
     did = str(uuid.uuid4())
     consumed_at = datetime.now(timezone.utc) if consumed else None
     await db.execute(
-        "INSERT INTO ooda_directives (id, operation_id, directive, consumed_at) "
-        "VALUES ($1, $2, $3, $4)",
-        did, OP_ID, "test directive", consumed_at,
+        "INSERT INTO ooda_directives (id, operation_id, directive, consumed_at) VALUES ($1, $2, $3, $4)",
+        did,
+        OP_ID,
+        "test directive",
+        consumed_at,
     )
 
 
@@ -94,45 +108,59 @@ async def _insert_agent(db, *, status="alive", last_beacon=None):
     aid = str(uuid.uuid4())
     paw = f"paw-{aid[:8]}"
     await db.execute(
-        "INSERT INTO agents (id, paw, status, last_beacon, operation_id) "
-        "VALUES ($1, $2, $3, $4, $5)",
-        aid, paw, status, last_beacon, OP_ID,
+        "INSERT INTO agents (id, paw, status, last_beacon, operation_id) VALUES ($1, $2, $3, $4, $5)",
+        aid,
+        paw,
+        status,
+        last_beacon,
+        OP_ID,
     )
 
 
-async def _insert_target(db, *, compromised=False, privilege="User",
-                         access_status="unknown"):
+async def _insert_target(db, *, compromised=False, privilege="User", access_status="unknown"):
     tid = str(uuid.uuid4())
     await db.execute(
         "INSERT INTO targets (id, hostname, ip_address, role, is_compromised, "
         "privilege_level, access_status, operation_id) "
         "VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-        tid, f"host-{tid[:6]}", f"10.0.0.{hash(tid) % 255}", "target",
-        compromised, privilege, access_status, OP_ID,
+        tid,
+        f"host-{tid[:6]}",
+        f"10.0.0.{hash(tid) % 255}",
+        "target",
+        compromised,
+        privilege,
+        access_status,
+        OP_ID,
     )
     return tid
 
 
-async def _insert_technique(db, *, mitre_id="T1003.001",
-                            tactic="Credential Access", kill_chain="exploit"):
+async def _insert_technique(db, *, mitre_id="T1003.001", tactic="Credential Access", kill_chain="exploit"):
     """Insert or ignore a technique row."""
     await db.execute(
         "INSERT INTO techniques (id, mitre_id, name, tactic, tactic_id, "
         "kill_chain_stage) VALUES ($1, $2, $3, $4, $5, $6) "
         "ON CONFLICT DO NOTHING",
-        f"tech-{mitre_id}", mitre_id, f"Tech {mitre_id}", tactic,
-        "TA0006", kill_chain,
+        f"tech-{mitre_id}",
+        mitre_id,
+        f"Tech {mitre_id}",
+        tactic,
+        "TA0006",
+        kill_chain,
     )
 
 
-async def _insert_execution(db, *, technique_id="T1003.001", status="success",
-                            created_at=None):
+async def _insert_execution(db, *, technique_id="T1003.001", status="success", created_at=None):
     eid = str(uuid.uuid4())
     ts = created_at or datetime.now(timezone.utc)
     await db.execute(
         "INSERT INTO technique_executions (id, technique_id, operation_id, "
         "status, created_at) VALUES ($1, $2, $3, $4, $5)",
-        eid, technique_id, OP_ID, status, ts,
+        eid,
+        technique_id,
+        OP_ID,
+        status,
+        ts,
     )
 
 
@@ -140,9 +168,12 @@ async def _insert_fact(db, *, category="host", trait="os.version"):
     fid = str(uuid.uuid4())
     # Use unique value per fact to avoid idx_facts_dedup constraint
     await db.execute(
-        "INSERT INTO facts (id, trait, value, category, operation_id) "
-        "VALUES ($1, $2, $3, $4, $5)",
-        fid, trait, f"value-{fid[:8]}", category, OP_ID,
+        "INSERT INTO facts (id, trait, value, category, operation_id) VALUES ($1, $2, $3, $4, $5)",
+        fid,
+        trait,
+        f"value-{fid[:8]}",
+        category,
+        OP_ID,
     )
 
 
@@ -151,22 +182,30 @@ async def _insert_attack_graph_node(db, *, status="unreachable"):
     await db.execute(
         "INSERT INTO attack_graph_nodes (id, operation_id, technique_id, "
         "tactic_id, status) VALUES ($1, $2, $3, $4, $5)",
-        nid, OP_ID, "T1003.001", "TA0006", status,
+        nid,
+        OP_ID,
+        "T1003.001",
+        "TA0006",
+        status,
     )
 
 
 async def _insert_tool(db, *, enabled=True):
     tid = str(uuid.uuid4())
     await db.execute(
-        "INSERT INTO tool_registry (id, tool_id, name, kind, enabled) "
-        "VALUES ($1, $2, $3, $4, $5)",
-        tid, f"tool-{tid[:6]}", f"Tool {tid[:6]}", "tool", enabled,
+        "INSERT INTO tool_registry (id, tool_id, name, kind, enabled) VALUES ($1, $2, $3, $4, $5)",
+        tid,
+        f"tool-{tid[:6]}",
+        f"Tool {tid[:6]}",
+        "tool",
+        enabled,
     )
 
 
 # ===========================================================================
 #  Phase 1: DomainReport serialization
 # ===========================================================================
+
 
 class TestDomainReportJsonRoundTrip:
     """test_domain_report_to_json_round_trip (SPEC-038 Phase 4)."""
@@ -257,6 +296,7 @@ class TestDomainReportFromJsonCorrupted:
 #  Phase 1: _build_command_report
 # ===========================================================================
 
+
 class TestBuildCommandReportNormal:
     """test_build_command_report_normal (SPEC-038 Phase 4)."""
 
@@ -296,9 +336,7 @@ class TestBuildCommandReportNormal:
         assert report.metrics[2].weight == 0.25
 
         # health_pct is weighted sum
-        expected_health = round(
-            sum(m.value * m.weight for m in report.metrics), 1
-        )
+        expected_health = round(sum(m.value * m.weight for m in report.metrics), 1)
         assert abs(report.health_pct - expected_health) <= 0.1
 
 
@@ -365,6 +403,7 @@ class TestCommandNoAutoInflate:
 #  Phase 1: _build_control_report
 # ===========================================================================
 
+
 class TestBuildControlReportNormal:
     """test_build_control_report_normal (SPEC-038 Phase 4)."""
 
@@ -422,6 +461,7 @@ class TestBuildControlReportNormal:
 # ===========================================================================
 #  Phase 1: health_pct weighted formula accuracy
 # ===========================================================================
+
 
 class TestHealthPctWeightedFormula:
     """test_health_pct_weighted_formula (SPEC-038 Phase 4).
@@ -492,8 +532,7 @@ class TestHealthPctWeightedFormula:
     async def test_health_pct_weighted_formula_cyber(self, tmp_db):
         """Cyber domain health_pct matches weighted sum within 0.1."""
         await _seed_operation(tmp_db)
-        await _insert_technique(tmp_db, mitre_id="T1595",
-                                tactic="Reconnaissance")
+        await _insert_technique(tmp_db, mitre_id="T1595", tactic="Reconnaissance")
         await _insert_execution(tmp_db, technique_id="T1595", status="success")
         await _insert_execution(tmp_db, technique_id="T1595", status="failed")
 
@@ -523,6 +562,7 @@ class TestHealthPctWeightedFormula:
 # ===========================================================================
 #  Phase 2: ws_manager broadcast counters
 # ===========================================================================
+
 
 class TestWsManagerBroadcastCounters:
     """test_ws_manager_broadcast_counters (SPEC-038 Phase 4).

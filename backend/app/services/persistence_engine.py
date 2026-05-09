@@ -17,6 +17,7 @@
 設計原則：graceful fallback — 任何失敗都不影響主流程。
 PERSISTENCE_ENABLED=false（預設）時直接回傳 False，不建立 SSH 連線。
 """
+
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -68,8 +69,11 @@ class PersistenceEngine:
                 conn_kwargs = {"password": password}
 
             async with asyncssh.connect(
-                host, port=port, username=username,
-                known_hosts=None, connect_timeout=10,
+                host,
+                port=port,
+                username=username,
+                known_hosts=None,
+                connect_timeout=10,
                 **conn_kwargs,
             ) as conn:
                 cron_result = await conn.run(_PROBE_CRON, timeout=10)
@@ -91,6 +95,11 @@ class PersistenceEngine:
                             "INSERT INTO facts "
                             "(id, operation_id, source_target_id, trait, value, category, score, collected_at) "
                             "VALUES ($1, $2, $3, $4, $5, 'host', 1, $6) ON CONFLICT DO NOTHING",
-                            str(uuid.uuid4()), operation_id, target_id, "host.persistence", key, now,
+                            str(uuid.uuid4()),
+                            operation_id,
+                            target_id,
+                            "host.persistence",
+                            key,
+                            now,
                         )
         return results

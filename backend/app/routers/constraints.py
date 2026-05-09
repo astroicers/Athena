@@ -34,7 +34,8 @@ async def get_constraints(
     await ensure_operation(db, operation_id)
     # Get mission profile
     row = await db.fetchrow(
-        "SELECT mission_profile FROM operations WHERE id = $1", operation_id,
+        "SELECT mission_profile FROM operations WHERE id = $1",
+        operation_id,
     )
     mission_code = row["mission_profile"] if row and row["mission_profile"] else "SP"
     constraints = await constraint_engine.evaluate(db, operation_id, mission_code)
@@ -62,7 +63,9 @@ async def override_constraint(
     await db.execute(
         """INSERT INTO event_store (id, operation_id, event_type, payload, actor)
            VALUES ($1, $2, 'constraint.override', $3, 'commander')""",
-        event_id, operation_id, json.dumps({"domain": body.domain}),
+        event_id,
+        operation_id,
+        json.dumps({"domain": body.domain}),
     )
 
     return {

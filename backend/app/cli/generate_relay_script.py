@@ -40,7 +40,6 @@ from datetime import datetime, timezone
 
 from app.config import settings
 
-
 # The template uses shell ${...} variable expansions which must be
 # doubled as `${{` / `}}` inside a Python ``.format`` call. Using a
 # plain format here is simpler than Jinja and keeps the CLI module

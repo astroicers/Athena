@@ -16,7 +16,8 @@ async def _setup_operation(db, op_id):
     await db.execute(
         "INSERT INTO operations (id, code, name, codename, strategic_intent, mission_profile) "
         "VALUES ($1, $2, 'Test', 'TEST', 'test', 'SP') ON CONFLICT DO NOTHING",
-        op_id, f"OP-{op_id[:8]}",
+        op_id,
+        f"OP-{op_id[:8]}",
     )
 
 
@@ -26,7 +27,11 @@ async def _set_c5isr(db, op_id, domain, health_pct, status="operational"):
         "INSERT INTO c5isr_statuses (id, operation_id, domain, health_pct, status) "
         "VALUES ($1, $2, $3, $4, $5) "
         "ON CONFLICT DO NOTHING",
-        cid, op_id, domain, health_pct, status,
+        cid,
+        op_id,
+        domain,
+        health_pct,
+        status,
     )
 
 
@@ -35,7 +40,9 @@ async def _add_override(db, op_id, domain):
     await db.execute(
         "INSERT INTO event_store (id, operation_id, event_type, payload, actor) "
         "VALUES ($1, $2, 'constraint.override', $3, 'commander')",
-        eid, op_id, json.dumps({"domain": domain}),
+        eid,
+        op_id,
+        json.dumps({"domain": domain}),
     )
 
 
@@ -149,8 +156,8 @@ class TestConstraintEngineEvaluate:
         op_id = str(uuid.uuid4())
         await _setup_operation(tmp_db, op_id)
         await _set_c5isr(tmp_db, op_id, "command", 10.0)  # CRITICAL
-        await _set_c5isr(tmp_db, op_id, "cyber", 10.0)    # CRITICAL
-        await _set_c5isr(tmp_db, op_id, "isr", 40.0)      # WARNING for SP
+        await _set_c5isr(tmp_db, op_id, "cyber", 10.0)  # CRITICAL
+        await _set_c5isr(tmp_db, op_id, "isr", 40.0)  # WARNING for SP
 
         constraints = await evaluate(tmp_db, op_id, "SP")
         assert constraints.orient_max_options == 1  # command critical
@@ -207,11 +214,16 @@ class TestC5ISRHistoryRecording:
         await tmp_db.execute(
             "INSERT INTO c5isr_status_history (id, operation_id, domain, health_pct, status) "
             "VALUES ($1, $2, $3, $4, $5)",
-            hist_id, op_id, "command", 85.0, "operational",
+            hist_id,
+            op_id,
+            "command",
+            85.0,
+            "operational",
         )
 
         row = await tmp_db.fetchrow(
-            "SELECT * FROM c5isr_status_history WHERE id = $1", hist_id,
+            "SELECT * FROM c5isr_status_history WHERE id = $1",
+            hist_id,
         )
         assert row is not None
         assert abs(row["health_pct"] - 85.0) < 0.01

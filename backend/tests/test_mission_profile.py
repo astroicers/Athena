@@ -5,17 +5,17 @@
 
 """Tests for SPEC-046: Mission Profile & Technique Noise/Risk Tagging."""
 
-import pytest
 from unittest.mock import AsyncMock
 
+import pytest
+
 from app.services.mission_profile_loader import (
-    get_profile,
-    get_all_profiles,
-    noise_allowed,
     NOISE_RANKS,
     VALID_PROFILE_CODES,
+    get_all_profiles,
+    get_profile,
+    noise_allowed,
 )
-
 
 # ---------------------------------------------------------------------------
 # MissionProfileLoader tests (unit — no DB)
@@ -109,11 +109,13 @@ class TestOrientNoiseFiltering:
 
         db = AsyncMock()
         # Mock: technique noise lookups
-        db.fetch = AsyncMock(return_value=[
-            {"mitre_id": "T1003.001", "noise_level": "medium"},
-            {"mitre_id": "T1046", "noise_level": "high"},
-            {"mitre_id": "T1087", "noise_level": "low"},
-        ])
+        db.fetch = AsyncMock(
+            return_value=[
+                {"mitre_id": "T1003.001", "noise_level": "medium"},
+                {"mitre_id": "T1046", "noise_level": "high"},
+                {"mitre_id": "T1087", "noise_level": "low"},
+            ]
+        )
 
         parsed = {
             "situation_assessment": "test",
@@ -165,11 +167,13 @@ class TestOrientNoiseFiltering:
         engine = OrientEngine(ws)
 
         db = AsyncMock()
-        db.fetch = AsyncMock(return_value=[
-            {"mitre_id": "T1595.001", "noise_level": "low"},
-            {"mitre_id": "T1003.001", "noise_level": "medium"},
-            {"mitre_id": "T1046", "noise_level": "high"},
-        ])
+        db.fetch = AsyncMock(
+            return_value=[
+                {"mitre_id": "T1595.001", "noise_level": "low"},
+                {"mitre_id": "T1003.001", "noise_level": "medium"},
+                {"mitre_id": "T1046", "noise_level": "high"},
+            ]
+        )
 
         parsed = {
             "situation_assessment": "test",
@@ -196,10 +200,12 @@ class TestOrientNoiseFiltering:
         engine = OrientEngine(ws)
 
         db = AsyncMock()
-        db.fetch = AsyncMock(return_value=[
-            {"mitre_id": "T1046", "noise_level": "high"},
-            {"mitre_id": "T1110", "noise_level": "high"},
-        ])
+        db.fetch = AsyncMock(
+            return_value=[
+                {"mitre_id": "T1046", "noise_level": "high"},
+                {"mitre_id": "T1110", "noise_level": "high"},
+            ]
+        )
 
         parsed = {
             "situation_assessment": "test",
@@ -235,7 +241,14 @@ async def test_create_operation_with_mission_profile(tmp_db):
         "(id, code, name, codename, strategic_intent, mission_profile, status, "
         "current_ooda_phase, created_at, updated_at) "
         "VALUES ($1, $2, $3, $4, $5, $6, 'planning', 'observe', $7, $8)",
-        op_id, "OP-TEST", "Test", "PHANTOM", "test intent", "CO", now, now,
+        op_id,
+        "OP-TEST",
+        "Test",
+        "PHANTOM",
+        "test intent",
+        "CO",
+        now,
+        now,
     )
 
     row = await tmp_db.fetchrow("SELECT mission_profile FROM operations WHERE id = $1", op_id)
@@ -255,7 +268,13 @@ async def test_operation_default_mission_profile(tmp_db):
         "(id, code, name, codename, strategic_intent, status, "
         "current_ooda_phase, created_at, updated_at) "
         "VALUES ($1, $2, $3, $4, $5, 'planning', 'observe', $6, $7)",
-        op_id, "OP-TEST", "Test", "PHANTOM", "test intent", now, now,
+        op_id,
+        "OP-TEST",
+        "Test",
+        "PHANTOM",
+        "test intent",
+        now,
+        now,
     )
 
     row = await tmp_db.fetchrow("SELECT mission_profile FROM operations WHERE id = $1", op_id)
@@ -271,7 +290,8 @@ async def test_technique_noise_level_column(tmp_db):
     await tmp_db.execute(
         "INSERT INTO techniques (id, mitre_id, name, tactic, tactic_id, risk_level) "
         "VALUES ($1, $2, 'Test Tech', 'Discovery', 'TA0007', 'low')",
-        tech_id, "T9999",
+        tech_id,
+        "T9999",
     )
 
     row = await tmp_db.fetchrow("SELECT noise_level FROM techniques WHERE id = $1", tech_id)
@@ -287,7 +307,8 @@ async def test_technique_noise_level_explicit(tmp_db):
     await tmp_db.execute(
         "INSERT INTO techniques (id, mitre_id, name, tactic, tactic_id, risk_level, noise_level) "
         "VALUES ($1, $2, 'Noisy Scan', 'Discovery', 'TA0007', 'low', 'high')",
-        tech_id, "T9998",
+        tech_id,
+        "T9998",
     )
 
     row = await tmp_db.fetchrow("SELECT noise_level FROM techniques WHERE id = $1", tech_id)

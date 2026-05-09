@@ -14,10 +14,10 @@ import json
 
 from httpx import AsyncClient
 
-
 # ---------------------------------------------------------------------------
 # GET /api/operations/{id}/dashboard
 # ---------------------------------------------------------------------------
+
 
 async def test_get_dashboard(client: AsyncClient, seeded_db):
     """GET /api/operations/{op_id}/dashboard returns 200 with aggregated data."""
@@ -100,11 +100,10 @@ async def test_dashboard_recent_executions(client: AsyncClient, seeded_db):
 # GET /api/operations/{id}/targets/{target_id}/kill-chain
 # ---------------------------------------------------------------------------
 
+
 async def test_get_kill_chain(client: AsyncClient, seeded_db):
     """GET /api/operations/{op_id}/targets/{target_id}/kill-chain returns 200."""
-    resp = await client.get(
-        "/api/operations/test-op-1/targets/test-target-1/kill-chain"
-    )
+    resp = await client.get("/api/operations/test-op-1/targets/test-target-1/kill-chain")
     assert resp.status_code == 200
     data = resp.json()
     assert isinstance(data, list)
@@ -117,17 +116,13 @@ async def test_get_kill_chain(client: AsyncClient, seeded_db):
 
 async def test_get_kill_chain_bad_operation(client: AsyncClient):
     """GET kill-chain with nonexistent operation returns 404."""
-    resp = await client.get(
-        "/api/operations/nonexistent-op-id/targets/test-target-1/kill-chain"
-    )
+    resp = await client.get("/api/operations/nonexistent-op-id/targets/test-target-1/kill-chain")
     assert resp.status_code == 404
 
 
 async def test_get_kill_chain_no_target_data(client: AsyncClient, seeded_db):
     """GET kill-chain for target with no graph nodes returns empty list."""
-    resp = await client.get(
-        "/api/operations/test-op-1/targets/nonexistent-target/kill-chain"
-    )
+    resp = await client.get("/api/operations/test-op-1/targets/nonexistent-target/kill-chain")
     assert resp.status_code == 200
     data = resp.json()
     assert data == []
@@ -136,6 +131,7 @@ async def test_get_kill_chain_no_target_data(client: AsyncClient, seeded_db):
 # ---------------------------------------------------------------------------
 # GET /api/operations/{id}/attack-surface
 # ---------------------------------------------------------------------------
+
 
 async def test_get_attack_surface(client: AsyncClient, seeded_db):
     """GET /api/operations/{op_id}/attack-surface returns 200 with target data."""
@@ -161,38 +157,31 @@ async def test_get_attack_surface_not_found(client: AsyncClient):
 # GET /api/operations/{id}/metrics/time-series
 # ---------------------------------------------------------------------------
 
+
 async def test_time_series_c5isr(client: AsyncClient, seeded_db):
     """GET time-series with metric=c5isr returns a list."""
-    resp = await client.get(
-        "/api/operations/test-op-1/metrics/time-series?metric=c5isr"
-    )
+    resp = await client.get("/api/operations/test-op-1/metrics/time-series?metric=c5isr")
     assert resp.status_code == 200
     assert isinstance(resp.json(), list)
 
 
 async def test_time_series_opsec(client: AsyncClient, seeded_db):
     """GET time-series with metric=opsec returns a list."""
-    resp = await client.get(
-        "/api/operations/test-op-1/metrics/time-series?metric=opsec"
-    )
+    resp = await client.get("/api/operations/test-op-1/metrics/time-series?metric=opsec")
     assert resp.status_code == 200
     assert isinstance(resp.json(), list)
 
 
 async def test_time_series_executions(client: AsyncClient, seeded_db):
     """GET time-series with metric=executions returns a list."""
-    resp = await client.get(
-        "/api/operations/test-op-1/metrics/time-series?metric=executions"
-    )
+    resp = await client.get("/api/operations/test-op-1/metrics/time-series?metric=executions")
     assert resp.status_code == 200
     assert isinstance(resp.json(), list)
 
 
 async def test_time_series_unknown_metric(client: AsyncClient, seeded_db):
     """GET time-series with unknown metric returns error dict."""
-    resp = await client.get(
-        "/api/operations/test-op-1/metrics/time-series?metric=bogus"
-    )
+    resp = await client.get("/api/operations/test-op-1/metrics/time-series?metric=bogus")
     assert resp.status_code == 200
     data = resp.json()
     assert "error" in data
@@ -200,24 +189,21 @@ async def test_time_series_unknown_metric(client: AsyncClient, seeded_db):
 
 async def test_time_series_granularity(client: AsyncClient, seeded_db):
     """GET time-series accepts granularity parameter."""
-    resp = await client.get(
-        "/api/operations/test-op-1/metrics/time-series?metric=c5isr&granularity=1h"
-    )
+    resp = await client.get("/api/operations/test-op-1/metrics/time-series?metric=c5isr&granularity=1h")
     assert resp.status_code == 200
     assert isinstance(resp.json(), list)
 
 
 async def test_time_series_not_found(client: AsyncClient):
     """GET time-series with bad operation returns 404."""
-    resp = await client.get(
-        "/api/operations/nonexistent-op-id/metrics/time-series?metric=c5isr"
-    )
+    resp = await client.get("/api/operations/nonexistent-op-id/metrics/time-series?metric=c5isr")
     assert resp.status_code == 404
 
 
 # ---------------------------------------------------------------------------
 # GET /api/operations/{id}/credential-graph
 # ---------------------------------------------------------------------------
+
 
 async def test_credential_graph_empty(client: AsyncClient, seeded_db):
     """GET credential-graph with no credentials returns empty graph."""
@@ -237,8 +223,13 @@ async def test_credential_graph_with_data(client: AsyncClient, seeded_db):
         """INSERT INTO credentials (id, operation_id, username, secret_type, secret_value,
                domain, source_target_id, tested_targets)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)""",
-        "cred-router-1", "test-op-1", "admin", "ntlm_hash", "aad3b435...",
-        "CORP", "test-target-1",
+        "cred-router-1",
+        "test-op-1",
+        "admin",
+        "ntlm_hash",
+        "aad3b435...",
+        "CORP",
+        "test-target-1",
         json.dumps([{"target_id": "test-target-1", "result": "success"}]),
     )
     resp = await client.get("/api/operations/test-op-1/credential-graph")

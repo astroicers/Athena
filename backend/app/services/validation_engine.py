@@ -43,9 +43,9 @@ def _parse_version(version_str: str) -> tuple[int, ...]:
 
 @dataclass
 class ValidationResult:
-    outcome: str          # "validated" | "failed" | "skipped"
+    outcome: str  # "validated" | "failed" | "skipped"
     checks: list[dict] = field(default_factory=list)
-    delta: float = 0.0    # confidence adjustment
+    delta: float = 0.0  # confidence adjustment
 
 
 class ValidationEngine:
@@ -59,7 +59,9 @@ class ValidationEngine:
     """
 
     async def validate(
-        self, db: asyncpg.Connection, recommendation: dict,
+        self,
+        db: asyncpg.Connection,
+        recommendation: dict,
         operation_id: str,
     ) -> ValidationResult:
         """Run pre-validation checks on an exploit recommendation."""
@@ -78,12 +80,16 @@ class ValidationEngine:
 
         # 3. Get service facts
         service_facts = await self._get_service_facts(
-            db, operation_id, target_id,
+            db,
+            operation_id,
+            target_id,
         )
 
         # 4. Run checks in parallel
         checks = await self._run_checks(
-            target_ip, technique_id, service_facts,
+            target_ip,
+            technique_id,
+            service_facts,
         )
 
         # 5. Determine outcome
@@ -101,7 +107,9 @@ class ValidationEngine:
     # ------------------------------------------------------------------
 
     async def _run_checks(
-        self, target_ip: str, technique_id: str,
+        self,
+        target_ip: str,
+        technique_id: str,
         service_facts: list[dict],
     ) -> list[dict]:
         """Run three validation checks in parallel, each with timeout."""
@@ -115,11 +123,13 @@ class ValidationEngine:
         checks = []
         for i, result in enumerate(results):
             if isinstance(result, Exception):
-                checks.append({
-                    "name": check_names[i],
-                    "result": "skipped",
-                    "detail": str(result),
-                })
+                checks.append(
+                    {
+                        "name": check_names[i],
+                        "result": "skipped",
+                        "detail": str(result),
+                    }
+                )
             else:
                 checks.append(result)
         return checks
@@ -129,7 +139,9 @@ class ValidationEngine:
     # ------------------------------------------------------------------
 
     async def _check_port_reachability(
-        self, target_ip: str, service_facts: list[dict],
+        self,
+        target_ip: str,
+        service_facts: list[dict],
     ) -> dict:
         """TCP connect to verify target port is still reachable."""
         port = self._extract_port(service_facts)
@@ -146,7 +158,9 @@ class ValidationEngine:
             sock.settimeout(VALIDATION_TIMEOUT)
             await asyncio.wait_for(
                 loop.run_in_executor(
-                    None, sock.connect, (target_ip, port),
+                    None,
+                    sock.connect,
+                    (target_ip, port),
                 ),
                 timeout=VALIDATION_TIMEOUT,
             )
@@ -164,7 +178,9 @@ class ValidationEngine:
             }
 
     async def _check_service_banner(
-        self, target_ip: str, service_facts: list[dict],
+        self,
+        target_ip: str,
+        service_facts: list[dict],
     ) -> dict:
         """Compare expected service banner with actual banner."""
         expected_banner = self._extract_banner(service_facts)
@@ -187,7 +203,10 @@ class ValidationEngine:
             loop = asyncio.get_event_loop()
             actual_banner = await asyncio.wait_for(
                 loop.run_in_executor(
-                    None, self._grab_banner, target_ip, port,
+                    None,
+                    self._grab_banner,
+                    target_ip,
+                    port,
                 ),
                 timeout=VALIDATION_TIMEOUT,
             )
@@ -200,10 +219,7 @@ class ValidationEngine:
             return {
                 "name": "service_banner",
                 "result": "failed",
-                "detail": (
-                    f"expected '{expected_banner}', "
-                    f"got '{actual_banner[:80]}'"
-                ),
+                "detail": (f"expected '{expected_banner}', got '{actual_banner[:80]}'"),
             }
         except (asyncio.TimeoutError, OSError) as e:
             # Fail-open: timeout is skipped
@@ -214,7 +230,9 @@ class ValidationEngine:
             }
 
     async def _check_version_range(
-        self, technique_id: str, service_facts: list[dict],
+        self,
+        technique_id: str,
+        service_facts: list[dict],
     ) -> dict:
         """Check if detected service version falls within known vulnerable ranges.
 
@@ -243,7 +261,8 @@ class ValidationEngine:
 
         # Check against known vulnerable version patterns
         is_vulnerable, detail = self._check_known_vulnerable_versions(
-            context_str, detected_version,
+            context_str,
+            detected_version,
         )
 
         if is_vulnerable is True:
@@ -280,7 +299,8 @@ class ValidationEngine:
 
     @staticmethod
     def _check_known_vulnerable_versions(
-        context: str, version: str,
+        context: str,
+        version: str,
     ) -> tuple[bool | None, str]:
         """Check version against known vulnerable service/version patterns.
 
@@ -322,14 +342,9 @@ class ValidationEngine:
             if not detected_parts:
                 continue
             if min_parts <= detected_parts < max_parts:
-                return True, (
-                    f"version {version} in vulnerable range "
-                    f"[{min_ver}, {max_ver}) — {cve_hint}"
-                )
+                return True, (f"version {version} in vulnerable range [{min_ver}, {max_ver}) — {cve_hint}")
             if detected_parts >= max_parts:
-                return False, (
-                    f"version {version} >= {max_ver}, likely patched for {cve_hint}"
-                )
+                return False, (f"version {version} >= {max_ver}, likely patched for {cve_hint}")
         return None, f"version {version} not in any known vulnerable range"
 
     # ------------------------------------------------------------------
@@ -343,9 +358,14 @@ class ValidationEngine:
         sock.settimeout(VALIDATION_TIMEOUT)
         try:
             sock.connect((ip, port))
-            banner = sock.recv(1024).decode(
-                "utf-8", errors="replace",
-            ).strip()
+            banner = (
+                sock.recv(1024)
+                .decode(
+                    "utf-8",
+                    errors="replace",
+                )
+                .strip()
+            )
             return banner
         finally:
             sock.close()
@@ -355,7 +375,9 @@ class ValidationEngine:
     # ------------------------------------------------------------------
 
     async def _get_tactic_id(
-        self, db: asyncpg.Connection, technique_id: str,
+        self,
+        db: asyncpg.Connection,
+        technique_id: str,
     ) -> str:
         row = await db.fetchrow(
             "SELECT tactic_id FROM techniques WHERE mitre_id = $1 LIMIT 1",
@@ -364,25 +386,31 @@ class ValidationEngine:
         return row["tactic_id"] if row else ""
 
     async def _get_target_ip(
-        self, db: asyncpg.Connection, target_id: str,
+        self,
+        db: asyncpg.Connection,
+        target_id: str,
     ) -> str | None:
         if not target_id:
             return None
         row = await db.fetchrow(
-            "SELECT ip_address FROM targets WHERE id = $1", target_id,
+            "SELECT ip_address FROM targets WHERE id = $1",
+            target_id,
         )
         return row["ip_address"] if row else None
 
     async def _get_service_facts(
-        self, db: asyncpg.Connection,
-        operation_id: str, target_id: str,
+        self,
+        db: asyncpg.Connection,
+        operation_id: str,
+        target_id: str,
     ) -> list[dict]:
         rows = await db.fetch(
             "SELECT trait, value FROM facts "
             "WHERE operation_id = $1 AND source_target_id = $2 "
             "AND trait LIKE 'service.%' "
             "ORDER BY collected_at DESC LIMIT 20",
-            operation_id, target_id,
+            operation_id,
+            target_id,
         )
         return [dict(r) for r in rows]
 
@@ -432,9 +460,8 @@ class ValidationEngine:
             recommendation (dict): The recommendation being validated.
         """
         from app.services.validation_protocol import CheckResult
-        result = await self.validate(
-            db, context["recommendation"], context["operation_id"]
-        )
+
+        result = await self.validate(db, context["recommendation"], context["operation_id"])
         passed = getattr(result, "outcome", "passed") != "failed"
         delta = float(getattr(result, "delta", 0.0))
         return CheckResult(

@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.config import settings
 from app.database import get_db
 from app.models import C5ISRStatus, Operation, OrientRecommendation
 from app.models.api_schemas import (
@@ -25,19 +26,28 @@ from app.models.api_schemas import (
     OperationUpdate,
 )
 from app.models.recommendation import TacticalOption
-from app.config import settings
 from app.services.mission_profile_loader import get_all_profiles, get_profile
 
 router = APIRouter()
 
 # Whitelist of columns that may appear in PATCH /operations/:id SET clauses.
 # Derived from OperationUpdate schema fields + the auto-managed updated_at.
-_ALLOWED_UPDATE_COLUMNS: frozenset[str] = frozenset({
-    "status", "current_ooda_phase", "threat_level", "success_rate",
-    "techniques_executed", "techniques_total", "active_agents",
-    "data_exfiltrated_bytes", "automation_mode", "risk_threshold",
-    "mission_profile", "updated_at",
-})
+_ALLOWED_UPDATE_COLUMNS: frozenset[str] = frozenset(
+    {
+        "status",
+        "current_ooda_phase",
+        "threat_level",
+        "success_rate",
+        "techniques_executed",
+        "techniques_total",
+        "active_agents",
+        "data_exfiltrated_bytes",
+        "automation_mode",
+        "risk_threshold",
+        "mission_profile",
+        "updated_at",
+    }
+)
 
 
 def _row_to_operation(row: asyncpg.Record) -> Operation:
@@ -67,16 +77,12 @@ def _row_to_operation(row: asyncpg.Record) -> Operation:
 
 
 @router.get("/operations", response_model=list[Operation])
-
-
 async def list_operations(db: asyncpg.Connection = Depends(get_db)):
     rows = await db.fetch("SELECT * FROM operations ORDER BY created_at DESC")
     return [_row_to_operation(r) for r in rows]
 
 
 @router.post("/operations", response_model=Operation, status_code=201)
-
-
 async def create_operation(
     body: OperationCreate,
     db: asyncpg.Connection = Depends(get_db),
@@ -88,8 +94,15 @@ async def create_operation(
         "(id, code, name, codename, strategic_intent, mission_profile, "
         "risk_threshold, status, current_ooda_phase, created_at, updated_at) "
         "VALUES ($1, $2, $3, $4, $5, $6, $7, 'planning', 'observe', $8, $9)",
-        op_id, body.code, body.name, body.codename, body.strategic_intent,
-        body.mission_profile.value, settings.RISK_THRESHOLD, now, now,
+        op_id,
+        body.code,
+        body.name,
+        body.codename,
+        body.strategic_intent,
+        body.mission_profile.value,
+        settings.RISK_THRESHOLD,
+        now,
+        now,
     )
 
     row = await db.fetchrow("SELECT * FROM operations WHERE id = $1", op_id)
@@ -97,8 +110,6 @@ async def create_operation(
 
 
 @router.get("/operations/{operation_id}", response_model=Operation)
-
-
 async def get_operation(
     operation_id: str,
     db: asyncpg.Connection = Depends(get_db),
@@ -110,8 +121,6 @@ async def get_operation(
 
 
 @router.patch("/operations/{operation_id}", response_model=Operation)
-
-
 async def update_operation(
     operation_id: str,
     body: OperationUpdate,
@@ -136,7 +145,7 @@ async def update_operation(
     if bad_cols:
         raise HTTPException(status_code=400, detail=f"Invalid update fields: {bad_cols}")
 
-    set_clause = ", ".join(f"{k} = ${i+1}" for i, k in enumerate(updates))
+    set_clause = ", ".join(f"{k} = ${i + 1}" for i, k in enumerate(updates))
     values = [v.value if hasattr(v, "value") else v for v in updates.values()]
     values.append(operation_id)
 
@@ -150,8 +159,6 @@ async def update_operation(
 
 
 @router.get("/operations/{operation_id}/summary", response_model=OperationSummary)
-
-
 async def get_operation_summary(
     operation_id: str,
     db: asyncpg.Connection = Depends(get_db),
@@ -163,9 +170,7 @@ async def get_operation_summary(
     operation = _row_to_operation(op_row)
 
     # C5ISR statuses
-    c5_rows = await db.fetch(
-        "SELECT * FROM c5isr_statuses WHERE operation_id = $1", operation_id
-    )
+    c5_rows = await db.fetch("SELECT * FROM c5isr_statuses WHERE operation_id = $1", operation_id)
     c5isr = [
         C5ISRStatus(
             id=r["id"],
@@ -180,8 +185,7 @@ async def get_operation_summary(
 
     # Latest recommendation
     rec_row = await db.fetchrow(
-        "SELECT * FROM recommendations WHERE operation_id = $1 "
-        "ORDER BY created_at DESC LIMIT 1",
+        "SELECT * FROM recommendations WHERE operation_id = $1 ORDER BY created_at DESC LIMIT 1",
         operation_id,
     )
     latest_rec = None
@@ -208,16 +212,12 @@ async def get_operation_summary(
 
 
 @router.get("/mission-profiles")
-
-
 async def list_mission_profiles():
     """Return all available mission profile definitions (SR/CO/SP/FA)."""
     return get_all_profiles()
 
 
 @router.get("/mission-profiles/{code}")
-
-
 async def get_mission_profile(code: str):
     """Return a single mission profile by code."""
     profile = get_profile(code)

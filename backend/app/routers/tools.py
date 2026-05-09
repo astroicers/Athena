@@ -9,6 +9,7 @@
 # For commercial licensing, contact: azz093093.830330@gmail.com
 
 """Tool registry CRUD endpoints."""
+
 import json
 import logging
 import uuid
@@ -59,8 +60,6 @@ def _row_to_tool(row: asyncpg.Record) -> dict:
 
 
 @router.get("", response_model=list[ToolRegistryEntry])
-
-
 async def list_tools(
     kind: str | None = None,
     category: str | None = None,
@@ -89,24 +88,18 @@ async def list_tools(
 
 
 @router.get("/{tool_id}", response_model=ToolRegistryEntry)
-
-
 async def get_tool(
     tool_id: str,
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Get a specific tool by tool_id slug (NOT uuid)."""
-    row = await db.fetchrow(
-        "SELECT * FROM tool_registry WHERE tool_id = $1", tool_id
-    )
+    row = await db.fetchrow("SELECT * FROM tool_registry WHERE tool_id = $1", tool_id)
     if not row:
         raise HTTPException(status_code=404, detail="Tool not found")
     return _row_to_tool(row)
 
 
 @router.post("", response_model=ToolRegistryEntry, status_code=201)
-
-
 async def create_tool(
     body: ToolRegistryCreate,
     db: asyncpg.Connection = Depends(get_db),
@@ -114,13 +107,9 @@ async def create_tool(
     """Create a new tool (source='user')."""
 
     # Check for duplicate tool_id
-    row = await db.fetchrow(
-        "SELECT id FROM tool_registry WHERE tool_id = $1", body.tool_id
-    )
+    row = await db.fetchrow("SELECT id FROM tool_registry WHERE tool_id = $1", body.tool_id)
     if row:
-        raise HTTPException(
-            status_code=409, detail=f"Tool with tool_id '{body.tool_id}' already exists"
-        )
+        raise HTTPException(status_code=409, detail=f"Tool with tool_id '{body.tool_id}' already exists")
 
     row_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
@@ -145,24 +134,18 @@ async def create_tool(
         now,
         now,
     )
-    row = await db.fetchrow(
-        "SELECT * FROM tool_registry WHERE id = $1", row_id
-    )
+    row = await db.fetchrow("SELECT * FROM tool_registry WHERE id = $1", row_id)
     return _row_to_tool(row)
 
 
 @router.patch("/{tool_id}", response_model=ToolRegistryEntry)
-
-
 async def update_tool(
     tool_id: str,
     body: ToolRegistryUpdate,
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Update an existing tool. Cannot change tool_id, kind, or source."""
-    existing = await db.fetchrow(
-        "SELECT * FROM tool_registry WHERE tool_id = $1", tool_id
-    )
+    existing = await db.fetchrow("SELECT * FROM tool_registry WHERE tool_id = $1", tool_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Tool not found")
 
@@ -181,7 +164,7 @@ async def update_tool(
 
     if updates:
         updates["updated_at"] = datetime.now(timezone.utc)
-        set_clause = ", ".join(f"{k} = ${i+1}" for i, k in enumerate(updates))
+        set_clause = ", ".join(f"{k} = ${i + 1}" for i, k in enumerate(updates))
         values = list(updates.values())
         values.append(tool_id)
         await db.execute(  # noqa: S608
@@ -189,35 +172,25 @@ async def update_tool(
             *values,
         )
 
-    row = await db.fetchrow(
-        "SELECT * FROM tool_registry WHERE tool_id = $1", tool_id
-    )
+    row = await db.fetchrow("SELECT * FROM tool_registry WHERE tool_id = $1", tool_id)
     return _row_to_tool(row)
 
 
 @router.delete("/{tool_id}", status_code=204)
-
-
 async def delete_tool(
     tool_id: str,
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Delete a user-created tool. Seed tools cannot be deleted (403)."""
-    row = await db.fetchrow(
-        "SELECT source FROM tool_registry WHERE tool_id = $1", tool_id
-    )
+    row = await db.fetchrow("SELECT source FROM tool_registry WHERE tool_id = $1", tool_id)
     if not row:
         raise HTTPException(status_code=404, detail="Tool not found")
     if row["source"] == "seed":
         raise HTTPException(status_code=403, detail="Cannot delete seed tools")
-    await db.execute(
-        "DELETE FROM tool_registry WHERE tool_id = $1", tool_id
-    )
+    await db.execute("DELETE FROM tool_registry WHERE tool_id = $1", tool_id)
 
 
 @router.post("/{tool_id}/execute")
-
-
 async def execute_tool(
     tool_id: str,
     request: Request,
@@ -260,9 +233,7 @@ async def execute_tool(
     except ConnectionError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
     except TimeoutError:
-        raise HTTPException(
-            status_code=504, detail=f"Tool execution timed out ({mcp_tool}@{mcp_server})"
-        )
+        raise HTTPException(status_code=504, detail=f"Tool execution timed out ({mcp_tool}@{mcp_server})")
     except Exception:
         logger.exception("Unexpected error executing tool %s on %s", mcp_tool, mcp_server)
         raise HTTPException(status_code=500, detail="Tool execution failed")
@@ -276,8 +247,6 @@ async def execute_tool(
 
 
 @router.post("/{tool_id}/check")
-
-
 async def check_tool(
     tool_id: str,
     request: Request,
@@ -303,10 +272,7 @@ async def check_tool(
         return {
             "tool_id": row["tool_id"],
             "available": is_healthy,
-            "detail": (
-                f"{row['name']} MCP server '{mcp_server}' is "
-                f"{'available' if is_healthy else 'unavailable'}"
-            ),
+            "detail": (f"{row['name']} MCP server '{mcp_server}' is {'available' if is_healthy else 'unavailable'}"),
         }
 
     return {

@@ -29,6 +29,7 @@ class TargetCreate(BaseModel):
     def validate_target_address(cls, v: str) -> str:
         import ipaddress
         import re
+
         v = v.strip()
         if not v:
             raise ValueError("Target address must not be empty")
@@ -52,14 +53,12 @@ class TargetCreate(BaseModel):
         )
         if hostname_re.match(v):
             return v
-        raise ValueError(
-            f"{v!r} is not a valid IPv4 address, IPv6 address, CIDR range, or hostname"
-        )
+        raise ValueError(f"{v!r} is not a valid IPv4 address, IPv6 address, CIDR range, or hostname")
 
 
 class TargetPatch(BaseModel):
     is_compromised: bool | None = None
-    privilege_level: str | None = None   # "Root" | "User"
+    privilege_level: str | None = None  # "Root" | "User"
     access_status: str | None = None
     os: str | None = None
     role: str | None = None
@@ -78,7 +77,7 @@ class TargetBatchCreate(BaseModel):
 
 
 class BatchImportResult(BaseModel):
-    created: list[str]            # created target IDs
+    created: list[str]  # created target IDs
     skipped_duplicates: list[str]  # duplicate IP addresses
     total_requested: int
     total_created: int

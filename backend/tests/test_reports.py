@@ -17,9 +17,16 @@ async def test_report_returns_all_10_sections(client):
     assert resp.status_code == 200
     data = resp.json()
     expected_keys = {
-        "operation", "ooda_timeline", "executions", "facts",
-        "recommendations", "c5isr", "logs", "mission_steps",
-        "targets", "agents",
+        "operation",
+        "ooda_timeline",
+        "executions",
+        "facts",
+        "recommendations",
+        "c5isr",
+        "logs",
+        "mission_steps",
+        "targets",
+        "agents",
     }
     assert set(data.keys()) == expected_keys
 

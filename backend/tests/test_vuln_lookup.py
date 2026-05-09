@@ -10,16 +10,17 @@
 
 """Unit tests for VulnLookupService — A.3 acceptance criteria."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.services.vuln_lookup import VulnLookupService, _cvss_to_severity
-from app.models.recon import ServiceInfo
+import pytest
 
+from app.models.recon import ServiceInfo
+from app.services.vuln_lookup import VulnLookupService, _cvss_to_severity
 
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_cvss_to_severity():
     assert _cvss_to_severity(9.8) == "critical"
@@ -66,17 +67,17 @@ async def test_enrich_services_graceful_on_api_failure():
 
     services = [ServiceInfo(port=22, protocol="tcp", service="ssh", version="OpenSSH 7.4", state="open")]
 
-    with patch("app.services.vuln_lookup.settings") as mock_settings, \
-         patch("app.services.vuln_lookup.ws_manager.broadcast", new=AsyncMock()):
+    with (
+        patch("app.services.vuln_lookup.settings") as mock_settings,
+        patch("app.services.vuln_lookup.ws_manager.broadcast", new=AsyncMock()),
+    ):
         mock_settings.NVD_API_KEY = ""
         mock_settings.NVD_CACHE_TTL_HOURS = 24
         mock_settings.VULN_LOOKUP_ENABLED = True
 
         # Make _query_nvd raise an exception
         with patch.object(VulnLookupService, "_query_nvd", side_effect=Exception("API timeout")):
-            findings = await VulnLookupService().enrich_services(
-                db, services, "op-001", "tgt-001"
-            )
+            findings = await VulnLookupService().enrich_services(db, services, "op-001", "tgt-001")
 
     # Should return empty list (graceful degradation)
     assert findings == []

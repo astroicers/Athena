@@ -100,24 +100,27 @@ class Settings(BaseSettings):
     EXPLOIT_VALIDATION_CONFIDENCE_THRESHOLD: float = 0.6
     EXPLOIT_VALIDATION_TIMEOUT_SEC: int = 30
     # AgentSwarm (ADR-027)
-    MAX_PARALLEL_TASKS: int = 5           # Semaphore bound, range 1-20
+    MAX_PARALLEL_TASKS: int = 5  # Semaphore bound, range 1-20
     PARALLEL_TASK_TIMEOUT_SEC: int = 120  # Per-task timeout, range 10-600
 
 
 settings = Settings()
 
+
 def get_task_model_map() -> dict[str, str]:
     """Return task->model mapping, evaluated at call time for runtime override."""
     return {
-        "orient_analysis":        settings.CLAUDE_MODEL_HAIKU,
-        "fact_summary":           settings.CLAUDE_MODEL_HAIKU,
-        "node_summary":           settings.CLAUDE_MODEL_HAIKU,
-        "format_report":          settings.CLAUDE_MODEL_HAIKU,
+        "orient_analysis": settings.CLAUDE_MODEL_HAIKU,
+        "fact_summary": settings.CLAUDE_MODEL_HAIKU,
+        "node_summary": settings.CLAUDE_MODEL_HAIKU,
+        "format_report": settings.CLAUDE_MODEL_HAIKU,
         "classify_vulnerability": settings.CLAUDE_MODEL_HAIKU,
     }
 
+
 # Backward-compat alias populated at startup
 TASK_MODEL_MAP: dict[str, str] = {}
+
 
 def _init_task_model_map() -> None:
     TASK_MODEL_MAP.clear()

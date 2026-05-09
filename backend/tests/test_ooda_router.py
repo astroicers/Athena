@@ -14,7 +14,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # POST /operations/{op_id}/ooda/trigger → 202 Accepted (async / queued)
 # ---------------------------------------------------------------------------
@@ -71,10 +70,11 @@ async def test_run_ooda_background_broadcasts_failed_on_exception():
     """_run_ooda_background: broadcasts ooda.failed when controller.trigger_cycle raises."""
     from app.routers.ooda import _run_ooda_background
 
-    with patch("app.routers.ooda._get_controller") as mock_get_ctrl, \
-         patch("app.routers.ooda.db_manager") as mock_db_mgr, \
-         patch("app.routers.ooda.ws_manager") as mock_ws:
-
+    with (
+        patch("app.routers.ooda._get_controller") as mock_get_ctrl,
+        patch("app.routers.ooda.db_manager") as mock_db_mgr,
+        patch("app.routers.ooda.ws_manager") as mock_ws,
+    ):
         # Simulate controller.trigger_cycle raising an exception
         mock_ctrl = MagicMock()
         mock_ctrl.trigger_cycle = AsyncMock(side_effect=RuntimeError("OODA cycle exploded"))

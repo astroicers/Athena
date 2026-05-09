@@ -43,8 +43,6 @@ def _row_to_engagement(row: asyncpg.Record) -> Engagement:
     response_model=Engagement,
     status_code=201,
 )
-
-
 async def create_engagement(
     op_id: str,
     body: EngagementCreate,
@@ -54,9 +52,7 @@ async def create_engagement(
     await ensure_operation(db, op_id)
 
     # Only one engagement per operation
-    existing = await db.fetchrow(
-        "SELECT id FROM engagements WHERE operation_id = $1", op_id
-    )
+    existing = await db.fetchrow("SELECT id FROM engagements WHERE operation_id = $1", op_id)
     if existing:
         raise HTTPException(
             status_code=409,
@@ -73,11 +69,14 @@ async def create_engagement(
              emergency_contact, status, created_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'draft', $10)
         """,
-        eng_id, op_id,
-        body.client_name, body.contact_email,
+        eng_id,
+        op_id,
+        body.client_name,
+        body.contact_email,
         json.dumps(body.in_scope),
         json.dumps(body.out_of_scope),
-        body.start_time, body.end_time,
+        body.start_time,
+        body.end_time,
         body.emergency_contact,
         now,
     )
@@ -87,8 +86,6 @@ async def create_engagement(
 
 
 @router.get("/operations/{op_id}/engagement", response_model=Engagement)
-
-
 async def get_engagement(
     op_id: str,
     db: asyncpg.Connection = Depends(get_db),
@@ -109,8 +106,6 @@ async def get_engagement(
 
 
 @router.patch("/operations/{op_id}/engagement/activate", response_model=Engagement)
-
-
 async def activate_engagement(
     op_id: str,
     db: asyncpg.Connection = Depends(get_db),
@@ -138,8 +133,6 @@ async def activate_engagement(
 
 
 @router.patch("/operations/{op_id}/engagement/suspend", response_model=Engagement)
-
-
 async def suspend_engagement(
     op_id: str,
     db: asyncpg.Connection = Depends(get_db),

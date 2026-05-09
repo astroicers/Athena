@@ -14,8 +14,9 @@ TDD: tests written BEFORE engine implementation.
 """
 
 import json
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from app.models.attack_graph import (
     AttackEdge,
@@ -26,10 +27,10 @@ from app.models.attack_graph import (
     TechniqueRule,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_mock_ws():
     ws = MagicMock()
@@ -51,20 +52,43 @@ def _make_mock_db():
 def _seed_db_rows():
     """Return mock DB rows for targets, facts, and technique_executions."""
     targets = [
-        {"id": "tgt-1", "hostname": "web-01", "ip_address": "10.0.1.10",
-         "os": "Linux", "role": "webserver", "operation_id": "op-1"},
+        {
+            "id": "tgt-1",
+            "hostname": "web-01",
+            "ip_address": "10.0.1.10",
+            "os": "Linux",
+            "role": "webserver",
+            "operation_id": "op-1",
+        },
     ]
     facts = [
-        {"id": "f-1", "trait": "network.host.ip", "value": "10.0.1.10",
-         "category": "network", "source_technique_id": "T1595.001",
-         "source_target_id": "tgt-1", "operation_id": "op-1"},
-        {"id": "f-2", "trait": "service.open_port", "value": "22/tcp",
-         "category": "service", "source_technique_id": "T1595.001",
-         "source_target_id": "tgt-1", "operation_id": "op-1"},
+        {
+            "id": "f-1",
+            "trait": "network.host.ip",
+            "value": "10.0.1.10",
+            "category": "network",
+            "source_technique_id": "T1595.001",
+            "source_target_id": "tgt-1",
+            "operation_id": "op-1",
+        },
+        {
+            "id": "f-2",
+            "trait": "service.open_port",
+            "value": "22/tcp",
+            "category": "service",
+            "source_technique_id": "T1595.001",
+            "source_target_id": "tgt-1",
+            "operation_id": "op-1",
+        },
     ]
     executions = [
-        {"id": "exec-1", "technique_id": "T1595.001", "target_id": "tgt-1",
-         "operation_id": "op-1", "status": "success"},
+        {
+            "id": "exec-1",
+            "technique_id": "T1595.001",
+            "target_id": "tgt-1",
+            "operation_id": "op-1",
+            "status": "success",
+        },
     ]
     return targets, facts, executions
 
@@ -72,6 +96,7 @@ def _seed_db_rows():
 # ---------------------------------------------------------------------------
 # Test 1: Determinism — same facts produce same graph structure
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_determinism_same_facts_same_graph():
@@ -103,6 +128,7 @@ async def test_determinism_same_facts_same_graph():
 # Test 2: Weight calculation — known inputs produce expected weight
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_weight_calculation():
     """compute_edge_cost with known inputs matches SPEC-039 formula.
@@ -119,11 +145,17 @@ async def test_weight_calculation():
     #      = 0.35*0.15 + 0.25*0.2 + 0.025 + 0.03
     #      = 0.0525 + 0.05 + 0.025 + 0.03 = 0.1575
     node = AttackNode(
-        node_id="n1", target_id="t1", technique_id="T1595.002",
-        tactic_id="TA0043", status=NodeStatus.PENDING,
-        confidence=0.85, risk_level="low",
-        information_gain=0.8, effort=1,
-        prerequisites=["network.host.ip"], satisfied_prerequisites=["network.host.ip"],
+        node_id="n1",
+        target_id="t1",
+        technique_id="T1595.002",
+        tactic_id="TA0043",
+        status=NodeStatus.PENDING,
+        confidence=0.85,
+        risk_level="low",
+        information_gain=0.8,
+        effort=1,
+        prerequisites=["network.host.ip"],
+        satisfied_prerequisites=["network.host.ip"],
     )
     cost = engine.compute_edge_cost(node)
     assert abs(cost - 0.1575) < 0.01
@@ -133,11 +165,17 @@ async def test_weight_calculation():
     #      = 0.35*0.4 + 0.25*0.3 + 0.075 + 0.15
     #      = 0.14 + 0.075 + 0.075 + 0.15 = 0.44
     node2 = AttackNode(
-        node_id="n2", target_id="t1", technique_id="T1190",
-        tactic_id="TA0001", status=NodeStatus.PENDING,
-        confidence=0.6, risk_level="medium",
-        information_gain=0.7, effort=5,
-        prerequisites=["service.open_port"], satisfied_prerequisites=[],
+        node_id="n2",
+        target_id="t1",
+        technique_id="T1190",
+        tactic_id="TA0001",
+        status=NodeStatus.PENDING,
+        confidence=0.6,
+        risk_level="medium",
+        information_gain=0.7,
+        effort=5,
+        prerequisites=["service.open_port"],
+        satisfied_prerequisites=[],
     )
     cost2 = engine.compute_edge_cost(node2)
     assert abs(cost2 - 0.44) < 0.01
@@ -146,6 +184,7 @@ async def test_weight_calculation():
 # ---------------------------------------------------------------------------
 # Test 3: Dijkstra recommended path — 5-node linear graph
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_dijkstra_recommended_path():
@@ -157,46 +196,87 @@ async def test_dijkstra_recommended_path():
 
     # Build a simple 5-node graph manually
     graph = AttackGraph(
-        graph_id="g1", operation_id="op-1",
-        nodes={}, edges=[], recommended_path=[],
-        explored_paths=[], unexplored_branches=[],
-        coverage_score=0.0, updated_at="",
+        graph_id="g1",
+        operation_id="op-1",
+        nodes={},
+        edges=[],
+        recommended_path=[],
+        explored_paths=[],
+        unexplored_branches=[],
+        coverage_score=0.0,
+        updated_at="",
     )
 
     # Nodes: entry(depth=0), A, B, C, dest(highest info_gain PENDING)
     entry = AttackNode(
-        node_id="entry", target_id="t1", technique_id="T1595.001",
-        tactic_id="TA0043", status=NodeStatus.EXPLORED,
-        confidence=0.95, risk_level="low", information_gain=0.9,
-        effort=1, prerequisites=[], satisfied_prerequisites=[], depth=0,
+        node_id="entry",
+        target_id="t1",
+        technique_id="T1595.001",
+        tactic_id="TA0043",
+        status=NodeStatus.EXPLORED,
+        confidence=0.95,
+        risk_level="low",
+        information_gain=0.9,
+        effort=1,
+        prerequisites=[],
+        satisfied_prerequisites=[],
+        depth=0,
     )
     node_a = AttackNode(
-        node_id="a", target_id="t1", technique_id="T1595.002",
-        tactic_id="TA0043", status=NodeStatus.EXPLORED,
-        confidence=0.85, risk_level="low", information_gain=0.8,
-        effort=1, prerequisites=["network.host.ip"],
-        satisfied_prerequisites=["network.host.ip"], depth=1,
+        node_id="a",
+        target_id="t1",
+        technique_id="T1595.002",
+        tactic_id="TA0043",
+        status=NodeStatus.EXPLORED,
+        confidence=0.85,
+        risk_level="low",
+        information_gain=0.8,
+        effort=1,
+        prerequisites=["network.host.ip"],
+        satisfied_prerequisites=["network.host.ip"],
+        depth=1,
     )
     node_b = AttackNode(
-        node_id="b", target_id="t1", technique_id="T1190",
-        tactic_id="TA0001", status=NodeStatus.PENDING,
-        confidence=0.6, risk_level="medium", information_gain=0.7,
-        effort=2, prerequisites=["service.open_port"],
-        satisfied_prerequisites=["service.open_port"], depth=2,
+        node_id="b",
+        target_id="t1",
+        technique_id="T1190",
+        tactic_id="TA0001",
+        status=NodeStatus.PENDING,
+        confidence=0.6,
+        risk_level="medium",
+        information_gain=0.7,
+        effort=2,
+        prerequisites=["service.open_port"],
+        satisfied_prerequisites=["service.open_port"],
+        depth=2,
     )
     node_c = AttackNode(
-        node_id="c", target_id="t1", technique_id="T1059.004",
-        tactic_id="TA0002", status=NodeStatus.PENDING,
-        confidence=0.85, risk_level="medium", information_gain=0.5,
-        effort=1, prerequisites=["credential.ssh"],
-        satisfied_prerequisites=[], depth=3,
+        node_id="c",
+        target_id="t1",
+        technique_id="T1059.004",
+        tactic_id="TA0002",
+        status=NodeStatus.PENDING,
+        confidence=0.85,
+        risk_level="medium",
+        information_gain=0.5,
+        effort=1,
+        prerequisites=["credential.ssh"],
+        satisfied_prerequisites=[],
+        depth=3,
     )
     dest = AttackNode(
-        node_id="dest", target_id="t1", technique_id="T1003.001",
-        tactic_id="TA0006", status=NodeStatus.PENDING,
-        confidence=0.75, risk_level="high", information_gain=0.9,
-        effort=1, prerequisites=["credential.ssh", "host.user"],
-        satisfied_prerequisites=[], depth=4,
+        node_id="dest",
+        target_id="t1",
+        technique_id="T1003.001",
+        tactic_id="TA0006",
+        status=NodeStatus.PENDING,
+        confidence=0.75,
+        risk_level="high",
+        information_gain=0.9,
+        effort=1,
+        prerequisites=["credential.ssh", "host.user"],
+        satisfied_prerequisites=[],
+        depth=4,
     )
 
     graph.nodes = {n.node_id: n for n in [entry, node_a, node_b, node_c, dest]}
@@ -206,11 +286,16 @@ async def test_dijkstra_recommended_path():
     pairs = [("entry", "a"), ("a", "b"), ("b", "c"), ("c", "dest")]
     for src, tgt in pairs:
         w = engine.compute_edge_cost(graph.nodes[tgt])
-        edges.append(AttackEdge(
-            edge_id=f"e-{src}-{tgt}", source=src, target=tgt,
-            weight=w, relationship=EdgeRelationship.ENABLES,
-            required_facts=[],
-        ))
+        edges.append(
+            AttackEdge(
+                edge_id=f"e-{src}-{tgt}",
+                source=src,
+                target=tgt,
+                weight=w,
+                relationship=EdgeRelationship.ENABLES,
+                required_facts=[],
+            )
+        )
     graph.edges = edges
 
     # Run Dijkstra
@@ -226,6 +311,7 @@ async def test_dijkstra_recommended_path():
 # Test 4: Cycle detection — detect and break cycle
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_cycle_detection_and_break():
     """Graph with A->B->C->A cycle: detect and remove lowest-weight edge."""
@@ -235,41 +321,73 @@ async def test_cycle_detection_and_break():
     engine = AttackGraphEngine(ws)
 
     graph = AttackGraph(
-        graph_id="g-cycle", operation_id="op-1",
-        nodes={}, edges=[], recommended_path=[],
-        explored_paths=[], unexplored_branches=[],
-        coverage_score=0.0, updated_at="",
+        graph_id="g-cycle",
+        operation_id="op-1",
+        nodes={},
+        edges=[],
+        recommended_path=[],
+        explored_paths=[],
+        unexplored_branches=[],
+        coverage_score=0.0,
+        updated_at="",
     )
 
     na = AttackNode(
-        node_id="a", target_id="t1", technique_id="T1",
-        tactic_id="TA0001", status=NodeStatus.PENDING,
-        confidence=0.8, risk_level="low", information_gain=0.5,
-        effort=1, prerequisites=[], satisfied_prerequisites=[], depth=0,
+        node_id="a",
+        target_id="t1",
+        technique_id="T1",
+        tactic_id="TA0001",
+        status=NodeStatus.PENDING,
+        confidence=0.8,
+        risk_level="low",
+        information_gain=0.5,
+        effort=1,
+        prerequisites=[],
+        satisfied_prerequisites=[],
+        depth=0,
     )
     nb = AttackNode(
-        node_id="b", target_id="t1", technique_id="T2",
-        tactic_id="TA0002", status=NodeStatus.PENDING,
-        confidence=0.7, risk_level="low", information_gain=0.4,
-        effort=2, prerequisites=[], satisfied_prerequisites=[], depth=1,
+        node_id="b",
+        target_id="t1",
+        technique_id="T2",
+        tactic_id="TA0002",
+        status=NodeStatus.PENDING,
+        confidence=0.7,
+        risk_level="low",
+        information_gain=0.4,
+        effort=2,
+        prerequisites=[],
+        satisfied_prerequisites=[],
+        depth=1,
     )
     nc = AttackNode(
-        node_id="c", target_id="t1", technique_id="T3",
-        tactic_id="TA0003", status=NodeStatus.PENDING,
-        confidence=0.6, risk_level="low", information_gain=0.3,
-        effort=3, prerequisites=[], satisfied_prerequisites=[], depth=2,
+        node_id="c",
+        target_id="t1",
+        technique_id="T3",
+        tactic_id="TA0003",
+        status=NodeStatus.PENDING,
+        confidence=0.6,
+        risk_level="low",
+        information_gain=0.3,
+        effort=3,
+        prerequisites=[],
+        satisfied_prerequisites=[],
+        depth=2,
     )
 
     graph.nodes = {"a": na, "b": nb, "c": nc}
 
     # Edges forming cycle: a->b (w=0.7), b->c (w=0.5), c->a (w=0.3)
     graph.edges = [
-        AttackEdge(edge_id="e-ab", source="a", target="b", weight=0.7,
-                   relationship=EdgeRelationship.ENABLES, required_facts=[]),
-        AttackEdge(edge_id="e-bc", source="b", target="c", weight=0.5,
-                   relationship=EdgeRelationship.ENABLES, required_facts=[]),
-        AttackEdge(edge_id="e-ca", source="c", target="a", weight=0.3,
-                   relationship=EdgeRelationship.ENABLES, required_facts=[]),
+        AttackEdge(
+            edge_id="e-ab", source="a", target="b", weight=0.7, relationship=EdgeRelationship.ENABLES, required_facts=[]
+        ),
+        AttackEdge(
+            edge_id="e-bc", source="b", target="c", weight=0.5, relationship=EdgeRelationship.ENABLES, required_facts=[]
+        ),
+        AttackEdge(
+            edge_id="e-ca", source="c", target="a", weight=0.3, relationship=EdgeRelationship.ENABLES, required_facts=[]
+        ),
     ]
 
     cycles = engine.detect_cycles(graph)
@@ -285,6 +403,7 @@ async def test_cycle_detection_and_break():
 # Test 5: Dead branch pruning — failed node prunes siblings + downstream
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_dead_branch_pruning():
     """When a technique fails, non-alternative siblings (same tactic+target) are pruned.
@@ -299,55 +418,109 @@ async def test_dead_branch_pruning():
     engine = AttackGraphEngine(ws)
 
     graph = AttackGraph(
-        graph_id="g-prune", operation_id="op-1",
-        nodes={}, edges=[], recommended_path=[],
-        explored_paths=[], unexplored_branches=[],
-        coverage_score=0.0, updated_at="",
+        graph_id="g-prune",
+        operation_id="op-1",
+        nodes={},
+        edges=[],
+        recommended_path=[],
+        explored_paths=[],
+        unexplored_branches=[],
+        coverage_score=0.0,
+        updated_at="",
     )
 
     # prereq (explored) -> failed_node (FAILED) and sibling_node (same tactic/target, PENDING)
     # sibling_node -> downstream_node (PENDING)
     prereq = AttackNode(
-        node_id="prereq", target_id="t1", technique_id="T0",
-        tactic_id="TA0043", status=NodeStatus.EXPLORED,
-        confidence=0.95, risk_level="low", information_gain=0.9,
-        effort=1, prerequisites=[], satisfied_prerequisites=[], depth=0,
+        node_id="prereq",
+        target_id="t1",
+        technique_id="T0",
+        tactic_id="TA0043",
+        status=NodeStatus.EXPLORED,
+        confidence=0.95,
+        risk_level="low",
+        information_gain=0.9,
+        effort=1,
+        prerequisites=[],
+        satisfied_prerequisites=[],
+        depth=0,
     )
     failed_node = AttackNode(
-        node_id="failed", target_id="t1", technique_id="T1190",
-        tactic_id="TA0001", status=NodeStatus.FAILED,
-        confidence=0.0, risk_level="medium", information_gain=0.7,
-        effort=2, prerequisites=["service.open_port"],
-        satisfied_prerequisites=["service.open_port"], depth=1,
+        node_id="failed",
+        target_id="t1",
+        technique_id="T1190",
+        tactic_id="TA0001",
+        status=NodeStatus.FAILED,
+        confidence=0.0,
+        risk_level="medium",
+        information_gain=0.7,
+        effort=2,
+        prerequisites=["service.open_port"],
+        satisfied_prerequisites=["service.open_port"],
+        depth=1,
     )
     # T1133 shares "service.open_port" prereq but is NOT in T1190's alternatives
     sibling = AttackNode(
-        node_id="sibling", target_id="t1", technique_id="T1133",
-        tactic_id="TA0001", status=NodeStatus.PENDING,
-        confidence=0.75, risk_level="medium", information_gain=0.65,
-        effort=1, prerequisites=["service.open_port", "credential.ssh"],
-        satisfied_prerequisites=["service.open_port"], depth=1,
+        node_id="sibling",
+        target_id="t1",
+        technique_id="T1133",
+        tactic_id="TA0001",
+        status=NodeStatus.PENDING,
+        confidence=0.75,
+        risk_level="medium",
+        information_gain=0.65,
+        effort=1,
+        prerequisites=["service.open_port", "credential.ssh"],
+        satisfied_prerequisites=["service.open_port"],
+        depth=1,
     )
     downstream = AttackNode(
-        node_id="downstream", target_id="t1", technique_id="T1059.004",
-        tactic_id="TA0002", status=NodeStatus.PENDING,
-        confidence=0.85, risk_level="medium", information_gain=0.5,
-        effort=1, prerequisites=["credential.ssh"],
-        satisfied_prerequisites=[], depth=2,
+        node_id="downstream",
+        target_id="t1",
+        technique_id="T1059.004",
+        tactic_id="TA0002",
+        status=NodeStatus.PENDING,
+        confidence=0.85,
+        risk_level="medium",
+        information_gain=0.5,
+        effort=1,
+        prerequisites=["credential.ssh"],
+        satisfied_prerequisites=[],
+        depth=2,
     )
 
     graph.nodes = {
-        "prereq": prereq, "failed": failed_node,
-        "sibling": sibling, "downstream": downstream,
+        "prereq": prereq,
+        "failed": failed_node,
+        "sibling": sibling,
+        "downstream": downstream,
     }
     graph.edges = [
-        AttackEdge(edge_id="e1", source="prereq", target="failed", weight=0.5,
-                   relationship=EdgeRelationship.ENABLES, required_facts=[]),
-        AttackEdge(edge_id="e2", source="prereq", target="sibling", weight=0.6,
-                   relationship=EdgeRelationship.ENABLES, required_facts=[]),
+        AttackEdge(
+            edge_id="e1",
+            source="prereq",
+            target="failed",
+            weight=0.5,
+            relationship=EdgeRelationship.ENABLES,
+            required_facts=[],
+        ),
+        AttackEdge(
+            edge_id="e2",
+            source="prereq",
+            target="sibling",
+            weight=0.6,
+            relationship=EdgeRelationship.ENABLES,
+            required_facts=[],
+        ),
         # sibling enables downstream
-        AttackEdge(edge_id="e4", source="sibling", target="downstream", weight=0.7,
-                   relationship=EdgeRelationship.ENABLES, required_facts=[]),
+        AttackEdge(
+            edge_id="e4",
+            source="sibling",
+            target="downstream",
+            weight=0.7,
+            relationship=EdgeRelationship.ENABLES,
+            required_facts=[],
+        ),
     ]
 
     engine.prune_dead_branches(graph)
@@ -359,6 +532,7 @@ async def test_dead_branch_pruning():
 # ---------------------------------------------------------------------------
 # Test 6: Empty graph — no facts, no exception
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_empty_graph_no_exception():
@@ -382,6 +556,7 @@ async def test_empty_graph_no_exception():
 # Test 7: Orphan node — unreachable technique keeps UNREACHABLE status
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_orphan_node_unreachable_status():
     """A technique whose prerequisites cannot be satisfied is UNREACHABLE."""
@@ -391,14 +566,26 @@ async def test_orphan_node_unreachable_status():
     engine = AttackGraphEngine(ws)
 
     targets = [
-        {"id": "tgt-1", "hostname": "web-01", "ip_address": "10.0.1.10",
-         "os": "Linux", "role": "webserver", "operation_id": "op-1"},
+        {
+            "id": "tgt-1",
+            "hostname": "web-01",
+            "ip_address": "10.0.1.10",
+            "os": "Linux",
+            "role": "webserver",
+            "operation_id": "op-1",
+        },
     ]
     # Only have network.host.ip — technique T1059.004 requires credential.ssh
     facts = [
-        {"id": "f-1", "trait": "network.host.ip", "value": "10.0.1.10",
-         "category": "network", "source_technique_id": "T1595.001",
-         "source_target_id": "tgt-1", "operation_id": "op-1"},
+        {
+            "id": "f-1",
+            "trait": "network.host.ip",
+            "value": "10.0.1.10",
+            "category": "network",
+            "source_technique_id": "T1595.001",
+            "source_target_id": "tgt-1",
+            "operation_id": "op-1",
+        },
     ]
     executions = []
 
@@ -413,6 +600,7 @@ async def test_orphan_node_unreachable_status():
 # ---------------------------------------------------------------------------
 # Test 8: API GET — 200 with graph data
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_api_get_attack_graph(client):
@@ -433,6 +621,7 @@ async def test_api_get_attack_graph(client):
 # Test 9: API POST rebuild — 200 with rebuilt graph
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_api_post_rebuild_attack_graph(client):
     """POST /api/operations/{id}/attack-graph/rebuild returns 200."""
@@ -448,6 +637,7 @@ async def test_api_post_rebuild_attack_graph(client):
 # Test 10: API 404 — non-existent operation
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_api_get_nonexistent_operation(client):
     """GET /api/operations/{id}/attack-graph for unknown op returns 404."""
@@ -458,6 +648,7 @@ async def test_api_get_nonexistent_operation(client):
 # ---------------------------------------------------------------------------
 # Test 11: WebSocket event — rebuild broadcasts graph.updated
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_websocket_event_on_rebuild():
@@ -489,6 +680,7 @@ async def test_websocket_event_on_rebuild():
 # Test 12: Orient summary — build_orient_summary format
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_build_orient_summary():
     """build_orient_summary produces correctly formatted string."""
@@ -498,20 +690,36 @@ async def test_build_orient_summary():
     engine = AttackGraphEngine(ws)
 
     graph = AttackGraph(
-        graph_id="g1", operation_id="op-1",
+        graph_id="g1",
+        operation_id="op-1",
         nodes={
             "n1": AttackNode(
-                node_id="n1", target_id="t1", technique_id="T1595.001",
-                tactic_id="TA0043", status=NodeStatus.EXPLORED,
-                confidence=0.95, risk_level="low", information_gain=0.9,
-                effort=1, prerequisites=[], satisfied_prerequisites=[], depth=0,
+                node_id="n1",
+                target_id="t1",
+                technique_id="T1595.001",
+                tactic_id="TA0043",
+                status=NodeStatus.EXPLORED,
+                confidence=0.95,
+                risk_level="low",
+                information_gain=0.9,
+                effort=1,
+                prerequisites=[],
+                satisfied_prerequisites=[],
+                depth=0,
             ),
             "n2": AttackNode(
-                node_id="n2", target_id="t1", technique_id="T1190",
-                tactic_id="TA0001", status=NodeStatus.PENDING,
-                confidence=0.6, risk_level="medium", information_gain=0.7,
-                effort=2, prerequisites=["service.open_port"],
-                satisfied_prerequisites=[], depth=1,
+                node_id="n2",
+                target_id="t1",
+                technique_id="T1190",
+                tactic_id="TA0001",
+                status=NodeStatus.PENDING,
+                confidence=0.6,
+                risk_level="medium",
+                information_gain=0.7,
+                effort=2,
+                prerequisites=["service.open_port"],
+                satisfied_prerequisites=[],
+                depth=1,
             ),
         },
         edges=[],
@@ -540,6 +748,7 @@ async def test_build_orient_summary():
 # Test 13: Coverage score — explored/total calculation
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_coverage_score_calculation():
     """Coverage = explored / total nodes."""
@@ -549,20 +758,43 @@ async def test_coverage_score_calculation():
     engine = AttackGraphEngine(ws)
 
     targets = [
-        {"id": "tgt-1", "hostname": "web-01", "ip_address": "10.0.1.10",
-         "os": "Linux", "role": "webserver", "operation_id": "op-1"},
+        {
+            "id": "tgt-1",
+            "hostname": "web-01",
+            "ip_address": "10.0.1.10",
+            "os": "Linux",
+            "role": "webserver",
+            "operation_id": "op-1",
+        },
     ]
     facts = [
-        {"id": "f-1", "trait": "network.host.ip", "value": "10.0.1.10",
-         "category": "network", "source_technique_id": "T1595.001",
-         "source_target_id": "tgt-1", "operation_id": "op-1"},
-        {"id": "f-2", "trait": "service.open_port", "value": "22/tcp",
-         "category": "service", "source_technique_id": "T1595.001",
-         "source_target_id": "tgt-1", "operation_id": "op-1"},
+        {
+            "id": "f-1",
+            "trait": "network.host.ip",
+            "value": "10.0.1.10",
+            "category": "network",
+            "source_technique_id": "T1595.001",
+            "source_target_id": "tgt-1",
+            "operation_id": "op-1",
+        },
+        {
+            "id": "f-2",
+            "trait": "service.open_port",
+            "value": "22/tcp",
+            "category": "service",
+            "source_technique_id": "T1595.001",
+            "source_target_id": "tgt-1",
+            "operation_id": "op-1",
+        },
     ]
     executions = [
-        {"id": "exec-1", "technique_id": "T1595.001", "target_id": "tgt-1",
-         "operation_id": "op-1", "status": "success"},
+        {
+            "id": "exec-1",
+            "technique_id": "T1595.001",
+            "target_id": "tgt-1",
+            "operation_id": "op-1",
+            "status": "success",
+        },
     ]
 
     graph = engine._build_graph_in_memory("op-1", targets, facts, executions)
@@ -580,6 +812,7 @@ async def test_coverage_score_calculation():
 # Test 14: Confidence adjustments — cross-target +0.1, failed tactic -0.05
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_confidence_cross_target_boost():
     """If technique succeeded on another target, confidence gets +0.1 boost."""
@@ -590,31 +823,57 @@ async def test_confidence_cross_target_boost():
 
     # Two targets, T1595.001 succeeded on tgt-1
     targets = [
-        {"id": "tgt-1", "hostname": "web-01", "ip_address": "10.0.1.10",
-         "os": "Linux", "role": "webserver", "operation_id": "op-1"},
-        {"id": "tgt-2", "hostname": "web-02", "ip_address": "10.0.1.11",
-         "os": "Linux", "role": "webserver", "operation_id": "op-1"},
+        {
+            "id": "tgt-1",
+            "hostname": "web-01",
+            "ip_address": "10.0.1.10",
+            "os": "Linux",
+            "role": "webserver",
+            "operation_id": "op-1",
+        },
+        {
+            "id": "tgt-2",
+            "hostname": "web-02",
+            "ip_address": "10.0.1.11",
+            "os": "Linux",
+            "role": "webserver",
+            "operation_id": "op-1",
+        },
     ]
     facts = [
-        {"id": "f-1", "trait": "network.host.ip", "value": "10.0.1.10",
-         "category": "network", "source_technique_id": "T1595.001",
-         "source_target_id": "tgt-1", "operation_id": "op-1"},
-        {"id": "f-2", "trait": "service.open_port", "value": "22/tcp",
-         "category": "service", "source_technique_id": "T1595.001",
-         "source_target_id": "tgt-1", "operation_id": "op-1"},
+        {
+            "id": "f-1",
+            "trait": "network.host.ip",
+            "value": "10.0.1.10",
+            "category": "network",
+            "source_technique_id": "T1595.001",
+            "source_target_id": "tgt-1",
+            "operation_id": "op-1",
+        },
+        {
+            "id": "f-2",
+            "trait": "service.open_port",
+            "value": "22/tcp",
+            "category": "service",
+            "source_technique_id": "T1595.001",
+            "source_target_id": "tgt-1",
+            "operation_id": "op-1",
+        },
     ]
     executions = [
-        {"id": "exec-1", "technique_id": "T1595.001", "target_id": "tgt-1",
-         "operation_id": "op-1", "status": "success"},
+        {
+            "id": "exec-1",
+            "technique_id": "T1595.001",
+            "target_id": "tgt-1",
+            "operation_id": "op-1",
+            "status": "success",
+        },
     ]
 
     graph = engine._build_graph_in_memory("op-1", targets, facts, executions)
 
     # Find T1595.001 node for tgt-2 — should have boosted confidence
-    tgt2_scan_nodes = [
-        n for n in graph.nodes.values()
-        if n.technique_id == "T1595.001" and n.target_id == "tgt-2"
-    ]
+    tgt2_scan_nodes = [n for n in graph.nodes.values() if n.technique_id == "T1595.001" and n.target_id == "tgt-2"]
     if tgt2_scan_nodes:
         node = tgt2_scan_nodes[0]
         # Base confidence = 0.95 (no required facts, so full base)
@@ -632,32 +891,51 @@ async def test_confidence_failed_tactic_penalty():
     engine = AttackGraphEngine(ws)
 
     targets = [
-        {"id": "tgt-1", "hostname": "web-01", "ip_address": "10.0.1.10",
-         "os": "Linux", "role": "webserver", "operation_id": "op-1"},
+        {
+            "id": "tgt-1",
+            "hostname": "web-01",
+            "ip_address": "10.0.1.10",
+            "os": "Linux",
+            "role": "webserver",
+            "operation_id": "op-1",
+        },
     ]
     facts = [
-        {"id": "f-1", "trait": "network.host.ip", "value": "10.0.1.10",
-         "category": "network", "source_technique_id": "T1595.001",
-         "source_target_id": "tgt-1", "operation_id": "op-1"},
-        {"id": "f-2", "trait": "service.open_port", "value": "22/tcp",
-         "category": "service", "source_technique_id": "T1595.001",
-         "source_target_id": "tgt-1", "operation_id": "op-1"},
+        {
+            "id": "f-1",
+            "trait": "network.host.ip",
+            "value": "10.0.1.10",
+            "category": "network",
+            "source_technique_id": "T1595.001",
+            "source_target_id": "tgt-1",
+            "operation_id": "op-1",
+        },
+        {
+            "id": "f-2",
+            "trait": "service.open_port",
+            "value": "22/tcp",
+            "category": "service",
+            "source_technique_id": "T1595.001",
+            "source_target_id": "tgt-1",
+            "operation_id": "op-1",
+        },
     ]
     # T1190 (TA0001) failed, T1110.001 (TA0001) should get penalty
     executions = [
-        {"id": "exec-1", "technique_id": "T1595.001", "target_id": "tgt-1",
-         "operation_id": "op-1", "status": "success"},
-        {"id": "exec-2", "technique_id": "T1190", "target_id": "tgt-1",
-         "operation_id": "op-1", "status": "failed"},
+        {
+            "id": "exec-1",
+            "technique_id": "T1595.001",
+            "target_id": "tgt-1",
+            "operation_id": "op-1",
+            "status": "success",
+        },
+        {"id": "exec-2", "technique_id": "T1190", "target_id": "tgt-1", "operation_id": "op-1", "status": "failed"},
     ]
 
     graph = engine._build_graph_in_memory("op-1", targets, facts, executions)
 
     # Find T1110.001 node for tgt-1 (same tactic TA0001 as failed T1190)
-    brute_nodes = [
-        n for n in graph.nodes.values()
-        if n.technique_id == "T1110.001" and n.target_id == "tgt-1"
-    ]
+    brute_nodes = [n for n in graph.nodes.values() if n.technique_id == "T1110.001" and n.target_id == "tgt-1"]
     if brute_nodes:
         node = brute_nodes[0]
         # T1110.001 base_confidence=0.7, requires service.open_port (satisfied)
@@ -675,56 +953,47 @@ async def test_confidence_failed_tactic_penalty():
 # Test 15: YAML rules loaded at least 50
 # ---------------------------------------------------------------------------
 
+
 def test_yaml_rules_loaded_at_least_50():
     """SPEC-039 Phase 1: _PREREQUISITE_RULES must contain >= 50 rules."""
     from app.services.attack_graph_engine import _PREREQUISITE_RULES
 
-    assert len(_PREREQUISITE_RULES) >= 50, (
-        f"Expected >= 50 rules, got {len(_PREREQUISITE_RULES)}"
-    )
+    assert len(_PREREQUISITE_RULES) >= 50, f"Expected >= 50 rules, got {len(_PREREQUISITE_RULES)}"
 
 
 # ---------------------------------------------------------------------------
 # Test 16: YAML unique tactics at least 8
 # ---------------------------------------------------------------------------
 
+
 def test_yaml_unique_tactics_at_least_8():
     """SPEC-039 Phase 1: unique tactic_id count must be >= 8."""
     from app.services.attack_graph_engine import _PREREQUISITE_RULES
 
     unique_tactics = {r.tactic_id for r in _PREREQUISITE_RULES}
-    assert len(unique_tactics) >= 8, (
-        f"Expected >= 8 unique tactics, got {len(unique_tactics)}: {unique_tactics}"
-    )
+    assert len(unique_tactics) >= 8, f"Expected >= 8 unique tactics, got {len(unique_tactics)}: {unique_tactics}"
 
 
 # ---------------------------------------------------------------------------
 # Test 17: TechniqueRule has required fields
 # ---------------------------------------------------------------------------
 
+
 def test_technique_rule_has_required_fields():
     """SPEC-039 Phase 1: every rule has platforms, description, tactic_id, base_confidence."""
     from app.services.attack_graph_engine import _PREREQUISITE_RULES
 
     for rule in _PREREQUISITE_RULES:
-        assert rule.platforms, (
-            f"Rule {rule.technique_id} missing or empty platforms"
-        )
-        assert rule.description, (
-            f"Rule {rule.technique_id} missing or empty description"
-        )
-        assert rule.tactic_id, (
-            f"Rule {rule.technique_id} missing tactic_id"
-        )
+        assert rule.platforms, f"Rule {rule.technique_id} missing or empty platforms"
+        assert rule.description, f"Rule {rule.technique_id} missing or empty description"
+        assert rule.tactic_id, f"Rule {rule.technique_id} missing tactic_id"
         assert 0.0 <= rule.base_confidence <= 1.0, (
             f"Rule {rule.technique_id} base_confidence out of range: {rule.base_confidence}"
         )
         assert 0.0 <= rule.information_gain <= 1.0, (
             f"Rule {rule.technique_id} information_gain out of range: {rule.information_gain}"
         )
-        assert 1 <= rule.effort <= 5, (
-            f"Rule {rule.technique_id} effort out of range: {rule.effort}"
-        )
+        assert 1 <= rule.effort <= 5, f"Rule {rule.technique_id} effort out of range: {rule.effort}"
         assert rule.risk_level in ("low", "medium", "high", "critical"), (
             f"Rule {rule.technique_id} invalid risk_level: {rule.risk_level}"
         )
@@ -732,9 +1001,7 @@ def test_technique_rule_has_required_fields():
             f"Rule {rule.technique_id} produced_facts must have at least one item"
         )
         for p in rule.platforms:
-            assert p in ("linux", "windows"), (
-                f"Rule {rule.technique_id} invalid platform: {p}"
-            )
+            assert p in ("linux", "windows"), f"Rule {rule.technique_id} invalid platform: {p}"
 
 
 # ===========================================================================
@@ -745,16 +1012,23 @@ def test_technique_rule_has_required_fields():
 # Test 18: compute_edge_cost — high confidence scenario
 # ---------------------------------------------------------------------------
 
+
 def test_compute_edge_cost_high_confidence():
     """SPEC-039 Phase 2: high confidence (0.95), high IG (0.9), low risk, effort 1 → cost ~0.08."""
     from app.services.attack_graph_engine import AttackGraphEngine
 
     node = AttackNode(
-        node_id="n-high", target_id="t1", technique_id="T1595.001",
-        tactic_id="TA0043", status=NodeStatus.PENDING,
-        confidence=0.95, risk_level="low",
-        information_gain=0.9, effort=1,
-        prerequisites=[], satisfied_prerequisites=[],
+        node_id="n-high",
+        target_id="t1",
+        technique_id="T1595.001",
+        tactic_id="TA0043",
+        status=NodeStatus.PENDING,
+        confidence=0.95,
+        risk_level="low",
+        information_gain=0.9,
+        effort=1,
+        prerequisites=[],
+        satisfied_prerequisites=[],
     )
     cost = AttackGraphEngine.compute_edge_cost(node)
 
@@ -770,16 +1044,23 @@ def test_compute_edge_cost_high_confidence():
 # Test 19: compute_edge_cost — low confidence scenario
 # ---------------------------------------------------------------------------
 
+
 def test_compute_edge_cost_low_confidence():
     """SPEC-039 Phase 2: low confidence (0.4), low IG (0.3), high risk, effort 4 → cost ~0.53."""
     from app.services.attack_graph_engine import AttackGraphEngine
 
     node = AttackNode(
-        node_id="n-low", target_id="t1", technique_id="T1190",
-        tactic_id="TA0001", status=NodeStatus.PENDING,
-        confidence=0.4, risk_level="high",
-        information_gain=0.3, effort=4,
-        prerequisites=[], satisfied_prerequisites=[],
+        node_id="n-low",
+        target_id="t1",
+        technique_id="T1190",
+        tactic_id="TA0001",
+        status=NodeStatus.PENDING,
+        confidence=0.4,
+        risk_level="high",
+        information_gain=0.3,
+        effort=4,
+        prerequisites=[],
+        satisfied_prerequisites=[],
     )
     cost = AttackGraphEngine.compute_edge_cost(node)
 
@@ -794,30 +1075,41 @@ def test_compute_edge_cost_low_confidence():
 # Test 20: high conf cheaper than low conf
 # ---------------------------------------------------------------------------
 
+
 def test_high_conf_cheaper_than_low_conf():
     """SPEC-039 Phase 2: high-confidence node must have lower cost than low-confidence node."""
     from app.services.attack_graph_engine import AttackGraphEngine
 
     high_node = AttackNode(
-        node_id="n-h", target_id="t1", technique_id="T1595.001",
-        tactic_id="TA0043", status=NodeStatus.PENDING,
-        confidence=0.95, risk_level="low",
-        information_gain=0.9, effort=1,
-        prerequisites=[], satisfied_prerequisites=[],
+        node_id="n-h",
+        target_id="t1",
+        technique_id="T1595.001",
+        tactic_id="TA0043",
+        status=NodeStatus.PENDING,
+        confidence=0.95,
+        risk_level="low",
+        information_gain=0.9,
+        effort=1,
+        prerequisites=[],
+        satisfied_prerequisites=[],
     )
     low_node = AttackNode(
-        node_id="n-l", target_id="t1", technique_id="T1190",
-        tactic_id="TA0001", status=NodeStatus.PENDING,
-        confidence=0.4, risk_level="high",
-        information_gain=0.3, effort=4,
-        prerequisites=[], satisfied_prerequisites=[],
+        node_id="n-l",
+        target_id="t1",
+        technique_id="T1190",
+        tactic_id="TA0001",
+        status=NodeStatus.PENDING,
+        confidence=0.4,
+        risk_level="high",
+        information_gain=0.3,
+        effort=4,
+        prerequisites=[],
+        satisfied_prerequisites=[],
     )
     cost_high = AttackGraphEngine.compute_edge_cost(high_node)
     cost_low = AttackGraphEngine.compute_edge_cost(low_node)
 
-    assert cost_high < cost_low, (
-        f"High-conf cost ({cost_high}) should be less than low-conf cost ({cost_low})"
-    )
+    assert cost_high < cost_low, f"High-conf cost ({cost_high}) should be less than low-conf cost ({cost_low})"
 
 
 # ===========================================================================
@@ -828,6 +1120,7 @@ def test_high_conf_cheaper_than_low_conf():
 # Test 21: Alternative sibling not pruned
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_alternative_sibling_not_pruned():
     """SPEC-039 Phase 3: T1110.001 fails → T1190 (alternative) remains PENDING."""
@@ -837,45 +1130,92 @@ async def test_alternative_sibling_not_pruned():
     engine = AttackGraphEngine(ws)
 
     graph = AttackGraph(
-        graph_id="g-alt-prune", operation_id="op-1",
-        nodes={}, edges=[], recommended_path=[],
-        explored_paths=[], unexplored_branches=[],
-        coverage_score=0.0, updated_at="",
+        graph_id="g-alt-prune",
+        operation_id="op-1",
+        nodes={},
+        edges=[],
+        recommended_path=[],
+        explored_paths=[],
+        unexplored_branches=[],
+        coverage_score=0.0,
+        updated_at="",
     )
 
     # T1110.001 (Brute Force) FAILED — its alternatives include T1190
     failed_node = AttackNode(
-        node_id="failed-bf", target_id="t1", technique_id="T1110.001",
-        tactic_id="TA0001", status=NodeStatus.FAILED,
-        confidence=0.0, risk_level="medium", information_gain=0.7,
-        effort=2, prerequisites=["service.open_port"],
-        satisfied_prerequisites=["service.open_port"], depth=1,
+        node_id="failed-bf",
+        target_id="t1",
+        technique_id="T1110.001",
+        tactic_id="TA0001",
+        status=NodeStatus.FAILED,
+        confidence=0.0,
+        risk_level="medium",
+        information_gain=0.7,
+        effort=2,
+        prerequisites=["service.open_port"],
+        satisfied_prerequisites=["service.open_port"],
+        depth=1,
     )
     # T1190 is an alternative technique (different attack vector, same tactic)
     alt_node = AttackNode(
-        node_id="alt-exploit", target_id="t1", technique_id="T1190",
-        tactic_id="TA0001", status=NodeStatus.PENDING,
-        confidence=0.6, risk_level="medium", information_gain=0.7,
-        effort=2, prerequisites=["service.open_port"],
-        satisfied_prerequisites=["service.open_port"], depth=1,
+        node_id="alt-exploit",
+        target_id="t1",
+        technique_id="T1190",
+        tactic_id="TA0001",
+        status=NodeStatus.PENDING,
+        confidence=0.6,
+        risk_level="medium",
+        information_gain=0.7,
+        effort=2,
+        prerequisites=["service.open_port"],
+        satisfied_prerequisites=["service.open_port"],
+        depth=1,
     )
     prereq = AttackNode(
-        node_id="prereq", target_id="t1", technique_id="T1595.001",
-        tactic_id="TA0043", status=NodeStatus.EXPLORED,
-        confidence=0.95, risk_level="low", information_gain=0.9,
-        effort=1, prerequisites=[], satisfied_prerequisites=[], depth=0,
+        node_id="prereq",
+        target_id="t1",
+        technique_id="T1595.001",
+        tactic_id="TA0043",
+        status=NodeStatus.EXPLORED,
+        confidence=0.95,
+        risk_level="low",
+        information_gain=0.9,
+        effort=1,
+        prerequisites=[],
+        satisfied_prerequisites=[],
+        depth=0,
     )
 
     graph.nodes = {
-        "prereq": prereq, "failed-bf": failed_node, "alt-exploit": alt_node,
+        "prereq": prereq,
+        "failed-bf": failed_node,
+        "alt-exploit": alt_node,
     }
     graph.edges = [
-        AttackEdge(edge_id="e1", source="prereq", target="failed-bf", weight=0.5,
-                   relationship=EdgeRelationship.ENABLES, required_facts=[]),
-        AttackEdge(edge_id="e2", source="prereq", target="alt-exploit", weight=0.6,
-                   relationship=EdgeRelationship.ENABLES, required_facts=[]),
-        AttackEdge(edge_id="e-alt", source="failed-bf", target="alt-exploit", weight=0.6,
-                   relationship=EdgeRelationship.ALTERNATIVE, required_facts=[]),
+        AttackEdge(
+            edge_id="e1",
+            source="prereq",
+            target="failed-bf",
+            weight=0.5,
+            relationship=EdgeRelationship.ENABLES,
+            required_facts=[],
+        ),
+        AttackEdge(
+            edge_id="e2",
+            source="prereq",
+            target="alt-exploit",
+            weight=0.6,
+            relationship=EdgeRelationship.ENABLES,
+            required_facts=[],
+        ),
+        AttackEdge(
+            edge_id="e-alt",
+            source="failed-bf",
+            target="alt-exploit",
+            weight=0.6,
+            relationship=EdgeRelationship.ALTERNATIVE,
+            required_facts=[],
+        ),
     ]
 
     engine.prune_dead_branches(graph)
@@ -890,6 +1230,7 @@ async def test_alternative_sibling_not_pruned():
 # Test 22: All incoming dead prunes node
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_all_incoming_dead_prunes_node():
     """SPEC-039 Phase 3: node with all incoming edges dead (no alive alt) → pruned."""
@@ -899,39 +1240,79 @@ async def test_all_incoming_dead_prunes_node():
     engine = AttackGraphEngine(ws)
 
     graph = AttackGraph(
-        graph_id="g-prop-prune", operation_id="op-1",
-        nodes={}, edges=[], recommended_path=[],
-        explored_paths=[], unexplored_branches=[],
-        coverage_score=0.0, updated_at="",
+        graph_id="g-prop-prune",
+        operation_id="op-1",
+        nodes={},
+        edges=[],
+        recommended_path=[],
+        explored_paths=[],
+        unexplored_branches=[],
+        coverage_score=0.0,
+        updated_at="",
     )
 
     # Two parent nodes, both FAILED, leading to a child node
     parent1 = AttackNode(
-        node_id="p1", target_id="t1", technique_id="T1190",
-        tactic_id="TA0001", status=NodeStatus.FAILED,
-        confidence=0.0, risk_level="medium", information_gain=0.7,
-        effort=2, prerequisites=[], satisfied_prerequisites=[], depth=1,
+        node_id="p1",
+        target_id="t1",
+        technique_id="T1190",
+        tactic_id="TA0001",
+        status=NodeStatus.FAILED,
+        confidence=0.0,
+        risk_level="medium",
+        information_gain=0.7,
+        effort=2,
+        prerequisites=[],
+        satisfied_prerequisites=[],
+        depth=1,
     )
     parent2 = AttackNode(
-        node_id="p2", target_id="t1", technique_id="T1110.001",
-        tactic_id="TA0001", status=NodeStatus.FAILED,
-        confidence=0.0, risk_level="medium", information_gain=0.7,
-        effort=2, prerequisites=[], satisfied_prerequisites=[], depth=1,
+        node_id="p2",
+        target_id="t1",
+        technique_id="T1110.001",
+        tactic_id="TA0001",
+        status=NodeStatus.FAILED,
+        confidence=0.0,
+        risk_level="medium",
+        information_gain=0.7,
+        effort=2,
+        prerequisites=[],
+        satisfied_prerequisites=[],
+        depth=1,
     )
     child = AttackNode(
-        node_id="child", target_id="t1", technique_id="T1059.004",
-        tactic_id="TA0002", status=NodeStatus.PENDING,
-        confidence=0.85, risk_level="medium", information_gain=0.5,
-        effort=1, prerequisites=["credential.ssh"],
-        satisfied_prerequisites=[], depth=2,
+        node_id="child",
+        target_id="t1",
+        technique_id="T1059.004",
+        tactic_id="TA0002",
+        status=NodeStatus.PENDING,
+        confidence=0.85,
+        risk_level="medium",
+        information_gain=0.5,
+        effort=1,
+        prerequisites=["credential.ssh"],
+        satisfied_prerequisites=[],
+        depth=2,
     )
 
     graph.nodes = {"p1": parent1, "p2": parent2, "child": child}
     graph.edges = [
-        AttackEdge(edge_id="e1", source="p1", target="child", weight=0.5,
-                   relationship=EdgeRelationship.ENABLES, required_facts=[]),
-        AttackEdge(edge_id="e2", source="p2", target="child", weight=0.6,
-                   relationship=EdgeRelationship.ENABLES, required_facts=[]),
+        AttackEdge(
+            edge_id="e1",
+            source="p1",
+            target="child",
+            weight=0.5,
+            relationship=EdgeRelationship.ENABLES,
+            required_facts=[],
+        ),
+        AttackEdge(
+            edge_id="e2",
+            source="p2",
+            target="child",
+            weight=0.6,
+            relationship=EdgeRelationship.ENABLES,
+            required_facts=[],
+        ),
     ]
 
     engine.prune_dead_branches(graph)
@@ -948,6 +1329,7 @@ async def test_all_incoming_dead_prunes_node():
 # ---------------------------------------------------------------------------
 # Test 23: POST /admin/rules/reload returns 200
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_admin_rules_reload(client):

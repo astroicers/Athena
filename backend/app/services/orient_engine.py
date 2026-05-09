@@ -20,14 +20,14 @@ from datetime import datetime, timezone
 import asyncpg
 
 from app.config import settings
-from app.services.mission_profile_loader import get_profile, noise_allowed, NOISE_RANKS
+from app.services.mission_profile_loader import NOISE_RANKS, get_profile, noise_allowed
 from app.ws_manager import WebSocketManager
 
 
 def _to_camel_case(snake_str: str) -> str:
     """Convert snake_case string to camelCase."""
-    components = snake_str.split('_')
-    return components[0] + ''.join(x.title() for x in components[1:])
+    components = snake_str.split("_")
+    return components[0] + "".join(x.title() for x in components[1:])
 
 
 def _format_relay_infrastructure() -> str:
@@ -72,8 +72,10 @@ def _dict_to_camel_case(d: dict) -> dict:
         camel_key = _to_camel_case(key)
         if isinstance(value, list):
             result[camel_key] = [
-                _dict_to_camel_case(item) if isinstance(item, dict)
-                else item.isoformat() if isinstance(item, _dt)
+                _dict_to_camel_case(item)
+                if isinstance(item, dict)
+                else item.isoformat()
+                if isinstance(item, _dt)
                 else item
                 for item in value
             ]
@@ -82,6 +84,7 @@ def _dict_to_camel_case(d: dict) -> dict:
         else:
             result[camel_key] = value
     return result
+
 
 logger = logging.getLogger(__name__)
 
@@ -490,52 +493,68 @@ class OrientEngine:
         self._ws = ws_manager
 
     async def analyze(
-        self, db: asyncpg.Connection, operation_id: str,
-        observe_summary: str, *, attack_graph_summary: str = "",
+        self,
+        db: asyncpg.Connection,
+        operation_id: str,
+        observe_summary: str,
+        *,
+        attack_graph_summary: str = "",
     ) -> dict:
         """Call LLM (or mock) to produce OrientRecommendation."""
 
         # Read mission profile for noise filtering
         op_row = await db.fetchrow(
-            "SELECT mission_profile FROM operations WHERE id = $1", operation_id,
+            "SELECT mission_profile FROM operations WHERE id = $1",
+            operation_id,
         )
         mission_code = (op_row["mission_profile"] if op_row else None) or "SP"
 
         if settings.MOCK_LLM:
             filtered_mock = await self._filter_options_by_noise(
-                db, _MOCK_RECOMMENDATION, mission_code,
+                db,
+                _MOCK_RECOMMENDATION,
+                mission_code,
             )
-            rec = await self._store_recommendation(
-                db, operation_id, filtered_mock
-            )
+            rec = await self._store_recommendation(db, operation_id, filtered_mock)
             await self._ws.broadcast(operation_id, "recommendation", _dict_to_camel_case(rec))
             return rec
 
         # Build prompt context (system + user)
         system_prompt, user_prompt = await self._build_prompt(
-            db, operation_id, observe_summary,
+            db,
+            operation_id,
+            observe_summary,
             attack_graph_summary=attack_graph_summary,
         )
 
         # Broadcast LLM call start for red team visibility
         from app.services.llm_client import get_llm_client
+
         client = get_llm_client()
         backend_name = client._resolve_backend() if client else "mock"
-        await self._ws.broadcast(operation_id, "orient.thinking", {
-            "status": "started",
-            "backend": backend_name,
-        })
+        await self._ws.broadcast(
+            operation_id,
+            "orient.thinking",
+            {
+                "status": "started",
+                "backend": backend_name,
+            },
+        )
 
         t0 = asyncio.get_event_loop().time()
         llm_response = await self._call_llm(system_prompt, user_prompt)
         latency_ms = int((asyncio.get_event_loop().time() - t0) * 1000)
 
         # Broadcast LLM call completion with latency
-        await self._ws.broadcast(operation_id, "orient.thinking", {
-            "status": "completed",
-            "backend": backend_name,
-            "latency_ms": latency_ms,
-        })
+        await self._ws.broadcast(
+            operation_id,
+            "orient.thinking",
+            {
+                "status": "completed",
+                "backend": backend_name,
+                "latency_ms": latency_ms,
+            },
+        )
 
         # Strip markdown code blocks if present (e.g. ```json ... ```)
         cleaned = llm_response.strip()
@@ -550,11 +569,8 @@ class OrientEngine:
             if settings.MOCK_LLM:
                 parsed = _MOCK_RECOMMENDATION
             else:
-                await self._ws.broadcast(operation_id, "orient.error",
-                    {"error": "LLM returned non-JSON"})
-                raise LLMUnavailableError(
-                    f"LLM returned non-JSON response: {llm_response[:200]}"
-                )
+                await self._ws.broadcast(operation_id, "orient.error", {"error": "LLM returned non-JSON"})
+                raise LLMUnavailableError(f"LLM returned non-JSON response: {llm_response[:200]}")
 
         # Validate required fields
         _required = ("situation_assessment", "recommended_technique_id", "confidence", "options")
@@ -564,9 +580,7 @@ class OrientEngine:
             if settings.MOCK_LLM:
                 parsed = _MOCK_RECOMMENDATION
             else:
-                raise LLMUnavailableError(
-                    f"LLM response missing required fields: {missing}"
-                )
+                raise LLMUnavailableError(f"LLM response missing required fields: {missing}")
         elif not isinstance(parsed.get("options"), list) or len(parsed["options"]) < 1:
             logger.error("Orient LLM response has no valid options")
             if settings.MOCK_LLM:
@@ -586,7 +600,10 @@ class OrientEngine:
     # ------------------------------------------------------------------
 
     async def _filter_options_by_noise(
-        self, db: asyncpg.Connection, parsed: dict, mission_code: str,
+        self,
+        db: asyncpg.Connection,
+        parsed: dict,
+        mission_code: str,
     ) -> dict:
         """Remove options whose technique noise_level exceeds the mission limit.
 
@@ -619,16 +636,17 @@ class OrientEngine:
             else:
                 logger.info(
                     "SPEC-046: Excluded technique %s (noise=%s) for mission %s (max=%s)",
-                    tid, tech_noise, mission_code, max_noise,
+                    tid,
+                    tech_noise,
+                    mission_code,
+                    max_noise,
                 )
 
         if not filtered:
             # All options exceeded noise limit — keep only the lowest-noise one
             lowest = min(
                 options,
-                key=lambda o: NOISE_RANKS.get(
-                    noise_map.get(o.get("technique_id", ""), "medium"), 2
-                ),
+                key=lambda o: NOISE_RANKS.get(noise_map.get(o.get("technique_id", ""), "medium"), 2),
             )
             lowest["noise_override"] = True
             logger.warning(
@@ -646,9 +664,7 @@ class OrientEngine:
         result = dict(parsed)
         result["options"] = filtered
         # Update recommended_technique_id to the first remaining option
-        if filtered and result.get("recommended_technique_id") not in [
-            o["technique_id"] for o in filtered
-        ]:
+        if filtered and result.get("recommended_technique_id") not in [o["technique_id"] for o in filtered]:
             result["recommended_technique_id"] = filtered[0]["technique_id"]
             result["confidence"] = filtered[0].get("confidence", result.get("confidence", 0.0))
         return result
@@ -663,9 +679,7 @@ class OrientEngine:
             return "No mission steps defined."
         lines = []
         for r in rows:
-            status_icon = {"completed": "[x]", "running": "[>]", "failed": "[!]"}.get(
-                r["status"], "[ ]"
-            )
+            status_icon = {"completed": "[x]", "running": "[>]", "failed": "[!]"}.get(r["status"], "[ ]")
             lines.append(
                 f"  {r['step_number']}. {status_icon} {r['technique_name']} "
                 f"({r['technique_id']}) -> {r['target_label']} [{r['engine']}]"
@@ -691,10 +705,7 @@ class OrientEngine:
             return "No prior assessments."
         lines = []
         for r in rows:
-            lines.append(
-                f"- Recommended {r['recommended_technique_id']}: "
-                f"{r['situation_assessment'][:120]}"
-            )
+            lines.append(f"- Recommended {r['recommended_technique_id']}: {r['situation_assessment'][:120]}")
         return "\n".join(lines)
 
     @staticmethod
@@ -708,9 +719,7 @@ class OrientEngine:
 
             # SPEC-043: Show PoC records in separate category for feedback loop
             if trait.startswith("poc."):
-                by_cat.setdefault("PROOF_OF_CONCEPT", []).append(
-                    f"  - {trait}: {r['value']}"
-                )
+                by_cat.setdefault("PROOF_OF_CONCEPT", []).append(f"  - {trait}: {r['value']}")
                 continue
 
             # SPEC-037: Exclude invalidated credentials from prompt
@@ -722,18 +731,12 @@ class OrientEngine:
                 # Exclude rejected CVEs from the prompt entirely
                 continue
             elif trait == "vuln.cve.validated":
-                by_cat.setdefault(cat, []).append(
-                    f"  - [CONFIRMED] {r['value']}"
-                )
+                by_cat.setdefault(cat, []).append(f"  - [CONFIRMED] {r['value']}")
             elif trait == "vuln.cve.uncertain":
-                by_cat.setdefault(cat, []).append(
-                    f"  - [UNCONFIRMED] {r['value']}"
-                )
+                by_cat.setdefault(cat, []).append(f"  - [UNCONFIRMED] {r['value']}")
             elif trait == "vuln.cve":
                 # Legacy unvalidated CVE facts
-                by_cat.setdefault(cat, []).append(
-                    f"  - [UNVALIDATED] {r['value']}"
-                )
+                by_cat.setdefault(cat, []).append(f"  - [UNVALIDATED] {r['value']}")
             else:
                 by_cat.setdefault(cat, []).append(f"  - {trait}: {r['value']}")
 
@@ -769,14 +772,19 @@ class OrientEngine:
     # ------------------------------------------------------------------
 
     async def _build_prompt(
-        self, db: asyncpg.Connection, operation_id: str, observe_summary: str,
-        *, attack_graph_summary: str = "",
+        self,
+        db: asyncpg.Connection,
+        operation_id: str,
+        observe_summary: str,
+        *,
+        attack_graph_summary: str = "",
     ) -> tuple[str, str]:
         # --- Existing queries (preserved) ---
 
         # Q1: Operation details
         op = await db.fetchrow(
-            "SELECT * FROM operations WHERE id = $1", operation_id,
+            "SELECT * FROM operations WHERE id = $1",
+            operation_id,
         )
 
         # Q2: Completed techniques
@@ -785,9 +793,9 @@ class OrientEngine:
             "FROM technique_executions te WHERE te.operation_id = $1 AND te.status = 'success'",
             operation_id,
         )
-        completed_str = "\n".join(
-            f"- {r['technique_id']}: {r['result_summary'] or 'completed'}" for r in completed
-        ) or "None yet"
+        completed_str = (
+            "\n".join(f"- {r['technique_id']}: {r['result_summary'] or 'completed'}" for r in completed) or "None yet"
+        )
 
         # Q3: Failed techniques — SPEC-053 structured failure context
         #
@@ -804,26 +812,30 @@ class OrientEngine:
             "ORDER BY te.started_at DESC NULLS LAST LIMIT 20",
             operation_id,
         )
-        failed_str = "\n".join(
-            f"- {r['technique_id']} on "
-            f"{r['hostname'] or r['ip_address'] or 'unknown'} "
-            f"[{r['failure_category'] or 'unknown'}]: "
-            f"{(r['error_message'] or 'failed')[:200]}"
-            for r in failed
-        ) or "None"
+        failed_str = (
+            "\n".join(
+                f"- {r['technique_id']} on "
+                f"{r['hostname'] or r['ip_address'] or 'unknown'} "
+                f"[{r['failure_category'] or 'unknown'}]: "
+                f"{(r['error_message'] or 'failed')[:200]}"
+                for r in failed
+            )
+            or "None"
+        )
 
         # Q4: Targets (enriched with os, network_segment, access_status -- SPEC-037)
         targets = await db.fetch(
             "SELECT hostname, ip_address, os, role, network_segment, "
             "is_compromised, privilege_level, access_status "
-            "FROM targets WHERE operation_id = $1", operation_id,
+            "FROM targets WHERE operation_id = $1",
+            operation_id,
         )
         target_lines = []
         for r in targets:
-            access_status = r['access_status'] or 'unknown'
-            if access_status == 'lost':
+            access_status = r["access_status"] or "unknown"
+            if access_status == "lost":
                 status_str = f"ACCESS_LOST (was: {r['privilege_level'] or 'User'})"
-            elif r['is_compromised']:
+            elif r["is_compromised"]:
                 status_str = f"COMPROMISED(ACTIVE) {r['privilege_level'] or ''}"
             else:
                 status_str = "SECURE"
@@ -832,10 +844,9 @@ class OrientEngine:
                 f"OS={r['os'] or 'unknown'} Net={r['network_segment'] or 'unknown'} "
                 f"{status_str}"
             )
-            if access_status == 'lost':
+            if access_status == "lost":
                 line += (
-                    "\n  WARNING: Access lost -- credential invalidated. "
-                    "Prioritize re-entry via alternative services."
+                    "\n  WARNING: Access lost -- credential invalidated. Prioritize re-entry via alternative services."
                 )
             target_lines.append(line)
         targets_str = "\n".join(target_lines) or "No targets"
@@ -845,10 +856,9 @@ class OrientEngine:
             "SELECT paw, status, privilege, platform FROM agents WHERE operation_id = $1",
             operation_id,
         )
-        agents_str = "\n".join(
-            f"- {r['paw']} [{r['status']}] {r['privilege']} ({r['platform']})"
-            for r in agents
-        ) or "No agents"
+        agents_str = (
+            "\n".join(f"- {r['paw']} [{r['status']}] {r['privilege']} ({r['platform']})" for r in agents) or "No agents"
+        )
 
         # --- New queries (Pattern 1, 4, 5) ---
 
@@ -886,9 +896,7 @@ class OrientEngine:
             operation_id,
         )
         executed_tactic_ids = [r["tactic_id"] for r in tactic_rows]
-        executed_tactics_str = ", ".join(
-            f"{r['tactic']} ({r['tactic_id']})" for r in tactic_rows
-        ) or "None yet"
+        executed_tactics_str = ", ".join(f"{r['tactic']} ({r['tactic_id']})" for r in tactic_rows) or "None yet"
         current_stage, next_stage = self._infer_kill_chain_stage(executed_tactic_ids)
 
         # Q10: Categorized facts (Pattern 2 -- reflection)
@@ -902,6 +910,7 @@ class OrientEngine:
         # Q10.5: Feasible techniques — prerequisites satisfied by current facts (Rule #3)
         # Uses attack_graph_engine module-level _RULE_BY_TECHNIQUE (loaded from technique_rules.yaml).
         from app.services.attack_graph_engine import AttackGraphEngine
+
         current_fact_traits: set[str] = {r["trait"] for r in facts}
         feasible_technique_ids = AttackGraphEngine.get_feasible_techniques(current_fact_traits)
         if feasible_technique_ids:
@@ -917,9 +926,7 @@ class OrientEngine:
             operation_id,
         )
         harvested_creds_str = (
-            "\n".join(f"- {r['trait']}: {r['value'][:60]}" for r in cred_rows)
-            if cred_rows
-            else "None harvested yet."
+            "\n".join(f"- {r['trait']}: {r['value'][:60]}" for r in cred_rows) if cred_rows else "None harvested yet."
         )
 
         # Q12: Available technique playbooks (ADR-018 Layer C)
@@ -938,8 +945,7 @@ class OrientEngine:
         primary_target_id = prim_tgt_row["id"] if prim_tgt_row else None
 
         playbook_rows = await db.fetch(
-            "SELECT mitre_id, tags FROM technique_playbooks "
-            "WHERE platform = $1 ORDER BY mitre_id",
+            "SELECT mitre_id, tags FROM technique_playbooks WHERE platform = $1 ORDER BY mitre_id",
             platform,
         )
         if playbook_rows:
@@ -972,18 +978,16 @@ class OrientEngine:
 
         if cred_rows and uncompromised_rows:
             cred_lines = [
-                f"  - credential from {r['hostname'] or r['source_target_id'] or 'unknown'}: "
-                f"{r['value'][:50]}..."
+                f"  - credential from {r['hostname'] or r['source_target_id'] or 'unknown'}: {r['value'][:50]}..."
                 for r in cred_rows
             ]
-            target_lines = [
-                f"  - {r['hostname']} ({r['ip_address']}) role={r['role']}"
-                for r in uncompromised_rows
-            ]
+            target_lines = [f"  - {r['hostname']} ({r['ip_address']}) role={r['role']}" for r in uncompromised_rows]
             lateral_str = (
-                "Available credentials:\n" + "\n".join(cred_lines) +
-                "\n\nUncompromised targets:\n" + "\n".join(target_lines) +
-                "\n\nConsider lateral movement via available protocols: "
+                "Available credentials:\n"
+                + "\n".join(cred_lines)
+                + "\n\nUncompromised targets:\n"
+                + "\n".join(target_lines)
+                + "\n\nConsider lateral movement via available protocols: "
                 "T1021.004 (SSH), T1021.001 (WinRM/RDP)."
             )
         else:
@@ -995,15 +999,14 @@ class OrientEngine:
             persist_rows = await db.fetch(
                 "SELECT DISTINCT value FROM facts "
                 "WHERE operation_id = $1 AND source_target_id = $2 AND trait = 'host.persistence'",
-                operation_id, primary_target_id,
+                operation_id,
+                primary_target_id,
             )
         else:
             persist_rows = []
 
         if persist_rows:
-            persist_info = "Persistence vectors confirmed: " + ", ".join(
-                r["value"] for r in persist_rows
-            )
+            persist_info = "Persistence vectors confirmed: " + ", ".join(r["value"] for r in persist_rows)
         else:
             persist_info = "No persistence established yet."
         lateral_str = lateral_str + f"\n\nPersistence status: {persist_info}"
@@ -1012,6 +1015,7 @@ class OrientEngine:
         # (auto-generated to prevent drift between router and Orient prompt)
         try:
             from app.services.engine_router import _AD_TECHNIQUE_TO_MCP
+
             ad_mcp_lines = []
             seen_tools: set[str] = set()
             for tech_id, (server, tool) in _AD_TECHNIQUE_TO_MCP.items():
@@ -1054,8 +1058,7 @@ class OrientEngine:
                     mcp_tools = mcp_mgr.list_all_tools()
                     if mcp_tools:
                         mcp_tools_summary = "\n".join(
-                            f"- {t.server_name}:{t.tool_name} -- {t.description}"
-                            for t in mcp_tools
+                            f"- {t.server_name}:{t.tool_name} -- {t.description}" for t in mcp_tools
                         )
                     else:
                         mcp_tools_summary = "(no MCP tools connected)"
@@ -1070,6 +1073,7 @@ class OrientEngine:
         opsec_exposure_count = 0
         try:
             from app.services.opsec_monitor import compute_status
+
             opsec_st = await compute_status(db, operation_id)
             opsec_detection_risk = round(opsec_st.detection_risk)
             opsec_noise_budget_remaining = opsec_st.noise_budget_remaining
@@ -1086,8 +1090,7 @@ class OrientEngine:
         )
         if vuln_rows:
             vuln_lines = [
-                f"  - {r['cve_id']} ({r['severity']}) on target {r['target_id']} [{r['status']}]"
-                for r in vuln_rows
+                f"  - {r['cve_id']} ({r['severity']}) on target {r['target_id']} [{r['status']}]" for r in vuln_rows
             ]
             known_vulnerabilities_str = "\n".join(vuln_lines)
         else:
@@ -1148,9 +1151,7 @@ class OrientEngine:
             )
             skill_tactic_id = tac_row["tactic_id"] if tac_row else None
 
-        skills_section = load_skills(
-            last_rec_technique or "", skill_tactic_id
-        )
+        skills_section = load_skills(last_rec_technique or "", skill_tactic_id)
         if skills_section:
             user_prompt += f"\n\n{skills_section}"
 
@@ -1162,9 +1163,7 @@ class OrientEngine:
             operation_id,
         )
         if directive_row:
-            user_prompt += (
-                f"\n\n## OPERATOR DIRECTIVE (PRIORITY)\n{directive_row['directive']}"
-            )
+            user_prompt += f"\n\n## OPERATOR DIRECTIVE (PRIORITY)\n{directive_row['directive']}"
             await db.execute(
                 "UPDATE ooda_directives SET consumed_at = NOW() WHERE id = $1",
                 directive_row["id"],
@@ -1189,8 +1188,8 @@ class OrientEngine:
                 "(nmap, vuln-lookup, credential-checker). "
                 'When engine="mcp", also set "mcp_tool" to the exact "server:tool_name" '
                 "from the AD DOMAIN INTELLIGENCE TOOLS list in Section 7.8.1 — "
-                "e.g. \"impacket-ad:asrep_roast\", \"certipy-ad:certipy_request\", "
-                "\"web-scanner:web_rce_execute\". This lets the engine route directly "
+                'e.g. "impacket-ad:asrep_roast", "certipy-ad:certipy_request", '
+                '"web-scanner:web_rce_execute". This lets the engine route directly '
                 "without any hardcoded lookup table."
             )
         else:
@@ -1230,22 +1229,18 @@ class OrientEngine:
                 "OODA iteration will halt. Fix LLM connectivity and resume."
             )
             raise LLMUnavailableError(
-                "LLM backend returned empty response - "
-                "check ANTHROPIC_API_KEY / OPENAI_API_KEY / rate limits"
+                "LLM backend returned empty response - check ANTHROPIC_API_KEY / OPENAI_API_KEY / rate limits"
             )
         return result
 
-    async def _store_recommendation(
-        self, db: asyncpg.Connection, operation_id: str, parsed: dict
-    ) -> dict:
+    async def _store_recommendation(self, db: asyncpg.Connection, operation_id: str, parsed: dict) -> dict:
         """Store recommendation in DB and return as dict."""
         rec_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
 
         # Get current OODA iteration
         row = await db.fetchrow(
-            "SELECT id FROM ooda_iterations WHERE operation_id = $1 "
-            "ORDER BY iteration_number DESC LIMIT 1",
+            "SELECT id FROM ooda_iterations WHERE operation_id = $1 ORDER BY iteration_number DESC LIMIT 1",
             operation_id,
         )
         ooda_iter_id = row["id"] if row else None
@@ -1256,7 +1251,9 @@ class OrientEngine:
             "(id, operation_id, ooda_iteration_id, situation_assessment, "
             "recommended_technique_id, confidence, options, reasoning_text, created_at) "
             "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-            rec_id, operation_id, ooda_iter_id,
+            rec_id,
+            operation_id,
+            ooda_iter_id,
             parsed.get("situation_assessment", ""),
             parsed.get("recommended_technique_id", ""),
             parsed.get("confidence", 0.0),
@@ -1269,7 +1266,8 @@ class OrientEngine:
         if ooda_iter_id:
             await db.execute(
                 "UPDATE ooda_iterations SET recommendation_id = $1 WHERE id = $2",
-                rec_id, ooda_iter_id,
+                rec_id,
+                ooda_iter_id,
             )
 
         return {

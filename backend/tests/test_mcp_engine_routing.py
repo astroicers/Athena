@@ -53,9 +53,7 @@ async def test_build_ooda_controller_wires_mcp_engine():
         s.C2_ENGINE_API_KEY = ""
         mock_mgr = MagicMock()
         mock_mgr.list_servers.return_value = []
-        with patch(
-            "app.services.ooda_controller.get_mcp_manager", return_value=mock_mgr
-        ):
+        with patch("app.services.ooda_controller.get_mcp_manager", return_value=mock_mgr):
             from app.services.ooda_controller import build_ooda_controller
 
             controller = build_ooda_controller()
@@ -102,8 +100,8 @@ async def test_execute_mcp_calls_mcp_engine(seeded_db):
 @pytest.mark.asyncio
 async def test_mcp_ssh_routes_to_executor(seeded_db):
     """EXECUTION_ENGINE=mcp_ssh routes through _execute_via_mcp_executor."""
-    from app.services.engine_router import EngineRouter
     from app.clients import ExecutionResult
+    from app.services.engine_router import EngineRouter
 
     await seeded_db.execute(
         "INSERT INTO facts (id, operation_id, source_target_id, trait, value, category, score) "
@@ -158,8 +156,8 @@ async def test_mcp_ssh_routes_to_executor(seeded_db):
 @pytest.mark.asyncio
 async def test_execute_mcp_writes_technique_execution(seeded_db):
     """_execute_mcp() should write a technique_executions record on success."""
-    from app.services.engine_router import EngineRouter
     from app.clients import ExecutionResult
+    from app.services.engine_router import EngineRouter
 
     mock_result = ExecutionResult(
         success=True,
@@ -196,9 +194,7 @@ async def test_execute_mcp_writes_technique_execution(seeded_db):
     )
 
     # Generic MCP execution writes a technique_executions record
-    row = await seeded_db.fetchrow(
-        "SELECT engine, status FROM technique_executions WHERE id = 'mcp-exec-2'"
-    )
+    row = await seeded_db.fetchrow("SELECT engine, status FROM technique_executions WHERE id = 'mcp-exec-2'")
     assert row is not None
     assert row["engine"] == "mcp"
     assert row["status"] == "success"
@@ -211,6 +207,7 @@ def test_ooda_controller_wires_mcp():
         mock_build.return_value = mock_controller
 
         from app.routers.ooda import _get_controller
+
         _get_controller.cache_clear()
 
         result = _get_controller()

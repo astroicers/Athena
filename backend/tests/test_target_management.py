@@ -32,11 +32,14 @@ async def test_set_active_target(client):
 async def test_set_active_target_clears_previous(client):
     """Setting a new active target deactivates the previous one."""
     # First, create a second target
-    await client.post("/api/operations/test-op-1/targets", json={
-        "hostname": "WS-01",
-        "ip_address": "10.0.1.20",
-        "role": "Workstation",
-    })
+    await client.post(
+        "/api/operations/test-op-1/targets",
+        json={
+            "hostname": "WS-01",
+            "ip_address": "10.0.1.20",
+            "role": "Workstation",
+        },
+    )
     # Set first as active
     await client.patch(
         "/api/operations/test-op-1/targets/active",
@@ -88,13 +91,16 @@ async def test_set_active_target_not_found(client):
 
 async def test_batch_import_plain_ips(client):
     """Batch import creates targets for each entry."""
-    resp = await client.post("/api/operations/test-op-1/targets/batch", json={
-        "entries": [
-            {"hostname": "host-a", "ip_address": "192.168.1.1"},
-            {"hostname": "host-b", "ip_address": "192.168.1.2"},
-        ],
-        "role": "target",
-    })
+    resp = await client.post(
+        "/api/operations/test-op-1/targets/batch",
+        json={
+            "entries": [
+                {"hostname": "host-a", "ip_address": "192.168.1.1"},
+                {"hostname": "host-b", "ip_address": "192.168.1.2"},
+            ],
+            "role": "target",
+        },
+    )
     assert resp.status_code == 201
     data = resp.json()
     assert data["total_created"] == 2
@@ -105,13 +111,16 @@ async def test_batch_import_plain_ips(client):
 async def test_batch_import_skips_duplicates(client):
     """Batch import skips IPs that already exist in the operation."""
     # 10.0.1.5 already exists (test-target-1)
-    resp = await client.post("/api/operations/test-op-1/targets/batch", json={
-        "entries": [
-            {"hostname": "DC-01", "ip_address": "10.0.1.5"},
-            {"hostname": "new-host", "ip_address": "10.0.1.100"},
-        ],
-        "role": "target",
-    })
+    resp = await client.post(
+        "/api/operations/test-op-1/targets/batch",
+        json={
+            "entries": [
+                {"hostname": "DC-01", "ip_address": "10.0.1.5"},
+                {"hostname": "new-host", "ip_address": "10.0.1.100"},
+            ],
+            "role": "target",
+        },
+    )
     assert resp.status_code == 201
     data = resp.json()
     assert data["total_created"] == 1
@@ -120,14 +129,14 @@ async def test_batch_import_skips_duplicates(client):
 
 async def test_batch_import_max_entries(client):
     """Batch import rejects more than 512 entries."""
-    entries = [
-        {"hostname": f"h-{i}", "ip_address": f"10.{i // 256}.{i % 256}.1"}
-        for i in range(513)
-    ]
-    resp = await client.post("/api/operations/test-op-1/targets/batch", json={
-        "entries": entries,
-        "role": "target",
-    })
+    entries = [{"hostname": f"h-{i}", "ip_address": f"10.{i // 256}.{i % 256}.1"} for i in range(513)]
+    resp = await client.post(
+        "/api/operations/test-op-1/targets/batch",
+        json={
+            "entries": entries,
+            "role": "target",
+        },
+    )
     assert resp.status_code == 400
 
 
@@ -152,11 +161,14 @@ async def test_delete_active_target_blocked(client):
 async def test_delete_non_active_target(client):
     """DELETE on non-active target returns 204."""
     # Create a second target to delete (don't delete the seeded one which has FK deps)
-    create_resp = await client.post("/api/operations/test-op-1/targets", json={
-        "hostname": "delete-me",
-        "ip_address": "10.99.99.99",
-        "role": "target",
-    })
+    create_resp = await client.post(
+        "/api/operations/test-op-1/targets",
+        json={
+            "hostname": "delete-me",
+            "ip_address": "10.99.99.99",
+            "role": "target",
+        },
+    )
     target_id = create_resp.json()["id"]
     # Deactivate it first (new targets are created with is_active=TRUE)
     await client.patch(

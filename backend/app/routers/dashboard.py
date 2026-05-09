@@ -104,7 +104,8 @@ async def get_kill_chain(
            FROM attack_graph_nodes
            WHERE operation_id = $1 AND target_id = $2
            ORDER BY tactic_id""",
-        operation_id, target_id,
+        operation_id,
+        target_id,
     )
     return [dict(r) for r in rows]
 
@@ -146,7 +147,7 @@ async def get_time_series(
 
     if metric == "c5isr":
         rows = await db.fetch(
-            f"""SELECT domain,
+            """SELECT domain,
                        date_trunc('minute', recorded_at) AS ts,
                        AVG(health_pct) AS avg_health
                 FROM c5isr_status_history
@@ -157,7 +158,7 @@ async def get_time_series(
         )
     elif metric == "opsec":
         rows = await db.fetch(
-            f"""SELECT date_trunc('minute', created_at) AS ts,
+            """SELECT date_trunc('minute', created_at) AS ts,
                        SUM(noise_points) AS total_noise,
                        COUNT(*) AS event_count
                 FROM opsec_events
@@ -168,7 +169,7 @@ async def get_time_series(
         )
     elif metric == "executions":
         rows = await db.fetch(
-            f"""SELECT date_trunc('minute', completed_at) AS ts,
+            """SELECT date_trunc('minute', completed_at) AS ts,
                        COUNT(*) AS total,
                        COUNT(*) FILTER (WHERE status = 'success') AS success,
                        COUNT(*) FILTER (WHERE status = 'failed') AS failed
@@ -204,8 +205,9 @@ async def get_credential_graph(
     for c in creds:
         cred_id = c["id"]
         label = f"{c['username'] or 'unknown'}@{c['domain'] or 'local'}"
-        nodes.append({"id": cred_id, "label": label, "type": "credential",
-                       "metadata": {"secret_type": c["secret_type"]}})
+        nodes.append(
+            {"id": cred_id, "label": label, "type": "credential", "metadata": {"secret_type": c["secret_type"]}}
+        )
 
         if c["source_target_id"]:
             tid = c["source_target_id"]
@@ -215,14 +217,22 @@ async def get_credential_graph(
             edges.append({"source": tid, "target": cred_id, "relation": "harvested_from"})
 
         import json
-        tested = json.loads(c["tested_targets"]) if isinstance(c["tested_targets"], str) else (c["tested_targets"] or [])
+
+        tested = (
+            json.loads(c["tested_targets"]) if isinstance(c["tested_targets"], str) else (c["tested_targets"] or [])
+        )
         for entry in tested:
             tid = entry.get("target_id", "")
             if tid and tid not in seen_targets:
                 seen_targets.add(tid)
                 nodes.append({"id": tid, "label": tid, "type": "target", "metadata": {}})
             if tid:
-                edges.append({"source": cred_id, "target": tid,
-                               "relation": "valid_on" if entry.get("result") == "success" else "tested_on"})
+                edges.append(
+                    {
+                        "source": cred_id,
+                        "target": tid,
+                        "relation": "valid_on" if entry.get("result") == "success" else "tested_on",
+                    }
+                )
 
     return {"operation_id": operation_id, "nodes": nodes, "edges": edges}

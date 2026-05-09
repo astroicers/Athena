@@ -28,17 +28,24 @@ async def _setup_for_execution(db, technique_id="T1003.001"):
         "INSERT INTO ooda_iterations "
         "(id, operation_id, iteration_number, phase, started_at) "
         "VALUES ($1, $2, 1, 'act', $3)",
-        ooda_id, "test-op-1", now,
+        ooda_id,
+        "test-op-1",
+        now,
     )
     existing = await db.fetchval(
-        "SELECT mitre_id FROM techniques WHERE mitre_id = $1", technique_id,
+        "SELECT mitre_id FROM techniques WHERE mitre_id = $1",
+        technique_id,
     )
     if not existing:
         await db.execute(
             "INSERT INTO techniques (id, mitre_id, name, tactic, tactic_id, risk_level) "
             "VALUES ($1, $2, $3, $4, $5, $6)",
-            str(uuid.uuid4()), technique_id, f"Test {technique_id}",
-            "Test Tactic", "TA0006", "medium",
+            str(uuid.uuid4()),
+            technique_id,
+            f"Test {technique_id}",
+            "Test Tactic",
+            "TA0006",
+            "medium",
         )
     return ooda_id
 
@@ -49,8 +56,14 @@ async def _add_ssh_credential(db):
         "INSERT INTO facts (id, trait, value, category, "
         "source_technique_id, source_target_id, operation_id, score, collected_at) "
         "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT DO NOTHING",
-        str(uuid.uuid4()), "credential.ssh", "root:toor", "credential",
-        "T1003.001", "test-target-1", "test-op-1", 1,
+        str(uuid.uuid4()),
+        "credential.ssh",
+        "root:toor",
+        "credential",
+        "T1003.001",
+        "test-target-1",
+        "test-op-1",
+        1,
         datetime.now(timezone.utc),
     )
 
@@ -75,8 +88,12 @@ async def test_auto_approved_execution_success(seeded_db, sit_ws_manager, mock_e
     router = _make_router(sit_ws_manager, mock_engine_client)
 
     result = await router.execute(
-        db, technique_id="T1003.001", target_id="test-target-1",
-        engine="ssh", operation_id="test-op-1", ooda_iteration_id=ooda_id,
+        db,
+        technique_id="T1003.001",
+        target_id="test-target-1",
+        engine="ssh",
+        operation_id="test-op-1",
+        ooda_iteration_id=ooda_id,
     )
 
     assert result["status"] == "success"
@@ -85,7 +102,8 @@ async def test_auto_approved_execution_success(seeded_db, sit_ws_manager, mock_e
         "SELECT status, engine FROM technique_executions "
         "WHERE operation_id = $1 AND ooda_iteration_id = $2 "
         "ORDER BY started_at DESC LIMIT 1",
-        "test-op-1", ooda_id,
+        "test-op-1",
+        ooda_id,
     )
     assert row is not None
     assert row["status"] == "success"
@@ -99,8 +117,12 @@ async def test_t1595_routes_to_recon(seeded_db, sit_ws_manager, mock_engine_clie
     router = _make_router(sit_ws_manager, mock_engine_client)
 
     result = await router.execute(
-        db, technique_id="T1595.001", target_id="test-target-1",
-        engine="ssh", operation_id="test-op-1", ooda_iteration_id=ooda_id,
+        db,
+        technique_id="T1595.001",
+        target_id="test-target-1",
+        engine="ssh",
+        operation_id="test-op-1",
+        ooda_iteration_id=ooda_id,
     )
 
     # Recon path returns engine='mcp_recon' in the result dict
@@ -118,22 +140,33 @@ async def test_t1110_routes_to_initial_access(seeded_db, sit_ws_manager, mock_en
         "INSERT INTO facts (id, trait, value, category, "
         "source_technique_id, source_target_id, operation_id, score, collected_at) "
         "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-        str(uuid.uuid4()), "service.open_port", "22/tcp SSH", "service",
-        "T1595.001", "test-target-1", "test-op-1", 1,
+        str(uuid.uuid4()),
+        "service.open_port",
+        "22/tcp SSH",
+        "service",
+        "T1595.001",
+        "test-target-1",
+        "test-op-1",
+        1,
         datetime.now(timezone.utc),
     )
 
     router = _make_router(sit_ws_manager, mock_engine_client)
     await router.execute(
-        db, technique_id="T1110.001", target_id="test-target-1",
-        engine="ssh", operation_id="test-op-1", ooda_iteration_id=ooda_id,
+        db,
+        technique_id="T1110.001",
+        target_id="test-target-1",
+        engine="ssh",
+        operation_id="test-op-1",
+        ooda_iteration_id=ooda_id,
     )
 
     row = await db.fetchrow(
         "SELECT engine FROM technique_executions "
         "WHERE operation_id = $1 AND technique_id = $2 "
         "ORDER BY started_at DESC LIMIT 1",
-        "test-op-1", "T1110.001",
+        "test-op-1",
+        "T1110.001",
     )
     assert row is not None
     assert row["engine"] == "initial_access"
@@ -149,8 +182,12 @@ async def test_engine_fallback_chain(seeded_db, sit_ws_manager, mock_engine_clie
     router = _make_router(sit_ws_manager, mock_engine_client)
 
     result = await router.execute(
-        db, technique_id="T1003.001", target_id="test-target-1",
-        engine="ssh", operation_id="test-op-1", ooda_iteration_id=ooda_id,
+        db,
+        technique_id="T1003.001",
+        target_id="test-target-1",
+        engine="ssh",
+        operation_id="test-op-1",
+        ooda_iteration_id=ooda_id,
     )
 
     assert result is not None
@@ -161,7 +198,8 @@ async def test_engine_fallback_chain(seeded_db, sit_ws_manager, mock_engine_clie
         "SELECT failure_category FROM technique_executions "
         "WHERE operation_id = $1 AND ooda_iteration_id = $2 "
         "ORDER BY started_at DESC LIMIT 1",
-        "test-op-1", ooda_id,
+        "test-op-1",
+        ooda_id,
     )
     assert row is not None
     assert row["failure_category"] == "prerequisite_missing"
@@ -178,22 +216,33 @@ async def test_failure_writes_failure_category(seeded_db, sit_ws_manager, mock_e
         "INSERT INTO facts (id, trait, value, category, "
         "source_technique_id, source_target_id, operation_id, score, collected_at) "
         "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-        str(uuid.uuid4()), "service.open_port", "22/tcp SSH", "service",
-        "T1595.001", "test-target-1", "test-op-1", 1,
+        str(uuid.uuid4()),
+        "service.open_port",
+        "22/tcp SSH",
+        "service",
+        "T1595.001",
+        "test-target-1",
+        "test-op-1",
+        1,
         datetime.now(timezone.utc),
     )
 
     router = _make_router(sit_ws_manager, mock_engine_client)
     await router.execute(
-        db, technique_id="T1110.001", target_id="test-target-1",
-        engine="ssh", operation_id="test-op-1", ooda_iteration_id=ooda_id,
+        db,
+        technique_id="T1110.001",
+        target_id="test-target-1",
+        engine="ssh",
+        operation_id="test-op-1",
+        ooda_iteration_id=ooda_id,
     )
 
     row = await db.fetchrow(
         "SELECT status, failure_category FROM technique_executions "
         "WHERE operation_id = $1 AND technique_id = $2 "
         "ORDER BY started_at DESC LIMIT 1",
-        "test-op-1", "T1110.001",
+        "test-op-1",
+        "T1110.001",
     )
     assert row is not None
     if row["status"] == "failed":
@@ -208,23 +257,31 @@ async def test_success_execution_writes_facts(seeded_db, sit_ws_manager):
     await _add_ssh_credential(db)
 
     client = MagicMock(spec=BaseEngineClient)
-    client.execute = AsyncMock(return_value=ExecutionResult(
-        success=True,
-        execution_id="success-001",
-        output="Credential access successful",
-        facts=[{"trait": "credential.ssh", "value": "admin:password123"}],
-    ))
+    client.execute = AsyncMock(
+        return_value=ExecutionResult(
+            success=True,
+            execution_id="success-001",
+            output="Credential access successful",
+            facts=[{"trait": "credential.ssh", "value": "admin:password123"}],
+        )
+    )
     client.is_available = AsyncMock(return_value=True)
 
     fc = FactCollector(sit_ws_manager)
     router = EngineRouter(
-        c2_engine=client, fact_collector=fc,
-        ws_manager=sit_ws_manager, mcp_engine=client,
+        c2_engine=client,
+        fact_collector=fc,
+        ws_manager=sit_ws_manager,
+        mcp_engine=client,
     )
 
     result = await router.execute(
-        db, technique_id="T1003.001", target_id="test-target-1",
-        engine="ssh", operation_id="test-op-1", ooda_iteration_id=ooda_id,
+        db,
+        technique_id="T1003.001",
+        target_id="test-target-1",
+        engine="ssh",
+        operation_id="test-op-1",
+        ooda_iteration_id=ooda_id,
     )
     assert result["status"] == "success"
     # Facts from the execution should have been collected
@@ -243,19 +300,20 @@ async def test_needs_confirmation_no_execution(seeded_db, sit_ws_manager):
         "recommended_technique_id": "T1003.001",
         "confidence": 0.87,
         "reasoning_text": "Test",
-        "options": [{
-            "technique_id": "T1003.001",
-            "technique_name": "Test",
-            "reasoning": "Test",
-            "risk_level": "critical",
-            "recommended_engine": "ssh",
-            "confidence": 0.87,
-            "prerequisites": [],
-        }],
+        "options": [
+            {
+                "technique_id": "T1003.001",
+                "technique_name": "Test",
+                "reasoning": "Test",
+                "risk_level": "critical",
+                "recommended_engine": "ssh",
+                "confidence": 0.87,
+                "prerequisites": [],
+            }
+        ],
     }
     await db.execute(
-        "UPDATE operations SET automation_mode = 'semi_auto', "
-        "risk_threshold = 'medium' WHERE id = $1",
+        "UPDATE operations SET automation_mode = 'semi_auto', risk_threshold = 'medium' WHERE id = $1",
         "test-op-1",
     )
 
@@ -264,8 +322,7 @@ async def test_needs_confirmation_no_execution(seeded_db, sit_ws_manager):
 
     # Count executions before — controller wouldn't call router.execute()
     exec_count = await db.fetchval(
-        "SELECT COUNT(*) FROM technique_executions "
-        "WHERE operation_id = $1 AND ooda_iteration_id IS NOT NULL",
+        "SELECT COUNT(*) FROM technique_executions WHERE operation_id = $1 AND ooda_iteration_id IS NOT NULL",
         "test-op-1",
     )
     # No execution happens when auto_approved is False

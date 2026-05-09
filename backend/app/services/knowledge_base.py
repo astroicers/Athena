@@ -15,6 +15,7 @@ Pattern mirrors attack_graph_engine._load_rules():
   - reload_all() for hot-reload
   - Raises FileNotFoundError clearly on missing files (no silent fallback)
 """
+
 import functools
 import logging
 from pathlib import Path

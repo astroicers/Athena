@@ -17,10 +17,10 @@ from pydantic import BaseModel
 
 class ServiceInfo(BaseModel):
     port: int
-    protocol: str        # "tcp" | "udp"
-    service: str         # e.g. "ssh"
-    version: str         # e.g. "OpenSSH 7.4"
-    state: str           # "open"
+    protocol: str  # "tcp" | "udp"
+    service: str  # e.g. "ssh"
+    version: str  # e.g. "OpenSSH 7.4"
+    state: str  # "open"
 
 
 class ReconResult(BaseModel):
@@ -36,7 +36,7 @@ class ReconResult(BaseModel):
 
 class InitialAccessResult(BaseModel):
     success: bool
-    method: str           # "ssh_credential" | "none"
+    method: str  # "ssh_credential" | "none"
     credential: str | None  # "user:pass" if found
     agent_deployed: bool
     error: str | None
@@ -44,7 +44,7 @@ class InitialAccessResult(BaseModel):
 
 class ReconScanResult(BaseModel):
     scan_id: str
-    status: str           # "completed" | "failed"
+    status: str  # "completed" | "failed"
     target_id: str
     operation_id: str
     ip_address: str

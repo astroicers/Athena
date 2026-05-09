@@ -10,20 +10,21 @@
 
 """Tests for Engine Fallback Chain — SPEC-040 Component B."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from app.services.engine_router import (
-    EngineRouter,
-    _is_terminal_error,
     _FALLBACK_CHAIN,
     _TERMINAL_ERRORS,
+    EngineRouter,
+    _is_terminal_error,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_router():
     """Create EngineRouter with mocked dependencies."""
@@ -65,17 +66,15 @@ def _failed_result(engine="mcp_ssh", error="connection timed out", exec_id="exec
 # TC-B1: Primary success -> no fallback
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_primary_success_no_fallback():
     """Primary engine succeeds -> return directly, no fallback attempted."""
     router = _make_router()
 
-    with patch.object(router, "_execute_single", new_callable=AsyncMock,
-                      return_value=_success_result("mcp_ssh")):
+    with patch.object(router, "_execute_single", new_callable=AsyncMock, return_value=_success_result("mcp_ssh")):
         db = AsyncMock()
-        result = await router.execute(
-            db, "T1059.004", "tgt-1", "mcp_ssh", "op-1"
-        )
+        result = await router.execute(db, "T1059.004", "tgt-1", "mcp_ssh", "op-1")
 
     assert result["status"] == "success"
     assert result["fallback_history"] == []
@@ -85,6 +84,7 @@ async def test_primary_success_no_fallback():
 # ---------------------------------------------------------------------------
 # TC-B2: Primary fails -> fallback succeeds
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_fallback_success():
@@ -96,12 +96,9 @@ async def test_fallback_success():
             return _failed_result("mcp_ssh", "connection timed out")
         return _success_result("c2")
 
-    with patch.object(router, "_execute_single", new_callable=AsyncMock,
-                      side_effect=side_effect):
+    with patch.object(router, "_execute_single", new_callable=AsyncMock, side_effect=side_effect):
         db = AsyncMock()
-        result = await router.execute(
-            db, "T1059.004", "tgt-1", "mcp_ssh", "op-1"
-        )
+        result = await router.execute(db, "T1059.004", "tgt-1", "mcp_ssh", "op-1")
 
     assert result["status"] == "success"
     assert result["final_engine"] == "c2"
@@ -114,20 +111,20 @@ async def test_fallback_success():
 # TC-B3: Terminal error -> no fallback
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_terminal_error_no_fallback():
     """Primary returns terminal error -> no fallback attempted."""
     router = _make_router()
 
-    with patch.object(router, "_execute_single", new_callable=AsyncMock,
-                      return_value=_failed_result(
-                          "mcp_ssh",
-                          "scope violation — target outside authorized range"
-                      )):
+    with patch.object(
+        router,
+        "_execute_single",
+        new_callable=AsyncMock,
+        return_value=_failed_result("mcp_ssh", "scope violation — target outside authorized range"),
+    ):
         db = AsyncMock()
-        result = await router.execute(
-            db, "T1059.004", "tgt-1", "mcp_ssh", "op-1"
-        )
+        result = await router.execute(db, "T1059.004", "tgt-1", "mcp_ssh", "op-1")
 
     assert result["status"] == "failed"
     assert result["fallback_history"] == []
@@ -137,6 +134,7 @@ async def test_terminal_error_no_fallback():
 # ---------------------------------------------------------------------------
 # TC-B4: All engines fail
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_all_engines_fail():
@@ -149,12 +147,9 @@ async def test_all_engines_fail():
         call_count += 1
         return _failed_result(engine, f"error from {engine}")
 
-    with patch.object(router, "_execute_single", new_callable=AsyncMock,
-                      side_effect=side_effect):
+    with patch.object(router, "_execute_single", new_callable=AsyncMock, side_effect=side_effect):
         db = AsyncMock()
-        result = await router.execute(
-            db, "T1059.004", "tgt-1", "mcp_ssh", "op-1"
-        )
+        result = await router.execute(db, "T1059.004", "tgt-1", "mcp_ssh", "op-1")
 
     assert result["status"] == "failed"
     # Primary (mcp_ssh) + 1 fallback (c2) = 2 calls
@@ -170,6 +165,7 @@ async def test_all_engines_fail():
 # TC-B5: Fallback terminal error stops chain
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_fallback_terminal_error_stops_chain():
     """c2 fails (non-terminal) -> mcp_ssh returns terminal error -> chain stops."""
@@ -184,12 +180,9 @@ async def test_fallback_terminal_error_stops_chain():
             return _failed_result("mcp_ssh", "platform mismatch: Windows required")
         return _success_result(engine)
 
-    with patch.object(router, "_execute_single", new_callable=AsyncMock,
-                      side_effect=side_effect):
+    with patch.object(router, "_execute_single", new_callable=AsyncMock, side_effect=side_effect):
         db = AsyncMock()
-        result = await router.execute(
-            db, "T1059.004", "tgt-1", "c2", "op-1"
-        )
+        result = await router.execute(db, "T1059.004", "tgt-1", "c2", "op-1")
 
     assert engines_tried == ["c2", "mcp_ssh"]
     assert len(result["fallback_history"]) == 1  # only c2 failure recorded
@@ -199,6 +192,7 @@ async def test_fallback_terminal_error_stops_chain():
 # ---------------------------------------------------------------------------
 # TC-B6: WebSocket event verification
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_fallback_websocket_event():
@@ -210,12 +204,9 @@ async def test_fallback_websocket_event():
             return _failed_result("mcp_ssh", "connection timed out")
         return _success_result("c2")
 
-    with patch.object(router, "_execute_single", new_callable=AsyncMock,
-                      side_effect=side_effect):
+    with patch.object(router, "_execute_single", new_callable=AsyncMock, side_effect=side_effect):
         db = AsyncMock()
-        result = await router.execute(
-            db, "T1059.004", "tgt-1", "mcp_ssh", "op-1"
-        )
+        result = await router.execute(db, "T1059.004", "tgt-1", "mcp_ssh", "op-1")
 
     # Verify broadcast was called
     router._ws.broadcast.assert_called_once()
@@ -235,6 +226,7 @@ async def test_fallback_websocket_event():
 # TC-B6b: Metasploit has no same-category fallback
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_metasploit_no_fallback():
     """metasploit (exploit-based) fails -> no fallback attempted."""
@@ -246,12 +238,9 @@ async def test_metasploit_no_fallback():
         call_count += 1
         return _failed_result(engine, f"error from {engine}")
 
-    with patch.object(router, "_execute_single", new_callable=AsyncMock,
-                      side_effect=side_effect):
+    with patch.object(router, "_execute_single", new_callable=AsyncMock, side_effect=side_effect):
         db = AsyncMock()
-        result = await router.execute(
-            db, "T1059.004", "tgt-1", "metasploit", "op-1"
-        )
+        result = await router.execute(db, "T1059.004", "tgt-1", "metasploit", "op-1")
 
     assert result["status"] == "failed"
     assert call_count == 1  # only primary, no fallback
@@ -264,17 +253,17 @@ async def test_metasploit_no_fallback():
 # TC-B7: Unknown engine -> no fallback
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_unknown_engine_no_fallback():
     """engine='mcp' not in _FALLBACK_CHAIN -> no fallback, return directly."""
     router = _make_router()
 
-    with patch.object(router, "_execute_single", new_callable=AsyncMock,
-                      return_value=_failed_result("mcp", "some error")):
+    with patch.object(
+        router, "_execute_single", new_callable=AsyncMock, return_value=_failed_result("mcp", "some error")
+    ):
         db = AsyncMock()
-        result = await router.execute(
-            db, "T1059.004", "tgt-1", "mcp", "op-1"
-        )
+        result = await router.execute(db, "T1059.004", "tgt-1", "mcp", "op-1")
 
     assert result["status"] == "failed"
     # Primary failure is recorded but no fallback engines
@@ -286,6 +275,7 @@ async def test_unknown_engine_no_fallback():
 # ---------------------------------------------------------------------------
 # TC-B8: _is_terminal_error function tests
 # ---------------------------------------------------------------------------
+
 
 class TestIsTerminalError:
     def test_scope_violation(self):

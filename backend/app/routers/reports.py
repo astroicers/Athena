@@ -25,8 +25,6 @@ def _rows_to_dicts(rows: list) -> list[dict]:
 
 
 @router.get("/operations/{operation_id}/report")
-
-
 async def get_operation_report(
     operation_id: str,
     db: asyncpg.Connection = Depends(get_db),
@@ -35,23 +33,19 @@ async def get_operation_report(
     await ensure_operation(db, operation_id)
 
     # Operation summary
-    row = await db.fetchrow(
-        "SELECT * FROM operations WHERE id = $1", operation_id
-    )
+    row = await db.fetchrow("SELECT * FROM operations WHERE id = $1", operation_id)
     operation = dict(row)
 
     # OODA timeline
     ooda_rows = await db.fetch(
-        "SELECT * FROM ooda_iterations WHERE operation_id = $1 "
-        "ORDER BY iteration_number",
+        "SELECT * FROM ooda_iterations WHERE operation_id = $1 ORDER BY iteration_number",
         operation_id,
     )
     ooda_timeline = _rows_to_dicts(ooda_rows)
 
     # Technique executions
     exec_rows = await db.fetch(
-        "SELECT * FROM technique_executions WHERE operation_id = $1 "
-        "ORDER BY started_at",
+        "SELECT * FROM technique_executions WHERE operation_id = $1 ORDER BY started_at",
         operation_id,
     )
     executions = _rows_to_dicts(exec_rows)
@@ -65,8 +59,7 @@ async def get_operation_report(
 
     # Recommendations
     rec_rows = await db.fetch(
-        "SELECT * FROM recommendations WHERE operation_id = $1 "
-        "ORDER BY created_at",
+        "SELECT * FROM recommendations WHERE operation_id = $1 ORDER BY created_at",
         operation_id,
     )
     recommendations = _rows_to_dicts(rec_rows)
@@ -124,8 +117,6 @@ async def get_operation_report(
     "/operations/{operation_id}/report/structured",
     response_model=PentestReport,
 )
-
-
 async def get_structured_report(
     operation_id: str,
     db: asyncpg.Connection = Depends(get_db),
@@ -134,23 +125,24 @@ async def get_structured_report(
     await ensure_operation(db, operation_id)
 
     from app.services.report_generator import ReportGenerator
+
     return await ReportGenerator().generate(db, operation_id)
 
 
 @router.get(
     "/operations/{operation_id}/report/markdown",
 )
-
-
 async def get_markdown_report(
     operation_id: str,
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Generate a structured pentest report as downloadable Markdown."""
     from fastapi.responses import PlainTextResponse
+
     await ensure_operation(db, operation_id)
 
     from app.services.report_generator import ReportGenerator
+
     generator = ReportGenerator()
     report = await generator.generate(db, operation_id)
     md_content = generator.to_markdown(report)

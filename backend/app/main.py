@@ -24,7 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.config import settings, _init_task_model_map
+from app.config import _init_task_model_map, settings
 
 logger = logging.getLogger(__name__)
 
@@ -45,23 +45,27 @@ class MockModeMiddleware(BaseHTTPMiddleware):
             response.headers["X-Athena-Mock"] = ",".join(mock_flags)
         return response
 
+
 from app.database import db_manager, init_db
-from app.services.ooda_scheduler import start_scheduler, stop_scheduler
 from app.routers import (
     admin,
     agents,
     attack_graph,
     c5isr,
+    constraints,
+    dashboard,
     engagements,
     facts,
     health,
     logs,
     missions,
+    objectives,
     ooda,
     operations,
+    opsec,
     poc,
-    recon,
     recommendations,
+    recon,
     reports,
     targets,
     techniques,
@@ -70,8 +74,8 @@ from app.routers import (
     vulnerabilities,
     ws,
 )
-from app.routers import constraints, dashboard, objectives, opsec
 from app.routers.playbooks import router as playbooks_router
+from app.services.ooda_scheduler import start_scheduler, stop_scheduler
 
 
 @asynccontextmanager
@@ -82,21 +86,18 @@ async def lifespan(app: FastAPI):
     start_scheduler()
 
     # --- Engine Registry ---
-    from app.services import engine_registry as _engine_registry
     from app.clients.c2_client import C2EngineClient
     from app.clients.metasploit_client import MetasploitEngineAdapter
+    from app.services import engine_registry as _engine_registry
 
-    _engine_registry.register(
-        "c2", C2EngineClient(settings.C2_ENGINE_URL, settings.C2_ENGINE_API_KEY)
-    )
-    _engine_registry.register(
-        "mock", C2EngineClient(settings.C2_ENGINE_URL, settings.C2_ENGINE_API_KEY)
-    )
+    _engine_registry.register("c2", C2EngineClient(settings.C2_ENGINE_URL, settings.C2_ENGINE_API_KEY))
+    _engine_registry.register("mock", C2EngineClient(settings.C2_ENGINE_URL, settings.C2_ENGINE_API_KEY))
     _engine_registry.register("metasploit", MetasploitEngineAdapter())
     logger.info("Engine registry initialized: %s", _engine_registry.list_engines())
 
     # Seed playbook knowledge base + techniques + tools (no demo operations)
     from app.database.seed import seed_if_empty
+
     await seed_if_empty(db_manager)
 
     # MCP integration — only when opted in
@@ -106,7 +107,6 @@ async def lifespan(app: FastAPI):
             MCPClientManager,
             set_mcp_manager,
         )
-
         from app.ws_manager import ws_manager as _ws_mgr
 
         mcp_manager = MCPClientManager(ws_manager=_ws_mgr)
@@ -115,6 +115,7 @@ async def lifespan(app: FastAPI):
         set_mcp_manager(mcp_manager)
 
         from app.clients.mcp_engine_client import MCPEngineClient
+
         _mcp_client = MCPEngineClient(mcp_manager)
         _engine_registry.register("mcp", _mcp_client)
         _engine_registry.register("mcp_ssh", _mcp_client)
@@ -133,6 +134,7 @@ async def lifespan(app: FastAPI):
     if mcp_manager is not None:
         await mcp_manager.shutdown()
         from app.services.mcp_client_manager import set_mcp_manager
+
         set_mcp_manager(None)
     stop_scheduler()
     await db_manager.shutdown()

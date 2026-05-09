@@ -51,7 +51,9 @@ async def _setup_ooda_iteration(db, op_id="test-op-1"):
         "INSERT INTO ooda_iterations "
         "(id, operation_id, iteration_number, phase, started_at) "
         "VALUES ($1, $2, 1, 'decide', $3)",
-        ooda_id, op_id, now,
+        ooda_id,
+        op_id,
+        now,
     )
     return ooda_id
 
@@ -64,8 +66,7 @@ async def test_medium_risk_semi_auto_approved(seeded_db):
 
     # Ensure operation is semi_auto with medium risk threshold
     await db.execute(
-        "UPDATE operations SET automation_mode = 'semi_auto', "
-        "risk_threshold = 'medium' WHERE id = $1",
+        "UPDATE operations SET automation_mode = 'semi_auto', risk_threshold = 'medium' WHERE id = $1",
         "test-op-1",
     )
 
@@ -86,8 +87,7 @@ async def test_composite_confidence_from_db(seeded_db):
     db = seeded_db
     await _setup_ooda_iteration(db)
     await db.execute(
-        "UPDATE operations SET automation_mode = 'semi_auto', "
-        "risk_threshold = 'medium' WHERE id = $1",
+        "UPDATE operations SET automation_mode = 'semi_auto', risk_threshold = 'medium' WHERE id = $1",
         "test-op-1",
     )
 
@@ -113,8 +113,7 @@ async def test_kill_chain_skip_penalty(seeded_db):
     db = seeded_db
     await _setup_ooda_iteration(db)
     await db.execute(
-        "UPDATE operations SET automation_mode = 'semi_auto', "
-        "risk_threshold = 'medium' WHERE id = $1",
+        "UPDATE operations SET automation_mode = 'semi_auto', risk_threshold = 'medium' WHERE id = $1",
         "test-op-1",
     )
 
@@ -142,8 +141,7 @@ async def test_critical_risk_needs_confirmation(seeded_db):
     db = seeded_db
     await _setup_ooda_iteration(db)
     await db.execute(
-        "UPDATE operations SET automation_mode = 'semi_auto', "
-        "risk_threshold = 'critical' WHERE id = $1",
+        "UPDATE operations SET automation_mode = 'semi_auto', risk_threshold = 'critical' WHERE id = $1",
         "test-op-1",
     )
 
@@ -161,8 +159,7 @@ async def test_noise_budget_exhausted_blocks(seeded_db):
     db = seeded_db
     await _setup_ooda_iteration(db)
     await db.execute(
-        "UPDATE operations SET automation_mode = 'semi_auto', "
-        "risk_threshold = 'medium' WHERE id = $1",
+        "UPDATE operations SET automation_mode = 'semi_auto', risk_threshold = 'medium' WHERE id = $1",
         "test-op-1",
     )
 
@@ -172,7 +169,10 @@ async def test_noise_budget_exhausted_blocks(seeded_db):
     # Pass constraints with exhausted noise budget
     constraints = OperationalConstraints(noise_budget_remaining=0)
     result = await decision_engine.evaluate(
-        db, "test-op-1", rec, constraints=constraints,
+        db,
+        "test-op-1",
+        rec,
+        constraints=constraints,
     )
 
     assert result["auto_approved"] is False, "Should block when noise budget exhausted"
@@ -184,8 +184,7 @@ async def test_parallel_tasks_populated(seeded_db):
     db = seeded_db
     await _setup_ooda_iteration(db)
     await db.execute(
-        "UPDATE operations SET automation_mode = 'semi_auto', "
-        "risk_threshold = 'medium' WHERE id = $1",
+        "UPDATE operations SET automation_mode = 'semi_auto', risk_threshold = 'medium' WHERE id = $1",
         "test-op-1",
     )
 

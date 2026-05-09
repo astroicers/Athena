@@ -21,11 +21,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.models.enums import FactCategory
 from app.services import orient_engine as orient_module
 from app.services.engine_router import _is_web_exploit_technique
 from app.services.fact_collector import FactCollector
-from app.models.enums import FactCategory
-
 
 # ---------------------------------------------------------------------------
 # 2a. Orient Rule Tests (static system prompt assertions)
@@ -131,9 +130,11 @@ class TestEngineRouterWebExploit:
         db.execute = AsyncMock()
         db.fetchrow = AsyncMock(return_value={"mitre_id": "T1190", "c2_ability_id": None})
         # Return a web.vuln.ssrf fact when querying facts
-        db.fetch = AsyncMock(return_value=[
-            {"trait": "web.vuln.ssrf", "value": "http://target/proxy?url="},
-        ])
+        db.fetch = AsyncMock(
+            return_value=[
+                {"trait": "web.vuln.ssrf", "value": "http://target/proxy?url="},
+            ]
+        )
 
         with patch("app.services.engine_router.settings") as s:
             s.MCP_ENABLED = True
@@ -142,7 +143,11 @@ class TestEngineRouterWebExploit:
             s.PERSISTENCE_ENABLED = False
             router = EngineRouter(MagicMock(), mock_fc, mock_ws, mcp_engine=mock_mcp)
             result = await router._execute_web_exploit_via_mcp(
-                db, "T1190", "test-target-1", "test-op-1", "ooda-1",
+                db,
+                "T1190",
+                "test-target-1",
+                "test-op-1",
+                "ooda-1",
             )
 
         assert result["status"] == "success"
@@ -173,8 +178,10 @@ class TestEngineRouterWebExploit:
             str(uuid.uuid4()),
         )
 
-        with patch("app.services.engine_router.settings") as s, \
-             patch("app.clients.metasploit_client.MetasploitRPCEngine") as mock_msf_cls:
+        with (
+            patch("app.services.engine_router.settings") as s,
+            patch("app.clients.metasploit_client.MetasploitRPCEngine") as mock_msf_cls,
+        ):
             s.MCP_ENABLED = False
             s.MOCK_C2_ENGINE = True
             s.EXECUTION_ENGINE = "mcp_ssh"
@@ -182,8 +189,10 @@ class TestEngineRouterWebExploit:
             s.RELAY_IP = ""
 
             mock_msf = mock_msf_cls.return_value
+
             async def fake_exploit(target_ip, **kwargs):
                 return {"status": "success", "output": "uid=0(root)", "engine": "metasploit"}
+
             mock_msf.get_exploit_for_service.return_value = fake_exploit
 
             result = await router._execute_single(

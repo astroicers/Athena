@@ -9,7 +9,10 @@
 # For commercial licensing, contact: azz093093.830330@gmail.com
 
 """Unit tests for OODAScheduler auto-loop service."""
+
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from app.services.ooda_scheduler import (
     _active_loops,
@@ -17,9 +20,6 @@ from app.services.ooda_scheduler import (
     start_auto_loop,
     stop_auto_loop,
 )
-
-
-import pytest
 
 
 @pytest.fixture(autouse=True)
@@ -32,8 +32,10 @@ def clear_loops():
 async def test_start_auto_loop_registers_job(tmp_path):
     """start_auto_loop registers APScheduler job and returns started status."""
     db_path = str(tmp_path / "test.db")
-    with patch("app.services.ooda_scheduler._scheduler") as mock_sched, \
-         patch("app.services.ooda_scheduler.build_ooda_controller"):
+    with (
+        patch("app.services.ooda_scheduler._scheduler") as mock_sched,
+        patch("app.services.ooda_scheduler.build_ooda_controller"),
+    ):
         mock_sched.running = True
         mock_sched.get_job.return_value = None
         mock_sched.add_job = MagicMock()

@@ -1,6 +1,9 @@
 """PoC report API endpoint."""
+
 import json
+
 from fastapi import APIRouter, Depends, HTTPException
+
 from app.database import get_db
 
 router = APIRouter(tags=["PoC"])
@@ -9,9 +12,7 @@ router = APIRouter(tags=["PoC"])
 @router.get("/api/operations/{operation_id}/poc")
 async def get_poc_records(operation_id: str, db=Depends(get_db)):
     """Get all PoC records for an operation."""
-    row = await db.fetchrow(
-        "SELECT id FROM operations WHERE id = $1", operation_id
-    )
+    row = await db.fetchrow("SELECT id FROM operations WHERE id = $1", operation_id)
     if not row:
         raise HTTPException(status_code=404, detail="Operation not found")
 
@@ -36,7 +37,7 @@ async def get_poc_records(operation_id: str, db=Depends(get_db)):
     technique_names: dict[str, str] = {}
     technique_engines: dict[str, str] = {}
     if technique_ids:
-        placeholders = ", ".join(f"${i+1}" for i in range(len(technique_ids)))
+        placeholders = ", ".join(f"${i + 1}" for i in range(len(technique_ids)))
         tid_list = list(technique_ids)
         name_rows = await db.fetch(
             f"SELECT mitre_id, name FROM techniques WHERE mitre_id IN ({placeholders})",
@@ -46,9 +47,10 @@ async def get_poc_records(operation_id: str, db=Depends(get_db)):
         engine_rows = await db.fetch(
             f"SELECT DISTINCT ON (technique_id) technique_id, engine "
             f"FROM technique_executions WHERE technique_id IN ({placeholders}) "
-            f"AND operation_id = ${len(tid_list)+1} "
+            f"AND operation_id = ${len(tid_list) + 1} "
             f"ORDER BY technique_id, started_at DESC",
-            *tid_list, operation_id,
+            *tid_list,
+            operation_id,
         )
         technique_engines = {r["technique_id"]: r["engine"] for r in engine_rows}
 

@@ -3,6 +3,7 @@
 Verifies that the OPSEC monitor correctly tracks noise events, computes
 detection risk, and triggers alerts/warnings through WebSocket broadcasts.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -24,7 +25,8 @@ async def test_evaluate_after_act_records_noise(sit_services):
     budget_before = status_before.noise_budget_remaining
 
     await opsec_monitor.evaluate_after_act(
-        db, "test-op-1",
+        db,
+        "test-op-1",
         technique_noise="medium",
         target_id="test-target-1",
         technique_id="T1003.001",
@@ -49,7 +51,9 @@ async def test_high_detection_risk_triggers_alert(sit_services):
     # Need noise_score=100 (achieved) + exposure events to push past 60
     for i in range(25):
         await opsec_monitor.record_event(
-            db, "test-op-1", "execution_noise",
+            db,
+            "test-op-1",
+            "execution_noise",
             severity="warning",
             detail={"noise_level": "high", "success": True},
             noise_points=5,
@@ -57,7 +61,9 @@ async def test_high_detection_risk_triggers_alert(sit_services):
     # Add auth_failure/detection events to boost exposure_score
     for i in range(5):
         await opsec_monitor.record_event(
-            db, "test-op-1", "auth_failure",
+            db,
+            "test-op-1",
+            "auth_failure",
             severity="warning",
             detail={"attempt": i},
             noise_points=1,
@@ -70,15 +76,16 @@ async def test_high_detection_risk_triggers_alert(sit_services):
     # Verify opsec.alert would be broadcast (check controller logic)
     # Simulate what ooda_controller does post-act
     if status.detection_risk > 60:
-        await sit_services.ws.broadcast("test-op-1", "opsec.alert", {
-            "detection_risk": status.detection_risk,
-            "noise_budget_remaining": status.noise_budget_remaining,
-        })
+        await sit_services.ws.broadcast(
+            "test-op-1",
+            "opsec.alert",
+            {
+                "detection_risk": status.detection_risk,
+                "noise_budget_remaining": status.noise_budget_remaining,
+            },
+        )
 
-    alert_calls = [
-        c for c in sit_services.ws._calls
-        if c[1] == "opsec.alert"
-    ]
+    alert_calls = [c for c in sit_services.ws._calls if c[1] == "opsec.alert"]
     assert len(alert_calls) >= 1
     assert alert_calls[-1][2]["detection_risk"] > 60
 
@@ -98,7 +105,9 @@ async def test_budget_exhausted_triggers_warning(sit_services):
     events_needed = (budget_total // points_per_event) + 2
     for i in range(events_needed):
         await opsec_monitor.record_event(
-            db, "test-op-1", "execution_noise",
+            db,
+            "test-op-1",
+            "execution_noise",
             severity="warning",
             detail={"noise_level": "high"},
             noise_points=points_per_event,
@@ -109,15 +118,16 @@ async def test_budget_exhausted_triggers_warning(sit_services):
 
     # Simulate controller budget warning broadcast
     if status.noise_budget_remaining <= 0:
-        await sit_services.ws.broadcast("test-op-1", "opsec.budget_warning", {
-            "budget_total": status.noise_budget_total,
-            "budget_used": status.noise_budget_used,
-        })
+        await sit_services.ws.broadcast(
+            "test-op-1",
+            "opsec.budget_warning",
+            {
+                "budget_total": status.noise_budget_total,
+                "budget_used": status.noise_budget_used,
+            },
+        )
 
-    budget_calls = [
-        c for c in sit_services.ws._calls
-        if c[1] == "opsec.budget_warning"
-    ]
+    budget_calls = [c for c in sit_services.ws._calls if c[1] == "opsec.budget_warning"]
     assert len(budget_calls) >= 1
     assert budget_calls[-1][2]["budget_used"] >= budget_total
 
@@ -144,15 +154,16 @@ async def test_threat_update_broadcast(sit_services):
     threat = await tl_svc.compute_threat_level(db, "test-op-1")
 
     # Broadcast like the controller does
-    await sit_services.ws.broadcast("test-op-1", "threat.update", {
-        "level": threat.level,
-        "components": threat.components,
-    })
+    await sit_services.ws.broadcast(
+        "test-op-1",
+        "threat.update",
+        {
+            "level": threat.level,
+            "components": threat.components,
+        },
+    )
 
-    threat_calls = [
-        c for c in sit_services.ws._calls
-        if c[1] == "threat.update"
-    ]
+    threat_calls = [c for c in sit_services.ws._calls if c[1] == "threat.update"]
     assert len(threat_calls) >= 1
     payload = threat_calls[-1][2]
     assert "level" in payload

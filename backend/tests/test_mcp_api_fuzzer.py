@@ -27,10 +27,10 @@ All external HTTP calls are mocked via httpx mocking (no real network).
 import importlib
 import importlib.util
 import json
-import sys
 import os
+import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch, mock_open
+from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
 import pytest
 
@@ -67,6 +67,7 @@ api_fuzzer_server = _import_tool_module("server", "api_fuzzer_server")
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _parse_result(result: str) -> dict:
     """Parse the JSON string returned by an MCP tool."""
     return json.loads(result)
@@ -85,9 +86,7 @@ def _mock_httpx_response(status_code: int = 200, text: str = "", json_data: dict
 def _mock_subprocess(stdout: str = "", stderr: str = "", returncode: int = 0):
     """Create a mock for asyncio.create_subprocess_exec."""
     mock_proc = AsyncMock()
-    mock_proc.communicate = AsyncMock(
-        return_value=(stdout.encode(), stderr.encode())
-    )
+    mock_proc.communicate = AsyncMock(return_value=(stdout.encode(), stderr.encode()))
     mock_proc.returncode = returncode
     mock_proc.kill = MagicMock()
     return mock_proc
@@ -96,6 +95,7 @@ def _mock_subprocess(stdout: str = "", stderr: str = "", returncode: int = 0):
 # ===========================================================================
 # Tool 1: api_schema_detect
 # ===========================================================================
+
 
 class TestApiSchemaDetect:
     """Tests for the api_schema_detect MCP tool."""
@@ -247,19 +247,22 @@ class TestApiSchemaDetect:
 # Tool 2: api_endpoint_enum
 # ===========================================================================
 
+
 class TestApiEndpointEnum:
     """Tests for the api_endpoint_enum MCP tool."""
 
     async def test_api_endpoint_enum_schema_based(self):
         """Parse OpenAPI spec and extract endpoints."""
-        openapi_spec = json.dumps({
-            "openapi": "3.0.0",
-            "paths": {
-                "/users": {"get": {}, "post": {}},
-                "/users/{id}": {"get": {}, "put": {}, "delete": {}},
-                "/orders": {"get": {}},
-            },
-        })
+        openapi_spec = json.dumps(
+            {
+                "openapi": "3.0.0",
+                "paths": {
+                    "/users": {"get": {}, "post": {}},
+                    "/users/{id}": {"get": {}, "put": {}, "delete": {}},
+                    "/orders": {"get": {}},
+                },
+            }
+        )
 
         mock_resp = _mock_httpx_response(status_code=200, text=openapi_spec)
 
@@ -274,15 +277,16 @@ class TestApiEndpointEnum:
         # ffuf not installed, wordlist file doesn't exist either -> fallback path
         # but that path also needs the wordlist file. Use a real temp wordlist.
         import tempfile
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".txt", delete=False, prefix="test_wl_"
-        ) as tf:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, prefix="test_wl_") as tf:
             tf.write("# empty\n")
             wordlist_path = tf.name
 
-        with patch("api_fuzzer_server.httpx.AsyncClient", return_value=mock_client), \
-             patch("api_fuzzer_server.shutil.which", return_value=None), \
-             patch.dict(api_fuzzer_server._WORDLIST_MAP, {"api-common": wordlist_path}):
+        with (
+            patch("api_fuzzer_server.httpx.AsyncClient", return_value=mock_client),
+            patch("api_fuzzer_server.shutil.which", return_value=None),
+            patch.dict(api_fuzzer_server._WORDLIST_MAP, {"api-common": wordlist_path}),
+        ):
             result = await api_fuzzer_server.api_endpoint_enum(
                 "http://target.com/api",
                 schema_url="http://target.com/openapi.json",
@@ -297,19 +301,23 @@ class TestApiEndpointEnum:
 
     async def test_api_endpoint_enum_wordlist_only(self):
         """ffuf wordlist fuzzing returns discovered endpoints."""
-        ffuf_output = json.dumps({
-            "results": [
-                {"input": {"FUZZ": "users"}, "status": 200, "length": 500},
-                {"input": {"FUZZ": "admin"}, "status": 200, "length": 300},
-                {"input": {"FUZZ": "health"}, "status": 200, "length": 100},
-            ],
-        })
+        ffuf_output = json.dumps(
+            {
+                "results": [
+                    {"input": {"FUZZ": "users"}, "status": 200, "length": 500},
+                    {"input": {"FUZZ": "admin"}, "status": 200, "length": 300},
+                    {"input": {"FUZZ": "health"}, "status": 200, "length": 100},
+                ],
+            }
+        )
 
         mock_proc = _mock_subprocess(stdout=ffuf_output)
 
-        with patch("api_fuzzer_server.shutil.which", return_value="/usr/local/bin/ffuf"), \
-             patch("api_fuzzer_server.Path.exists", return_value=True), \
-             patch("api_fuzzer_server.asyncio.create_subprocess_exec", return_value=mock_proc):
+        with (
+            patch("api_fuzzer_server.shutil.which", return_value="/usr/local/bin/ffuf"),
+            patch("api_fuzzer_server.Path.exists", return_value=True),
+            patch("api_fuzzer_server.asyncio.create_subprocess_exec", return_value=mock_proc),
+        ):
             result = await api_fuzzer_server.api_endpoint_enum("http://target.com/api")
 
         data = _parse_result(result)
@@ -319,19 +327,23 @@ class TestApiEndpointEnum:
 
     async def test_api_endpoint_enum_auth_required(self):
         """401/403 responses produce api.endpoint.auth_required facts."""
-        ffuf_output = json.dumps({
-            "results": [
-                {"input": {"FUZZ": "admin"}, "status": 401, "length": 50},
-                {"input": {"FUZZ": "settings"}, "status": 403, "length": 60},
-                {"input": {"FUZZ": "public"}, "status": 200, "length": 300},
-            ],
-        })
+        ffuf_output = json.dumps(
+            {
+                "results": [
+                    {"input": {"FUZZ": "admin"}, "status": 401, "length": 50},
+                    {"input": {"FUZZ": "settings"}, "status": 403, "length": 60},
+                    {"input": {"FUZZ": "public"}, "status": 200, "length": 300},
+                ],
+            }
+        )
 
         mock_proc = _mock_subprocess(stdout=ffuf_output)
 
-        with patch("api_fuzzer_server.shutil.which", return_value="/usr/local/bin/ffuf"), \
-             patch("api_fuzzer_server.Path.exists", return_value=True), \
-             patch("api_fuzzer_server.asyncio.create_subprocess_exec", return_value=mock_proc):
+        with (
+            patch("api_fuzzer_server.shutil.which", return_value="/usr/local/bin/ffuf"),
+            patch("api_fuzzer_server.Path.exists", return_value=True),
+            patch("api_fuzzer_server.asyncio.create_subprocess_exec", return_value=mock_proc),
+        ):
             result = await api_fuzzer_server.api_endpoint_enum("http://target.com/api")
 
         data = _parse_result(result)
@@ -351,9 +363,11 @@ class TestApiEndpointEnum:
         ffuf_output = json.dumps({"results": results})
         mock_proc = _mock_subprocess(stdout=ffuf_output)
 
-        with patch("api_fuzzer_server.shutil.which", return_value="/usr/local/bin/ffuf"), \
-             patch("api_fuzzer_server.Path.exists", return_value=True), \
-             patch("api_fuzzer_server.asyncio.create_subprocess_exec", return_value=mock_proc):
+        with (
+            patch("api_fuzzer_server.shutil.which", return_value="/usr/local/bin/ffuf"),
+            patch("api_fuzzer_server.Path.exists", return_value=True),
+            patch("api_fuzzer_server.asyncio.create_subprocess_exec", return_value=mock_proc),
+        ):
             result = await api_fuzzer_server.api_endpoint_enum("http://target.com/api")
 
         data = _parse_result(result)
@@ -371,10 +385,12 @@ class TestApiEndpointEnum:
         ffuf_output = json.dumps({"results": results})
         mock_proc = _mock_subprocess(stdout=ffuf_output)
 
-        with patch("api_fuzzer_server.shutil.which", return_value="/usr/local/bin/ffuf"), \
-             patch("api_fuzzer_server.Path.exists", return_value=True), \
-             patch("api_fuzzer_server.asyncio.create_subprocess_exec", return_value=mock_proc), \
-             patch.object(api_fuzzer_server, "MAX_ENDPOINTS", 500):
+        with (
+            patch("api_fuzzer_server.shutil.which", return_value="/usr/local/bin/ffuf"),
+            patch("api_fuzzer_server.Path.exists", return_value=True),
+            patch("api_fuzzer_server.asyncio.create_subprocess_exec", return_value=mock_proc),
+            patch.object(api_fuzzer_server, "MAX_ENDPOINTS", 500),
+        ):
             result = await api_fuzzer_server.api_endpoint_enum("http://target.com/api")
 
         data = _parse_result(result)
@@ -385,6 +401,7 @@ class TestApiEndpointEnum:
 # ===========================================================================
 # Tool 3: api_auth_test
 # ===========================================================================
+
 
 class TestApiAuthTest:
     """Tests for the api_auth_test MCP tool."""
@@ -416,6 +433,7 @@ class TestApiAuthTest:
 
     async def test_api_auth_test_idor_detected(self):
         """Unauthenticated ID access succeeds, indicating IDOR."""
+
         async def mock_request(method, url, **kwargs):
             return _mock_httpx_response(status_code=200, text='{"data": "sensitive"}')
 
@@ -436,6 +454,7 @@ class TestApiAuthTest:
 
     async def test_api_auth_test_method_tampering(self):
         """Non-standard method returns 200, indicating method tampering."""
+
         async def mock_request(method, url, **kwargs):
             # Original GET returns 403, but DELETE returns 200
             if method == "DELETE":
@@ -457,14 +476,14 @@ class TestApiAuthTest:
 
         data = _parse_result(result)
         tamper_facts = [
-            f for f in data["facts"]
-            if f["trait"] == "api.vuln.auth_bypass" and "method_tamper" in f["value"]
+            f for f in data["facts"] if f["trait"] == "api.vuln.auth_bypass" and "method_tamper" in f["value"]
         ]
         assert len(tamper_facts) >= 1
         assert "DELETE" in tamper_facts[0]["value"]
 
     async def test_api_auth_test_no_id_in_url(self):
         """No numeric ID in URL means BOLA/IDOR tests produce no findings."""
+
         async def mock_request(method, url, **kwargs):
             return _mock_httpx_response(status_code=200, text='{"data": "ok"}')
 
@@ -487,6 +506,7 @@ class TestApiAuthTest:
 
     async def test_api_auth_test_token_expired(self):
         """All requests return 401 (expired token), no vulns."""
+
         async def mock_request(method, url, **kwargs):
             return _mock_httpx_response(status_code=401, text="Unauthorized")
 
@@ -508,6 +528,7 @@ class TestApiAuthTest:
 
     async def test_api_auth_test_all_secure(self):
         """All tests return 403/401 — no vulnerabilities, empty facts."""
+
         async def mock_request(method, url, **kwargs):
             return _mock_httpx_response(status_code=403, text="Forbidden")
 
@@ -531,11 +552,13 @@ class TestApiAuthTest:
 # Tool 4: api_param_fuzz
 # ===========================================================================
 
+
 class TestApiParamFuzz:
     """Tests for the api_param_fuzz MCP tool."""
 
     async def test_api_param_fuzz_sqli_detected(self):
         """SQL error string in response body detected as SQLi."""
+
         async def mock_request(method, url, **kwargs):
             # Check if request contains a SQLi payload
             req_params = kwargs.get("params", {}) or kwargs.get("json", {})
@@ -567,6 +590,7 @@ class TestApiParamFuzz:
 
     async def test_api_param_fuzz_cmdi_detected(self):
         """Command output in response detected as CMDi."""
+
         async def mock_request(method, url, **kwargs):
             req_params = kwargs.get("params", {}) or kwargs.get("json", {})
             if req_params:
@@ -597,6 +621,7 @@ class TestApiParamFuzz:
 
     async def test_api_param_fuzz_xss_detected(self):
         """Reflected XSS payload in response body."""
+
         async def mock_request(method, url, **kwargs):
             req_params = kwargs.get("params", {}) or kwargs.get("json", {})
             if req_params:
@@ -604,7 +629,7 @@ class TestApiParamFuzz:
                     if "<script>" in str(val):
                         return _mock_httpx_response(
                             status_code=200,
-                            text=f'<html>Search: {val}</html>',
+                            text=f"<html>Search: {val}</html>",
                         )
             return _mock_httpx_response(status_code=200, text="OK")
 
@@ -627,6 +652,7 @@ class TestApiParamFuzz:
 
     async def test_api_param_fuzz_overflow_detected(self):
         """Server 500 error on integer overflow payload."""
+
         async def mock_request(method, url, **kwargs):
             req_params = kwargs.get("params", {}) or kwargs.get("json", {})
             if req_params:
@@ -657,6 +683,7 @@ class TestApiParamFuzz:
 
     async def test_api_param_fuzz_no_vulns(self):
         """Clean responses - no vulnerabilities found."""
+
         async def mock_request(method, url, **kwargs):
             return _mock_httpx_response(status_code=200, text='{"result": "OK"}')
 
@@ -678,6 +705,7 @@ class TestApiParamFuzz:
 
     async def test_api_param_fuzz_waf_blocking(self):
         """All payloads blocked by WAF (403 responses)."""
+
         async def mock_request(method, url, **kwargs):
             req_params = kwargs.get("params", {}) or kwargs.get("json", {})
             # WAF blocks anything with attack payloads
@@ -746,6 +774,7 @@ class TestApiParamFuzz:
 # Dependency: ffuf missing
 # ===========================================================================
 
+
 class TestDependencyMissing:
     """Tests for graceful handling when ffuf is not installed."""
 
@@ -754,9 +783,7 @@ class TestDependencyMissing:
         import tempfile
 
         # Create a temp wordlist
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".txt", delete=False, prefix="test_wordlist_"
-        ) as tf:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, prefix="test_wordlist_") as tf:
             tf.write("users\nadmin\nhealth\n")
             wordlist_path = tf.name
 
@@ -773,9 +800,11 @@ class TestDependencyMissing:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("api_fuzzer_server.shutil.which", return_value=None), \
-             patch("api_fuzzer_server.httpx.AsyncClient", return_value=mock_client), \
-             patch.dict(api_fuzzer_server._WORDLIST_MAP, {"api-common": wordlist_path}):
+        with (
+            patch("api_fuzzer_server.shutil.which", return_value=None),
+            patch("api_fuzzer_server.httpx.AsyncClient", return_value=mock_client),
+            patch.dict(api_fuzzer_server._WORDLIST_MAP, {"api-common": wordlist_path}),
+        ):
             result = await api_fuzzer_server.api_endpoint_enum("http://target.com/api")
 
         os.unlink(wordlist_path)
@@ -793,18 +822,21 @@ class TestDependencyMissing:
 # Module-level tests for schema_detector
 # ===========================================================================
 
+
 class TestSchemaDetectorModule:
     """Tests for schema_detector module functions."""
 
     def test_parse_openapi_spec_json(self):
         """parse_openapi_spec handles JSON OpenAPI specs."""
-        spec = json.dumps({
-            "openapi": "3.0.0",
-            "paths": {
-                "/pets": {"get": {}, "post": {}},
-                "/pets/{id}": {"get": {}, "delete": {}},
-            },
-        })
+        spec = json.dumps(
+            {
+                "openapi": "3.0.0",
+                "paths": {
+                    "/pets": {"get": {}, "post": {}},
+                    "/pets/{id}": {"get": {}, "delete": {}},
+                },
+            }
+        )
         endpoints = schema_detector.parse_openapi_spec(spec)
         assert len(endpoints) == 4
         assert "GET /pets" in endpoints
@@ -840,6 +872,7 @@ class TestSchemaDetectorModule:
 # Module-level tests for auth_tester
 # ===========================================================================
 
+
 class TestAuthTesterModule:
     """Tests for auth_tester module helper functions."""
 
@@ -852,17 +885,28 @@ class TestAuthTesterModule:
 
     def test_replace_id_in_url(self):
         """_replace_id correctly replaces numeric IDs in URLs."""
-        assert auth_tester._replace_id(
-            "http://api.com/users/42", 42, 43,
-        ) == "http://api.com/users/43"
-        assert auth_tester._replace_id(
-            "http://api.com/users/42/orders/99", 99, 100,
-        ) == "http://api.com/users/42/orders/100"
+        assert (
+            auth_tester._replace_id(
+                "http://api.com/users/42",
+                42,
+                43,
+            )
+            == "http://api.com/users/43"
+        )
+        assert (
+            auth_tester._replace_id(
+                "http://api.com/users/42/orders/99",
+                99,
+                100,
+            )
+            == "http://api.com/users/42/orders/100"
+        )
 
 
 # ===========================================================================
 # Module-level tests for param_fuzzer
 # ===========================================================================
+
 
 class TestParamFuzzerModule:
     """Tests for param_fuzzer module functions."""
@@ -937,6 +981,7 @@ class TestParamFuzzerModule:
 # ===========================================================================
 # Error handling
 # ===========================================================================
+
 
 class TestErrorHandling:
     """Tests for structured error responses."""

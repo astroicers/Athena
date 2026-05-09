@@ -1,12 +1,14 @@
 """Tests for Security Skills Library (SPEC-043 A3)."""
-import pytest
+
 from pathlib import Path
 
+import pytest
+
 from app.services.skill_loader import (
-    load_skills,
-    _resolve_skill_names,
-    _read_skill_file,
     _SKILLS_DIR,
+    _read_skill_file,
+    _resolve_skill_names,
+    load_skills,
 )
 
 

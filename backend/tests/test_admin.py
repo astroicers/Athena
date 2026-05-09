@@ -26,9 +26,7 @@ async def test_reset_broadcasts_event(client):
     with patch("app.routers.admin.ws_manager") as mock_ws:
         mock_ws.broadcast = AsyncMock()
         await client.post("/api/operations/test-op-1/reset")
-        mock_ws.broadcast.assert_awaited_once_with(
-            "test-op-1", "operation.reset", {"operation_id": "test-op-1"}
-        )
+        mock_ws.broadcast.assert_awaited_once_with("test-op-1", "operation.reset", {"operation_id": "test-op-1"})
 
 
 async def test_reset_clears_execution_history(client, seeded_db):

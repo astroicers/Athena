@@ -71,13 +71,24 @@ class FactCollector:
                 "source_target_id, operation_id, score, collected_at) "
                 "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) "
                 "ON CONFLICT DO NOTHING",
-                fact_id, trait, value, category.value, technique_id,
-                target_id, operation_id, 1, now,
+                fact_id,
+                trait,
+                value,
+                category.value,
+                technique_id,
+                target_id,
+                operation_id,
+                1,
+                now,
             )
             fact = {
-                "id": fact_id, "trait": trait, "value": value,
-                "category": category.value, "source_technique_id": technique_id,
-                "source_target_id": target_id, "operation_id": operation_id,
+                "id": fact_id,
+                "trait": trait,
+                "value": value,
+                "category": category.value,
+                "source_technique_id": technique_id,
+                "source_target_id": target_id,
+                "operation_id": operation_id,
             }
             new_facts.append(fact)
             await self._ws.broadcast(operation_id, "fact.new", fact)
@@ -88,7 +99,8 @@ class FactCollector:
                 cve_match = _re.match(r"(CVE-\d{4}-\d+)", fact["value"])
                 if cve_match and fact.get("source_target_id"):
                     await _vuln_mgr.upsert_from_fact(
-                        db, operation_id,
+                        db,
+                        operation_id,
                         fact_id=fact["id"],
                         cve_id=cve_match.group(1),
                         target_id=fact["source_target_id"],
@@ -97,8 +109,12 @@ class FactCollector:
         return new_facts
 
     async def collect_from_result(
-        self, db: asyncpg.Connection, operation_id: str,
-        technique_id: str, target_id: str, raw_facts: list[dict],
+        self,
+        db: asyncpg.Connection,
+        operation_id: str,
+        technique_id: str,
+        target_id: str,
+        raw_facts: list[dict],
     ) -> list[dict]:
         """Store facts extracted from an ExecutionResult.facts list."""
         new_facts: list[dict] = []
@@ -112,22 +128,39 @@ class FactCollector:
 
             category = self._category_from_trait(trait)
             fact_id = str(uuid.uuid4())
-            _HASH_TRAITS = ("credential.asrep_hash", "credential.kerberos_hash",
-                            "credential.service_hash", "credential.ntlm_hash",
-                            "credential.ntds_hash", "credential.krbtgt_hash")
+            _HASH_TRAITS = (
+                "credential.asrep_hash",
+                "credential.kerberos_hash",
+                "credential.service_hash",
+                "credential.ntlm_hash",
+                "credential.ntds_hash",
+                "credential.krbtgt_hash",
+            )
             _vlimit = 1000 if trait in _HASH_TRAITS else 500
             await db.execute(
                 "INSERT INTO facts (id, trait, value, category, source_technique_id, "
                 "source_target_id, operation_id, score, collected_at) "
                 "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) "
                 "ON CONFLICT DO NOTHING",
-                fact_id, trait, str(value)[:_vlimit], category.value,
-                technique_id, target_id, operation_id, 1, now,
+                fact_id,
+                trait,
+                str(value)[:_vlimit],
+                category.value,
+                technique_id,
+                target_id,
+                operation_id,
+                1,
+                now,
             )
-            new_facts.append({
-                "id": fact_id, "trait": trait, "value": str(value)[:_vlimit],
-                "category": category.value, "operation_id": operation_id,
-            })
+            new_facts.append(
+                {
+                    "id": fact_id,
+                    "trait": trait,
+                    "value": str(value)[:_vlimit],
+                    "category": category.value,
+                    "operation_id": operation_id,
+                }
+            )
 
         for fact in new_facts:
             await self._ws.broadcast(operation_id, "fact.new", fact)
@@ -138,7 +171,8 @@ class FactCollector:
                 cve_match = _re.match(r"(CVE-\d{4}-\d+)", fact["value"])
                 if cve_match:
                     await _vuln_mgr.upsert_from_fact(
-                        db, operation_id,
+                        db,
+                        operation_id,
                         fact_id=fact["id"],
                         cve_id=cve_match.group(1),
                         target_id=target_id,
@@ -149,8 +183,7 @@ class FactCollector:
     async def summarize(self, db: asyncpg.Connection, operation_id: str) -> str:
         """Produce an Observe-phase summary for Orient to consume."""
         rows = await db.fetch(
-            "SELECT trait, value, category FROM facts "
-            "WHERE operation_id = $1 ORDER BY collected_at DESC LIMIT 30",
+            "SELECT trait, value, category FROM facts WHERE operation_id = $1 ORDER BY collected_at DESC LIMIT 30",
             operation_id,
         )
         if not rows:

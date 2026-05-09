@@ -18,8 +18,8 @@ The column is nullable because:
 A partial index narrows the write path to rows where the classification
 is actually present, keeping the index small and query-local.
 """
-from alembic import op
 
+from alembic import op
 
 revision = "004"
 down_revision = "003"
@@ -45,6 +45,4 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.execute("DROP INDEX IF EXISTS idx_te_failure_category")
-    op.execute(
-        "ALTER TABLE technique_executions DROP COLUMN IF EXISTS failure_category"
-    )
+    op.execute("ALTER TABLE technique_executions DROP COLUMN IF EXISTS failure_category")

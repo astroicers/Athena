@@ -12,10 +12,10 @@
 
 from httpx import AsyncClient
 
-
 # ---------------------------------------------------------------------------
 # POST /api/operations/{op_id}/objectives — Create
 # ---------------------------------------------------------------------------
+
 
 async def test_create_objective(client: AsyncClient):
     """POST /api/operations/{op_id}/objectives returns 201 with id and status."""
@@ -67,6 +67,7 @@ async def test_create_objective_invalid_data(client: AsyncClient):
 # GET /api/operations/{op_id}/objectives — List
 # ---------------------------------------------------------------------------
 
+
 async def test_list_objectives_empty(client: AsyncClient):
     """GET /api/operations/{op_id}/objectives returns empty list initially."""
     resp = await client.get("/api/operations/test-op-1/objectives")
@@ -103,6 +104,7 @@ async def test_list_objectives_bad_operation(client: AsyncClient):
 # ---------------------------------------------------------------------------
 # PATCH /api/operations/{op_id}/objectives/{id} — Update
 # ---------------------------------------------------------------------------
+
 
 async def test_update_objective_status(client: AsyncClient):
     """PATCH updates objective status to achieved and sets achieved_at."""
@@ -178,6 +180,7 @@ async def test_update_objective_bad_operation(client: AsyncClient):
 # ---------------------------------------------------------------------------
 # Full CRUD flow
 # ---------------------------------------------------------------------------
+
 
 async def test_create_list_update_flow(client: AsyncClient):
     """Full flow: create -> list -> update status -> verify."""

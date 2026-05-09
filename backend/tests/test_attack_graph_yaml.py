@@ -10,10 +10,10 @@
 
 """Tests for SPEC-039: Attack Graph YAML Externalization and 50+ Rules."""
 
-import pytest
 from pathlib import Path
 from unittest.mock import MagicMock
 
+import pytest
 from pydantic import ValidationError
 
 from app.models.attack_graph import (
@@ -27,7 +27,6 @@ from app.models.attack_graph import (
     TechniqueRulesFile,
 )
 
-
 # ---------------------------------------------------------------------------
 # Phase 1 — YAML loading and Pydantic validation
 # ---------------------------------------------------------------------------
@@ -39,17 +38,20 @@ class TestYAMLLoading:
     def test_yaml_loads_at_least_50_rules(self):
         """YAML file loads >= 50 rules."""
         from app.services.attack_graph_engine import _PREREQUISITE_RULES
+
         assert len(_PREREQUISITE_RULES) >= 50
 
     def test_distinct_tactic_ids_at_least_8(self):
         """Rules cover at least 8 distinct tactic IDs."""
         from app.services.attack_graph_engine import _PREREQUISITE_RULES
+
         tactic_ids = {r.tactic_id for r in _PREREQUISITE_RULES}
         assert len(tactic_ids) >= 8
 
     def test_technique_rule_has_platforms_field(self):
         """TechniqueRule dataclass includes platforms field."""
         from app.services.attack_graph_engine import _PREREQUISITE_RULES
+
         for rule in _PREREQUISITE_RULES:
             assert hasattr(rule, "platforms")
             assert len(rule.platforms) >= 1
@@ -57,6 +59,7 @@ class TestYAMLLoading:
     def test_technique_rule_has_description_field(self):
         """TechniqueRule dataclass includes description field."""
         from app.services.attack_graph_engine import _PREREQUISITE_RULES
+
         for rule in _PREREQUISITE_RULES:
             assert hasattr(rule, "description")
             assert len(rule.description) > 0
@@ -148,9 +151,12 @@ class TestCostFormula:
     def test_high_confidence_low_risk_low_cost(self):
         """High confidence + high IG + low risk + effort 1 => low cost (~0.08)."""
         from app.services.attack_graph_engine import AttackGraphEngine
+
         node = self._make_node(
-            confidence=0.95, information_gain=0.9,
-            risk_level="low", effort=1,
+            confidence=0.95,
+            information_gain=0.9,
+            risk_level="low",
+            effort=1,
         )
         cost = AttackGraphEngine.compute_edge_cost(node)
         # 0.35*(1-0.95) + 0.25*(1-0.9) + 0.25*0.1 + 0.15*(1/5)
@@ -161,9 +167,12 @@ class TestCostFormula:
     def test_low_confidence_high_risk_high_cost(self):
         """Low confidence + low IG + high risk + effort 4 => high cost (~0.53)."""
         from app.services.attack_graph_engine import AttackGraphEngine
+
         node = self._make_node(
-            confidence=0.4, information_gain=0.3,
-            risk_level="high", effort=4,
+            confidence=0.4,
+            information_gain=0.3,
+            risk_level="high",
+            effort=4,
         )
         cost = AttackGraphEngine.compute_edge_cost(node)
         # 0.35*(1-0.4) + 0.25*(1-0.3) + 0.25*0.6 + 0.15*(4/5)
@@ -176,12 +185,16 @@ class TestCostFormula:
         from app.services.attack_graph_engine import AttackGraphEngine
 
         good = self._make_node(
-            confidence=0.95, information_gain=0.9,
-            risk_level="low", effort=1,
+            confidence=0.95,
+            information_gain=0.9,
+            risk_level="low",
+            effort=1,
         )
         bad = self._make_node(
-            confidence=0.4, information_gain=0.3,
-            risk_level="high", effort=4,
+            confidence=0.4,
+            information_gain=0.3,
+            risk_level="high",
+            effort=4,
         )
         cost_good = AttackGraphEngine.compute_edge_cost(good)
         cost_bad = AttackGraphEngine.compute_edge_cost(bad)
@@ -190,6 +203,7 @@ class TestCostFormula:
     def test_risk_cost_map_values(self):
         """RISK_COST_MAP contains expected values."""
         from app.services.attack_graph_engine import RISK_COST_MAP
+
         assert RISK_COST_MAP == {
             "low": 0.1,
             "medium": 0.3,
@@ -208,6 +222,7 @@ class TestPruningFixes:
 
     def _make_engine(self):
         from app.services.attack_graph_engine import AttackGraphEngine
+
         ws = MagicMock()
         ws.broadcast = MagicMock()
         return AttackGraphEngine(ws)
@@ -217,28 +232,51 @@ class TestPruningFixes:
         engine = self._make_engine()
 
         graph = AttackGraph(
-            graph_id="g-prune", operation_id="op-1",
+            graph_id="g-prune",
+            operation_id="op-1",
         )
 
         prereq = AttackNode(
-            node_id="prereq", target_id="t1", technique_id="T1595.001",
-            tactic_id="TA0043", status=NodeStatus.EXPLORED,
-            confidence=0.95, risk_level="low", information_gain=0.9,
-            effort=1, prerequisites=[], satisfied_prerequisites=[], depth=0,
+            node_id="prereq",
+            target_id="t1",
+            technique_id="T1595.001",
+            tactic_id="TA0043",
+            status=NodeStatus.EXPLORED,
+            confidence=0.95,
+            risk_level="low",
+            information_gain=0.9,
+            effort=1,
+            prerequisites=[],
+            satisfied_prerequisites=[],
+            depth=0,
         )
         failed_node = AttackNode(
-            node_id="T1110.001::t1", target_id="t1", technique_id="T1110.001",
-            tactic_id="TA0001", status=NodeStatus.FAILED,
-            confidence=0.0, risk_level="medium", information_gain=0.6,
-            effort=1, prerequisites=["service.open_port"],
-            satisfied_prerequisites=["service.open_port"], depth=1,
+            node_id="T1110.001::t1",
+            target_id="t1",
+            technique_id="T1110.001",
+            tactic_id="TA0001",
+            status=NodeStatus.FAILED,
+            confidence=0.0,
+            risk_level="medium",
+            information_gain=0.6,
+            effort=1,
+            prerequisites=["service.open_port"],
+            satisfied_prerequisites=["service.open_port"],
+            depth=1,
         )
         alternative_node = AttackNode(
-            node_id="T1190::t1", target_id="t1", technique_id="T1190",
-            tactic_id="TA0001", status=NodeStatus.PENDING,
-            confidence=0.6, risk_level="medium", information_gain=0.7,
-            effort=2, prerequisites=["service.open_port"],
-            satisfied_prerequisites=["service.open_port"], depth=1,
+            node_id="T1190::t1",
+            target_id="t1",
+            technique_id="T1190",
+            tactic_id="TA0001",
+            status=NodeStatus.PENDING,
+            confidence=0.6,
+            risk_level="medium",
+            information_gain=0.7,
+            effort=2,
+            prerequisites=["service.open_port"],
+            satisfied_prerequisites=["service.open_port"],
+            depth=1,
         )
 
         graph.nodes = {
@@ -248,18 +286,27 @@ class TestPruningFixes:
         }
         graph.edges = [
             AttackEdge(
-                edge_id="e1", source="prereq", target="T1110.001::t1",
-                weight=0.5, relationship=EdgeRelationship.ENABLES,
+                edge_id="e1",
+                source="prereq",
+                target="T1110.001::t1",
+                weight=0.5,
+                relationship=EdgeRelationship.ENABLES,
                 required_facts=[],
             ),
             AttackEdge(
-                edge_id="e2", source="prereq", target="T1190::t1",
-                weight=0.5, relationship=EdgeRelationship.ENABLES,
+                edge_id="e2",
+                source="prereq",
+                target="T1190::t1",
+                weight=0.5,
+                relationship=EdgeRelationship.ENABLES,
                 required_facts=[],
             ),
             AttackEdge(
-                edge_id="e3", source="T1110.001::t1", target="T1190::t1",
-                weight=0.4, relationship=EdgeRelationship.ALTERNATIVE,
+                edge_id="e3",
+                source="T1110.001::t1",
+                target="T1190::t1",
+                weight=0.4,
+                relationship=EdgeRelationship.ALTERNATIVE,
                 required_facts=[],
             ),
         ]
@@ -274,23 +321,38 @@ class TestPruningFixes:
         engine = self._make_engine()
 
         graph = AttackGraph(
-            graph_id="g-prune2", operation_id="op-1",
+            graph_id="g-prune2",
+            operation_id="op-1",
         )
 
         failed_node = AttackNode(
-            node_id="T1190::t1", target_id="t1", technique_id="T1190",
-            tactic_id="TA0001", status=NodeStatus.FAILED,
-            confidence=0.0, risk_level="medium", information_gain=0.7,
-            effort=2, prerequisites=["service.open_port"],
-            satisfied_prerequisites=["service.open_port"], depth=1,
+            node_id="T1190::t1",
+            target_id="t1",
+            technique_id="T1190",
+            tactic_id="TA0001",
+            status=NodeStatus.FAILED,
+            confidence=0.0,
+            risk_level="medium",
+            information_gain=0.7,
+            effort=2,
+            prerequisites=["service.open_port"],
+            satisfied_prerequisites=["service.open_port"],
+            depth=1,
         )
         # A hypothetical sibling in same tactic with shared prereqs, NOT in alternatives
         sibling = AttackNode(
-            node_id="T1133::t1", target_id="t1", technique_id="T1133",
-            tactic_id="TA0001", status=NodeStatus.PENDING,
-            confidence=0.75, risk_level="medium", information_gain=0.65,
-            effort=1, prerequisites=["service.open_port", "credential.ssh"],
-            satisfied_prerequisites=["service.open_port"], depth=1,
+            node_id="T1133::t1",
+            target_id="t1",
+            technique_id="T1133",
+            tactic_id="TA0001",
+            status=NodeStatus.PENDING,
+            confidence=0.75,
+            risk_level="medium",
+            information_gain=0.65,
+            effort=1,
+            prerequisites=["service.open_port", "credential.ssh"],
+            satisfied_prerequisites=["service.open_port"],
+            depth=1,
         )
 
         graph.nodes = {
@@ -310,26 +372,51 @@ class TestPruningFixes:
         engine = self._make_engine()
 
         graph = AttackGraph(
-            graph_id="g-prop", operation_id="op-1",
+            graph_id="g-prop",
+            operation_id="op-1",
         )
 
         dead_source = AttackNode(
-            node_id="dead", target_id="t1", technique_id="T0001",
-            tactic_id="TA0001", status=NodeStatus.FAILED,
-            confidence=0.0, risk_level="low", information_gain=0.5,
-            effort=1, prerequisites=[], satisfied_prerequisites=[], depth=0,
+            node_id="dead",
+            target_id="t1",
+            technique_id="T0001",
+            tactic_id="TA0001",
+            status=NodeStatus.FAILED,
+            confidence=0.0,
+            risk_level="low",
+            information_gain=0.5,
+            effort=1,
+            prerequisites=[],
+            satisfied_prerequisites=[],
+            depth=0,
         )
         alive_alt_source = AttackNode(
-            node_id="alive", target_id="t1", technique_id="T0002",
-            tactic_id="TA0001", status=NodeStatus.PENDING,
-            confidence=0.8, risk_level="low", information_gain=0.5,
-            effort=1, prerequisites=[], satisfied_prerequisites=[], depth=0,
+            node_id="alive",
+            target_id="t1",
+            technique_id="T0002",
+            tactic_id="TA0001",
+            status=NodeStatus.PENDING,
+            confidence=0.8,
+            risk_level="low",
+            information_gain=0.5,
+            effort=1,
+            prerequisites=[],
+            satisfied_prerequisites=[],
+            depth=0,
         )
         target_node = AttackNode(
-            node_id="target", target_id="t1", technique_id="T0003",
-            tactic_id="TA0002", status=NodeStatus.PENDING,
-            confidence=0.7, risk_level="medium", information_gain=0.6,
-            effort=1, prerequisites=[], satisfied_prerequisites=[], depth=1,
+            node_id="target",
+            target_id="t1",
+            technique_id="T0003",
+            tactic_id="TA0002",
+            status=NodeStatus.PENDING,
+            confidence=0.7,
+            risk_level="medium",
+            information_gain=0.6,
+            effort=1,
+            prerequisites=[],
+            satisfied_prerequisites=[],
+            depth=1,
         )
 
         graph.nodes = {
@@ -339,13 +426,19 @@ class TestPruningFixes:
         }
         graph.edges = [
             AttackEdge(
-                edge_id="e1", source="dead", target="target",
-                weight=0.5, relationship=EdgeRelationship.ENABLES,
+                edge_id="e1",
+                source="dead",
+                target="target",
+                weight=0.5,
+                relationship=EdgeRelationship.ENABLES,
                 required_facts=[],
             ),
             AttackEdge(
-                edge_id="e2", source="alive", target="target",
-                weight=0.4, relationship=EdgeRelationship.ALTERNATIVE,
+                edge_id="e2",
+                source="alive",
+                target="target",
+                weight=0.4,
+                relationship=EdgeRelationship.ALTERNATIVE,
                 required_facts=[],
             ),
         ]
@@ -361,26 +454,51 @@ class TestPruningFixes:
         engine = self._make_engine()
 
         graph = AttackGraph(
-            graph_id="g-prop2", operation_id="op-1",
+            graph_id="g-prop2",
+            operation_id="op-1",
         )
 
         dead_source = AttackNode(
-            node_id="dead", target_id="t1", technique_id="T0001",
-            tactic_id="TA0001", status=NodeStatus.FAILED,
-            confidence=0.0, risk_level="low", information_gain=0.5,
-            effort=1, prerequisites=[], satisfied_prerequisites=[], depth=0,
+            node_id="dead",
+            target_id="t1",
+            technique_id="T0001",
+            tactic_id="TA0001",
+            status=NodeStatus.FAILED,
+            confidence=0.0,
+            risk_level="low",
+            information_gain=0.5,
+            effort=1,
+            prerequisites=[],
+            satisfied_prerequisites=[],
+            depth=0,
         )
         dead_alt = AttackNode(
-            node_id="dead_alt", target_id="t1", technique_id="T0002",
-            tactic_id="TA0001", status=NodeStatus.PRUNED,
-            confidence=0.0, risk_level="low", information_gain=0.5,
-            effort=1, prerequisites=[], satisfied_prerequisites=[], depth=0,
+            node_id="dead_alt",
+            target_id="t1",
+            technique_id="T0002",
+            tactic_id="TA0001",
+            status=NodeStatus.PRUNED,
+            confidence=0.0,
+            risk_level="low",
+            information_gain=0.5,
+            effort=1,
+            prerequisites=[],
+            satisfied_prerequisites=[],
+            depth=0,
         )
         target_node = AttackNode(
-            node_id="target", target_id="t1", technique_id="T0003",
-            tactic_id="TA0002", status=NodeStatus.PENDING,
-            confidence=0.7, risk_level="medium", information_gain=0.6,
-            effort=1, prerequisites=[], satisfied_prerequisites=[], depth=1,
+            node_id="target",
+            target_id="t1",
+            technique_id="T0003",
+            tactic_id="TA0002",
+            status=NodeStatus.PENDING,
+            confidence=0.7,
+            risk_level="medium",
+            information_gain=0.6,
+            effort=1,
+            prerequisites=[],
+            satisfied_prerequisites=[],
+            depth=1,
         )
 
         graph.nodes = {
@@ -390,13 +508,19 @@ class TestPruningFixes:
         }
         graph.edges = [
             AttackEdge(
-                edge_id="e1", source="dead", target="target",
-                weight=0.5, relationship=EdgeRelationship.ENABLES,
+                edge_id="e1",
+                source="dead",
+                target="target",
+                weight=0.5,
+                relationship=EdgeRelationship.ENABLES,
                 required_facts=[],
             ),
             AttackEdge(
-                edge_id="e2", source="dead_alt", target="target",
-                weight=0.4, relationship=EdgeRelationship.ALTERNATIVE,
+                edge_id="e2",
+                source="dead_alt",
+                target="target",
+                weight=0.4,
+                relationship=EdgeRelationship.ALTERNATIVE,
                 required_facts=[],
             ),
         ]

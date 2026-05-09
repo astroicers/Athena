@@ -7,14 +7,13 @@
 # Unauthorized copying or distribution is prohibited.
 
 """Router tests for admin endpoints:
-    POST /api/admin/rules/reload
-    POST /api/operations/{op_id}/reset
+POST /api/admin/rules/reload
+POST /api/operations/{op_id}/reset
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # POST /api/admin/rules/reload -> 200
@@ -25,8 +24,10 @@ async def test_reload_rules(client):
     """POST /api/admin/rules/reload returns 200 with status='ok'."""
     # reload_rules is lazily imported inside the handler so we patch it
     # at its definition site in the attack_graph_engine module.
-    with patch("app.services.attack_graph_engine.reload_rules") as mock_reload, \
-         patch("app.routers.admin.ws_manager") as mock_ws:
+    with (
+        patch("app.services.attack_graph_engine.reload_rules") as mock_reload,
+        patch("app.routers.admin.ws_manager") as mock_ws,
+    ):
         mock_ws.broadcast = AsyncMock()
 
         resp = await client.post("/api/admin/rules/reload")
@@ -59,9 +60,7 @@ async def test_reset_operation(client, seeded_db):
 async def test_reset_operation_clears_attack_graph(client, seeded_db):
     """POST reset deletes all attack_graph_nodes for the operation."""
     # Verify seed data exists first
-    count_before = await seeded_db.fetchval(
-        "SELECT COUNT(*) FROM attack_graph_nodes WHERE operation_id = 'test-op-1'"
-    )
+    count_before = await seeded_db.fetchval("SELECT COUNT(*) FROM attack_graph_nodes WHERE operation_id = 'test-op-1'")
     assert count_before > 0, "Seed data must include attack_graph_nodes"
 
     with patch("app.routers.admin.ws_manager") as mock_ws:
@@ -70,9 +69,7 @@ async def test_reset_operation_clears_attack_graph(client, seeded_db):
 
     assert resp.status_code == 204
 
-    count_after = await seeded_db.fetchval(
-        "SELECT COUNT(*) FROM attack_graph_nodes WHERE operation_id = 'test-op-1'"
-    )
+    count_after = await seeded_db.fetchval("SELECT COUNT(*) FROM attack_graph_nodes WHERE operation_id = 'test-op-1'")
     assert count_after == 0
 
 

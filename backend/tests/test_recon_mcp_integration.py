@@ -38,10 +38,12 @@ def nmap_mcp_result():
         "content": [
             {
                 "type": "text",
-                "text": json.dumps({
-                    "facts": facts,
-                    "raw_output": "<nmap output>",
-                }),
+                "text": json.dumps(
+                    {
+                        "facts": facts,
+                        "raw_output": "<nmap output>",
+                    }
+                ),
             }
         ],
         "is_error": False,
@@ -67,9 +69,7 @@ async def test_scan_via_mcp_returns_services(mock_mcp_manager, nmap_mcp_result):
     assert raw_xml == "<nmap output>"
     assert duration > 0
 
-    mock_mcp_manager.call_tool.assert_called_once_with(
-        "nmap-scanner", "nmap_scan", {"target": "10.0.1.5"}
-    )
+    mock_mcp_manager.call_tool.assert_called_once_with("nmap-scanner", "nmap_scan", {"target": "10.0.1.5"})
 
 
 async def test_scan_via_mcp_not_connected():
@@ -101,10 +101,12 @@ async def test_scan_via_mcp_empty_result(mock_mcp_manager):
         "content": [
             {
                 "type": "text",
-                "text": json.dumps({
-                    "facts": [{"trait": "network.host.ip", "value": "10.0.1.5"}],
-                    "raw_output": "",
-                }),
+                "text": json.dumps(
+                    {
+                        "facts": [{"trait": "network.host.ip", "value": "10.0.1.5"}],
+                        "raw_output": "",
+                    }
+                ),
             }
         ],
         "is_error": False,

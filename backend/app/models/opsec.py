@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 
 class OPSECEvent(BaseModel):
     """A single OPSEC event (e.g. auth failure, high noise, artifact)."""
+
     id: str = ""
     operation_id: str
     event_type: str
@@ -28,6 +29,7 @@ class OPSECEvent(BaseModel):
 
 class OPSECStatus(BaseModel):
     """Aggregate OPSEC status for an operation."""
+
     operation_id: str
     noise_score: float = 0.0
     dwell_time_score: float = 0.0
@@ -42,6 +44,7 @@ class OPSECStatus(BaseModel):
 
 class ThreatLevel(BaseModel):
     """Computed threat level for an operation."""
+
     operation_id: str
     level: float = 0.0  # 0.0 - 1.0
     components: dict[str, float] = Field(default_factory=dict)

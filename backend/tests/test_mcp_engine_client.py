@@ -56,9 +56,7 @@ async def test_execute_qualified_name():
     result = await client.execute("recon-server:nmap_scan", "10.0.0.1")
 
     assert result.success is True
-    mock_manager.call_tool.assert_awaited_once_with(
-        "recon-server", "nmap_scan", {"target": "10.0.0.1"}
-    )
+    mock_manager.call_tool.assert_awaited_once_with("recon-server", "nmap_scan", {"target": "10.0.0.1"})
 
 
 async def test_execute_no_server_found():
@@ -77,9 +75,7 @@ async def test_execute_connection_error():
     """execute() handles ConnectionError gracefully."""
     mock_manager = MagicMock()
     mock_manager.get_server_for_tool.return_value = "server"
-    mock_manager.call_tool = AsyncMock(
-        side_effect=ConnectionError("server not connected")
-    )
+    mock_manager.call_tool = AsyncMock(side_effect=ConnectionError("server not connected"))
 
     client = MCPEngineClient(manager=mock_manager)
     result = await client.execute("tool", "10.0.0.1")

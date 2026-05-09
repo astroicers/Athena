@@ -36,8 +36,6 @@ def _row_to_log(row: asyncpg.Record) -> LogEntry:
     "/operations/{operation_id}/logs",
     response_model=PaginatedLogs,
 )
-
-
 async def list_logs(
     operation_id: str,
     page: int = Query(1, ge=1),
@@ -59,9 +57,10 @@ async def list_logs(
     # Paginated results
     offset = (page - 1) * page_size
     rows = await db.fetch(
-        "SELECT * FROM log_entries WHERE operation_id = $1 "
-        "ORDER BY timestamp DESC LIMIT $2 OFFSET $3",
-        operation_id, page_size, offset,
+        "SELECT * FROM log_entries WHERE operation_id = $1 ORDER BY timestamp DESC LIMIT $2 OFFSET $3",
+        operation_id,
+        page_size,
+        offset,
     )
 
     return PaginatedLogs(

@@ -38,7 +38,6 @@ from pathlib import Path
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -164,9 +163,7 @@ def test_b2_sigint_triggers_cleanup_and_kills_child(
             f"{proc.stdout.read() if proc.stdout else ''}"
         )
         sleep_pid = children[0]
-        assert _is_process_alive(sleep_pid), (
-            "Sleep child must be alive before we send SIGINT"
-        )
+        assert _is_process_alive(sleep_pid), "Sleep child must be alive before we send SIGINT"
 
         # Send SIGINT to the process group (simulates Ctrl+C)
         os.killpg(os.getpgid(proc.pid), signal.SIGINT)
@@ -181,18 +178,11 @@ def test_b2_sigint_triggers_cleanup_and_kills_child(
         # --- Assertions ---
 
         # 1. Exit code must be 0 (trap cleanup returns 0)
-        assert proc.returncode == 0, (
-            f"Expected exit 0 after SIGINT cleanup, got {proc.returncode}. "
-            f"Output:\n{stdout}"
-        )
+        assert proc.returncode == 0, f"Expected exit 0 after SIGINT cleanup, got {proc.returncode}. Output:\n{stdout}"
 
         # 2. Cleanup message must appear
-        assert "[athena-relay] Cleaning up..." in stdout, (
-            f"Expected cleanup message in output. Got:\n{stdout}"
-        )
-        assert "Done. No residue." in stdout, (
-            f"Expected 'Done. No residue.' in output. Got:\n{stdout}"
-        )
+        assert "[athena-relay] Cleaning up..." in stdout, f"Expected cleanup message in output. Got:\n{stdout}"
+        assert "Done. No residue." in stdout, f"Expected 'Done. No residue.' in output. Got:\n{stdout}"
 
         # 3. The child `sleep` must be gone (the critical no-residue check)
         # Give the kernel a moment to reap

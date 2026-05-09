@@ -19,13 +19,13 @@ from datetime import datetime, timezone
 import pytest
 import pytest_asyncio
 
-
 # ---------------------------------------------------------------------------
 # Module-scoped fixture: insert vulnerabilities once for this module.
 # Using module scope avoids the seeded_db/client double-fixture conflict that
 # causes UniqueViolationErrors when function-scoped seeded_db is requested
 # twice in the same test (once by client, once explicitly).
 # ---------------------------------------------------------------------------
+
 
 @pytest_asyncio.fixture(scope="module")
 async def client_with_vulns(pg_pool):
@@ -36,8 +36,9 @@ async def client_with_vulns(pg_pool):
       - vuln_discovered: status='discovered'  (can transition to confirmed)
       - vuln_reported:   status='reported'    (terminal — no valid transitions)
     """
-    import asyncpg
     import os
+
+    import asyncpg
     from httpx import ASGITransport, AsyncClient
 
     os.environ.setdefault("MOCK_LLM", "true")
@@ -45,21 +46,40 @@ async def client_with_vulns(pg_pool):
     os.environ.setdefault("MOCK_METASPLOIT", "true")
 
     from app.database import get_db
-    from app.main import app
     from app.database.seed import TECHNIQUE_PLAYBOOK_SEEDS
+    from app.main import app
 
     _DEFAULT_TEST_DSN = "postgresql://athena:athena_secret@localhost:55432/athena_test"
     TEST_DATABASE_URL: str = os.environ.get("TEST_DATABASE_URL", _DEFAULT_TEST_DSN)
 
     _ALL_TABLES = [
-        "mission_objectives", "credentials", "opsec_events", "event_store",
+        "mission_objectives",
+        "credentials",
+        "opsec_events",
+        "event_store",
         "c5isr_status_history",
-        "vulnerabilities", "swarm_tasks", "attack_graph_edges", "attack_graph_nodes",
-        "tool_registry", "technique_playbooks", "vuln_cache", "engagements",
-        "recon_scans", "log_entries", "c5isr_statuses", "mission_steps",
-        "recommendations", "ooda_directives", "ooda_iterations", "facts",
-        "technique_executions", "techniques", "agents", "targets",
-        "operations", "users",
+        "vulnerabilities",
+        "swarm_tasks",
+        "attack_graph_edges",
+        "attack_graph_nodes",
+        "tool_registry",
+        "technique_playbooks",
+        "vuln_cache",
+        "engagements",
+        "recon_scans",
+        "log_entries",
+        "c5isr_statuses",
+        "mission_steps",
+        "recommendations",
+        "ooda_directives",
+        "ooda_iterations",
+        "facts",
+        "technique_executions",
+        "techniques",
+        "agents",
+        "targets",
+        "operations",
+        "users",
     ]
 
     conn = await asyncpg.connect(TEST_DATABASE_URL)
@@ -92,9 +112,13 @@ async def client_with_vulns(pg_pool):
                    (id, mitre_id, platform, command, output_parser, facts_traits, source, tags)
                    VALUES ($1, $2, $3, $4, $5, $6, 'seed', $7)
                    ON CONFLICT DO NOTHING""",
-                str(uuid.uuid4()), seed["mitre_id"], seed["platform"],
-                seed["command"], seed.get("output_parser"),
-                seed["facts_traits"], seed["tags"],
+                str(uuid.uuid4()),
+                seed["mitre_id"],
+                seed["platform"],
+                seed["command"],
+                seed.get("output_parser"),
+                seed["facts_traits"],
+                seed["tags"],
             )
 
         # Insert the two vulnerabilities this module needs
@@ -108,7 +132,8 @@ async def client_with_vulns(pg_pool):
                     cvss_score, description, source_fact_id, discovered_at)
                VALUES ($1, 'test-op-1', 'CVE-2024-1111', 'test-target-1',
                        'high', 'discovered', 8.5, 'Discovered vuln', NULL, $2)""",
-            vuln_discovered_id, now,
+            vuln_discovered_id,
+            now,
         )
         await conn.execute(
             """INSERT INTO vulnerabilities
@@ -116,7 +141,8 @@ async def client_with_vulns(pg_pool):
                     cvss_score, description, source_fact_id, discovered_at)
                VALUES ($1, 'test-op-1', 'CVE-2024-2222', 'test-target-1',
                        'critical', 'reported', 9.8, 'Reported terminal vuln', NULL, $2)""",
-            vuln_reported_id, now,
+            vuln_reported_id,
+            now,
         )
     finally:
         try:

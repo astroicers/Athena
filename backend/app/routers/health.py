@@ -26,8 +26,6 @@ router = APIRouter()
 
 
 @router.get("/health", response_model=HealthStatus)
-
-
 async def health_check(db: asyncpg.Connection = Depends(get_db)):
     """Return service health status."""
     # Check database connectivity
@@ -44,6 +42,7 @@ async def health_check(db: asyncpg.Connection = Depends(get_db)):
     else:
         try:
             from app.clients.c2_client import C2EngineClient
+
             client = C2EngineClient(settings.C2_ENGINE_URL, settings.C2_ENGINE_API_KEY)
             available = await asyncio.wait_for(client.is_available(), timeout=2.0)
             c2_engine_status = "connected" if available else "unreachable"
@@ -58,6 +57,7 @@ async def health_check(db: asyncpg.Connection = Depends(get_db)):
         llm_status = "claude"
     elif settings.LLM_BACKEND in ("oauth", "auto"):
         from app.services.oauth_token_manager import OAuthTokenManager
+
         mgr = OAuthTokenManager()
         llm_status = "claude (oauth)" if mgr.is_available() else "unavailable"
     elif settings.OPENAI_API_KEY:
@@ -83,23 +83,27 @@ async def health_check(db: asyncpg.Connection = Depends(get_db)):
             msf_connected = False
             try:
                 import socket
+
                 s = socket.create_connection(
-                    (settings.MSF_RPC_HOST, settings.MSF_RPC_PORT), timeout=1,
+                    (settings.MSF_RPC_HOST, settings.MSF_RPC_PORT),
+                    timeout=1,
                 )
                 s.close()
                 msf_connected = True
             except Exception:
                 pass
-            mcp_list.append({
-                "name": "msf-rpc",
-                "transport": "rpc",
-                "enabled": True,
-                "connected": msf_connected,
-                "tool_count": 0,
-                "description": "Metasploit Framework RPC",
-                "circuit_state": "closed" if msf_connected else "open",
-                "failure_count": 0 if msf_connected else 1,
-            })
+            mcp_list.append(
+                {
+                    "name": "msf-rpc",
+                    "transport": "rpc",
+                    "enabled": True,
+                    "connected": msf_connected,
+                    "tool_count": 0,
+                    "description": "Metasploit Framework RPC",
+                    "circuit_state": "closed" if msf_connected else "open",
+                    "failure_count": 0 if msf_connected else 1,
+                }
+            )
 
         services["mcp_servers"] = mcp_list
 
@@ -122,8 +126,6 @@ async def health_check(db: asyncpg.Connection = Depends(get_db)):
 
 
 @router.get("/mcp/status")
-
-
 async def mcp_status():
     """Return MCP subsystem status with circuit breaker states."""
     if not settings.MCP_ENABLED:

@@ -17,15 +17,15 @@ from .enums import AutomationMode, MissionProfile, OODAPhase, OperationStatus, R
 
 class Operation(BaseModel):
     id: str
-    code: str                           # "OP-2024-017"
-    name: str                           # "Obtain Domain Admin"
-    codename: str                       # "PHANTOM-EYE"
+    code: str  # "OP-2024-017"
+    name: str  # "Obtain Domain Admin"
+    codename: str  # "PHANTOM-EYE"
     strategic_intent: str
     status: OperationStatus
     current_ooda_phase: OODAPhase
     ooda_iteration_count: int = 0
-    threat_level: float = 0.0           # 0.0 - 10.0
-    success_rate: float = 0.0           # 0 - 100
+    threat_level: float = 0.0  # 0.0 - 10.0
+    success_rate: float = 0.0  # 0 - 100
     techniques_executed: int = 0
     techniques_total: int = 0
     active_agents: int = 0

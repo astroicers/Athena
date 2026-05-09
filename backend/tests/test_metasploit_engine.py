@@ -9,8 +9,10 @@
 # For commercial licensing, contact: azz093093.830330@gmail.com
 
 """Unit tests for MetasploitRPCEngine (ADR-019)."""
-import pytest
+
 from unittest.mock import patch
+
+import pytest
 
 from app.clients.metasploit_client import MetasploitRPCEngine
 

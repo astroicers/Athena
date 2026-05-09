@@ -89,7 +89,7 @@ def _read_skill_file(name: str) -> str | None:
         if raw.startswith("---"):
             end = raw.find("---", 3)
             if end != -1:
-                raw = raw[end + 3:].strip()
+                raw = raw[end + 3 :].strip()
         return raw[:_MAX_CHARS_PER_SKILL]
     except Exception:
         logger.warning("Failed to read skill file: %s", path, exc_info=True)

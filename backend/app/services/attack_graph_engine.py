@@ -85,20 +85,22 @@ def _load_rules(path: Path | None = None) -> list[TechniqueRule]:
                 r.technique_id,
             )
         seen_ids.add(r.technique_id)
-        rules.append(TechniqueRule(
-            technique_id=r.technique_id,
-            tactic_id=r.tactic_id,
-            required_facts=r.required_facts,
-            produced_facts=r.produced_facts,
-            risk_level=r.risk_level,
-            base_confidence=r.base_confidence,
-            information_gain=r.information_gain,
-            effort=r.effort,
-            enables=r.enables,
-            alternatives=r.alternatives,
-            platforms=r.platforms,
-            description=r.description,
-        ))
+        rules.append(
+            TechniqueRule(
+                technique_id=r.technique_id,
+                tactic_id=r.tactic_id,
+                required_facts=r.required_facts,
+                produced_facts=r.produced_facts,
+                risk_level=r.risk_level,
+                base_confidence=r.base_confidence,
+                information_gain=r.information_gain,
+                effort=r.effort,
+                enables=r.enables,
+                alternatives=r.alternatives,
+                platforms=r.platforms,
+                description=r.description,
+            )
+        )
 
     # Warn about enables references to non-existent technique_ids
     all_ids = {r.technique_id for r in rules}
@@ -107,7 +109,8 @@ def _load_rules(path: Path | None = None) -> list[TechniqueRule]:
             if enabled not in all_ids:
                 logger.warning(
                     "Rule %s enables non-existent technique %s",
-                    r.technique_id, enabled,
+                    r.technique_id,
+                    enabled,
                 )
 
     elapsed_ms = (time.perf_counter() - start) * 1000
@@ -144,20 +147,38 @@ RISK_COST_MAP: dict[str, float] = {
 
 # Kill-chain tactic order for depth calculation
 _TACTIC_ORDER = [
-    "TA0043", "TA0042", "TA0001", "TA0002", "TA0003", "TA0004",
-    "TA0005", "TA0006", "TA0007", "TA0008", "TA0009", "TA0011",
-    "TA0010", "TA0040",
+    "TA0043",
+    "TA0042",
+    "TA0001",
+    "TA0002",
+    "TA0003",
+    "TA0004",
+    "TA0005",
+    "TA0006",
+    "TA0007",
+    "TA0008",
+    "TA0009",
+    "TA0011",
+    "TA0010",
+    "TA0040",
 ]
 _TACTIC_DEPTH: dict[str, int] = {t: i for i, t in enumerate(_TACTIC_ORDER)}
 
 _TACTIC_NAMES: dict[str, str] = {
-    "TA0043": "Reconnaissance", "TA0042": "Resource Development",
-    "TA0001": "Initial Access", "TA0002": "Execution",
-    "TA0003": "Persistence", "TA0004": "Privilege Escalation",
-    "TA0005": "Defense Evasion", "TA0006": "Credential Access",
-    "TA0007": "Discovery", "TA0008": "Lateral Movement",
-    "TA0009": "Collection", "TA0011": "Command and Control",
-    "TA0010": "Exfiltration", "TA0040": "Impact",
+    "TA0043": "Reconnaissance",
+    "TA0042": "Resource Development",
+    "TA0001": "Initial Access",
+    "TA0002": "Execution",
+    "TA0003": "Persistence",
+    "TA0004": "Privilege Escalation",
+    "TA0005": "Defense Evasion",
+    "TA0006": "Credential Access",
+    "TA0007": "Discovery",
+    "TA0008": "Lateral Movement",
+    "TA0009": "Collection",
+    "TA0011": "Command and Control",
+    "TA0010": "Exfiltration",
+    "TA0040": "Impact",
 }
 
 
@@ -171,9 +192,7 @@ class AttackGraphEngine:
     # Public API
     # ------------------------------------------------------------------
 
-    async def rebuild(
-        self, db: asyncpg.Connection, operation_id: str
-    ) -> AttackGraph:
+    async def rebuild(self, db: asyncpg.Connection, operation_id: str) -> AttackGraph:
         """Full rebuild: query DB, build graph, persist, broadcast."""
         # 1. Query data
         targets = await self._query_targets(db, operation_id)
@@ -200,25 +219,31 @@ class AttackGraphEngine:
         try:
             explored = sum(1 for n in graph.nodes.values() if n.status == NodeStatus.EXPLORED)
             pending = sum(1 for n in graph.nodes.values() if n.status == NodeStatus.PENDING)
-            await self._ws.broadcast(operation_id, "graph.updated", {
-                "operation_id": operation_id,
-                "graph_id": graph.graph_id,
-                "stats": {
-                    "total_nodes": len(graph.nodes),
-                    "explored_nodes": explored,
-                    "pending_nodes": pending,
-                    "coverage_score": graph.coverage_score,
+            await self._ws.broadcast(
+                operation_id,
+                "graph.updated",
+                {
+                    "operation_id": operation_id,
+                    "graph_id": graph.graph_id,
+                    "stats": {
+                        "total_nodes": len(graph.nodes),
+                        "explored_nodes": explored,
+                        "pending_nodes": pending,
+                        "coverage_score": graph.coverage_score,
+                    },
+                    "recommended_path": graph.recommended_path,  # SPEC-042
+                    "updated_at": graph.updated_at,
                 },
-                "recommended_path": graph.recommended_path,  # SPEC-042
-                "updated_at": graph.updated_at,
-            })
+            )
         except Exception:
             pass  # fire-and-forget
 
         return graph
 
     async def get_graph(
-        self, db, operation_id: str,
+        self,
+        db,
+        operation_id: str,
     ) -> AttackGraph | None:
         """Load persisted graph from SQLite. Returns None if no graph exists."""
         return await self.load_from_db(db, operation_id)
@@ -278,28 +303,21 @@ class AttackGraphEngine:
                     if e.source == src and e.target == tgt:
                         total_weight += e.weight
                         break
-            lines.append(
-                f"Recommended path: {' → '.join(path_parts)} (W={total_weight:.2f})"
-            )
+            lines.append(f"Recommended path: {' → '.join(path_parts)} (W={total_weight:.2f})")
 
         # Current position: deepest EXPLORED node
         explored_nodes = [n for n in graph.nodes.values() if n.status == NodeStatus.EXPLORED]
         if explored_nodes:
             current = max(explored_nodes, key=lambda n: n.depth)
             tactic_name = _TACTIC_NAMES.get(current.tactic_id, current.tactic_id)
-            lines.append(
-                f"Current position: {current.technique_id} ({tactic_name}) [explored]"
-            )
+            lines.append(f"Current position: {current.technique_id} ({tactic_name}) [explored]")
 
         # Next best node: highest-IG PENDING node
         pending_nodes = [n for n in graph.nodes.values() if n.status == NodeStatus.PENDING]
         if pending_nodes:
             best = max(pending_nodes, key=lambda n: n.information_gain)
             tactic_name = _TACTIC_NAMES.get(best.tactic_id, best.tactic_id)
-            lines.append(
-                f"Next best node: {best.technique_id} ({tactic_name}) "
-                f"confidence={best.confidence:.2f}"
-            )
+            lines.append(f"Next best node: {best.technique_id} ({tactic_name}) confidence={best.confidence:.2f}")
 
         # Unexplored high-value branches
         if graph.unexplored_branches:
@@ -356,11 +374,7 @@ class AttackGraphEngine:
             return []
 
         # Destination: highest information_gain PENDING node
-        pending_nodes = [
-            (n.information_gain, nid)
-            for nid, n in graph.nodes.items()
-            if n.status == NodeStatus.PENDING
-        ]
+        pending_nodes = [(n.information_gain, nid) for nid, n in graph.nodes.items() if n.status == NodeStatus.PENDING]
         if not pending_nodes:
             return []
 
@@ -473,7 +487,10 @@ class AttackGraphEngine:
                 graph.edges = [e for e in graph.edges if e.edge_id != lowest.edge_id]
                 logger.warning(
                     "Cycle detected and broken: removed edge %s (%s->%s, w=%.3f)",
-                    lowest.edge_id, lowest.source, lowest.target, lowest.weight,
+                    lowest.edge_id,
+                    lowest.source,
+                    lowest.target,
+                    lowest.weight,
                 )
 
     def prune_dead_branches(self, graph: AttackGraph) -> int:
@@ -496,7 +513,8 @@ class AttackGraphEngine:
 
             # Find siblings: same tactic_id, same target_id, not the failed node itself
             siblings = [
-                n for n in graph.nodes.values()
+                n
+                for n in graph.nodes.values()
                 if n.tactic_id == failed.tactic_id
                 and n.target_id == failed.target_id
                 and n.node_id != failed.node_id
@@ -508,9 +526,9 @@ class AttackGraphEngine:
                 # Protect alternative techniques from pruning
                 if sibling.technique_id in protected_techniques:
                     logger.debug(
-                        "Protecting alternative technique %s from pruning "
-                        "(alternative of failed %s)",
-                        sibling.technique_id, failed.technique_id,
+                        "Protecting alternative technique %s from pruning (alternative of failed %s)",
+                        sibling.technique_id,
+                        failed.technique_id,
                     )
                     continue
 
@@ -602,9 +620,7 @@ class AttackGraphEngine:
 
         # Build fact set and execution map
         # SPEC-037: exclude invalidated credentials so dependent nodes become UNREACHABLE
-        fact_traits: set[str] = {
-            f["trait"] for f in facts if ".invalidated" not in f["trait"]
-        }
+        fact_traits: set[str] = {f["trait"] for f in facts if ".invalidated" not in f["trait"]}
         exec_map: dict[tuple[str, str], str] = {}  # (technique_id, target_id) -> status
         exec_id_map: dict[tuple[str, str], str] = {}  # -> execution_id
 
@@ -700,10 +716,7 @@ class AttackGraphEngine:
         graph.recommended_path = self.compute_recommended_path(graph)
 
         graph.explored_paths = self._compute_explored_paths(graph)
-        graph.unexplored_branches = [
-            nid for nid, n in graph.nodes.items()
-            if n.status == NodeStatus.PENDING
-        ]
+        graph.unexplored_branches = [nid for nid, n in graph.nodes.items() if n.status == NodeStatus.PENDING]
 
         # Step 9: Coverage score
         total = len(graph.nodes)
@@ -734,9 +747,7 @@ class AttackGraphEngine:
                             target=target_nid,
                             weight=weight,
                             relationship=EdgeRelationship.ENABLES,
-                            required_facts=list(
-                                _RULE_BY_TECHNIQUE.get(enabled_tech, rule).required_facts
-                            ),
+                            required_facts=list(_RULE_BY_TECHNIQUE.get(enabled_tech, rule).required_facts),
                         )
                         graph.edges.append(edge)
 
@@ -767,9 +778,7 @@ class AttackGraphEngine:
                                     lateral_node = graph.nodes[lateral_nid]
                                     weight = self.compute_edge_cost(lateral_node)
                                     edge = AttackEdge(
-                                        edge_id=self._make_edge_id(
-                                            source_nid, lateral_nid, "lateral"
-                                        ),
+                                        edge_id=self._make_edge_id(source_nid, lateral_nid, "lateral"),
                                         source=source_nid,
                                         target=lateral_nid,
                                         weight=weight,
@@ -841,8 +850,7 @@ class AttackGraphEngine:
 
     async def _query_targets(self, db, operation_id: str) -> list[dict]:
         rows = await db.fetch(
-            "SELECT id, hostname, ip_address, os, role, operation_id "
-            "FROM targets WHERE operation_id = $1",
+            "SELECT id, hostname, ip_address, os, role, operation_id FROM targets WHERE operation_id = $1",
             operation_id,
         )
         return [dict(r) for r in rows]
@@ -889,12 +897,23 @@ class AttackGraphEngine:
                 "prerequisites, satisfied_prerequisites, source, execution_id, "
                 "depth, created_at, updated_at) "
                 "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)",
-                node.node_id, graph.operation_id, node.target_id,
-                node.technique_id, node.tactic_id, node.status.value,
-                node.confidence, node.risk_level, node.information_gain,
-                node.effort, json.dumps(node.prerequisites),
-                json.dumps(node.satisfied_prerequisites), node.source,
-                node.execution_id, node.depth, now, now,
+                node.node_id,
+                graph.operation_id,
+                node.target_id,
+                node.technique_id,
+                node.tactic_id,
+                node.status.value,
+                node.confidence,
+                node.risk_level,
+                node.information_gain,
+                node.effort,
+                json.dumps(node.prerequisites),
+                json.dumps(node.satisfied_prerequisites),
+                node.source,
+                node.execution_id,
+                node.depth,
+                now,
+                now,
             )
 
         seen_edge_ids: set[str] = set()
@@ -909,9 +928,15 @@ class AttackGraphEngine:
                 "weight, relationship, required_facts, source_type, created_at) "
                 "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) "
                 "ON CONFLICT (id) DO NOTHING",
-                edge.edge_id, graph.operation_id, edge.source,
-                edge.target, edge.weight, edge.relationship.value,
-                json.dumps(edge.required_facts), edge.source_type, now,
+                edge.edge_id,
+                graph.operation_id,
+                edge.source,
+                edge.target,
+                edge.weight,
+                edge.relationship.value,
+                json.dumps(edge.required_facts),
+                edge.source_type,
+                now,
             )
 
     # ------------------------------------------------------------------
@@ -975,10 +1000,7 @@ class AttackGraphEngine:
         # Recompute derived fields
         graph.recommended_path = self.compute_recommended_path(graph)
         graph.explored_paths = self._compute_explored_paths(graph)
-        graph.unexplored_branches = [
-            nid for nid, n in graph.nodes.items()
-            if n.status == NodeStatus.PENDING
-        ]
+        graph.unexplored_branches = [nid for nid, n in graph.nodes.items() if n.status == NodeStatus.PENDING]
         total = len(graph.nodes)
         explored = sum(1 for n in graph.nodes.values() if n.status == NodeStatus.EXPLORED)
         graph.coverage_score = explored / total if total > 0 else 0.0

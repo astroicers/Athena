@@ -29,11 +29,16 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 _VALUE_MAX_LEN = 500
-_HASH_TRAITS = frozenset({
-    "credential.asrep_hash", "credential.kerberos_hash",
-    "credential.service_hash", "credential.ntlm_hash",
-    "credential.ntds_hash", "credential.krbtgt_hash",
-})
+_HASH_TRAITS = frozenset(
+    {
+        "credential.asrep_hash",
+        "credential.kerberos_hash",
+        "credential.service_hash",
+        "credential.ntlm_hash",
+        "credential.ntds_hash",
+        "credential.krbtgt_hash",
+    }
+)
 _HASH_VALUE_MAX_LEN = 1000
 
 
@@ -103,10 +108,12 @@ class MCPFactExtractor:
                         if isinstance(f, dict) and "trait" in f and "value" in f:
                             t = str(f["trait"])
                             vlim = _HASH_VALUE_MAX_LEN if t in _HASH_TRAITS else _VALUE_MAX_LEN
-                            validated.append({
-                                "trait": t,
-                                "value": str(f["value"])[:vlim],
-                            })
+                            validated.append(
+                                {
+                                    "trait": t,
+                                    "value": str(f["value"])[:vlim],
+                                }
+                            )
                     if validated:
                         return validated
         except (json.JSONDecodeError, TypeError, KeyError):
@@ -122,10 +129,12 @@ class MCPFactExtractor:
                 facts = []
                 for key, val in data.items():
                     if isinstance(val, (str, int, float, bool)):
-                        facts.append({
-                            "trait": str(key),
-                            "value": str(val)[:_VALUE_MAX_LEN],
-                        })
+                        facts.append(
+                            {
+                                "trait": str(key),
+                                "value": str(val)[:_VALUE_MAX_LEN],
+                            }
+                        )
                 if facts:
                     return facts
         except (json.JSONDecodeError, TypeError):

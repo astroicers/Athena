@@ -58,8 +58,7 @@ class ReportGenerator:
     @staticmethod
     async def _fetch_subdomain_count(db: asyncpg.Connection, op_id: str) -> int:
         row = await db.fetchrow(
-            "SELECT COUNT(*) as cnt FROM facts "
-            "WHERE operation_id = $1 AND trait = 'osint.subdomain'",
+            "SELECT COUNT(*) as cnt FROM facts WHERE operation_id = $1 AND trait = 'osint.subdomain'",
             op_id,
         )
         return row["cnt"] if row else 0
@@ -67,8 +66,7 @@ class ReportGenerator:
     @staticmethod
     async def _fetch_service_count(db: asyncpg.Connection, op_id: str) -> int:
         row = await db.fetchrow(
-            "SELECT COUNT(*) as cnt FROM facts "
-            "WHERE operation_id = $1 AND category = 'service'",
+            "SELECT COUNT(*) as cnt FROM facts WHERE operation_id = $1 AND category = 'service'",
             op_id,
         )
         return row["cnt"] if row else 0
@@ -215,9 +213,7 @@ class ReportGenerator:
             mitre_coverage=mitre_coverage,
         )
 
-    def _parse_vuln_facts(
-        self, vuln_rows, targets_by_id: dict
-    ) -> list[Finding]:
+    def _parse_vuln_facts(self, vuln_rows, targets_by_id: dict) -> list[Finding]:
         """Parse vuln.cve fact values into Finding objects.
 
         Fact value format: CVE-XXXX-YYYY:service:version_string:cvss=N.N:exploit=true|false
@@ -236,7 +232,7 @@ class ReportGenerator:
                 if len(parts) < 4:
                     continue
 
-                cve_id = parts[0]   # CVE-XXXX-YYYY
+                cve_id = parts[0]  # CVE-XXXX-YYYY
                 service = parts[1]  # ssh
                 # version may have colons (e.g. OpenSSH_7.4 doesn't, but be safe)
                 # Format is: CVE:service:version:cvss=N:exploit=bool
@@ -264,17 +260,19 @@ class ReportGenerator:
                     continue
                 seen.add(key)
 
-                findings.append(Finding(
-                    cve_id=cve_id,
-                    service=service,
-                    version=version,
-                    cvss_score=cvss_score,
-                    severity=severity,
-                    description=description,
-                    exploit_available=exploit_available,
-                    target_id=target_id,
-                    target_ip=target_ip,
-                ))
+                findings.append(
+                    Finding(
+                        cve_id=cve_id,
+                        service=service,
+                        version=version,
+                        cvss_score=cvss_score,
+                        severity=severity,
+                        description=description,
+                        exploit_available=exploit_available,
+                        target_id=target_id,
+                        target_ip=target_ip,
+                    )
+                )
             except Exception:
                 logger.warning("Failed to parse vuln fact value: %s", value)
                 continue

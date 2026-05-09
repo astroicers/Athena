@@ -125,9 +125,7 @@ async def test_batch_create_skips_duplicates(client: AsyncClient, seeded_db: asy
 async def test_delete_target(client: AsyncClient, seeded_db: asyncpg.Connection):
     """DELETE /api/operations/test-op-1/targets/test-target-1 -> 204 (not active)."""
     # Ensure target is NOT active before deleting
-    await seeded_db.execute(
-        "UPDATE targets SET is_active = FALSE WHERE id = 'test-target-1'"
-    )
+    await seeded_db.execute("UPDATE targets SET is_active = FALSE WHERE id = 'test-target-1'")
     resp = await client.delete("/api/operations/test-op-1/targets/test-target-1")
     assert resp.status_code == 204
 
@@ -141,9 +139,7 @@ async def test_delete_target_not_found(client: AsyncClient):
 async def test_delete_active_target_blocked(client: AsyncClient, seeded_db: asyncpg.Connection):
     """Set target active then DELETE -> 409 (cannot delete active target)."""
     # First set the target as active
-    await seeded_db.execute(
-        "UPDATE targets SET is_active = TRUE WHERE id = 'test-target-1'"
-    )
+    await seeded_db.execute("UPDATE targets SET is_active = TRUE WHERE id = 'test-target-1'")
     resp = await client.delete("/api/operations/test-op-1/targets/test-target-1")
     assert resp.status_code == 409
     assert "active" in resp.json()["detail"].lower()
@@ -165,9 +161,7 @@ async def test_get_topology(client: AsyncClient):
 
 async def test_get_target_summary(client: AsyncClient, seeded_db: asyncpg.Connection):
     """GET /api/operations/test-op-1/targets/test-target-1/summary -> 200."""
-    resp = await client.get(
-        "/api/operations/test-op-1/targets/test-target-1/summary"
-    )
+    resp = await client.get("/api/operations/test-op-1/targets/test-target-1/summary")
     assert resp.status_code == 200
     body = resp.json()
     assert "summary" in body

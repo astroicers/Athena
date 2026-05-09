@@ -23,9 +23,10 @@ import logging
 import anthropic
 import httpx
 
-from app.config import settings, get_task_model_map
+from app.config import get_task_model_map, settings
 
 logger = logging.getLogger(__name__)
+
 
 def get_llm_client() -> "LLMClient":
     """Return fresh LLMClient. OAuthTokenManager handles token caching internally."""
@@ -79,7 +80,9 @@ class LLMClient:
         elif task_type:
             effective_model = get_task_model_map().get(task_type)
             if effective_model is None:
-                logger.warning("Unknown task_type '%s', falling back to default model %s", task_type, settings.CLAUDE_MODEL)
+                logger.warning(
+                    "Unknown task_type '%s', falling back to default model %s", task_type, settings.CLAUDE_MODEL
+                )
                 effective_model = settings.CLAUDE_MODEL
         else:
             effective_model = settings.CLAUDE_MODEL
@@ -87,9 +90,7 @@ class LLMClient:
         logger.info("LLM call: task_type=%s, model=%s", task_type, effective_model)
 
         # Try Claude via API Key
-        if backend == "api_key" and (
-            settings.ANTHROPIC_API_KEY or settings.ANTHROPIC_AUTH_TOKEN
-        ):
+        if backend == "api_key" and (settings.ANTHROPIC_API_KEY or settings.ANTHROPIC_AUTH_TOKEN):
             try:
                 return await self._call_claude(
                     system_prompt, user_prompt, effective_model, max_tokens, temperature, timeout
@@ -115,9 +116,7 @@ class LLMClient:
                         logger.warning("Claude API Key fallback also failed: %s", e2)
             except Exception as e:
                 logger.warning("Claude OAuth failed: %s, trying fallback", e)
-                if backend == "oauth" and (
-                    settings.ANTHROPIC_API_KEY or settings.ANTHROPIC_AUTH_TOKEN
-                ):
+                if backend == "oauth" and (settings.ANTHROPIC_API_KEY or settings.ANTHROPIC_AUTH_TOKEN):
                     try:
                         return await self._call_claude(
                             system_prompt, user_prompt, effective_model, max_tokens, temperature, timeout
@@ -128,27 +127,21 @@ class LLMClient:
         # Fallback to OpenAI
         if settings.OPENAI_API_KEY:
             try:
-                return await self._call_openai(
-                    system_prompt, user_prompt, max_tokens, temperature, timeout
-                )
+                return await self._call_openai(system_prompt, user_prompt, max_tokens, temperature, timeout)
             except Exception as e:
                 logger.warning("OpenAI API failed: %s", e)
 
         # Fallback to Gemini
         if settings.GEMINI_API_KEY:
             try:
-                return await self._call_gemini(
-                    system_prompt, user_prompt, max_tokens, temperature, timeout
-                )
+                return await self._call_gemini(system_prompt, user_prompt, max_tokens, temperature, timeout)
             except Exception as e:
                 logger.warning("Gemini API failed: %s", e)
 
         # Fallback to Groq
         if settings.GROQ_API_KEY:
             try:
-                return await self._call_groq(
-                    system_prompt, user_prompt, max_tokens, temperature, timeout
-                )
+                return await self._call_groq(system_prompt, user_prompt, max_tokens, temperature, timeout)
             except Exception as e:
                 logger.warning("Groq API failed: %s", e)
 
@@ -170,6 +163,7 @@ class LLMClient:
                 client_kwargs["api_key"] = settings.ANTHROPIC_API_KEY
             if settings.ANTHROPIC_AUTH_TOKEN:
                 from app.services.oauth_token_manager import OAUTH_BETA_HEADER
+
                 client_kwargs["auth_token"] = settings.ANTHROPIC_AUTH_TOKEN
                 client_kwargs["default_headers"] = {"anthropic-beta": OAUTH_BETA_HEADER}
             self._anthropic_client = anthropic.AsyncAnthropic(**client_kwargs)
@@ -196,7 +190,7 @@ class LLMClient:
         temperature: float,
         timeout: float,
     ) -> str:
-        from app.services.oauth_token_manager import OAuthTokenManager, OAUTH_BETA_HEADER
+        from app.services.oauth_token_manager import OAUTH_BETA_HEADER, OAuthTokenManager
 
         if self._oauth_manager is None:
             self._oauth_manager = OAuthTokenManager()
@@ -312,7 +306,7 @@ class LLMClient:
         # Include required orient schema fields so truncation doesn't lose them.
         json_instruction = (
             "\nIMPORTANT: Your response MUST be valid JSON only. No markdown, no prose outside JSON. "
-            'Return a JSON object with at minimum these fields: '
+            "Return a JSON object with at minimum these fields: "
             '"situation_assessment" (string), "recommended_technique_id" (string, MITRE ATT&CK T-ID), '
             '"confidence" (float 0.0-1.0), "options" (array of objects with "technique_id", "name", "rationale", "risk" keys).'
         )

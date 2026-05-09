@@ -57,8 +57,11 @@ class RelayMonitor:
 
         if relay is None or not relay.ip:
             return RelayStatus(
-                name="none", ip="", connected=False,
-                port_bound=False, latency_ms=0,
+                name="none",
+                ip="",
+                connected=False,
+                port_bound=False,
+                latency_ms=0,
                 error="No relay configured",
             )
 
@@ -112,11 +115,16 @@ class RelayMonitor:
         """Check health of all configured relays."""
         relays = self._router.list_relays()
         if not relays:
-            return [RelayStatus(
-                name="none", ip="", connected=False,
-                port_bound=False, latency_ms=0,
-                error="No relays configured",
-            )]
+            return [
+                RelayStatus(
+                    name="none",
+                    ip="",
+                    connected=False,
+                    port_bound=False,
+                    latency_ms=0,
+                    error="No relays configured",
+                )
+            ]
 
         results = await asyncio.gather(
             *(self.check_health(r) for r in relays),
@@ -128,11 +136,16 @@ class RelayMonitor:
             if isinstance(r, RelayStatus):
                 statuses.append(r)
             else:
-                statuses.append(RelayStatus(
-                    name="unknown", ip="", connected=False,
-                    port_bound=False, latency_ms=0,
-                    error=str(r),
-                ))
+                statuses.append(
+                    RelayStatus(
+                        name="unknown",
+                        ip="",
+                        connected=False,
+                        port_bound=False,
+                        latency_ms=0,
+                        error=str(r),
+                    )
+                )
         return statuses
 
     async def start_watchdog(self, interval_sec: int = 30) -> None:
@@ -143,8 +156,7 @@ class RelayMonitor:
 
         if self._ws is None:
             logger.warning(
-                "Relay watchdog started without ws_manager -- "
-                "relay status events will NOT be broadcast to clients"
+                "Relay watchdog started without ws_manager -- relay status events will NOT be broadcast to clients"
             )
 
         self._running = True
@@ -154,24 +166,26 @@ class RelayMonitor:
             try:
                 statuses = await self.check_all_relays()
                 for status in statuses:
-                    event_type = (
-                        "relay.connected" if status.connected
-                        else "relay.disconnected"
-                    )
+                    event_type = "relay.connected" if status.connected else "relay.disconnected"
                     if self._ws:
-                        await self._ws.broadcast_global(event_type, {
-                            "name": status.name,
-                            "ip": status.ip,
-                            "connected": status.connected,
-                            "port_bound": status.port_bound,
-                            "latency_ms": status.latency_ms,
-                            "error": status.error,
-                        })
+                        await self._ws.broadcast_global(
+                            event_type,
+                            {
+                                "name": status.name,
+                                "ip": status.ip,
+                                "connected": status.connected,
+                                "port_bound": status.port_bound,
+                                "latency_ms": status.latency_ms,
+                                "error": status.error,
+                            },
+                        )
 
                     if not status.connected:
                         logger.warning(
                             "Relay '%s' (%s) disconnected: %s",
-                            status.name, status.ip, status.error,
+                            status.name,
+                            status.ip,
+                            status.error,
                         )
             except Exception:
                 logger.exception("Relay watchdog check failed")

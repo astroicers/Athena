@@ -21,7 +21,7 @@ class TacticalOption(BaseModel):
     reasoning: str
     risk_level: RiskLevel
     recommended_engine: ExecutionEngine
-    confidence: float                   # 0.0 - 1.0
+    confidence: float  # 0.0 - 1.0
     prerequisites: list[str] = []
 
 

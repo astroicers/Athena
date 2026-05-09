@@ -20,8 +20,8 @@ from app.clients import BaseEngineClient, ExecutionResult
 
 logger = logging.getLogger(__name__)
 
-_POLL_INTERVAL = 2.0   # seconds between status checks
-_POLL_TIMEOUT = 120.0   # max seconds to wait for completion
+_POLL_INTERVAL = 2.0  # seconds between status checks
+_POLL_TIMEOUT = 120.0  # max seconds to wait for completion
 _MAX_RETRIES = 3
 _RETRY_BASE_DELAY = 1.0  # seconds, exponential backoff
 SUPPORTED_C2_VERSIONS = ("4.", "5.")
@@ -36,13 +36,9 @@ class C2EngineClient(BaseEngineClient):
         headers: dict[str, str] = {"Content-Type": "application/json"}
         if api_key:
             headers["KEY"] = api_key
-        self._client = httpx.AsyncClient(
-            base_url=self.base_url, headers=headers, timeout=30.0
-        )
+        self._client = httpx.AsyncClient(base_url=self.base_url, headers=headers, timeout=30.0)
 
-    async def execute(
-        self, ability_id: str, target: str, params: dict | None = None
-    ) -> ExecutionResult:
+    async def execute(self, ability_id: str, target: str, params: dict | None = None) -> ExecutionResult:
         exec_id = str(uuid.uuid4())
         last_error = None
         for attempt in range(_MAX_RETRIES):
@@ -51,10 +47,13 @@ class C2EngineClient(BaseEngineClient):
             except httpx.HTTPError as e:
                 last_error = e
                 if attempt < _MAX_RETRIES - 1:
-                    delay = _RETRY_BASE_DELAY * (2 ** attempt)
+                    delay = _RETRY_BASE_DELAY * (2**attempt)
                     logger.warning(
                         "C2 engine request failed (attempt %d/%d): %s — retrying in %.1fs",
-                        attempt + 1, _MAX_RETRIES, e, delay,
+                        attempt + 1,
+                        _MAX_RETRIES,
+                        e,
+                        delay,
                     )
                     await asyncio.sleep(delay)
         return ExecutionResult(
@@ -87,9 +86,7 @@ class C2EngineClient(BaseEngineClient):
             "ability_id": ability_id,
         }
         if params:
-            ability_payload["facts"] = [
-                {"trait": k, "value": v} for k, v in params.items()
-            ]
+            ability_payload["facts"] = [{"trait": k, "value": v} for k, v in params.items()]
         await self._client.post(
             f"/api/v2/operations/{op_id}/potential-links",
             json=ability_payload,
@@ -105,10 +102,7 @@ class C2EngineClient(BaseEngineClient):
         )
         report = report_resp.json() if report_resp.status_code == 200 else {}
 
-        facts = [
-            {"trait": f.get("trait", ""), "value": f.get("value", "")}
-            for f in report.get("facts", [])
-        ]
+        facts = [{"trait": f.get("trait", ""), "value": f.get("value", "")} for f in report.get("facts", [])]
 
         return ExecutionResult(
             success=status in ("finished", "cleanup"),
@@ -119,7 +113,8 @@ class C2EngineClient(BaseEngineClient):
         )
 
     async def _poll_status(
-        self, op_id: str,
+        self,
+        op_id: str,
         timeout: float = _POLL_TIMEOUT,
         interval: float = _POLL_INTERVAL,
     ) -> str:
@@ -189,7 +184,8 @@ class C2EngineClient(BaseEngineClient):
             if not any(version.startswith(v) for v in SUPPORTED_C2_VERSIONS):
                 logger.warning(
                     "C2 engine version %s is untested — supported prefixes: %s",
-                    version, SUPPORTED_C2_VERSIONS,
+                    version,
+                    SUPPORTED_C2_VERSIONS,
                 )
             else:
                 logger.info("C2 engine version: %s", version)

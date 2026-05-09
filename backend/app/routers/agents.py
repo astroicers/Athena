@@ -44,8 +44,6 @@ def _row_to_agent(row: asyncpg.Record) -> Agent:
 
 
 @router.get("/operations/{operation_id}/agents", response_model=list[Agent])
-
-
 async def list_agents(
     operation_id: str,
     db: asyncpg.Connection = Depends(get_db),
@@ -60,8 +58,6 @@ async def list_agents(
 
 
 @router.post("/operations/{operation_id}/agents/sync", status_code=202)
-
-
 async def sync_agents(
     operation_id: str,
     db: asyncpg.Connection = Depends(get_db),
@@ -71,8 +67,7 @@ async def sync_agents(
 
     _task = asyncio.create_task(_sync_agents_background(operation_id))
     _task.add_done_callback(
-        lambda t: logger.warning("agents/sync task cancelled for op %s", operation_id)
-        if t.cancelled() else None
+        lambda t: logger.warning("agents/sync task cancelled for op %s", operation_id) if t.cancelled() else None
     )
     return {"status": "sync_started", "operation_id": operation_id}
 
@@ -83,18 +78,19 @@ async def _sync_agents_background(operation_id: str) -> None:
         if settings.MOCK_C2_ENGINE:
             logger.info("agents/sync mock mode for op %s -- no-op", operation_id)
             await ws_manager.broadcast(
-                operation_id, "agents.synced",
+                operation_id,
+                "agents.synced",
                 {"operation_id": operation_id, "synced": 0, "skipped": 0},
             )
             return
 
         from app.clients.c2_client import C2EngineClient
+
         client = C2EngineClient(settings.C2_ENGINE_URL, settings.C2_ENGINE_API_KEY)
         c2_agents = await client.sync_agents(operation_id)
         await client.aclose()
 
         async with db_manager.connection() as db:
-
             target_rows = await db.fetch(
                 "SELECT id, hostname, ip_address FROM targets WHERE operation_id = $1",
                 operation_id,
@@ -110,14 +106,13 @@ async def _sync_agents_background(operation_id: str) -> None:
             skipped = 0
             for agent in c2_agents:
                 agent_host = agent.get("host", "")
-                host_id = (
-                    target_by_host.get(agent_host.lower())
-                    or target_by_host.get(agent_host)
-                )
+                host_id = target_by_host.get(agent_host.lower()) or target_by_host.get(agent_host)
                 if not host_id:
                     logger.warning(
                         "C2 agent paw=%s host=%s -- no matching target in op %s, skipping",
-                        agent.get("paw"), agent_host, operation_id,
+                        agent.get("paw"),
+                        agent_host,
+                        operation_id,
                     )
                     skipped += 1
                     continue
@@ -127,7 +122,8 @@ async def _sync_agents_background(operation_id: str) -> None:
 
                 existing = await db.fetchrow(
                     "SELECT id FROM agents WHERE paw = $1 AND operation_id = $2",
-                    paw, operation_id,
+                    paw,
+                    operation_id,
                 )
 
                 if existing:
@@ -148,10 +144,13 @@ async def _sync_agents_background(operation_id: str) -> None:
                         "(id, paw, host_id, status, privilege, last_beacon, "
                         "beacon_interval_sec, platform, operation_id) "
                         "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-                        agent_id, paw, host_id,
+                        agent_id,
+                        paw,
+                        host_id,
                         agent.get("status", "alive"),
                         agent.get("privilege", "User"),
-                        now, 60,
+                        now,
+                        60,
                         agent.get("platform", "unknown"),
                         operation_id,
                     )
@@ -159,15 +158,19 @@ async def _sync_agents_background(operation_id: str) -> None:
 
         logger.info(
             "Synced %d agents from C2 engine for op %s (%d skipped -- no matching target)",
-            synced, operation_id, skipped,
+            synced,
+            operation_id,
+            skipped,
         )
         await ws_manager.broadcast(
-            operation_id, "agents.synced",
+            operation_id,
+            "agents.synced",
             {"operation_id": operation_id, "synced": synced, "skipped": skipped},
         )
     except Exception as exc:
         logger.exception("agents/sync background failed for op %s: %s", operation_id, exc)
         await ws_manager.broadcast(
-            operation_id, "agents.sync_failed",
+            operation_id,
+            "agents.sync_failed",
             {"operation_id": operation_id, "error": str(exc)},
         )

@@ -208,7 +208,7 @@ phases:
         depends: [alpha-05, rc-01]
       - id: rc-04
         title: "athena-policy — RoE declarative policy engine"
-        status: pending
+        status: completed
         depends: [alpha-02, alpha-07]
       - id: rc-05
         title: "athena-plugin — plugin trait + registry"

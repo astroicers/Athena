@@ -154,12 +154,14 @@ async fn run_iteration(
         }
     }
 
+    let op_name = req.name.as_deref().unwrap_or("unnamed");
     let facts_before = state.fact_repo.count(&op_id).await.unwrap_or(0);
     let (iter_id, _outcome) = state.engine.run_iteration(&op_id).await?;
     let facts_after = state.fact_repo.count(&op_id).await.unwrap_or(0);
-    let _ = state.iter_store.record(&op_id, &iter_id).await;
+    let _ = state.iter_store.record(&op_id, &iter_id, op_name).await;
     Ok(Json(json!({
         "op_id": op_id.to_string(),
+        "name": op_name,
         "iter_id": iter_id.to_string(),
         "facts_collected": facts_after.saturating_sub(facts_before),
         "total_facts": facts_after,
@@ -176,7 +178,7 @@ async fn run_iteration_for_op(
     let facts_before = state.fact_repo.count(&op).await.unwrap_or(0);
     let (iter_id, _outcome) = state.engine.run_iteration(&op).await?;
     let facts_after = state.fact_repo.count(&op).await.unwrap_or(0);
-    let _ = state.iter_store.record(&op, &iter_id).await;
+    let _ = state.iter_store.record(&op, &iter_id, "auto").await;
     Ok(Json(json!({
         "op_id": id,
         "iter_id": iter_id.to_string(),

@@ -5,8 +5,8 @@ use serde_json::{json, Value};
 
 #[async_trait]
 pub trait IterationStore: Send + Sync {
-    /// Insert a row when iteration completes (op_id + iter_id both known post-run).
-    async fn record(&self, op_id: &OperationId, iter_id: &OodaIterationId) -> Result<(), AthenaError>;
+    /// Upsert operation row and insert a completed iteration record.
+    async fn record(&self, op_id: &OperationId, iter_id: &OodaIterationId, op_name: &str) -> Result<(), AthenaError>;
     /// List all operations with iteration counts.
     async fn list_operations(&self) -> Result<Vec<Value>, AthenaError>;
 }
@@ -23,12 +23,15 @@ impl SqlxIterationStore {
 
 #[async_trait]
 impl IterationStore for SqlxIterationStore {
-    async fn record(&self, op_id: &OperationId, iter_id: &OodaIterationId) -> Result<(), AthenaError> {
-        // Ensure parent operation row exists
+    async fn record(&self, op_id: &OperationId, iter_id: &OodaIterationId, op_name: &str) -> Result<(), AthenaError> {
+        // Upsert operation row — UPDATE name if it differs from placeholder
         sqlx::query(
-            "INSERT INTO operations (id, name) VALUES ($1, 'auto') ON CONFLICT (id) DO NOTHING"
+            r#"INSERT INTO operations (id, name) VALUES ($1, $2)
+               ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name
+               WHERE operations.name = 'auto'"#
         )
         .bind(op_id.0)
+        .bind(op_name)
         .execute(&self.pool)
         .await
         .map_err(|e| AthenaError::DatabaseError(e.to_string()))?;
@@ -83,7 +86,7 @@ pub struct NoopIterationStore;
 
 #[async_trait]
 impl IterationStore for NoopIterationStore {
-    async fn record(&self, _op_id: &OperationId, _iter_id: &OodaIterationId) -> Result<(), AthenaError> {
+    async fn record(&self, _op_id: &OperationId, _iter_id: &OodaIterationId, _op_name: &str) -> Result<(), AthenaError> {
         Ok(())
     }
     async fn list_operations(&self) -> Result<Vec<Value>, AthenaError> {

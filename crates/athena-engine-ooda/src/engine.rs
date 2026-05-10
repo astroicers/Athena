@@ -181,4 +181,19 @@ mod tests {
         );
         assert_eq!(engine.name(), "ooda");
     }
+
+    #[tokio::test]
+    async fn ooda_cycle_with_attack_graph_wired() {
+        use athena_attack_graph::DijkstraAttackGraph;
+        let engine = OodaEngine::new(
+            Arc::new(MockObserver),
+            Arc::new(MockOrient),
+            Arc::new(MockDecide),
+            Arc::new(MockAct),
+            OperationalConstraints::default(),
+        ).with_attack_graph(Arc::new(DijkstraAttackGraph::new(vec![])));
+        let op_id = OperationId::new();
+        let (_iter_id, outcome) = engine.run_iteration(&op_id).await.unwrap();
+        assert_eq!(outcome.results.len(), 1);
+    }
 }

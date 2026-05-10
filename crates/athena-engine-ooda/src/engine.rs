@@ -8,6 +8,7 @@ use athena_act::ActPhase;
 use athena_attack_graph::AttackGraphEngine;
 use athena_knowledge::constraint::OperationalConstraints;
 use crate::DecisionEngine;
+use tracing::{info, warn};
 
 pub struct OodaEngine {
     observe: Arc<dyn ObservePhase>,
@@ -44,12 +45,14 @@ impl DecisionEngine for OodaEngine {
         op_id: &OperationId,
     ) -> Result<(OodaIterationId, ExecutionOutcome), AthenaError> {
         let iter_id = OodaIterationId::new();
+        info!(op_id = %op_id, iter_id = %iter_id, "OODA iteration start");
 
-        // Observe
-        let _facts = self.observe.collect(op_id).await?;
+        // ── Observe ───────────────────────────────────────────────────────────
+        let facts = self.observe.collect(op_id).await?;
+        info!(op_id = %op_id, facts = facts.len(), "OBSERVE complete");
         let obs_summary = self.observe.summarize(op_id).await?;
 
-        // Attack graph (optional — empty string if not configured)
+        // Attack graph (optional)
         let graph_summary = if let Some(ag) = &self.attack_graph {
             let paths = ag.compute_paths(op_id, vec![]).await.unwrap_or_default();
             ag.to_summary(&paths).await
@@ -57,14 +60,43 @@ impl DecisionEngine for OodaEngine {
             String::new()
         };
 
-        // Orient
+        // ── Orient ────────────────────────────────────────────────────────────
+        info!(op_id = %op_id, "ORIENT: calling LLM...");
         let recommendation = self.orient.analyze(op_id, &obs_summary, &graph_summary).await?;
+        info!(
+            op_id = %op_id,
+            risk_score = recommendation.risk_score,
+            techniques = ?recommendation.recommended_techniques,
+            summary = %recommendation.summary,
+            "ORIENT complete"
+        );
 
-        // Decide
+        // ── Decide ────────────────────────────────────────────────────────────
         let decision = self.decide.evaluate(op_id, &recommendation, &self.constraints).await?;
+        info!(
+            op_id = %op_id,
+            approved = decision.approved,
+            techniques = ?decision.techniques,
+            reason = %decision.reason,
+            "DECIDE complete"
+        );
 
-        // Act
+        // ── Act ───────────────────────────────────────────────────────────────
         let outcome = self.act.execute(op_id, &decision, &iter_id).await?;
+        for r in &outcome.results {
+            if r.success {
+                info!(op_id = %op_id, technique = %r.technique_id, "ACT success");
+            } else {
+                warn!(op_id = %op_id, technique = %r.technique_id, output = %r.output, "ACT failed");
+            }
+        }
+        info!(
+            op_id = %op_id,
+            iter_id = %iter_id,
+            facts_collected = outcome.facts_collected,
+            techniques_run = outcome.results.len(),
+            "OODA iteration complete"
+        );
 
         Ok((iter_id, outcome))
     }

@@ -104,12 +104,19 @@ impl LlmClient for AnthropicClient {
             messages,
         };
 
-        let resp = self.client
+        // OAuth tokens (sk-ant-oat01-...) need Authorization: Bearer.
+        // API keys (sk-ant-api03-...) use x-api-key.
+        let mut req = self.client
             .post(ANTHROPIC_API_URL)
-            .header("x-api-key", &self.api_key)
             .header("anthropic-version", ANTHROPIC_VERSION)
             .header("anthropic-beta", "prompt-caching-2024-07-31")
-            .header("content-type", "application/json")
+            .header("content-type", "application/json");
+        if self.api_key.starts_with("sk-ant-oat") {
+            req = req.header("Authorization", format!("Bearer {}", self.api_key));
+        } else {
+            req = req.header("x-api-key", &self.api_key);
+        }
+        let resp = req
             .json(&body)
             .send()
             .await

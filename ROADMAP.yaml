@@ -199,7 +199,7 @@ phases:
         adr: ADR-102, ADR-103
       - id: rc-02
         title: "athena-mcp-server — Athena exposes MCP to outside"
-        status: pending
+        status: completed
         depends: [rc-01]
         adr: ADR-113
       - id: rc-03

@@ -258,10 +258,12 @@ dependencies = [
  "athena-orient",
  "athena-swarm",
  "athena-types",
+ "chrono",
  "serde",
  "thiserror 1.0.69",
  "tokio",
  "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -332,6 +334,7 @@ dependencies = [
  "chrono",
  "serde",
  "serde_json",
+ "sqlx",
  "thiserror 1.0.69",
  "tokio",
  "tracing",
@@ -425,10 +428,13 @@ dependencies = [
  "athena-facts",
  "athena-mcp-client",
  "athena-types",
+ "chrono",
  "serde",
+ "serde_json",
  "thiserror 1.0.69",
  "tokio",
  "tracing",
+ "uuid",
 ]
 
 [[package]]

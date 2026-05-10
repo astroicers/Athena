@@ -1,3 +1,5 @@
+pub mod anthropic;
+pub mod openai;
 pub mod mock;
 
 use async_trait::async_trait;
@@ -52,3 +54,46 @@ pub trait LlmClient: Send + Sync {
 }
 
 pub use mock::MockLlmClient;
+pub use anthropic::AnthropicClient;
+pub use openai::OpenAiClient;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mock::MockLlmClient;
+
+    #[tokio::test]
+    async fn mock_returns_default_response() {
+        let client = MockLlmClient::new();
+        let req = LlmRequest::new("mock", "system prompt", "what should I do?");
+        let resp = client.complete(req).await.unwrap();
+        assert!(!resp.content.is_empty());
+        assert_eq!(client.model_name(), "mock");
+    }
+
+    #[tokio::test]
+    async fn mock_returns_fixed_response() {
+        let client = MockLlmClient::with_response(r#"{"summary":"test","recommended_techniques":["T1046"],"risk_score":0.2,"rationale":"ok"}"#);
+        let req = LlmRequest::new("mock", "system", "user msg");
+        let resp = client.complete(req).await.unwrap();
+        assert!(resp.content.contains("T1046"));
+    }
+
+    #[test]
+    fn llm_request_builder() {
+        let req = LlmRequest::new("claude-opus-4-7", "you are an expert", "analyse this");
+        assert_eq!(req.model, "claude-opus-4-7");
+        assert_eq!(req.messages.len(), 1);
+        assert_eq!(req.messages[0].role, "user");
+        assert!(req.system.is_some());
+        assert_eq!(req.max_tokens, 4096);
+    }
+
+    #[test]
+    fn llm_message_constructors() {
+        let u = LlmMessage::user("hello");
+        let a = LlmMessage::assistant("hi");
+        assert_eq!(u.role, "user");
+        assert_eq!(a.role, "assistant");
+    }
+}

@@ -12,6 +12,12 @@ impl Default for OodaIterationId {
     fn default() -> Self { Self::new() }
 }
 
+impl std::fmt::Display for OodaIterationId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OrientRecommendation {
     pub summary: String,

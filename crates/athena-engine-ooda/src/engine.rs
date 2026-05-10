@@ -58,3 +58,112 @@ impl DecisionEngine for OodaEngine {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use athena_types::{Fact, OrientRecommendation, Decision, ExecutionResult, FactTrait, FactValue};
+
+    struct MockObserver;
+    #[async_trait]
+    impl ObservePhase for MockObserver {
+        async fn collect(&self, op_id: &OperationId) -> Result<Vec<Fact>, AthenaError> {
+            Ok(vec![Fact {
+                id: uuid::Uuid::new_v4(),
+                op_id: op_id.clone(),
+                trait_name: FactTrait("open_port".into()),
+                value: FactValue::Text("22".into()),
+                source: "mock".into(),
+                confidence: 90,
+                collected_at: chrono::Utc::now(),
+            }])
+        }
+        async fn summarize(&self, _op_id: &OperationId) -> Result<String, AthenaError> {
+            Ok("1 open port: 22".into())
+        }
+    }
+
+    struct MockOrient;
+    #[async_trait]
+    impl OrientPhase for MockOrient {
+        async fn analyze(&self, _op_id: &OperationId, _obs: &str, _graph: &str) -> Result<OrientRecommendation, AthenaError> {
+            Ok(OrientRecommendation {
+                summary: "SSH exposed".into(),
+                recommended_techniques: vec!["T1046".into()],
+                risk_score: 0.3,
+                rationale: "open port 22".into(),
+            })
+        }
+    }
+
+    struct MockDecide;
+    #[async_trait]
+    impl DecidePhase for MockDecide {
+        async fn evaluate(&self, _op_id: &OperationId, rec: &OrientRecommendation, _c: &OperationalConstraints) -> Result<Decision, AthenaError> {
+            Ok(Decision {
+                approved: true,
+                techniques: rec.recommended_techniques.clone(),
+                reason: "approved by mock".into(),
+                risk_accepted: rec.risk_score,
+            })
+        }
+    }
+
+    struct MockAct;
+    #[async_trait]
+    impl ActPhase for MockAct {
+        async fn execute(&self, _op_id: &OperationId, decision: &Decision, _iter_id: &OodaIterationId) -> Result<ExecutionOutcome, AthenaError> {
+            let results = decision.techniques.iter().map(|t| ExecutionResult {
+                technique_id: t.clone(),
+                success: true,
+                output: "mock output".into(),
+                new_facts: vec![],
+            }).collect();
+            Ok(ExecutionOutcome { results, facts_collected: 1 })
+        }
+    }
+
+    #[tokio::test]
+    async fn full_ooda_cycle_with_mocks() {
+        let engine = OodaEngine::new(
+            Arc::new(MockObserver),
+            Arc::new(MockOrient),
+            Arc::new(MockDecide),
+            Arc::new(MockAct),
+            OperationalConstraints::default(),
+        );
+        let op_id = OperationId::new();
+        let (iter_id, outcome) = engine.run_iteration(&op_id).await.unwrap();
+        // iter_id should be a valid UUID
+        assert!(!iter_id.to_string().is_empty());
+        // One technique executed successfully
+        assert_eq!(outcome.results.len(), 1);
+        assert!(outcome.results[0].success);
+        assert_eq!(outcome.results[0].technique_id, "T1046");
+    }
+
+    #[tokio::test]
+    async fn abort_returns_ok() {
+        let engine = OodaEngine::new(
+            Arc::new(MockObserver),
+            Arc::new(MockOrient),
+            Arc::new(MockDecide),
+            Arc::new(MockAct),
+            OperationalConstraints::default(),
+        );
+        let op_id = OperationId::new();
+        engine.abort(&op_id).await.unwrap();
+    }
+
+    #[test]
+    fn engine_name_is_ooda() {
+        let engine = OodaEngine::new(
+            Arc::new(MockObserver),
+            Arc::new(MockOrient),
+            Arc::new(MockDecide),
+            Arc::new(MockAct),
+            OperationalConstraints::default(),
+        );
+        assert_eq!(engine.name(), "ooda");
+    }
+}

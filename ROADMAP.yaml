@@ -87,23 +87,23 @@ phases:
         depends: [alpha-02, alpha-07]
       - id: beta1-04
         title: "athena-facts — fact repository (sqlx CRUD)"
-        status: pending
+        status: completed
         depends: [alpha-02, alpha-06]
       - id: beta1-05
         title: "athena-observe — ObservePhase trait + DefaultObserver"
-        status: pending
+        status: completed
         depends: [beta1-04]
       - id: beta1-06
         title: "athena-orient — OrientPhase trait + Claude engine"
-        status: pending
+        status: completed
         depends: [beta1-01, beta1-02, beta1-03]
       - id: beta1-07
         title: "athena-decide — DecidePhase trait + risk gating"
-        status: pending
+        status: completed
         depends: [alpha-02, alpha-07]
       - id: beta1-08
         title: "athena-engine-ooda — OODA state machine (mock mode)"
-        status: pending
+        status: completed
         depends: [beta1-05, beta1-06, beta1-07]
         adr: ADR-112
       - id: beta1-09

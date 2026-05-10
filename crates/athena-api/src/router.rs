@@ -67,7 +67,7 @@ pub fn api_routes() -> Router<Arc<AppState>> {
         // health
         .route("/health", get(health_handler))
         // operations & OODA
-        .route("/operations", post(run_iteration))
+        .route("/operations", get(list_operations).post(run_iteration))
         .route("/operations/:op_id/abort", post(abort_operation))
         .route("/operations/:op_id/iterate", post(run_iteration_for_op))
         // facts
@@ -106,6 +106,11 @@ pub fn api_routes() -> Router<Arc<AppState>> {
 }
 
 // ── handlers ─────────────────────────────────────────────────────────────────
+
+async fn list_operations(State(state): State<Arc<AppState>>) -> Result<Json<Value>, ApiError> {
+    let ops = state.iter_store.list_operations().await?;
+    Ok(Json(serde_json::Value::Array(ops)))
+}
 
 async fn health_handler() -> Json<Value> {
     Json(json!({

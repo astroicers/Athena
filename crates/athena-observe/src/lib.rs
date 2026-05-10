@@ -24,26 +24,40 @@ impl DefaultObserver {
 #[async_trait]
 impl ObservePhase for DefaultObserver {
     async fn collect(&self, op_id: &OperationId) -> Result<Vec<Fact>, AthenaError> {
-        // Delegate recon to MCP nmap tool and extract open ports as facts
-        let params = serde_json::json!({ "op_id": op_id.to_string() });
+        // Read seed facts to determine scan target
+        let existing = self.fact_repo.list(op_id).await.unwrap_or_default();
+        let target_ip = existing.iter().find_map(|f| {
+            if f.trait_name.0 == "target_ip" {
+                if let FactValue::Text(ip) = &f.value { Some(ip.clone()) } else { None }
+            } else {
+                None
+            }
+        });
 
-        if self.mcp.health_check("nmap").await {
-            let result = self.mcp.call("nmap", params).await?;
-            if result.success {
-                // Extract open_port facts from MCP output
-                if let Some(ports) = result.output.get("open_ports").and_then(|v| v.as_array()) {
-                    for port in ports {
-                        if let Some(p) = port.as_str() {
-                            let fact = Fact {
-                                id: uuid::Uuid::new_v4(),
-                                op_id: op_id.clone(),
-                                trait_name: FactTrait("open_port".into()),
-                                value: FactValue::Text(p.to_string()),
-                                source: "nmap".into(),
-                                confidence: 90,
-                                collected_at: chrono::Utc::now(),
-                            };
-                            self.fact_repo.insert(fact).await?;
+        // Only attempt nmap if we have a target
+        if let Some(ref ip) = target_ip {
+            let params = serde_json::json!({
+                "op_id": op_id.to_string(),
+                "target": ip,
+            });
+
+            if self.mcp.health_check("nmap").await {
+                let result = self.mcp.call("nmap", params).await?;
+                if result.success {
+                    if let Some(ports) = result.output.get("open_ports").and_then(|v| v.as_array()) {
+                        for port in ports {
+                            if let Some(p) = port.as_str() {
+                                let fact = Fact {
+                                    id: uuid::Uuid::new_v4(),
+                                    op_id: op_id.clone(),
+                                    trait_name: FactTrait("open_port".into()),
+                                    value: FactValue::Text(p.to_string()),
+                                    source: "nmap".into(),
+                                    confidence: 90,
+                                    collected_at: chrono::Utc::now(),
+                                };
+                                self.fact_repo.insert(fact).await?;
+                            }
                         }
                     }
                 }
@@ -100,24 +114,61 @@ mod tests {
     #[tokio::test]
     async fn collect_with_healthy_mcp_inserts_facts() {
         let repo = Arc::new(InMemoryFactRepository::new());
-        let mcp = Arc::new(MockMcp { healthy: true });
-        let observer = DefaultObserver::new(repo.clone(), mcp);
         let op_id = OperationId::new();
 
+        // Seed target_ip so nmap is triggered
+        repo.insert(Fact {
+            id: Uuid::new_v4(),
+            op_id: op_id.clone(),
+            trait_name: FactTrait("target_ip".into()),
+            value: FactValue::Text("10.0.0.1".into()),
+            source: "api".into(),
+            confidence: 100,
+            collected_at: chrono::Utc::now(),
+        }).await.unwrap();
+
+        let mcp = Arc::new(MockMcp { healthy: true });
+        let observer = DefaultObserver::new(repo.clone(), mcp);
+
         let facts = observer.collect(&op_id).await.unwrap();
-        assert_eq!(facts.len(), 3);
-        assert!(facts.iter().all(|f| f.trait_name.0 == "open_port"));
+        // seed fact (target_ip) + 3 open_port facts
+        assert_eq!(facts.len(), 4);
+        assert!(facts.iter().any(|f| f.trait_name.0 == "open_port"));
     }
 
     #[tokio::test]
-    async fn collect_with_unhealthy_mcp_returns_empty() {
+    async fn collect_without_target_skips_nmap() {
         let repo = Arc::new(InMemoryFactRepository::new());
-        let mcp = Arc::new(MockMcp { healthy: false });
+        let mcp = Arc::new(MockMcp { healthy: true });
         let observer = DefaultObserver::new(repo, mcp);
         let op_id = OperationId::new();
 
+        // No target_ip seed — nmap should not be called even though MCP is healthy
         let facts = observer.collect(&op_id).await.unwrap();
         assert!(facts.is_empty());
+    }
+
+    #[tokio::test]
+    async fn collect_with_unhealthy_mcp_returns_seed_only() {
+        let repo = Arc::new(InMemoryFactRepository::new());
+        let op_id = OperationId::new();
+        repo.insert(Fact {
+            id: Uuid::new_v4(),
+            op_id: op_id.clone(),
+            trait_name: FactTrait("target_ip".into()),
+            value: FactValue::Text("10.0.0.1".into()),
+            source: "api".into(),
+            confidence: 100,
+            collected_at: chrono::Utc::now(),
+        }).await.unwrap();
+
+        let mcp = Arc::new(MockMcp { healthy: false });
+        let observer = DefaultObserver::new(repo, mcp);
+
+        let facts = observer.collect(&op_id).await.unwrap();
+        // Only the seed fact
+        assert_eq!(facts.len(), 1);
+        assert_eq!(facts[0].trait_name.0, "target_ip");
     }
 
     #[tokio::test]

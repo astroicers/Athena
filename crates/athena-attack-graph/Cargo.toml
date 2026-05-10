@@ -1,0 +1,13 @@
+[package]
+name = "athena-attack-graph"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+athena-types = { workspace = true }
+athena-knowledge = { workspace = true }
+async-trait = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }

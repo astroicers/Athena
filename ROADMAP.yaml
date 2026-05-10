@@ -1,0 +1,221 @@
+version: "2.0"
+project: athena
+description: "Full Rust rewrite — C5ISR + OODA cyber operations platform"
+branch: athena-2.0
+
+phases:
+  - id: alpha
+    name: "2.0-alpha — Foundation"
+    weeks: 6
+    acceptance: "cargo build --workspace passes; k3s postgres reachable"
+    tasks:
+      - id: alpha-01
+        title: "Cargo workspace skeleton + all crate stubs"
+        status: completed
+        spec: docs/specs/SPEC-alpha-01-workspace.md
+        adr: ADR-100, ADR-101
+      - id: alpha-02
+        title: "athena-types — zero-dep domain types"
+        status: pending
+        depends: []
+        spec: docs/specs/SPEC-alpha-02-types.md
+        adr: ADR-100
+      - id: alpha-03
+        title: "athena-config — figment env+toml loader"
+        status: pending
+        depends: [alpha-02]
+        spec: docs/specs/SPEC-alpha-03-config.md
+        adr: ADR-108
+      - id: alpha-04
+        title: "athena-telemetry — tracing + prometheus"
+        status: pending
+        depends: []
+        spec: docs/specs/SPEC-alpha-04-telemetry.md
+      - id: alpha-05
+        title: "athena-events — typed pub-sub event bus"
+        status: pending
+        depends: [alpha-02]
+        spec: docs/specs/SPEC-alpha-05-events.md
+        adr: ADR-106
+      - id: alpha-06
+        title: "athena-db — sqlx PostgreSQL + migration files"
+        status: pending
+        depends: [alpha-02, alpha-03]
+        spec: docs/specs/SPEC-alpha-06-db.md
+        adr: ADR-111
+      - id: alpha-07
+        title: "athena-knowledge — YAML data file loaders"
+        status: pending
+        depends: [alpha-02]
+        spec: docs/specs/SPEC-alpha-07-knowledge.md
+      - id: alpha-08
+        title: "athena-api stub — GET /health only"
+        status: pending
+        depends: [alpha-02, alpha-03, alpha-04, alpha-05]
+        spec: docs/specs/SPEC-alpha-08-api-stub.md
+        adr: ADR-102, ADR-103
+      - id: alpha-09
+        title: "athena-workspace binary — DI wiring"
+        status: pending
+        depends: [alpha-08]
+        spec: docs/specs/SPEC-alpha-09-workspace.md
+        adr: ADR-108
+      - id: alpha-10
+        title: "k3s install + postgres Deployment + Helm chart skeleton"
+        status: pending
+        depends: [alpha-09]
+        spec: docs/specs/SPEC-alpha-10-k3s.md
+        adr: ADR-115
+
+  - id: beta1
+    name: "2.0-beta1 — OODA Skeleton"
+    weeks: 4
+    acceptance: "MOCK_LLM=true full OODA cycle completes without panic"
+    tasks:
+      - id: beta1-01
+        title: "athena-llm-client — Anthropic + OpenAI via reqwest"
+        status: pending
+        depends: [alpha-02, alpha-03]
+        adr: ADR-104
+      - id: beta1-02
+        title: "athena-skills-loader — Claude Code skill file reader"
+        status: pending
+        depends: [alpha-02]
+      - id: beta1-03
+        title: "athena-attack-graph — Dijkstra attack path"
+        status: pending
+        depends: [alpha-02, alpha-07]
+      - id: beta1-04
+        title: "athena-facts — fact repository (sqlx CRUD)"
+        status: pending
+        depends: [alpha-02, alpha-06]
+      - id: beta1-05
+        title: "athena-observe — ObservePhase trait + DefaultObserver"
+        status: pending
+        depends: [beta1-04]
+      - id: beta1-06
+        title: "athena-orient — OrientPhase trait + Claude engine"
+        status: pending
+        depends: [beta1-01, beta1-02, beta1-03]
+      - id: beta1-07
+        title: "athena-decide — DecidePhase trait + risk gating"
+        status: pending
+        depends: [alpha-02, alpha-07]
+      - id: beta1-08
+        title: "athena-engine-ooda — OODA state machine (mock mode)"
+        status: pending
+        depends: [beta1-05, beta1-06, beta1-07]
+        adr: ADR-112
+      - id: beta1-09
+        title: "athena-scheduler — per-operation loop timers"
+        status: pending
+        depends: [beta1-08]
+        adr: ADR-105
+
+  - id: beta2
+    name: "2.0-beta2 — Execution + MCP"
+    weeks: 4
+    acceptance: "Full OODA cycle against test target via SSH + MCP tools"
+    tasks:
+      - id: beta2-01
+        title: "athena-exec-ssh — russh execution engine"
+        status: pending
+        depends: [alpha-02]
+        adr: ADR-110
+      - id: beta2-02
+        title: "athena-mcp-client — HTTP+stdio transport + circuit breaker"
+        status: pending
+        depends: [alpha-02, alpha-03]
+      - id: beta2-03
+        title: "athena-mcp-fact-extractor — MCP output to Fact normalisation"
+        status: pending
+        depends: [beta2-02, beta1-04]
+      - id: beta2-04
+        title: "athena-act — ActPhase trait + engine router"
+        status: pending
+        depends: [beta2-01, beta2-02]
+      - id: beta2-05
+        title: "athena-swarm — parallel multi-target executor"
+        status: pending
+        depends: [beta2-04]
+      - id: beta2-06
+        title: "athena-recon — auto-recon delegation to MCP"
+        status: pending
+        depends: [beta2-02]
+      - id: beta2-07
+        title: "Migrate 24 MCP tool containers to k3s (one Deployment each)"
+        status: pending
+        depends: [alpha-10]
+        adr: ADR-116
+
+  - id: beta3
+    name: "2.0-beta3 — Intelligence + Knowledge Base"
+    weeks: 3
+    acceptance: "KB queryable; C5ISR health ok; report generated"
+    tasks:
+      - id: beta3-01
+        title: "athena-scope — IP/CIDR scope validator"
+        status: pending
+        depends: [alpha-02, alpha-06]
+      - id: beta3-02
+        title: "athena-opsec — noise budget + threat level"
+        status: pending
+        depends: [alpha-02, alpha-06]
+      - id: beta3-03
+        title: "athena-c5isr — 6-domain health tracker"
+        status: pending
+        depends: [alpha-02, alpha-06]
+      - id: beta3-04
+        title: "athena-vuln — CVE lifecycle + NVD client"
+        status: pending
+        depends: [alpha-02, alpha-06]
+      - id: beta3-05
+        title: "athena-pentest-kb — Markdown KB + tantivy index + MCP Server"
+        status: pending
+        depends: [alpha-02]
+        adr: ADR-114
+      - id: beta3-06
+        title: "Write initial KB entries (priv-esc x10, lateral x10, initial-access x10)"
+        status: pending
+        depends: [beta3-05]
+      - id: beta3-07
+        title: "athena-brief — operational brief generator"
+        status: pending
+        depends: [alpha-02, alpha-06]
+      - id: beta3-08
+        title: "athena-report — pentest report generator (Markdown + JSON)"
+        status: pending
+        depends: [alpha-02, alpha-06]
+
+  - id: rc
+    name: "2.0-rc — Full External Service"
+    weeks: 3
+    acceptance: "External Claude calls Athena via MCP"
+    tasks:
+      - id: rc-01
+        title: "athena-api — all 27 routers"
+        status: pending
+        depends: [beta1-08, beta2-05, beta3-03]
+        adr: ADR-102, ADR-103
+      - id: rc-02
+        title: "athena-mcp-server — Athena exposes MCP to outside"
+        status: pending
+        depends: [rc-01]
+        adr: ADR-113
+      - id: rc-03
+        title: "athena-ws — WebSocket gateway + event bus subscriber"
+        status: pending
+        depends: [alpha-05, rc-01]
+      - id: rc-04
+        title: "athena-policy — RoE declarative policy engine"
+        status: pending
+        depends: [alpha-02, alpha-07]
+      - id: rc-05
+        title: "athena-plugin — plugin trait + registry"
+        status: pending
+        depends: [alpha-02]
+      - id: rc-06
+        title: "Argo CD GitOps configuration"
+        status: pending
+        depends: [beta2-07]
+        adr: ADR-117

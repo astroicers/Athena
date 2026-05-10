@@ -1,0 +1,13 @@
+[package]
+name = "athena-scope"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+athena-types = { workspace = true }
+athena-db = { workspace = true }
+async-trait = { workspace = true }
+tokio = { workspace = true }
+ipnetwork = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }

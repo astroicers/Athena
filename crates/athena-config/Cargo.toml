@@ -1,0 +1,10 @@
+[package]
+name = "athena-config"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+athena-types = { workspace = true }
+figment = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }

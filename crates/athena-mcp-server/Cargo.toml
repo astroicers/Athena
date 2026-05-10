@@ -1,0 +1,19 @@
+[package]
+name = "athena-mcp-server"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+athena-types = { workspace = true }
+athena-engine-ooda = { workspace = true }
+athena-db = { workspace = true }
+athena-facts = { workspace = true }
+athena-c5isr = { workspace = true }
+athena-report = { workspace = true }
+async-trait = { workspace = true }
+tokio = { workspace = true }
+axum = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }

@@ -1,0 +1,12 @@
+[package]
+name = "athena-config-engine"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+athena-types = { workspace = true }
+athena-knowledge = { workspace = true }
+async-trait = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }

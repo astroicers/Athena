@@ -1,0 +1,21 @@
+[package]
+name = "athena-api"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+athena-types = { workspace = true }
+athena-engine-ooda = { workspace = true }
+athena-events = { workspace = true }
+athena-ws = { workspace = true }
+athena-db = { workspace = true }
+async-trait = { workspace = true }
+tokio = { workspace = true }
+axum = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }

@@ -1,0 +1,145 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "crates/athena-types",
+    "crates/athena-config",
+    "crates/athena-telemetry",
+    "crates/athena-db",
+    "crates/athena-events",
+    "crates/athena-knowledge",
+    "crates/athena-config-engine",
+    "crates/athena-policy",
+    "crates/athena-scope",
+    "crates/athena-facts",
+    "crates/athena-vuln",
+    "crates/athena-attack-graph",
+    "crates/athena-llm-client",
+    "crates/athena-skills-loader",
+    "crates/athena-mcp-client",
+    "crates/athena-mcp-fact-extractor",
+    "crates/athena-exec-ssh",
+    "crates/athena-exec-metasploit",
+    "crates/athena-exec-c2",
+    "crates/athena-exec-winrm",
+    "crates/athena-observe",
+    "crates/athena-orient",
+    "crates/athena-decide",
+    "crates/athena-act",
+    "crates/athena-swarm",
+    "crates/athena-c5isr",
+    "crates/athena-opsec",
+    "crates/athena-relay",
+    "crates/athena-recon",
+    "crates/athena-osint",
+    "crates/athena-brief",
+    "crates/athena-report",
+    "crates/athena-plugin",
+    "crates/athena-engine-ooda",
+    "crates/athena-engine-killchain",
+    "crates/athena-engine-manual",
+    "crates/athena-scheduler",
+    "crates/athena-ws",
+    "crates/athena-api",
+    "crates/athena-mcp-server",
+    "crates/athena-pentest-kb",
+    "athena-workspace",
+]
+
+[workspace.package]
+version = "2.0.0-alpha.1"
+edition = "2021"
+authors = ["Athena Team"]
+license = "MIT"
+rust-version = "1.78"
+
+[workspace.dependencies]
+# Async
+tokio = { version = "1", features = ["full"] }
+async-trait = "0.1"
+
+# HTTP
+axum = { version = "0.7", features = ["json", "tokio", "ws"] }
+reqwest = { version = "0.12", features = ["json", "stream", "rustls-tls"], default-features = false }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["trace", "cors"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+
+# Database
+sqlx = { version = "0.8", features = ["postgres", "runtime-tokio", "uuid", "chrono", "migrate"] }
+
+# Config
+figment = { version = "0.10", features = ["env", "toml"] }
+
+# SSH
+russh = "0.44"
+russh-keys = "0.44"
+
+# Errors
+thiserror = "1"
+anyhow = "1"
+
+# Tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
+
+# Concurrency
+dashmap = "6"
+tokio-util = { version = "0.7", features = ["codec"] }
+
+# Utils
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+ipnetwork = "0.20"
+phf = { version = "0.11", features = ["macros"] }
+
+# Full-text search (knowledge base) — use latest tantivy for zstd-sys compatibility
+tantivy = "0.22"
+
+# Workspace crates
+athena-types = { path = "crates/athena-types" }
+athena-config = { path = "crates/athena-config" }
+athena-telemetry = { path = "crates/athena-telemetry" }
+athena-db = { path = "crates/athena-db" }
+athena-events = { path = "crates/athena-events" }
+athena-knowledge = { path = "crates/athena-knowledge" }
+athena-config-engine = { path = "crates/athena-config-engine" }
+athena-policy = { path = "crates/athena-policy" }
+athena-scope = { path = "crates/athena-scope" }
+athena-facts = { path = "crates/athena-facts" }
+athena-vuln = { path = "crates/athena-vuln" }
+athena-attack-graph = { path = "crates/athena-attack-graph" }
+athena-llm-client = { path = "crates/athena-llm-client" }
+athena-skills-loader = { path = "crates/athena-skills-loader" }
+athena-mcp-client = { path = "crates/athena-mcp-client" }
+athena-mcp-fact-extractor = { path = "crates/athena-mcp-fact-extractor" }
+athena-exec-ssh = { path = "crates/athena-exec-ssh" }
+athena-exec-metasploit = { path = "crates/athena-exec-metasploit" }
+athena-exec-c2 = { path = "crates/athena-exec-c2" }
+athena-exec-winrm = { path = "crates/athena-exec-winrm" }
+athena-observe = { path = "crates/athena-observe" }
+athena-orient = { path = "crates/athena-orient" }
+athena-decide = { path = "crates/athena-decide" }
+athena-act = { path = "crates/athena-act" }
+athena-swarm = { path = "crates/athena-swarm" }
+athena-c5isr = { path = "crates/athena-c5isr" }
+athena-opsec = { path = "crates/athena-opsec" }
+athena-relay = { path = "crates/athena-relay" }
+athena-recon = { path = "crates/athena-recon" }
+athena-osint = { path = "crates/athena-osint" }
+athena-brief = { path = "crates/athena-brief" }
+athena-report = { path = "crates/athena-report" }
+athena-plugin = { path = "crates/athena-plugin" }
+athena-engine-ooda = { path = "crates/athena-engine-ooda" }
+athena-engine-killchain = { path = "crates/athena-engine-killchain" }
+athena-engine-manual = { path = "crates/athena-engine-manual" }
+athena-scheduler = { path = "crates/athena-scheduler" }
+athena-ws = { path = "crates/athena-ws" }
+athena-api = { path = "crates/athena-api" }
+athena-mcp-server = { path = "crates/athena-mcp-server" }
+athena-pentest-kb = { path = "crates/athena-pentest-kb" }
+

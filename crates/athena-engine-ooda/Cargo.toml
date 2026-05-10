@@ -1,0 +1,21 @@
+[package]
+name = "athena-engine-ooda"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+athena-types = { workspace = true }
+athena-db = { workspace = true }
+athena-knowledge = { workspace = true }
+athena-events = { workspace = true }
+athena-observe = { workspace = true }
+athena-orient = { workspace = true }
+athena-decide = { workspace = true }
+athena-act = { workspace = true }
+athena-swarm = { workspace = true }
+athena-c5isr = { workspace = true }
+async-trait = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }

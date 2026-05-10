@@ -1,0 +1,21 @@
+[package]
+name = "athena-workspace"
+version.workspace = true
+edition.workspace = true
+default-run = "athena"
+
+[[bin]]
+name = "athena"
+path = "src/main.rs"
+
+[dependencies]
+athena-types = { workspace = true }
+athena-config = { workspace = true }
+athena-telemetry = { workspace = true }
+athena-events = { workspace = true }
+athena-api = { workspace = true }
+
+tokio = { workspace = true }
+axum = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }

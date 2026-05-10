@@ -1,0 +1,17 @@
+[package]
+name = "athena-orient"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+athena-types = { workspace = true }
+athena-llm-client = { workspace = true }
+athena-skills-loader = { workspace = true }
+athena-knowledge = { workspace = true }
+athena-attack-graph = { workspace = true }
+async-trait = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }

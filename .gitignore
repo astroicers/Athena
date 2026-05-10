@@ -6,6 +6,7 @@ target/
 .env
 .env.local
 .env.*.local
+athena.toml
 
 # OS
 .DS_Store

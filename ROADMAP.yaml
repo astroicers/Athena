@@ -140,7 +140,7 @@ phases:
         depends: [beta2-04]
       - id: beta2-06
         title: "athena-recon — auto-recon delegation to MCP"
-        status: pending
+        status: completed
         depends: [beta2-02]
       - id: beta2-07
         title: "Migrate 24 MCP tool containers to k3s (one Deployment each)"
@@ -155,19 +155,19 @@ phases:
     tasks:
       - id: beta3-01
         title: "athena-scope — IP/CIDR scope validator"
-        status: pending
+        status: completed
         depends: [alpha-02, alpha-06]
       - id: beta3-02
         title: "athena-opsec — noise budget + threat level"
-        status: pending
+        status: completed
         depends: [alpha-02, alpha-06]
       - id: beta3-03
         title: "athena-c5isr — 6-domain health tracker"
-        status: pending
+        status: completed
         depends: [alpha-02, alpha-06]
       - id: beta3-04
         title: "athena-vuln — CVE lifecycle + NVD client"
-        status: pending
+        status: completed
         depends: [alpha-02, alpha-06]
       - id: beta3-05
         title: "athena-pentest-kb — Markdown KB + tantivy index + MCP Server"

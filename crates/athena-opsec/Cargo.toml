@@ -10,4 +10,5 @@ async-trait = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
+dashmap = { workspace = true }
 tracing = { workspace = true }

@@ -8,7 +8,7 @@ use std::sync::Arc;
 use crate::AppState;
 
 pub async fn bearer_auth_middleware(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     request: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
@@ -17,6 +17,15 @@ pub async fn bearer_auth_middleware(
         return Ok(next.run(request).await);
     }
 
+    // Dev mode: no token configured → allow all requests
+    let configured_token = std::env::var("ATHENA_API_TOKEN")
+        .ok()
+        .filter(|t| !t.is_empty());
+
+    let Some(expected) = configured_token else {
+        return Ok(next.run(request).await);
+    };
+
     let token = request
         .headers()
         .get("Authorization")
@@ -24,16 +33,7 @@ pub async fn bearer_auth_middleware(
         .and_then(|v| v.strip_prefix("Bearer "));
 
     match token {
-        Some(t) if is_valid_token(t, &state) => Ok(next.run(request).await),
+        Some(t) if t == expected => Ok(next.run(request).await),
         _ => Err(StatusCode::UNAUTHORIZED),
     }
-}
-
-fn is_valid_token(token: &str, _state: &AppState) -> bool {
-    // Token validated against ATHENA_API_TOKEN env var at startup
-    if let Ok(expected) = std::env::var("ATHENA_API_TOKEN") {
-        return token == expected;
-    }
-    // No token configured → allow all (dev mode)
-    true
 }

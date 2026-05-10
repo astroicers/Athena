@@ -43,7 +43,7 @@ async fn main() -> Result<()> {
 
     // ── mcp client ────────────────────────────────────────────────────────────
     let mcp_base = std::env::var("MCP_BASE_URL")
-        .unwrap_or_else(|_| "http://localhost:8080".into());
+        .unwrap_or_else(|_| config.mcp.base_url.clone());
     let mcp: Arc<dyn athena_mcp_client::McpClient> = Arc::new(
         HttpMcpClient::new(mcp_base, vec![
             "nmap".into(), "web-scanner".into(), "api-fuzzer".into(),

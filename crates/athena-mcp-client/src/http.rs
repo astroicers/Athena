@@ -41,8 +41,13 @@ pub struct HttpMcpClient {
 
 impl HttpMcpClient {
     pub fn new(base_url: impl Into<String>, tools: Vec<String>) -> Self {
+        let client = Client::builder()
+            .connect_timeout(std::time::Duration::from_secs(3))
+            .timeout(std::time::Duration::from_secs(10))
+            .build()
+            .unwrap_or_default();
         Self {
-            client: Client::new(),
+            client,
             base_url: base_url.into(),
             tools,
             breakers: Arc::new(DashMap::new()),

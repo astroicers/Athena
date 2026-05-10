@@ -1,6 +1,8 @@
 use async_trait::async_trait;
 use std::sync::Arc;
-use athena_types::{OperationId, Decision, OodaIterationId, ExecutionOutcome, ExecutionResult, AthenaError};
+use athena_types::{OperationId, Decision, OodaIterationId, ExecutionOutcome, ExecutionResult,
+                   Target, TargetId, FactValue, AthenaError};
+use athena_facts::FactRepository;
 use athena_exec_ssh::ExecutionEngine;
 use athena_mcp_client::{McpClient, HttpMcpClient};
 use athena_mcp_fact_extractor::FactExtractor;
@@ -10,6 +12,7 @@ pub struct ActRouter {
     ssh: Option<Arc<dyn ExecutionEngine>>,
     mcp: Option<Arc<dyn McpClient>>,
     extractor: Arc<dyn FactExtractor>,
+    fact_repo: Option<Arc<dyn FactRepository>>,
 }
 
 impl ActRouter {
@@ -18,7 +21,30 @@ impl ActRouter {
         mcp: Option<Arc<dyn McpClient>>,
         extractor: Arc<dyn FactExtractor>,
     ) -> Self {
-        Self { ssh, mcp, extractor }
+        Self { ssh, mcp, extractor, fact_repo: None }
+    }
+
+    pub fn with_fact_repo(mut self, repo: Arc<dyn FactRepository>) -> Self {
+        self.fact_repo = Some(repo);
+        self
+    }
+
+    async fn resolve_target(&self, op_id: &OperationId) -> Target {
+        let Some(repo) = &self.fact_repo else {
+            return Target { id: TargetId::new(), hostname: None, ip: None, os: None, tags: vec![] };
+        };
+        let facts = repo.list(op_id).await.unwrap_or_default();
+        let hostname = facts.iter().find_map(|f| {
+            if f.trait_name.0 == "target_hostname" {
+                if let FactValue::Text(h) = &f.value { Some(h.clone()) } else { None }
+            } else { None }
+        });
+        let ip = facts.iter().find_map(|f| {
+            if f.trait_name.0 == "target_ip" {
+                if let FactValue::Text(s) = &f.value { s.parse().ok() } else { None }
+            } else { None }
+        });
+        Target { id: TargetId::new(), hostname, ip, os: None, tags: vec![] }
     }
 
     // Route technique to best available engine
@@ -55,13 +81,7 @@ impl ActPhase for ActRouter {
         let mut results: Vec<ExecutionResult> = vec![];
         let mut total_facts = 0usize;
 
-        let dummy_target = athena_types::Target {
-            id: athena_types::TargetId::new(),
-            hostname: None,
-            ip: None,
-            os: None,
-            tags: vec![],
-        };
+        let target = self.resolve_target(op_id).await;
         let dummy_params = athena_types::TechniqueParams {
             technique_id: String::new(),
             params: serde_json::json!({}),
@@ -72,7 +92,13 @@ impl ActPhase for ActRouter {
                 EngineChoice::Mcp => {
                     let mcp = self.mcp.as_ref().unwrap();
                     let tool = HttpMcpClient::technique_to_tool(technique).unwrap();
-                    match mcp.call(tool, serde_json::json!({ "op_id": op_id.to_string() })).await {
+                    let target_param = target.ip.as_ref().map(|ip| ip.to_string())
+                        .or_else(|| target.hostname.clone())
+                        .unwrap_or_default();
+                    match mcp.call(tool, serde_json::json!({
+                        "op_id": op_id.to_string(),
+                        "target": target_param,
+                    })).await {
                         Ok(mcp_result) => {
                             let facts = self.extractor.extract(&mcp_result, op_id).await?;
                             let new_fact_ids: Vec<String> = facts.iter()
@@ -99,7 +125,7 @@ impl ActPhase for ActRouter {
                 }
                 EngineChoice::Ssh => {
                     let ssh = self.ssh.as_ref().unwrap();
-                    match ssh.execute(technique, &dummy_target, &dummy_params).await {
+                    match ssh.execute(technique, &target, &dummy_params).await {
                         Ok(r) => results.push(r),
                         Err(e) => {
                             tracing::warn!(technique = %technique, error = %e, "SSH execution failed");

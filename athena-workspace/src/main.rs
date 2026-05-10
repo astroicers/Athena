@@ -113,7 +113,8 @@ async fn main() -> Result<()> {
         Arc::new(RiskMatrixDecider::new());
 
     let act: Arc<dyn athena_act::ActPhase> =
-        Arc::new(ActRouter::new(Some(ssh_engine), Some(Arc::clone(&mcp)), Arc::clone(&extractor)));
+        Arc::new(ActRouter::new(Some(ssh_engine), Some(Arc::clone(&mcp)), Arc::clone(&extractor))
+            .with_fact_repo(Arc::clone(&fact_repo)));
 
     let attack_graph = Arc::new(DijkstraAttackGraph::new(vec![]));
 

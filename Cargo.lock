@@ -99,6 +99,7 @@ version = "2.0.0-alpha.1"
 dependencies = [
  "async-trait",
  "athena-exec-ssh",
+ "athena-facts",
  "athena-mcp-client",
  "athena-mcp-fact-extractor",
  "athena-types",

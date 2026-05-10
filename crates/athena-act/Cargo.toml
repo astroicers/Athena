@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 athena-types = { workspace = true }
+athena-facts = { workspace = true }
 athena-mcp-client = { workspace = true }
 athena-exec-ssh = { workspace = true }
 athena-mcp-fact-extractor = { workspace = true }

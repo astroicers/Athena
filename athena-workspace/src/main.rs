@@ -53,12 +53,21 @@ async fn main() -> Result<()> {
 
     // ── llm client ────────────────────────────────────────────────────────────
     let llm_model = std::env::var("ANTHROPIC_MODEL")
-        .unwrap_or_else(|_| "claude-opus-4-7-20251101".into());
+        .unwrap_or_else(|_| config.llm.default_model.clone());
     let llm: Arc<dyn athena_llm_client::LlmClient> =
         if std::env::var("MOCK_LLM").as_deref() == Ok("true") {
             Arc::new(MockLlmClient::new())
         } else {
-            let api_key = std::env::var("ANTHROPIC_API_KEY").unwrap_or_default();
+            let api_key = std::env::var("ANTHROPIC_API_KEY")
+                .ok()
+                .filter(|k| !k.is_empty())
+                .or_else(|| resolve_claude_oauth_token())
+                .unwrap_or_default();
+            if api_key.is_empty() {
+                tracing::warn!("no ANTHROPIC_API_KEY or Claude OAuth token found — LLM calls will fail");
+            } else {
+                tracing::info!("LLM auth: using {} key", if api_key.starts_with("sk-ant-oat") { "OAuth" } else { "API" });
+            }
             Arc::new(athena_llm_client::AnthropicClient::new(api_key, llm_model.clone()))
         };
 
@@ -156,4 +165,14 @@ async fn main() -> Result<()> {
     axum::serve(listener, app).await?;
 
     Ok(())
+}
+
+/// Reads the OAuth access token from ~/.claude/.credentials.json when
+/// ANTHROPIC_API_KEY is not set. The sk-ant-oat01-... token works with
+/// the standard x-api-key header on api.anthropic.com.
+fn resolve_claude_oauth_token() -> Option<String> {
+    let path = dirs::home_dir()?.join(".claude").join(".credentials.json");
+    let text = std::fs::read_to_string(path).ok()?;
+    let val: serde_json::Value = serde_json::from_str(&text).ok()?;
+    val["claudeAiOauth"]["accessToken"].as_str().map(str::to_owned)
 }

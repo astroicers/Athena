@@ -82,6 +82,7 @@ russh-keys = "0.44"
 # Errors
 thiserror = "1"
 anyhow = "1"
+dirs = "5"
 
 # Tracing
 tracing = "0.1"

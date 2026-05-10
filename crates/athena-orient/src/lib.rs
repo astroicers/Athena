@@ -109,7 +109,15 @@ impl OrientPhase for ClaudeOrientEngine {
         let req = LlmRequest::new(&self.model, ORIENT_SYSTEM_PROMPT, user_msg);
         let resp = self.llm.complete(req).await?;
 
-        serde_json::from_str::<OrientRecommendation>(&resp.content)
+        // Strip markdown code fences if the model wraps the JSON
+        let raw = resp.content.trim();
+        let json_str = raw
+            .strip_prefix("```json").or_else(|| raw.strip_prefix("```"))
+            .and_then(|s| s.strip_suffix("```"))
+            .map(str::trim)
+            .unwrap_or(raw);
+
+        serde_json::from_str::<OrientRecommendation>(json_str)
             .map_err(|e| AthenaError::LlmError(format!(
                 "orient JSON parse failed: {e}\nraw: {}", resp.content
             )))

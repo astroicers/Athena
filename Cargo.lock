@@ -725,6 +725,8 @@ dependencies = [
  "athena-types",
  "athena-vuln",
  "axum",
+ "dirs",
+ "serde_json",
  "tokio",
  "tracing",
 ]

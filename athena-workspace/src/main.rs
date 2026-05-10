@@ -23,12 +23,12 @@ use athena_scope::CidrScopeValidator;
 use athena_opsec::InMemoryOpsecMonitor;
 use athena_c5isr::FactDrivenC5isrMapper;
 use athena_vuln::NvdClient;
-use athena_pentest_kb::TantivyKnowledgeBase;
 use athena_brief::FactBriefGenerator;
 use athena_report::FactReportGenerator;
 use athena_recon::McpReconEngine;
 use athena_knowledge::constraint::OperationalConstraints;
 use athena_attack_graph::DijkstraAttackGraph;
+use athena_skills_loader::FileSystemSkillsLoader;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -72,8 +72,21 @@ async fn main() -> Result<()> {
     let observe: Arc<dyn athena_observe::ObservePhase> =
         Arc::new(DefaultObserver::new(Arc::clone(&fact_repo), Arc::clone(&mcp)));
 
+    // Build KB early so orient can use it for context injection
+    let kb: Arc<dyn athena_pentest_kb::KnowledgeBase> = {
+        let tkvb = athena_pentest_kb::TantivyKnowledgeBase::new_in_memory()?;
+        if let Ok(entries) = athena_pentest_kb::loader::load_markdown_dir(Path::new("data/kb")) {
+            let _ = tkvb.add_entries(entries);
+        }
+        Arc::new(tkvb)
+    };
+
+    let skills_loader = Arc::new(FileSystemSkillsLoader::new("data/skills"));
+
     let orient: Arc<dyn athena_orient::OrientPhase> =
-        Arc::new(ClaudeOrientEngine::new(Arc::clone(&llm), llm_model));
+        Arc::new(ClaudeOrientEngine::new(Arc::clone(&llm), llm_model)
+            .with_kb(Arc::clone(&kb))
+            .with_skills(skills_loader));
 
     let decide: Arc<dyn athena_decide::DecidePhase> =
         Arc::new(RiskMatrixDecider::new());
@@ -103,14 +116,6 @@ async fn main() -> Result<()> {
     let vuln_api_key = std::env::var("NVD_API_KEY").ok();
     let vuln: Arc<dyn athena_vuln::VulnerabilityManager> =
         Arc::new(NvdClient::new(vuln_api_key));
-
-    let kb: Arc<dyn athena_pentest_kb::KnowledgeBase> = {
-        let tkvb = TantivyKnowledgeBase::new_in_memory()?;
-        if let Ok(entries) = athena_pentest_kb::loader::load_markdown_dir(Path::new("data/kb")) {
-            let _ = tkvb.add_entries(entries);
-        }
-        Arc::new(tkvb)
-    };
 
     let brief: Arc<dyn athena_brief::BriefGenerator> =
         Arc::new(FactBriefGenerator::new(Arc::clone(&fact_repo), Arc::clone(&c5isr)));

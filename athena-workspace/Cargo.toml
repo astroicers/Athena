@@ -36,6 +36,7 @@ athena-swarm = { workspace = true }
 athena-llm-client = { workspace = true }
 athena-knowledge = { workspace = true }
 athena-attack-graph = { workspace = true }
+athena-skills-loader = { workspace = true }
 
 tokio = { workspace = true }
 axum = { workspace = true }

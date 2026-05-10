@@ -6,6 +6,7 @@ edition.workspace = true
 [dependencies]
 athena-types = { workspace = true }
 athena-llm-client = { workspace = true }
+athena-pentest-kb = { workspace = true }
 athena-skills-loader = { workspace = true }
 athena-knowledge = { workspace = true }
 athena-attack-graph = { workspace = true }

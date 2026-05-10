@@ -8,7 +8,8 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use std::sync::Arc;
 use uuid::Uuid;
-use athena_types::{OperationId, Target, TargetId};
+use chrono::Utc;
+use athena_types::{Fact, FactTrait, FactValue, OperationId, Target, TargetId};
 use crate::{AppState, error::ApiError};
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -20,6 +21,13 @@ fn op_id(s: &str) -> Result<OperationId, ApiError> {
 }
 
 // ── request / response DTOs ──────────────────────────────────────────────────
+
+#[derive(Deserialize, Default)]
+pub struct StartOperationRequest {
+    pub name: Option<String>,
+    pub target_ip: Option<String>,
+    pub target_hostname: Option<String>,
+}
 
 #[derive(Deserialize)]
 pub struct StartSchedulerRequest {
@@ -107,13 +115,47 @@ async fn health_handler() -> Json<Value> {
     }))
 }
 
-async fn run_iteration(State(state): State<Arc<AppState>>) -> Result<Json<Value>, ApiError> {
+async fn run_iteration(
+    State(state): State<Arc<AppState>>,
+    body: Option<Json<StartOperationRequest>>,
+) -> Result<Json<Value>, ApiError> {
+    let req = body.map(|b| b.0).unwrap_or_default();
     let op_id = OperationId::new();
+
+    if let Some(ip) = &req.target_ip {
+        if let Err(e) = state.fact_repo.insert(Fact {
+            id: Uuid::new_v4(),
+            op_id: op_id.clone(),
+            trait_name: FactTrait("target_ip".into()),
+            value: FactValue::Text(ip.clone()),
+            source: "api".into(),
+            confidence: 100,
+            collected_at: Utc::now(),
+        }).await {
+            tracing::warn!("seed fact insert failed: {e}");
+        }
+    }
+    if let Some(hostname) = &req.target_hostname {
+        if let Err(e) = state.fact_repo.insert(Fact {
+            id: Uuid::new_v4(),
+            op_id: op_id.clone(),
+            trait_name: FactTrait("target_hostname".into()),
+            value: FactValue::Text(hostname.clone()),
+            source: "api".into(),
+            confidence: 100,
+            collected_at: Utc::now(),
+        }).await {
+            tracing::warn!("seed fact insert failed: {e}");
+        }
+    }
+
     let (iter_id, outcome) = state.engine.run_iteration(&op_id).await?;
     Ok(Json(json!({
         "op_id": op_id.to_string(),
         "iter_id": iter_id.to_string(),
         "facts_collected": outcome.facts_collected,
+        "target_ip": req.target_ip,
+        "target_hostname": req.target_hostname,
     })))
 }
 

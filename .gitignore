@@ -7,13 +7,6 @@ target/
 .env.local
 .env.*.local
 
-# Node / frontend (v1 leftovers, not part of 2.0)
-node_modules/
-.next/
-
-# Test artifacts
-test-results/
-
 # OS
 .DS_Store
 Thumbs.db

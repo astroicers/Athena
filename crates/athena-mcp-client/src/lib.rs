@@ -1,3 +1,6 @@
+pub mod http;
+pub mod circuit_breaker;
+
 use async_trait::async_trait;
 use athena_types::AthenaError;
 use serde::{Deserialize, Serialize};
@@ -22,3 +25,6 @@ pub trait McpClient: Send + Sync {
     async fn health_check(&self, tool: &str) -> bool;
     fn available_tools(&self) -> Vec<String>;
 }
+
+pub use http::HttpMcpClient;
+pub use circuit_breaker::{CircuitBreaker, CircuitState};

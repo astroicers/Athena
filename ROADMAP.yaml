@@ -108,7 +108,7 @@ phases:
         adr: ADR-112
       - id: beta1-09
         title: "athena-scheduler — per-operation loop timers"
-        status: pending
+        status: completed
         depends: [beta1-08]
         adr: ADR-105
 
@@ -119,24 +119,24 @@ phases:
     tasks:
       - id: beta2-01
         title: "athena-exec-ssh — russh execution engine"
-        status: pending
+        status: completed
         depends: [alpha-02]
         adr: ADR-110
       - id: beta2-02
         title: "athena-mcp-client — HTTP+stdio transport + circuit breaker"
-        status: pending
+        status: completed
         depends: [alpha-02, alpha-03]
       - id: beta2-03
         title: "athena-mcp-fact-extractor — MCP output to Fact normalisation"
-        status: pending
+        status: completed
         depends: [beta2-02, beta1-04]
       - id: beta2-04
         title: "athena-act — ActPhase trait + engine router"
-        status: pending
+        status: completed
         depends: [beta2-01, beta2-02]
       - id: beta2-05
         title: "athena-swarm — parallel multi-target executor"
-        status: pending
+        status: completed
         depends: [beta2-04]
       - id: beta2-06
         title: "athena-recon — auto-recon delegation to MCP"

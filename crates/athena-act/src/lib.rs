@@ -1,3 +1,5 @@
+pub mod router;
+
 use async_trait::async_trait;
 use athena_types::{OperationId, Decision, OodaIterationId, ExecutionOutcome, AthenaError};
 
@@ -10,3 +12,5 @@ pub trait ActPhase: Send + Sync {
         iter_id: &OodaIterationId,
     ) -> Result<ExecutionOutcome, AthenaError>;
 }
+
+pub use router::ActRouter;

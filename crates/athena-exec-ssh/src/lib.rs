@@ -7,3 +7,6 @@ pub trait ExecutionEngine: Send + Sync {
     async fn execute(&self, technique_id: &str, target: &Target, params: &TechniqueParams) -> Result<ExecutionResult, AthenaError>;
     async fn health_check(&self) -> HealthStatus;
 }
+
+pub mod ssh;
+pub use ssh::SshExecutionEngine;

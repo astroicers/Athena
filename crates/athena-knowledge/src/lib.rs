@@ -62,3 +62,54 @@ pub fn load_yaml_dir<T: for<'de> Deserialize<'de>>(
     }
     Ok(results)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::constraint::OperationalConstraints;
+
+    #[test]
+    fn load_yaml_dir_nonexistent_returns_empty() {
+        let result: Result<Vec<TechniqueEntry>, _> = load_yaml_dir("/tmp/nonexistent_athena_dir_xyz");
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_empty());
+    }
+
+    #[test]
+    fn load_yaml_dir_parses_valid_yaml() {
+        use std::fs;
+        let dir = tempfile::tempdir().unwrap();
+        let yaml = r#"
+id: T1046
+name: Network Service Scanning
+description: Scan for open ports
+category: discovery
+mcp_tool: nmap
+parameters: []
+prerequisites: []
+risk_level: low
+"#;
+        fs::write(dir.path().join("technique.yaml"), yaml).unwrap();
+        let entries: Vec<TechniqueEntry> = load_yaml_dir(dir.path()).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].id, "T1046");
+        assert_eq!(entries[0].risk_level, RiskLevel::Low);
+    }
+
+    #[test]
+    fn operational_constraints_defaults() {
+        let c = OperationalConstraints::default();
+        assert_eq!(c.max_noise_level, 5);
+        assert!(c.allowed_techniques.is_empty());
+        assert_eq!(c.require_approval_above_risk, Some(0.8));
+    }
+
+    #[test]
+    fn risk_level_serde() {
+        let rl = RiskLevel::Critical;
+        let s = serde_json::to_string(&rl).unwrap();
+        assert_eq!(s, "\"critical\"");
+        let back: RiskLevel = serde_json::from_str(&s).unwrap();
+        assert_eq!(back, RiskLevel::Critical);
+    }
+}

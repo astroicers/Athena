@@ -1,0 +1,12 @@
+type: system
+level: 2
+mode: auto
+workflow: standard
+hitl: standard
+rag: disabled
+guardrail: disabled
+autonomous: disabled
+orchestrator: disabled
+autopilot: enabled
+coding_style: disabled
+name: Athena

@@ -11,3 +11,9 @@ athena.toml
 # OS
 .DS_Store
 Thumbs.db
+.asp-session-briefing.json
+.asp-audit-baseline.json
+.asp-bypass-log.ndjson
+.asp-telemetry.jsonl
+.asp-fact-check.md
+.asp-review-calibration.jsonl

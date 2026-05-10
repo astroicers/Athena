@@ -49,3 +49,58 @@ impl EventBus {
 impl Default for EventBus {
     fn default() -> Self { Self::new() }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use athena_types::OperationId;
+
+    #[tokio::test]
+    async fn publish_and_receive() {
+        let bus = EventBus::new();
+        let mut rx = bus.subscribe();
+
+        let op_id = OperationId::new();
+        bus.publish(AthenaEvent::OperationStarted { op_id: op_id.clone() });
+
+        let received = rx.recv().await.unwrap();
+        match received {
+            AthenaEvent::OperationStarted { op_id: received_id } => {
+                assert_eq!(received_id, op_id);
+            }
+            _ => panic!("unexpected event type"),
+        }
+    }
+
+    #[tokio::test]
+    async fn multiple_subscribers_each_receive() {
+        let bus = EventBus::new();
+        let mut rx1 = bus.subscribe();
+        let mut rx2 = bus.subscribe();
+
+        let op_id = OperationId::new();
+        bus.publish(AthenaEvent::OperationCompleted { op_id: op_id.clone() });
+
+        let e1 = rx1.recv().await.unwrap();
+        let e2 = rx2.recv().await.unwrap();
+        assert!(matches!(e1, AthenaEvent::OperationCompleted { .. }));
+        assert!(matches!(e2, AthenaEvent::OperationCompleted { .. }));
+    }
+
+    #[tokio::test]
+    async fn no_subscriber_does_not_panic() {
+        let bus = EventBus::new();
+        let op_id = OperationId::new();
+        // publish with no subscribers should not panic
+        bus.publish(AthenaEvent::OperationAborted {
+            op_id,
+            reason: "test".into(),
+        });
+    }
+
+    #[test]
+    fn alert_severity_serde() {
+        let s = serde_json::to_string(&AlertSeverity::Critical).unwrap();
+        assert_eq!(s, "\"critical\"");
+    }
+}

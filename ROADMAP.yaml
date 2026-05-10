@@ -204,7 +204,7 @@ phases:
         adr: ADR-113
       - id: rc-03
         title: "athena-ws — WebSocket gateway + event bus subscriber"
-        status: pending
+        status: completed
         depends: [alpha-05, rc-01]
       - id: rc-04
         title: "athena-policy — RoE declarative policy engine"

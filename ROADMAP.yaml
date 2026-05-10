@@ -16,47 +16,47 @@ phases:
         adr: ADR-100, ADR-101
       - id: alpha-02
         title: "athena-types — zero-dep domain types"
-        status: pending
+        status: completed
         depends: []
         spec: docs/specs/SPEC-alpha-02-types.md
         adr: ADR-100
       - id: alpha-03
         title: "athena-config — figment env+toml loader"
-        status: pending
+        status: completed
         depends: [alpha-02]
         spec: docs/specs/SPEC-alpha-03-config.md
         adr: ADR-108
       - id: alpha-04
         title: "athena-telemetry — tracing + prometheus"
-        status: pending
+        status: completed
         depends: []
         spec: docs/specs/SPEC-alpha-04-telemetry.md
       - id: alpha-05
         title: "athena-events — typed pub-sub event bus"
-        status: pending
+        status: completed
         depends: [alpha-02]
         spec: docs/specs/SPEC-alpha-05-events.md
         adr: ADR-106
       - id: alpha-06
         title: "athena-db — sqlx PostgreSQL + migration files"
-        status: pending
+        status: completed
         depends: [alpha-02, alpha-03]
         spec: docs/specs/SPEC-alpha-06-db.md
         adr: ADR-111
       - id: alpha-07
         title: "athena-knowledge — YAML data file loaders"
-        status: pending
+        status: completed
         depends: [alpha-02]
         spec: docs/specs/SPEC-alpha-07-knowledge.md
       - id: alpha-08
         title: "athena-api stub — GET /health only"
-        status: pending
+        status: completed
         depends: [alpha-02, alpha-03, alpha-04, alpha-05]
         spec: docs/specs/SPEC-alpha-08-api-stub.md
         adr: ADR-102, ADR-103
       - id: alpha-09
         title: "athena-workspace binary — DI wiring"
-        status: pending
+        status: completed
         depends: [alpha-08]
         spec: docs/specs/SPEC-alpha-09-workspace.md
         adr: ADR-108
@@ -74,16 +74,16 @@ phases:
     tasks:
       - id: beta1-01
         title: "athena-llm-client — Anthropic + OpenAI via reqwest"
-        status: pending
+        status: completed
         depends: [alpha-02, alpha-03]
         adr: ADR-104
       - id: beta1-02
         title: "athena-skills-loader — Claude Code skill file reader"
-        status: pending
+        status: completed
         depends: [alpha-02]
       - id: beta1-03
         title: "athena-attack-graph — Dijkstra attack path"
-        status: pending
+        status: completed
         depends: [alpha-02, alpha-07]
       - id: beta1-04
         title: "athena-facts — fact repository (sqlx CRUD)"

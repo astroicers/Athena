@@ -11,6 +11,7 @@ path = "src/main.rs"
 [dependencies]
 athena-types = { workspace = true }
 athena-config = { workspace = true }
+athena-db = { workspace = true }
 athena-telemetry = { workspace = true }
 athena-events = { workspace = true }
 athena-api = { workspace = true }

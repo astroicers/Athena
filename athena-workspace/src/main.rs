@@ -8,7 +8,8 @@ use athena_config::AthenaConfig;
 use athena_events::EventBus;
 use athena_api::{create_router, AppState};
 
-use athena_facts::InMemoryFactRepository;
+use athena_db::DatabasePool;
+use athena_facts::SqlxFactRepository;
 use athena_llm_client::MockLlmClient;
 use athena_mcp_client::HttpMcpClient;
 use athena_mcp_fact_extractor::McpFactExtractor;
@@ -37,9 +38,16 @@ async fn main() -> Result<()> {
     let config = AthenaConfig::load_or_default();
     info!(version = env!("CARGO_PKG_VERSION"), "Athena 2.0 starting");
 
+    // ── database pool ─────────────────────────────────────────────────────────
+    let db_url = std::env::var("DATABASE_URL")
+        .unwrap_or_else(|_| config.database.url.clone());
+    let pool = DatabasePool::connect(&db_url).await
+        .map_err(|e| anyhow::anyhow!("DB connect failed: {e}"))?;
+    info!("postgres connected: {}", db_url.split('@').last().unwrap_or("?"));
+
     // ── fact repository ───────────────────────────────────────────────────────
     let fact_repo: Arc<dyn athena_facts::FactRepository> =
-        Arc::new(InMemoryFactRepository::new());
+        Arc::new(SqlxFactRepository::new(pool.pool));
 
     // ── mcp client ────────────────────────────────────────────────────────────
     let mcp_base = std::env::var("MCP_BASE_URL")

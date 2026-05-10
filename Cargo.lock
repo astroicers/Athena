@@ -702,6 +702,7 @@ dependencies = [
  "athena-brief",
  "athena-c5isr",
  "athena-config",
+ "athena-db",
  "athena-decide",
  "athena-engine-ooda",
  "athena-events",

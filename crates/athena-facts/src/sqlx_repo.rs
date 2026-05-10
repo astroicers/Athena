@@ -16,7 +16,16 @@ impl SqlxFactRepository {
 #[async_trait]
 impl FactRepository for SqlxFactRepository {
     async fn insert(&self, fact: Fact) -> Result<(), AthenaError> {
-        let value_json = serde_json::to_value(&fact.value)
+        // Ensure parent operation row exists (FK constraint)
+        sqlx::query(
+            "INSERT INTO operations (id, name) VALUES ($1, 'auto') ON CONFLICT (id) DO NOTHING"
+        )
+        .bind(fact.op_id.0)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AthenaError::DatabaseError(e.to_string()))?;
+
+        let value_str = serde_json::to_string(&fact.value)
             .map_err(|e| AthenaError::Internal(e.to_string()))?;
 
         sqlx::query(
@@ -29,9 +38,9 @@ impl FactRepository for SqlxFactRepository {
         .bind(fact.id)
         .bind(fact.op_id.0)
         .bind(fact.trait_name.0)
-        .bind(value_json)
+        .bind(value_str)
         .bind(fact.source)
-        .bind(fact.confidence as i32)
+        .bind(fact.confidence as i16)
         .bind(fact.collected_at)
         .execute(&self.pool)
         .await
@@ -56,11 +65,11 @@ impl FactRepository for SqlxFactRepository {
 
         rows.into_iter()
             .map(|row| {
-                let value_json: serde_json::Value = row.try_get("fact_value")
+                let value_str: String = row.try_get("fact_value")
                     .map_err(|e| AthenaError::Internal(e.to_string()))?;
-                let value: FactValue = serde_json::from_value(value_json)
+                let value: FactValue = serde_json::from_str(&value_str)
                     .map_err(|e| AthenaError::Internal(format!("fact_value deserialize: {e}")))?;
-                let confidence: i32 = row.try_get("confidence")
+                let confidence: i16 = row.try_get("confidence")
                     .map_err(|e| AthenaError::Internal(e.to_string()))?;
                 Ok(Fact {
                     id: row.try_get("id").map_err(|e| AthenaError::Internal(e.to_string()))?,
@@ -68,7 +77,7 @@ impl FactRepository for SqlxFactRepository {
                     trait_name: FactTrait(row.try_get("trait_name").map_err(|e| AthenaError::Internal(e.to_string()))?),
                     value,
                     source: row.try_get("source").map_err(|e| AthenaError::Internal(e.to_string()))?,
-                    confidence: confidence as u8,
+                    confidence: confidence as u8,  // SMALLINT → u8
                     collected_at: row.try_get("collected_at").map_err(|e| AthenaError::Internal(e.to_string()))?,
                 })
             })
@@ -76,8 +85,9 @@ impl FactRepository for SqlxFactRepository {
     }
 
     async fn exists(&self, op_id: &OperationId, trait_name: &FactTrait, value: &str) -> Result<bool, AthenaError> {
-        // Match Text variant JSON representation: "value"
-        let value_json = serde_json::json!(value);
+        // Match Text variant JSON serialization: "\"value\""
+        let value_str = serde_json::to_string(&FactValue::Text(value.to_string()))
+            .unwrap_or_else(|_| format!("\"{}\"", value));
 
         let row = sqlx::query(
             r#"
@@ -90,7 +100,7 @@ impl FactRepository for SqlxFactRepository {
         )
         .bind(op_id.0)
         .bind(&trait_name.0)
-        .bind(value_json)
+        .bind(value_str)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| AthenaError::DatabaseError(e.to_string()))?;

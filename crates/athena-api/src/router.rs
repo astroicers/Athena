@@ -149,12 +149,15 @@ async fn run_iteration(
         }
     }
 
-    let (iter_id, outcome) = state.engine.run_iteration(&op_id).await?;
+    let facts_before = state.fact_repo.count(&op_id).await.unwrap_or(0);
+    let (iter_id, _outcome) = state.engine.run_iteration(&op_id).await?;
+    let facts_after = state.fact_repo.count(&op_id).await.unwrap_or(0);
     let _ = state.iter_store.record(&op_id, &iter_id).await;
     Ok(Json(json!({
         "op_id": op_id.to_string(),
         "iter_id": iter_id.to_string(),
-        "facts_collected": outcome.facts_collected,
+        "facts_collected": facts_after.saturating_sub(facts_before),
+        "total_facts": facts_after,
         "target_ip": req.target_ip,
         "target_hostname": req.target_hostname,
     })))
@@ -165,12 +168,15 @@ async fn run_iteration_for_op(
     Path(id): Path<String>,
 ) -> Result<Json<Value>, ApiError> {
     let op = op_id(&id)?;
-    let (iter_id, outcome) = state.engine.run_iteration(&op).await?;
+    let facts_before = state.fact_repo.count(&op).await.unwrap_or(0);
+    let (iter_id, _outcome) = state.engine.run_iteration(&op).await?;
+    let facts_after = state.fact_repo.count(&op).await.unwrap_or(0);
     let _ = state.iter_store.record(&op, &iter_id).await;
     Ok(Json(json!({
         "op_id": id,
         "iter_id": iter_id.to_string(),
-        "facts_collected": outcome.facts_collected,
+        "facts_collected": facts_after.saturating_sub(facts_before),
+        "total_facts": facts_after,
     })))
 }
 

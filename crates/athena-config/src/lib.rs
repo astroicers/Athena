@@ -1,5 +1,6 @@
 use figment::{Figment, providers::{Env, Format, Toml}};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -44,6 +45,10 @@ pub struct McpConfig {
     pub base_url: String,
     #[serde(default = "default_timeout_secs")]
     pub timeout_secs: u64,
+    /// Per-tool base URLs, e.g. {"nmap": "http://localhost:9101"}.
+    /// When present, overrides base_url for that specific tool.
+    #[serde(default)]
+    pub tool_urls: HashMap<String, String>,
 }
 
 fn default_host() -> String { "0.0.0.0".into() }
@@ -77,7 +82,7 @@ impl Default for AthenaConfig {
                 default_model: default_model(),
                 mock_mode: true,
             },
-            mcp: McpConfig { base_url: default_mcp_base(), timeout_secs: default_timeout_secs() },
+            mcp: McpConfig { base_url: default_mcp_base(), timeout_secs: default_timeout_secs(), tool_urls: HashMap::new() },
         }
     }
 }

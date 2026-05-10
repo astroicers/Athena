@@ -43,10 +43,8 @@ impl ReconEngine for McpReconEngine {
                 continue;
             }
 
-            let params = serde_json::json!({
-                "target": addr,
-                "op_id": op_id.to_string(),
-            });
+            // FastMCP functions take only target-related args, not op_id
+            let params = serde_json::json!({ "target": addr });
 
             match self.mcp.call(tool, params).await {
                 Ok(result) if result.success => {

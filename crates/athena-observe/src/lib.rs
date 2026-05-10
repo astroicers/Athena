@@ -36,29 +36,15 @@ impl ObservePhase for DefaultObserver {
 
         // Only attempt nmap if we have a target
         if let Some(ref ip) = target_ip {
-            let params = serde_json::json!({
-                "op_id": op_id.to_string(),
-                "target": ip,
-            });
+            // nmap_scan(target, ports) — no op_id in FastMCP function signature
+            let params = serde_json::json!({ "target": ip });
 
             if self.mcp.health_check("nmap").await {
                 let result = self.mcp.call("nmap", params).await?;
                 if result.success {
-                    if let Some(ports) = result.output.get("open_ports").and_then(|v| v.as_array()) {
-                        for port in ports {
-                            if let Some(p) = port.as_str() {
-                                let fact = Fact {
-                                    id: uuid::Uuid::new_v4(),
-                                    op_id: op_id.clone(),
-                                    trait_name: FactTrait("open_port".into()),
-                                    value: FactValue::Text(p.to_string()),
-                                    source: "nmap".into(),
-                                    confidence: 90,
-                                    collected_at: chrono::Utc::now(),
-                                };
-                                self.fact_repo.insert(fact).await?;
-                            }
-                        }
+                    let facts_to_insert = extract_nmap_facts(op_id, &result.output);
+                    for fact in facts_to_insert {
+                        self.fact_repo.insert(fact).await?;
                     }
                 }
             }
@@ -85,6 +71,50 @@ impl ObservePhase for DefaultObserver {
 
         Ok(format!("Observation summary ({} facts):\n{}", facts.len(), lines.join("\n")))
     }
+}
+
+/// Extract open-port facts from nmap output, supporting both FastMCP and legacy formats.
+fn extract_nmap_facts(op_id: &OperationId, output: &serde_json::Value) -> Vec<Fact> {
+    let mut facts = Vec::new();
+
+    // New FastMCP format: {"facts": [{"trait": "service.open_port", "value": "22/tcp/..."}]}
+    if let Some(arr) = output.get("facts").and_then(|v| v.as_array()) {
+        for f in arr {
+            let trait_name = f.get("trait").and_then(|v| v.as_str()).unwrap_or("unknown");
+            let value = f.get("value").and_then(|v| v.as_str()).unwrap_or("");
+            let confidence: u8 = if trait_name.starts_with("network.host.ip") { 95 }
+                else if trait_name.starts_with("service.open_port") { 90 }
+                else { 75 };
+            facts.push(Fact {
+                id: uuid::Uuid::new_v4(),
+                op_id: op_id.clone(),
+                trait_name: FactTrait(trait_name.into()),
+                value: FactValue::Text(value.into()),
+                source: "nmap".into(),
+                confidence,
+                collected_at: chrono::Utc::now(),
+            });
+        }
+        return facts;
+    }
+
+    // Legacy format: {"open_ports": ["22", "80"]}
+    if let Some(ports) = output.get("open_ports").and_then(|v| v.as_array()) {
+        for port in ports {
+            if let Some(p) = port.as_str() {
+                facts.push(Fact {
+                    id: uuid::Uuid::new_v4(),
+                    op_id: op_id.clone(),
+                    trait_name: FactTrait("open_port".into()),
+                    value: FactValue::Text(p.to_string()),
+                    source: "nmap".into(),
+                    confidence: 90,
+                    collected_at: chrono::Utc::now(),
+                });
+            }
+        }
+    }
+    facts
 }
 
 #[cfg(test)]

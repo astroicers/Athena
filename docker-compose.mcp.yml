@@ -1,0 +1,45 @@
+services:
+  mcp-nmap:
+    image: athena-mcp-nmap:latest
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8080"]
+    ports:
+      - "9101:8080"
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+
+  mcp-web-scanner:
+    image: athena-mcp-web-scanner:latest
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8080"]
+    ports:
+      - "9102:8080"
+
+  mcp-osint:
+    image: athena-mcp-osint:latest
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8080"]
+    ports:
+      - "9103:8080"
+
+  mcp-privesc:
+    image: athena-mcp-privesc-scanner:latest
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8080"]
+    ports:
+      - "9104:8080"
+
+  mcp-lateral:
+    image: athena-mcp-lateral-mover:latest
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8080"]
+    ports:
+      - "9105:8080"
+
+  mcp-cred-dumper:
+    image: athena-mcp-credential-dumper:latest
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8080"]
+    ports:
+      - "9106:8080"
+
+  mcp-netexec:
+    image: athena-mcp-netexec-suite:latest
+    command: ["python", "-m", "server", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8080"]
+    ports:
+      - "9107:8080"

@@ -11,7 +11,7 @@ use athena_api::{create_router, AppState};
 use athena_db::DatabasePool;
 use athena_facts::{SqlxFactRepository, SqlxIterationStore};
 use athena_llm_client::MockLlmClient;
-use athena_mcp_client::HttpMcpClient;
+use athena_mcp_client::StreamableMcpClient;
 use athena_mcp_fact_extractor::McpFactExtractor;
 use athena_exec_ssh::{SshExecutionEngine, ssh::SshConfig};
 use athena_observe::DefaultObserver;
@@ -54,13 +54,25 @@ async fn main() -> Result<()> {
         Arc::new(SqlxIterationStore::new(pool.pool));
 
     // ── mcp client ────────────────────────────────────────────────────────────
-    let mcp_base = std::env::var("MCP_BASE_URL")
-        .unwrap_or_else(|_| config.mcp.base_url.clone());
+    // Build per-tool URL map: config [mcp.tool_urls] wins; fall back to
+    // MCP_BASE_HOST env (default "localhost") + well-known ports.
+    let mcp_host = std::env::var("MCP_BASE_HOST")
+        .unwrap_or_else(|_| {
+            // Extract host from base_url (strip scheme + port)
+            config.mcp.base_url
+                .trim_start_matches("http://")
+                .trim_start_matches("https://")
+                .split(':').next()
+                .unwrap_or("localhost")
+                .to_string()
+        });
+    let mut tool_urls = StreamableMcpClient::default_tool_urls(&mcp_host);
+    for (tool, url) in &config.mcp.tool_urls {
+        tool_urls.insert(tool.clone(), url.clone());
+    }
     let mcp: Arc<dyn athena_mcp_client::McpClient> = Arc::new(
-        HttpMcpClient::new(mcp_base, vec![
-            "nmap".into(), "web-scanner".into(), "api-fuzzer".into(),
-            "dns-enum".into(), "ssl-checker".into(), "smtp-tester".into(),
-        ])
+        StreamableMcpClient::new(tool_urls)
+            .with_circuit_breaker_config(5, 30)
     );
 
     // ── llm client ────────────────────────────────────────────────────────────

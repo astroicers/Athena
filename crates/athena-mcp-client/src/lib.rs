@@ -26,5 +26,5 @@ pub trait McpClient: Send + Sync {
     fn available_tools(&self) -> Vec<String>;
 }
 
-pub use http::HttpMcpClient;
+pub use http::{HttpMcpClient, StreamableMcpClient};
 pub use circuit_breaker::{CircuitBreaker, CircuitState};

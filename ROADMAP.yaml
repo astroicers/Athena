@@ -171,20 +171,20 @@ phases:
         depends: [alpha-02, alpha-06]
       - id: beta3-05
         title: "athena-pentest-kb — Markdown KB + tantivy index + MCP Server"
-        status: pending
+        status: completed
         depends: [alpha-02]
         adr: ADR-114
       - id: beta3-06
         title: "Write initial KB entries (priv-esc x10, lateral x10, initial-access x10)"
-        status: pending
+        status: completed
         depends: [beta3-05]
       - id: beta3-07
         title: "athena-brief — operational brief generator"
-        status: pending
+        status: completed
         depends: [alpha-02, alpha-06]
       - id: beta3-08
         title: "athena-report — pentest report generator (Markdown + JSON)"
-        status: pending
+        status: completed
         depends: [alpha-02, alpha-06]
 
   - id: rc

@@ -6,6 +6,8 @@ edition.workspace = true
 [dependencies]
 athena-types = { workspace = true }
 athena-db = { workspace = true }
+athena-facts = { workspace = true }
+uuid = { workspace = true }
 async-trait = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }

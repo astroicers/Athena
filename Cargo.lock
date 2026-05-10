@@ -148,12 +148,16 @@ name = "athena-brief"
 version = "2.0.0-alpha.1"
 dependencies = [
  "async-trait",
+ "athena-c5isr",
  "athena-db",
+ "athena-facts",
  "athena-types",
+ "chrono",
  "serde",
  "thiserror 1.0.69",
  "tokio",
  "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -492,6 +496,7 @@ version = "2.0.0-alpha.1"
 dependencies = [
  "async-trait",
  "athena-types",
+ "dashmap",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -561,6 +566,7 @@ version = "2.0.0-alpha.1"
 dependencies = [
  "async-trait",
  "athena-db",
+ "athena-facts",
  "athena-types",
  "chrono",
  "serde",
@@ -568,6 +574,7 @@ dependencies = [
  "thiserror 1.0.69",
  "tokio",
  "tracing",
+ "uuid",
 ]
 
 [[package]]

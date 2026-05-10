@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "athena.fullname" . }}
+  labels:
+    {{- include "athena.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "athena.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "athena.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: athena
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.config.server.port }}
+          envFrom:
+            - secretRef:
+                name: {{ include "athena.fullname" . }}-secrets
+          volumeMounts:
+            - name: config
+              mountPath: /app/athena.toml
+              subPath: athena.toml
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: {{ .Values.config.server.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: {{ .Values.config.server.port }}
+            initialDelaySeconds: 3
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "athena.fullname" . }}-config

@@ -12,6 +12,7 @@ athena-observe = { workspace = true }
 athena-orient = { workspace = true }
 athena-decide = { workspace = true }
 athena-act = { workspace = true }
+athena-attack-graph = { workspace = true }
 athena-swarm = { workspace = true }
 athena-c5isr = { workspace = true }
 async-trait = { workspace = true }

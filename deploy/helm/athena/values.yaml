@@ -1,0 +1,109 @@
+replicaCount: 1
+
+image:
+  repository: athena
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 58000
+
+config:
+  server:
+    host: "0.0.0.0"
+    port: 58000
+  database:
+    # Override via --set or secret
+    url: "postgres://athena:athena@postgres:5432/athena"
+  llm:
+    defaultModel: "claude-opus-4-7"
+    mockMode: false
+  mcp:
+    baseUrl: "http://localhost"
+    timeoutSecs: 30
+
+postgres:
+  enabled: true
+  image: postgres:16-alpine
+  port: 5432
+  nodePort: 30543
+  storage: 10Gi
+  database: athena
+  user: athena
+  # password injected via Secret
+
+mcp:
+  tools:
+    - name: nmap
+      image: athena-mcp-nmap:latest
+      port: 8080
+    - name: web-scanner
+      image: athena-mcp-web-scanner:latest
+      port: 8080
+    - name: api-fuzzer
+      image: athena-mcp-api-fuzzer:latest
+      port: 8080
+    - name: dns-recon
+      image: athena-mcp-dns-recon:latest
+      port: 8080
+    - name: ssl-scan
+      image: athena-mcp-ssl-scan:latest
+      port: 8080
+    - name: vuln-scanner
+      image: athena-mcp-vuln-scanner:latest
+      port: 8080
+    - name: exploit-suggester
+      image: athena-mcp-exploit-suggester:latest
+      port: 8080
+    - name: cve-lookup
+      image: athena-mcp-cve-lookup:latest
+      port: 8080
+    - name: lateral-move
+      image: athena-mcp-lateral-move:latest
+      port: 8080
+    - name: credential-harvest
+      image: athena-mcp-credential-harvest:latest
+      port: 8080
+    - name: persistence-check
+      image: athena-mcp-persistence-check:latest
+      port: 8080
+    - name: privesc-check
+      image: athena-mcp-privesc-check:latest
+      port: 8080
+    - name: ad-enum
+      image: athena-mcp-ad-enum:latest
+      port: 8080
+    - name: ad-attack
+      image: athena-mcp-ad-attack:latest
+      port: 8080
+    - name: network-pivot
+      image: athena-mcp-network-pivot:latest
+      port: 8080
+    - name: c2-beacon
+      image: athena-mcp-c2-beacon:latest
+      port: 8080
+    - name: payload-gen
+      image: athena-mcp-payload-gen:latest
+      port: 8080
+    - name: av-evasion
+      image: athena-mcp-av-evasion:latest
+      port: 8080
+    - name: phishing
+      image: athena-mcp-phishing:latest
+      port: 8080
+    - name: osint
+      image: athena-mcp-osint:latest
+      port: 8080
+    - name: cloud-enum
+      image: athena-mcp-cloud-enum:latest
+      port: 8080
+    - name: container-escape
+      image: athena-mcp-container-escape:latest
+      port: 8080
+    - name: deception
+      image: athena-mcp-deception:latest
+      port: 8080
+    - name: report-gen
+      image: athena-mcp-report-gen:latest
+      port: 8080

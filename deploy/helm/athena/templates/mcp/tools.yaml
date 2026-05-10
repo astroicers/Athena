@@ -1,0 +1,34 @@
+{{- range .Values.mcp.tools }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-{{ .name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-{{ .name }}
+  template:
+    metadata:
+      labels:
+        app: mcp-{{ .name }}
+    spec:
+      containers:
+        - name: {{ .name }}
+          image: {{ .image }}
+          ports:
+            - containerPort: {{ .port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-{{ .name }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .port }}
+      targetPort: {{ .port }}
+  selector:
+    app: mcp-{{ .name }}
+{{- end }}

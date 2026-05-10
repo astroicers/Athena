@@ -5,6 +5,7 @@ use athena_observe::ObservePhase;
 use athena_orient::OrientPhase;
 use athena_decide::DecidePhase;
 use athena_act::ActPhase;
+use athena_attack_graph::AttackGraphEngine;
 use athena_knowledge::constraint::OperationalConstraints;
 use crate::DecisionEngine;
 
@@ -13,6 +14,7 @@ pub struct OodaEngine {
     orient: Arc<dyn OrientPhase>,
     decide: Arc<dyn DecidePhase>,
     act: Arc<dyn ActPhase>,
+    attack_graph: Option<Arc<dyn AttackGraphEngine>>,
     constraints: OperationalConstraints,
 }
 
@@ -24,7 +26,12 @@ impl OodaEngine {
         act: Arc<dyn ActPhase>,
         constraints: OperationalConstraints,
     ) -> Self {
-        Self { observe, orient, decide, act, constraints }
+        Self { observe, orient, decide, act, attack_graph: None, constraints }
+    }
+
+    pub fn with_attack_graph(mut self, ag: Arc<dyn AttackGraphEngine>) -> Self {
+        self.attack_graph = Some(ag);
+        self
     }
 }
 
@@ -42,8 +49,16 @@ impl DecisionEngine for OodaEngine {
         let _facts = self.observe.collect(op_id).await?;
         let obs_summary = self.observe.summarize(op_id).await?;
 
+        // Attack graph (optional — empty string if not configured)
+        let graph_summary = if let Some(ag) = &self.attack_graph {
+            let paths = ag.compute_paths(op_id, vec![]).await.unwrap_or_default();
+            ag.to_summary(&paths).await
+        } else {
+            String::new()
+        };
+
         // Orient
-        let recommendation = self.orient.analyze(op_id, &obs_summary, "").await?;
+        let recommendation = self.orient.analyze(op_id, &obs_summary, &graph_summary).await?;
 
         // Decide
         let decision = self.decide.evaluate(op_id, &recommendation, &self.constraints).await?;

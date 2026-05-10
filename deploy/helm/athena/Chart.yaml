@@ -1,0 +1,6 @@
+apiVersion: v2
+name: athena
+description: Athena 2.0 — C5ISR + OODA cyber operations platform
+type: application
+version: 2.0.0-alpha.1
+appVersion: "2.0.0-alpha.1"

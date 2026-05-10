@@ -28,6 +28,7 @@ use athena_brief::FactBriefGenerator;
 use athena_report::FactReportGenerator;
 use athena_recon::McpReconEngine;
 use athena_knowledge::constraint::OperationalConstraints;
+use athena_attack_graph::DijkstraAttackGraph;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -80,8 +81,11 @@ async fn main() -> Result<()> {
     let act: Arc<dyn athena_act::ActPhase> =
         Arc::new(ActRouter::new(Some(ssh_engine), Some(Arc::clone(&mcp)), Arc::clone(&extractor)));
 
+    let attack_graph = Arc::new(DijkstraAttackGraph::new(vec![]));
+
     let engine: Arc<dyn athena_engine_ooda::DecisionEngine> =
-        Arc::new(OodaEngine::new(observe, orient, decide, act, OperationalConstraints::default()));
+        Arc::new(OodaEngine::new(observe, orient, decide, act, OperationalConstraints::default())
+            .with_attack_graph(attack_graph));
 
     // ── scheduler ─────────────────────────────────────────────────────────────
     let scheduler = Arc::new(OodaScheduler::new(Arc::clone(&engine)));

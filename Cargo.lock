@@ -275,6 +275,7 @@ version = "2.0.0-alpha.1"
 dependencies = [
  "async-trait",
  "athena-act",
+ "athena-attack-graph",
  "athena-c5isr",
  "athena-db",
  "athena-decide",
@@ -694,6 +695,7 @@ dependencies = [
  "anyhow",
  "athena-act",
  "athena-api",
+ "athena-attack-graph",
  "athena-brief",
  "athena-c5isr",
  "athena-config",

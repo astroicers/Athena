@@ -62,7 +62,7 @@ phases:
         adr: ADR-108
       - id: alpha-10
         title: "k3s install + postgres Deployment + Helm chart skeleton"
-        status: pending
+        status: completed
         depends: [alpha-09]
         spec: docs/specs/SPEC-alpha-10-k3s.md
         adr: ADR-115
@@ -144,7 +144,7 @@ phases:
         depends: [beta2-02]
       - id: beta2-07
         title: "Migrate 24 MCP tool containers to k3s (one Deployment each)"
-        status: pending
+        status: completed
         depends: [alpha-10]
         adr: ADR-116
 
@@ -216,6 +216,6 @@ phases:
         depends: [alpha-02]
       - id: rc-06
         title: "Argo CD GitOps configuration"
-        status: pending
+        status: completed
         depends: [beta2-07]
         adr: ADR-117

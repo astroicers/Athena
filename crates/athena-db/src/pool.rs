@@ -17,3 +17,22 @@ impl DatabasePool {
         Ok(Self { pool })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn connect_malformed_url_returns_error() {
+        // Malformed URL fails immediately without network timeout
+        let result = DatabasePool::connect("not-a-valid-url").await;
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn db_error_display() {
+        let e = sqlx::Error::RowNotFound;
+        let db_err = DbError::Connection(e);
+        assert!(db_err.to_string().contains("connection error"));
+    }
+}

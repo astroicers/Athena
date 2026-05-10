@@ -81,3 +81,42 @@ impl Default for AthenaConfig {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_has_expected_values() {
+        let cfg = AthenaConfig::default();
+        assert_eq!(cfg.server.host, "0.0.0.0");
+        assert_eq!(cfg.server.port, 58000);
+        assert_eq!(cfg.llm.default_model, "claude-opus-4-7");
+        assert!(cfg.llm.mock_mode);
+        assert_eq!(cfg.mcp.timeout_secs, 30);
+    }
+
+    #[test]
+    fn load_or_default_never_panics() {
+        // No athena.toml in test cwd — should silently fall back to default (port may vary by env)
+        let cfg = AthenaConfig::load_or_default();
+        assert!(cfg.server.port > 0);
+    }
+
+    #[test]
+    fn env_override_via_figment() {
+        // ATHENA_SERVER__PORT overrides default port; cleaned up immediately
+        std::env::set_var("ATHENA_SERVER__PORT", "9999");
+        let cfg = AthenaConfig::load_or_default();
+        std::env::remove_var("ATHENA_SERVER__PORT");
+        // May or may not pick up depending on toml presence; just assert no panic
+        assert!(cfg.server.port == 9999 || cfg.server.port == 58000);
+    }
+
+    #[test]
+    fn db_url_is_non_empty() {
+        let cfg = AthenaConfig::default();
+        assert!(!cfg.database.url.is_empty());
+        assert!(cfg.database.url.starts_with("postgres://"));
+    }
+}

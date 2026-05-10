@@ -118,7 +118,7 @@ impl DijkstraAttackGraph {
         let mut nodes = Vec::new();
         let mut cur = target.to_string();
         loop {
-            let (risk, prev) = match dist.get(&cur) {
+            let (_risk, prev) = match dist.get(&cur) {
                 Some(v) => v.clone(),
                 None => break,
             };

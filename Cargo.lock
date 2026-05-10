@@ -238,9 +238,11 @@ version = "2.0.0-alpha.1"
 dependencies = [
  "async-trait",
  "athena-knowledge",
+ "athena-policy",
  "athena-scope",
  "athena-types",
  "serde",
+ "serde_json",
  "thiserror 1.0.69",
  "tokio",
  "tracing",

@@ -1,6 +1,9 @@
 use async_trait::async_trait;
+use std::sync::Arc;
 use athena_types::{OperationId, OrientRecommendation, Decision, AthenaError};
 use athena_knowledge::constraint::OperationalConstraints;
+use athena_policy::PolicyEngine;
+use serde_json::json;
 
 #[async_trait]
 pub trait DecidePhase: Send + Sync {
@@ -12,10 +15,17 @@ pub trait DecidePhase: Send + Sync {
     ) -> Result<Decision, AthenaError>;
 }
 
-pub struct RiskMatrixDecider;
+pub struct RiskMatrixDecider {
+    policy: Option<Arc<dyn PolicyEngine>>,
+}
 
 impl RiskMatrixDecider {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self { Self { policy: None } }
+
+    pub fn with_policy(mut self, policy: Arc<dyn PolicyEngine>) -> Self {
+        self.policy = Some(policy);
+        self
+    }
 }
 
 impl Default for RiskMatrixDecider {
@@ -69,12 +79,40 @@ impl DecidePhase for RiskMatrixDecider {
             });
         }
 
+        // Run RoE policy check on each approved technique; drop any that are denied
+        let policy_cleared: Vec<String> = if let Some(pe) = &self.policy {
+            let mut cleared = Vec::new();
+            for technique in &approved_techniques {
+                let ctx = json!({
+                    "technique": technique,
+                    "noise_level": (recommendation.risk_score * 10.0) as u8,
+                });
+                let pd = pe.evaluate(technique, &ctx).await
+                    .unwrap_or_else(|_| athena_policy::PolicyDecision { allowed: true, reason: String::new() });
+                if pd.allowed {
+                    cleared.push(technique.clone());
+                }
+            }
+            cleared
+        } else {
+            approved_techniques
+        };
+
+        if policy_cleared.is_empty() {
+            return Ok(Decision {
+                approved: false,
+                techniques: vec![],
+                reason: "All techniques denied by RoE policy".into(),
+                risk_accepted: recommendation.risk_score,
+            });
+        }
+
         Ok(Decision {
             approved: true,
-            techniques: approved_techniques,
+            techniques: policy_cleared.clone(),
             reason: format!(
                 "Approved {} technique(s) at risk score {:.2}",
-                recommendation.recommended_techniques.len(),
+                policy_cleared.len(),
                 recommendation.risk_score
             ),
             risk_accepted: recommendation.risk_score,
@@ -151,6 +189,55 @@ mod tests {
         let result = decider.evaluate(
             &op_id,
             &rec(&["T1046", "T1078"], 0.4),
+            &constraints,
+        ).await.unwrap();
+        assert!(result.approved);
+        assert_eq!(result.techniques, vec!["T1046"]);
+    }
+
+    #[tokio::test]
+    async fn roe_policy_blocks_denied_technique() {
+        use athena_policy::{RoePolicy, RoePolicyEngine};
+        let policy = RoePolicy {
+            name: "test".into(),
+            default_deny: false,
+            allowed_techniques: vec![],
+            denied_techniques: vec!["T1059".into()],
+            allowed_targets: vec![],
+            max_noise_level: 10,
+        };
+        let decider = RiskMatrixDecider::new()
+            .with_policy(Arc::new(RoePolicyEngine::new(policy)));
+        let op_id = OperationId::new();
+        let constraints = OperationalConstraints::default();
+        let result = decider.evaluate(
+            &op_id,
+            &rec(&["T1059", "T1046"], 0.3),
+            &constraints,
+        ).await.unwrap();
+        assert!(result.approved);
+        assert!(!result.techniques.contains(&"T1059".to_string()));
+        assert!(result.techniques.contains(&"T1046".to_string()));
+    }
+
+    #[tokio::test]
+    async fn roe_policy_default_deny_blocks_unlisted() {
+        use athena_policy::{RoePolicy, RoePolicyEngine};
+        let policy = RoePolicy {
+            name: "strict".into(),
+            default_deny: true,
+            allowed_techniques: vec!["T1046".into()],
+            denied_techniques: vec![],
+            allowed_targets: vec![],
+            max_noise_level: 10,
+        };
+        let decider = RiskMatrixDecider::new()
+            .with_policy(Arc::new(RoePolicyEngine::new(policy)));
+        let op_id = OperationId::new();
+        let constraints = OperationalConstraints::default();
+        let result = decider.evaluate(
+            &op_id,
+            &rec(&["T1046", "T1078"], 0.3),
             &constraints,
         ).await.unwrap();
         assert!(result.approved);

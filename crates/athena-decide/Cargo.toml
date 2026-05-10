@@ -6,9 +6,11 @@ edition.workspace = true
 [dependencies]
 athena-types = { workspace = true }
 athena-knowledge = { workspace = true }
+athena-policy = { workspace = true }
 athena-scope = { workspace = true }
 async-trait = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }

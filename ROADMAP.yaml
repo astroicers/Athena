@@ -212,7 +212,7 @@ phases:
         depends: [alpha-02, alpha-07]
       - id: rc-05
         title: "athena-plugin — plugin trait + registry"
-        status: pending
+        status: completed
         depends: [alpha-02]
       - id: rc-06
         title: "Argo CD GitOps configuration"

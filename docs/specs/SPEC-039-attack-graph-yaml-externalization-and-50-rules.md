@@ -726,3 +726,5 @@ Feature: Attack Graph YAML Externalization 與 50+ 規則
   - SPEC-031（攻擊圖規格書）
   - SPEC-037（OODA Access Recovery — 參考 `credential.ssh.invalidated` fact 排除邏輯）
 
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

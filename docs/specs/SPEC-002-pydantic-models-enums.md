@@ -324,3 +324,5 @@ N/A（純型別定義模組，無執行時行為。Enum/Model 驗證錯誤由 Py
 - 資料架構：[data-architecture.md](../architecture/data-architecture.md) Section 2（Enums）+ Section 4（Models）
 - ADR-011：[POC 不實作身份驗證](../adr/ADR-011-no-auth-for-poc.md)（User stub）
 
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

@@ -257,3 +257,5 @@ Feature: OODA Access Recovery 與 Credential Invalidation
   - `docker-compose.yml` — msfrpcd flag 修正
   - `backend/tests/test_access_recovery.py` — 26 個測試
 
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

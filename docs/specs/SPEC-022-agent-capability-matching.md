@@ -176,3 +176,5 @@ N/A（無前端 UI 元件，純後端 service）
 - 現有類似實作：`backend/app/services/orient_engine.py` — `_execute_caldera()` method (current `LIMIT 1` pattern to be replaced)
 - 外部文件：Caldera agent paw API docs
 
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

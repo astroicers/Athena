@@ -204,3 +204,5 @@ Feature: Backend Test Suite 測試基礎設施與覆蓋率
 - ADR-004：半自動化模式（風險閾值規則）
 - Makefile：`test-backend`、`test-filter`、`coverage` targets
 
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

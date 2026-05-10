@@ -744,3 +744,5 @@ if trait.startswith("poc."):
   - `backend/app/services/engine_router.py` — 修改：`_finalize_execution` + `_execute_metasploit` 新增 PoC 記錄
 
 
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

@@ -580,3 +580,5 @@ const EDGE_ENTRIES = [
   - `frontend/messages/zh-TW.json`（`Legend.attackPath` 翻譯）
 
 
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

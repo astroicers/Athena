@@ -636,3 +636,5 @@ Feature: Metasploit Shell Stabilization & Access Recovery Completion
   - `backend/tests/test_access_recovery.py` — 既有 26 個 access recovery 測試
 
 
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

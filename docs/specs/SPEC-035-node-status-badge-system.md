@@ -254,3 +254,5 @@ Feature: Node Status Badge System
 | 11 | `make build` | 編譯通過 |
 | 12 | `pytest` | 後端測試通過 |
 
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

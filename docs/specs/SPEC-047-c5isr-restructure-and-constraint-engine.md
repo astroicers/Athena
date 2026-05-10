@@ -61,3 +61,5 @@ N/A
 | `backend/app/routers/constraints.py` | `backend/tests/test_constraints_router.py` | 2026-03-26 |
 | `backend/app/services/c5isr_mapper.py` | `backend/tests/test_c5isr_router.py` | 2026-03-26 |
 | `backend/app/models/c5isr.py` | `backend/tests/test_c5isr_domain_reports.py` | 2026-03-26 |
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

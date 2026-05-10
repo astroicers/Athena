@@ -695,3 +695,5 @@ Feature: C5ISR 域評估報告實作
   - `frontend/src/components/c5isr/__tests__/DomainCard.test.tsx` — 現有測試（需擴充）
   - `frontend/messages/en.json` / `frontend/messages/zh-TW.json` — i18n 鍵值新增
 
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

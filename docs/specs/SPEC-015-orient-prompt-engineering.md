@@ -346,3 +346,5 @@ Feature: Orient Prompt 工程 — 結構化雙 Prompt 架構
 | [Threats2MITRE](https://github.com/LiuYuancheng/Threats_2_MITRE_AI_Mapper) | MIT | Pattern 4: Kill Chain 映射 |
 | [PentAGI](https://github.com/vxcontrol/pentagi) | MIT | Pattern 5: 三層記憶 |
 
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

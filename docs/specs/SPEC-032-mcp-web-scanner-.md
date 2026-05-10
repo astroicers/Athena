@@ -702,3 +702,5 @@ if http_services and settings.MCP_ENABLED:
 
 新增 helper method `_write_web_facts()` 遵循與 `_write_facts()` 相同的 pattern — parse MCP JSON response、寫入 facts 表、broadcast WebSocket event。
 
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

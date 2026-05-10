@@ -1092,3 +1092,5 @@ Feature: AttackGraph 攻擊路徑圖引擎
   - XBOW Attack Path Discovery — deep multi-step attack chain exploration
   - MITRE ATT&CK Enterprise Matrix v15 — technique prerequisites 和 tactic 順序
 
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

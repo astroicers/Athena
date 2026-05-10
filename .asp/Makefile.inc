@@ -703,7 +703,7 @@ audit-health:
 	[ -d "frontend" ] && HAS_FE=1; \
 	([ -d "backend" ] || [ -d "api" ] || [ -d "server" ]) && HAS_BE=1; \
 	if [ $$HAS_FE -eq 1 ] && [ $$HAS_BE -eq 1 ]; then \
-		if [ ! -f "playwright.config.ts" ] && [ ! -f "playwright.config.js" ]; then \
+		if [ ! -f "playwright.config.ts" ] && [ ! -f "playwright.config.js" ] && [ ! -f "frontend/playwright.config.ts" ] && [ ! -f "frontend/playwright.config.js" ]; then \
 			echo "  🔴 BLOCKER: 全端專案缺少 Playwright 設定"; \
 			BLOCKERS=$$((BLOCKERS + 1)); \
 		else \

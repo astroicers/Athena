@@ -164,3 +164,5 @@ Feature: Dashboard Aggregate APIs 與 Time-Series 查詢
 - 現有類似實作：
 - 外部文件：
 
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

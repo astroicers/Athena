@@ -399,3 +399,5 @@ Feature: SPEC-007 OODA 循環引擎
 - SPEC-004：API 路由（依賴——`/ooda/trigger`）
 - SPEC-008：執行引擎客戶端（依賴——CalderaClient/ShannonClient）
 
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

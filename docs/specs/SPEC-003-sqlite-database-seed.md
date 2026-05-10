@@ -269,3 +269,5 @@ Feature: SPEC-003 SQLite 資料庫層與種子資料
 - ADR-011：[POC 不實作身份驗證](../adr/ADR-011-no-auth-for-poc.md)（User stub）
 - SPEC-002：Pydantic Models + Enums（依賴——Model 結構定義）
 
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

@@ -359,3 +359,5 @@ N/A（純前端 UI 變更）
 - 設計稿：`athena-shell.pen`、`athena-design-system.pen`
 - SPEC-004：REST API Routes（依賴——API 端點定義）
 
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

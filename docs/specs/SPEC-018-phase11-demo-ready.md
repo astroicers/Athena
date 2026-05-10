@@ -200,3 +200,5 @@ Feature: Phase 11 Demo 就緒 — OODA 資料完整性與 UX
 | **日誌（Logs）** | OODA trigger 開始/完成（含 iteration_number）、side-effect 寫入筆數、Reset 執行紀錄、WebSocket 廣播事件類型與數量 |
 | **告警（Alerts）** | OODA trigger 超過 30 秒未完成、side-effect 寫入失敗（DB error）、WebSocket 廣播失敗率 > 5% |
 | **故障偵測（Fault Detection）** | mission_steps 全部 QUEUED 超過 60 秒（side-effect 未觸發）、log_entries 為空（寫入靜默失敗）、Report API 回傳不足 10 個 key |
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

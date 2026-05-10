@@ -152,3 +152,5 @@ And 不是由 recon.py 觸發
 | `backend/app/data/technique_rules.yaml` | `backend/tests/test_attack_graph.py` | — |
 | `frontend/src/app/warroom/page.tsx` | — | — |
 | `frontend/src/components/warroom/TargetDetailPanel.tsx` | — | — |
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

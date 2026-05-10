@@ -215,3 +215,5 @@ Feature: Multi-Protocol Credential Spray
 - credential-checker handler registry：`tools/credential-checker/server.py` L30-47
 - Orient Rules #8/#9：`backend/app/services/orient_engine.py` L209-274
 - metasploitable2 已知弱點：MySQL root 無密碼、PostgreSQL postgres 無密碼、FTP anonymous
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

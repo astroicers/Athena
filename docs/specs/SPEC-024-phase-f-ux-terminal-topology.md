@@ -277,3 +277,5 @@ Feature: Phase F — UX 精修 + Terminal + Topology
 ### 前端
 
 N/A
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

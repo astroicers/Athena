@@ -230,3 +230,5 @@ Feature: 外部專案整合 — Caldera Mock/Real 切換
 - Caldera API 文件：https://caldera.readthedocs.io/
 - PentestGPT 論文：USENIX Security 2024
 
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

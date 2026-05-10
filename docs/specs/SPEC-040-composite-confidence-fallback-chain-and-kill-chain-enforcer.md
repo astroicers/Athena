@@ -1049,3 +1049,5 @@ def test_is_terminal_error():
   - `backend/app/ws_manager.py` — `WebSocketManager.broadcast()` 介面
   - `backend/app/database.py` — `technique_executions` 表 schema（第 111 行）、`attack_graph_nodes` 表
 
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

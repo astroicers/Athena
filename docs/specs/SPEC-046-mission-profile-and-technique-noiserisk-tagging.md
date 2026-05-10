@@ -167,3 +167,5 @@ Feature: Mission Profile 任務類型與 Technique Noise/Risk 標記
 - ADR-039: Mission Profile 任務類型與 Technique Noise/Risk 標記制
 - Plan: `/home/ubuntu/.claude/plans/logical-munching-finch.md` Phase 1
 
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

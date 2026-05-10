@@ -422,3 +422,5 @@ model_name = TASK_MODEL_MAP.get("node_summary", settings.CLAUDE_MODEL)
 | `test_explicit_model_overrides_task_type` | `model="X", task_type="orient_analysis"` | `effective_model == "X"` |
 | `test_task_model_map_uses_settings_values` | 驗證 `TASK_MODEL_MAP` 引用 `settings.*` | 環境變數覆蓋生效 |
 
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

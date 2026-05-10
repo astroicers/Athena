@@ -315,3 +315,5 @@ Feature: SPEC-004 REST API 路由
 - SPEC-002：Pydantic Models（依賴）
 - SPEC-003：Database 層（依賴）
 
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

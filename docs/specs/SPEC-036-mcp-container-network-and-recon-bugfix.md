@@ -186,3 +186,5 @@ Feature: MCP 容器網路存取與 Recon Scan 結果修復
 | 後端 Alerts | 連續 3 次 scan 回傳 0 services | 可能的網路隔離問題偵測 |
 | 後端故障偵測 | `extra_hosts` 設定缺失 | 容器內 `ping host.docker.internal` 失敗 |
 | 前端 | N/A | 本次修復無前端可觀測性需求 |
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

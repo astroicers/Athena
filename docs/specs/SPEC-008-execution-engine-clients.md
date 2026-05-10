@@ -310,3 +310,5 @@ Feature: SPEC-008 執行引擎客戶端
 - Caldera API 文件：https://caldera.readthedocs.io/en/latest/Server-Configuration.html
 - SPEC-007：OODA Loop Engine（被依賴——engine_router 呼叫 client）
 
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

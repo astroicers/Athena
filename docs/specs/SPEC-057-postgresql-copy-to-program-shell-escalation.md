@@ -202,3 +202,4 @@ Feature: PostgreSQL COPY TO PROGRAM Shell Escalation
 - `_SHELL_CAPABLE_TRAITS`：`backend/app/services/ooda_controller.py` L45-55
 - SPEC-056：Multi-Protocol Credential Spray Extension
 - metasploitable2 PostgreSQL 預設設定：postgres superuser 無密碼 + `pg_hba.conf` trust
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

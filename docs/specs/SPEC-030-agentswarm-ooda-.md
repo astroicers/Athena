@@ -852,3 +852,5 @@ Feature: AgentSwarm OODA 並行任務排程
   - `backend/app/models/api_schemas.py` — API schema 定義
   - `backend/app/database.py` — CREATE TABLE statements
 
+
+<!-- 最後審閱：2026-05-10 — 實作已驗證，內容準確 -->

@@ -1,5 +1,6 @@
 pub mod sqlx_repo;
 pub mod memory_repo;
+pub mod iter_store;
 
 use async_trait::async_trait;
 use athena_types::{Fact, FactTrait, OperationId, AthenaError};
@@ -14,6 +15,7 @@ pub trait FactRepository: Send + Sync {
 
 pub use sqlx_repo::SqlxFactRepository;
 pub use memory_repo::InMemoryFactRepository;
+pub use iter_store::{IterationStore, SqlxIterationStore, NoopIterationStore};
 
 #[cfg(test)]
 mod tests {

@@ -6,7 +6,7 @@ use axum::{Router, middleware as axum_middleware};
 use std::sync::Arc;
 use athena_events::EventBus;
 use athena_engine_ooda::DecisionEngine;
-use athena_facts::FactRepository;
+use athena_facts::{FactRepository, IterationStore};
 use athena_scope::ScopeValidator;
 use athena_opsec::OpsecMonitor;
 use athena_c5isr::C5isrMapper;
@@ -21,6 +21,7 @@ pub struct AppState {
     pub event_bus: Arc<EventBus>,
     pub engine: Arc<dyn DecisionEngine>,
     pub fact_repo: Arc<dyn FactRepository>,
+    pub iter_store: Arc<dyn IterationStore>,
     pub scope: Arc<dyn ScopeValidator>,
     pub opsec: Arc<dyn OpsecMonitor>,
     pub c5isr: Arc<dyn C5isrMapper>,
@@ -132,12 +133,14 @@ pub mod test_helpers {
 
     pub fn make_test_state() -> Arc<AppState> {
         let fact_repo: Arc<dyn athena_facts::FactRepository> = Arc::new(InMemoryFactRepository::new());
+        let iter_store: Arc<dyn athena_facts::IterationStore> = Arc::new(athena_facts::NoopIterationStore);
         let engine: Arc<dyn DecisionEngine> = Arc::new(MockEngine);
         let scheduler = Arc::new(OodaScheduler::new(Arc::clone(&engine)));
         Arc::new(AppState {
             event_bus: Arc::new(athena_events::EventBus::new()),
             engine,
             fact_repo,
+            iter_store,
             scope: Arc::new(CidrScopeValidator::allow_all()),
             opsec: Arc::new(InMemoryOpsecMonitor::new(1000)),
             c5isr: Arc::new(MockC5isr),

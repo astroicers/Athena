@@ -150,6 +150,7 @@ async fn run_iteration(
     }
 
     let (iter_id, outcome) = state.engine.run_iteration(&op_id).await?;
+    let _ = state.iter_store.record(&op_id, &iter_id).await;
     Ok(Json(json!({
         "op_id": op_id.to_string(),
         "iter_id": iter_id.to_string(),
@@ -165,6 +166,7 @@ async fn run_iteration_for_op(
 ) -> Result<Json<Value>, ApiError> {
     let op = op_id(&id)?;
     let (iter_id, outcome) = state.engine.run_iteration(&op).await?;
+    let _ = state.iter_store.record(&op, &iter_id).await;
     Ok(Json(json!({
         "op_id": id,
         "iter_id": iter_id.to_string(),

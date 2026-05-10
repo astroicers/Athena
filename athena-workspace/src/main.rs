@@ -9,7 +9,7 @@ use athena_events::EventBus;
 use athena_api::{create_router, AppState};
 
 use athena_db::DatabasePool;
-use athena_facts::SqlxFactRepository;
+use athena_facts::{SqlxFactRepository, SqlxIterationStore};
 use athena_llm_client::MockLlmClient;
 use athena_mcp_client::HttpMcpClient;
 use athena_mcp_fact_extractor::McpFactExtractor;
@@ -47,7 +47,11 @@ async fn main() -> Result<()> {
 
     // ── fact repository ───────────────────────────────────────────────────────
     let fact_repo: Arc<dyn athena_facts::FactRepository> =
-        Arc::new(SqlxFactRepository::new(pool.pool));
+        Arc::new(SqlxFactRepository::new(pool.pool.clone()));
+
+    // ── iteration store ───────────────────────────────────────────────────────
+    let iter_store: Arc<dyn athena_facts::IterationStore> =
+        Arc::new(SqlxIterationStore::new(pool.pool));
 
     // ── mcp client ────────────────────────────────────────────────────────────
     let mcp_base = std::env::var("MCP_BASE_URL")
@@ -150,6 +154,7 @@ async fn main() -> Result<()> {
         event_bus,
         engine,
         fact_repo,
+        iter_store,
         scope,
         opsec,
         c5isr,

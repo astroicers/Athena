@@ -8,5 +8,3 @@ VERSION  ?= latest
 # --- 專案自訂 targets 請寫在此區塊 ---
 
 
-# ASP targets（勿刪除此行）
--include .asp/Makefile.inc

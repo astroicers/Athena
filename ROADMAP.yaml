@@ -194,7 +194,7 @@ phases:
     tasks:
       - id: rc-01
         title: "athena-api — all 27 routers"
-        status: pending
+        status: completed
         depends: [beta1-08, beta2-05, beta3-03]
         adr: ADR-102, ADR-103
       - id: rc-02

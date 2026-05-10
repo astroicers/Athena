@@ -1,4 +1,5 @@
 use std::net::SocketAddr;
+use std::path::Path;
 use std::sync::Arc;
 use anyhow::Result;
 use tracing::info;
@@ -7,6 +8,27 @@ use athena_config::AthenaConfig;
 use athena_events::EventBus;
 use athena_api::{create_router, AppState};
 
+use athena_facts::InMemoryFactRepository;
+use athena_llm_client::MockLlmClient;
+use athena_mcp_client::HttpMcpClient;
+use athena_mcp_fact_extractor::McpFactExtractor;
+use athena_exec_ssh::{SshExecutionEngine, ssh::SshConfig};
+use athena_observe::DefaultObserver;
+use athena_orient::ClaudeOrientEngine;
+use athena_decide::RiskMatrixDecider;
+use athena_act::ActRouter;
+use athena_engine_ooda::OodaEngine;
+use athena_scheduler::OodaScheduler;
+use athena_scope::CidrScopeValidator;
+use athena_opsec::InMemoryOpsecMonitor;
+use athena_c5isr::FactDrivenC5isrMapper;
+use athena_vuln::NvdClient;
+use athena_pentest_kb::TantivyKnowledgeBase;
+use athena_brief::FactBriefGenerator;
+use athena_report::FactReportGenerator;
+use athena_recon::McpReconEngine;
+use athena_knowledge::constraint::OperationalConstraints;
+
 #[tokio::main]
 async fn main() -> Result<()> {
     athena_telemetry::init_pretty();
@@ -14,10 +36,103 @@ async fn main() -> Result<()> {
     let config = AthenaConfig::load_or_default();
     info!(version = env!("CARGO_PKG_VERSION"), "Athena 2.0 starting");
 
+    // ── fact repository ───────────────────────────────────────────────────────
+    let fact_repo: Arc<dyn athena_facts::FactRepository> =
+        Arc::new(InMemoryFactRepository::new());
+
+    // ── mcp client ────────────────────────────────────────────────────────────
+    let mcp_base = std::env::var("MCP_BASE_URL")
+        .unwrap_or_else(|_| "http://localhost:8080".into());
+    let mcp: Arc<dyn athena_mcp_client::McpClient> = Arc::new(
+        HttpMcpClient::new(mcp_base, vec![
+            "nmap".into(), "web-scanner".into(), "api-fuzzer".into(),
+            "dns-enum".into(), "ssl-checker".into(), "smtp-tester".into(),
+        ])
+    );
+
+    // ── llm client ────────────────────────────────────────────────────────────
+    let llm_model = std::env::var("ANTHROPIC_MODEL")
+        .unwrap_or_else(|_| "claude-opus-4-7-20251101".into());
+    let llm: Arc<dyn athena_llm_client::LlmClient> =
+        if std::env::var("MOCK_LLM").as_deref() == Ok("true") {
+            Arc::new(MockLlmClient::new())
+        } else {
+            let api_key = std::env::var("ANTHROPIC_API_KEY").unwrap_or_default();
+            Arc::new(athena_llm_client::AnthropicClient::new(api_key, llm_model.clone()))
+        };
+
+    // ── OODA phases ───────────────────────────────────────────────────────────
+    let extractor: Arc<dyn athena_mcp_fact_extractor::FactExtractor> =
+        Arc::new(McpFactExtractor::new());
+
+    let ssh_engine: Arc<dyn athena_exec_ssh::ExecutionEngine> =
+        Arc::new(SshExecutionEngine::new(SshConfig::default()));
+
+    let observe: Arc<dyn athena_observe::ObservePhase> =
+        Arc::new(DefaultObserver::new(Arc::clone(&fact_repo), Arc::clone(&mcp)));
+
+    let orient: Arc<dyn athena_orient::OrientPhase> =
+        Arc::new(ClaudeOrientEngine::new(Arc::clone(&llm), llm_model));
+
+    let decide: Arc<dyn athena_decide::DecidePhase> =
+        Arc::new(RiskMatrixDecider::new());
+
+    let act: Arc<dyn athena_act::ActPhase> =
+        Arc::new(ActRouter::new(Some(ssh_engine), Some(Arc::clone(&mcp)), Arc::clone(&extractor)));
+
+    let engine: Arc<dyn athena_engine_ooda::DecisionEngine> =
+        Arc::new(OodaEngine::new(observe, orient, decide, act, OperationalConstraints::default()));
+
+    // ── scheduler ─────────────────────────────────────────────────────────────
+    let scheduler = Arc::new(OodaScheduler::new(Arc::clone(&engine)));
+
+    // ── intelligence modules ──────────────────────────────────────────────────
+    let scope: Arc<dyn athena_scope::ScopeValidator> =
+        Arc::new(CidrScopeValidator::allow_all());
+
+    let opsec: Arc<dyn athena_opsec::OpsecMonitor> =
+        Arc::new(InMemoryOpsecMonitor::new(1000));
+
+    let c5isr: Arc<dyn athena_c5isr::C5isrMapper> =
+        Arc::new(FactDrivenC5isrMapper::new(Arc::clone(&fact_repo)));
+
+    let vuln_api_key = std::env::var("NVD_API_KEY").ok();
+    let vuln: Arc<dyn athena_vuln::VulnerabilityManager> =
+        Arc::new(NvdClient::new(vuln_api_key));
+
+    let kb: Arc<dyn athena_pentest_kb::KnowledgeBase> = {
+        let tkvb = TantivyKnowledgeBase::new_in_memory()?;
+        if let Ok(entries) = athena_pentest_kb::loader::load_markdown_dir(Path::new("data/kb")) {
+            let _ = tkvb.add_entries(entries);
+        }
+        Arc::new(tkvb)
+    };
+
+    let brief: Arc<dyn athena_brief::BriefGenerator> =
+        Arc::new(FactBriefGenerator::new(Arc::clone(&fact_repo), Arc::clone(&c5isr)));
+
+    let report: Arc<dyn athena_report::ReportGenerator> =
+        Arc::new(FactReportGenerator::new(Arc::clone(&fact_repo)));
+
+    let recon: Arc<dyn athena_recon::ReconEngine> =
+        Arc::new(McpReconEngine::new(Arc::clone(&mcp)));
+
+    // ── assemble state & serve ────────────────────────────────────────────────
     let event_bus = Arc::new(EventBus::new());
 
     let state = Arc::new(AppState {
         event_bus,
+        engine,
+        fact_repo,
+        scope,
+        opsec,
+        c5isr,
+        vuln,
+        kb,
+        brief,
+        report,
+        scheduler,
+        recon,
     });
 
     let app = create_router(state);

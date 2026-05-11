@@ -6,7 +6,13 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum ConfigError {
     #[error("config load error: {0}")]
-    Load(#[from] figment::Error),
+    Load(#[from] Box<figment::Error>),
+}
+
+impl From<figment::Error> for ConfigError {
+    fn from(e: figment::Error) -> Self {
+        ConfigError::Load(Box::new(e))
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

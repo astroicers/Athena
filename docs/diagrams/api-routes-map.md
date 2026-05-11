@@ -21,6 +21,9 @@ mindmap
       POST /operations/:op_id/abort
       POST /operations/:op_id/iterate
         對既有 op 再跑一輪
+      POST /operations/:op_id/approve
+        人類核准高風險操作
+        approved_by: String
     facts
       GET /operations/:op_id/facts
       GET /operations/:op_id/facts/count
@@ -85,17 +88,23 @@ graph LR
 ```mermaid
 flowchart TD
     A[POST /operations\ntarget_ip + mode] --> B{OODA 執行}
-    B --> C[GET /operations/:op_id/facts\n查看收集的 facts]
-    C --> D{需要再跑一輪？}
-    D -->|是| E[POST /operations/:op_id/iterate]
-    E --> C
-    D -->|否| F[GET /operations/:op_id/brief\n生成作戰簡報]
-    F --> G[GET /operations/:op_id/report\n生成滲透測試報告]
-    G --> H[GET /operations/:op_id/c5isr\nC5ISR 六域評估]
+    B --> C{Decide 結果}
+    C -->|approved=true\nrisk ≤ 0.80| D[ACT 執行技術]
+    C -->|approved=false\nrisk > 0.80| E[等待人類審批]
+    E --> F[POST /operations/:op_id/approve\napproved_by: team_lead]
+    F --> G[OODA 再跑一輪\nDecide 讀 human_approved fact\n直接批准]
+    G --> D
+    D --> H[GET /operations/:op_id/facts\n查看收集的 facts]
+    H --> I{需要再跑一輪？}
+    I -->|是| J[POST /operations/:op_id/iterate]
+    J --> H
+    I -->|否| K[GET /operations/:op_id/brief\n生成作戰簡報]
+    K --> L[GET /operations/:op_id/report\n生成滲透測試報告]
+    L --> M[GET /operations/:op_id/c5isr\nC5ISR 六域評估]
 
-    B --> I{需要自動循環？}
-    I -->|是| J[POST /operations/:op_id/scheduler/start\ninterval_secs: 60]
-    J --> K[DELETE /operations/:op_id/scheduler/stop]
+    B --> N{需要自動循環？}
+    N -->|是| O[POST /operations/:op_id/scheduler/start\ninterval_secs: 60]
+    O --> P[DELETE /operations/:op_id/scheduler/stop]
 ```
 
 ---

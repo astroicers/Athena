@@ -15,7 +15,25 @@ pub struct AthenaConfig {
     pub database: DatabaseConfig,
     pub llm: LlmConfig,
     pub mcp: McpConfig,
+    #[serde(default)]
+    pub ssh: SshTargetConfig,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct SshTargetConfig {
+    #[serde(default = "default_ssh_user")]
+    pub username: String,
+    pub password: Option<String>,
+    pub private_key_pem: Option<String>,
+    #[serde(default = "default_ssh_port")]
+    pub port: u16,
+    #[serde(default = "default_ssh_timeout")]
+    pub connect_timeout_secs: u64,
+}
+
+fn default_ssh_user() -> String { "root".into() }
+fn default_ssh_port() -> u16 { 22 }
+fn default_ssh_timeout() -> u64 { 10 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerConfig {
@@ -83,6 +101,7 @@ impl Default for AthenaConfig {
                 mock_mode: true,
             },
             mcp: McpConfig { base_url: default_mcp_base(), timeout_secs: default_timeout_secs(), tool_urls: HashMap::new() },
+            ssh: SshTargetConfig::default(),
         }
     }
 }

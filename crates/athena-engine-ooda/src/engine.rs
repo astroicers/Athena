@@ -92,7 +92,7 @@ impl DecisionEngine for OodaEngine {
         let outcome = ctx.into_outcome();
         for r in &outcome.results {
             if r.success {
-                info!(op_id = %op_id, technique = %r.technique_id, "ACT success");
+                info!(op_id = %op_id, technique = %r.technique_id, output = %r.output, "ACT success");
             } else {
                 warn!(op_id = %op_id, technique = %r.technique_id, output = %r.output, "ACT failed");
             }

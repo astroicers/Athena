@@ -99,8 +99,15 @@ async fn main() -> Result<()> {
     let extractor: Arc<dyn athena_mcp_fact_extractor::FactExtractor> =
         Arc::new(McpFactExtractor::new());
 
-    let ssh_engine: Arc<dyn athena_exec_ssh::ExecutionEngine> =
-        Arc::new(SshExecutionEngine::new(SshConfig::default()));
+    let ssh_engine: Arc<dyn athena_exec_ssh::ExecutionEngine> = Arc::new(
+        SshExecutionEngine::new(SshConfig {
+            username: config.ssh.username.clone(),
+            password: config.ssh.password.clone(),
+            private_key_pem: config.ssh.private_key_pem.clone(),
+            port: config.ssh.port,
+            connect_timeout_secs: config.ssh.connect_timeout_secs,
+        })
+    );
 
     let observe: Arc<dyn athena_observe::ObservePhase> =
         Arc::new(DefaultObserver::new(Arc::clone(&fact_repo), Arc::clone(&mcp)));

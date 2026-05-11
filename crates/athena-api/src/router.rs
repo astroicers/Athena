@@ -233,17 +233,50 @@ async fn run_iteration(
 async fn run_iteration_for_op(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
+    body: Option<Json<StartOperationRequest>>,
 ) -> Result<Json<Value>, ApiError> {
+    let req = body.map(|b| b.0).unwrap_or_default();
     let op = op_id(&id)?;
+
+    let is_override = req.mode == OperationMode::OperatorOverride;
+    if is_override {
+        if req.operator_techniques.is_empty() {
+            return Err(ApiError(athena_types::AthenaError::Internal(
+                "operator_override mode requires at least one technique in operator_techniques".into()
+            )));
+        }
+        let reason = req.override_reason.as_deref().unwrap_or("no reason provided");
+        let _ = state.fact_repo.insert(Fact {
+            id: Uuid::new_v4(),
+            op_id: op.clone(),
+            trait_name: FactTrait("operator_override".into()),
+            value: FactValue::Text(format!(
+                "techniques={} reason={}",
+                req.operator_techniques.join(","),
+                reason,
+            )),
+            source: "api".into(),
+            confidence: 100,
+            collected_at: Utc::now(),
+        }).await;
+        tracing::warn!(
+            op_id = %op,
+            techniques = ?req.operator_techniques,
+            reason = reason,
+            "OPERATOR OVERRIDE: bypassing LLM Orient and risk gate"
+        );
+    }
+
     let facts_before = state.fact_repo.count(&op).await.unwrap_or(0);
     let (iter_id, _outcome) = state.engine.run_iteration(&op).await?;
     let facts_after = state.fact_repo.count(&op).await.unwrap_or(0);
-    let _ = state.iter_store.record(&op, &iter_id, "auto").await;
+    let _ = state.iter_store.record(&op, &iter_id, if is_override { "operator-override" } else { "auto" }).await;
     Ok(Json(json!({
         "op_id": id,
         "iter_id": iter_id.to_string(),
         "facts_collected": facts_after.saturating_sub(facts_before),
         "total_facts": facts_after,
+        "mode": if is_override { "operator_override" } else { "normal" },
     })))
 }
 

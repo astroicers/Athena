@@ -62,25 +62,44 @@ impl FactReportGenerator {
         Self { fact_repo }
     }
 
-    fn severity_for_trait(trait_name: &str) -> Severity {
-        match trait_name {
-            "valid_credential" => Severity::Critical,
-            "vulnerability" => Severity::High,
-            "open_port" => Severity::Medium,
-            "local_user" => Severity::Medium,
-            "network_segment" => Severity::Low,
-            _ => Severity::Informational,
-        }
+    /// Returns None for metadata/control facts that should not appear as findings.
+    fn severity_for_trait(trait_name: &str) -> Option<Severity> {
+        let s = if trait_name.starts_with("valid_credential") || trait_name.starts_with("access.") {
+            Severity::Critical
+        } else if trait_name.starts_with("web.vuln") || trait_name.starts_with("vulnerability") {
+            Severity::High
+        } else if trait_name.starts_with("service.open_port") || trait_name == "open_port" {
+            Severity::Medium
+        } else if trait_name == "local_user" || trait_name.starts_with("user.") {
+            Severity::Medium
+        } else if trait_name.starts_with("network.host") || trait_name == "network_segment" {
+            Severity::Low
+        } else if trait_name == "host.os" || trait_name == "os" || trait_name == "hostname" {
+            Severity::Informational
+        } else if trait_name == "target_ip" || trait_name == "target_hostname"
+            || trait_name == "human_approved" || trait_name == "operator_override"
+        {
+            // Metadata facts — not security findings
+            return None;
+        } else {
+            Severity::Informational
+        };
+        Some(s)
     }
 
     fn remediation_for_trait(trait_name: &str) -> &'static str {
-        match trait_name {
-            "valid_credential" => "Rotate credentials immediately. Implement MFA and enforce strong password policy.",
-            "vulnerability" => "Apply vendor patches immediately. Implement compensating controls if patching is not immediately possible.",
-            "open_port" => "Restrict unnecessary port exposure via firewall rules. Apply principle of least privilege.",
-            "local_user" => "Review local accounts. Disable or remove unnecessary accounts and enforce least privilege.",
-            "network_segment" => "Implement network segmentation. Restrict inter-segment communication via firewall ACLs.",
-            _ => "Review and remediate according to security policy.",
+        if trait_name.starts_with("valid_credential") || trait_name.starts_with("access.") {
+            "Rotate credentials immediately. Implement MFA and enforce strong password policy."
+        } else if trait_name.starts_with("web.vuln") || trait_name.starts_with("vulnerability") {
+            "Apply vendor patches immediately. Implement compensating controls if patching is not immediately possible."
+        } else if trait_name.starts_with("service.open_port") || trait_name == "open_port" {
+            "Restrict unnecessary port exposure via firewall rules. Apply principle of least privilege."
+        } else if trait_name == "local_user" || trait_name.starts_with("user.") {
+            "Review local accounts. Disable or remove unnecessary accounts and enforce least privilege."
+        } else if trait_name.starts_with("network") {
+            "Implement network segmentation. Restrict inter-segment communication via firewall ACLs."
+        } else {
+            "Review and remediate according to security policy."
         }
     }
 }
@@ -104,15 +123,24 @@ impl ReportGenerator for FactReportGenerator {
         }
 
         for (trait_name, values) in &by_trait {
-            let severity = Self::severity_for_trait(trait_name);
+            let Some(severity) = Self::severity_for_trait(trait_name) else {
+                continue; // skip metadata / control facts
+            };
             let remediation = Self::remediation_for_trait(trait_name);
+            // Truncate long value lists for readability
+            let display_values = if values.len() > 5 {
+                format!("{} (and {} more)", values[..5].join(", "), values.len() - 5)
+            } else {
+                values.join(", ")
+            };
             findings.push(Finding {
                 id: format!("FIND-{finding_idx:03}"),
-                title: format!("{}: {}", trait_name.replace('_', " ").to_uppercase(),
-                    values.join(", ")),
+                title: format!("{}: {}",
+                    trait_name.replace(['.', '_'], " ").to_uppercase(),
+                    &display_values[..display_values.len().min(80)]),
                 severity,
                 description: format!("Discovered {} '{}' instance(s): {}",
-                    trait_name, values.len(), values.join(", ")),
+                    values.len(), trait_name, values.join(", ")),
                 remediation: remediation.into(),
             });
             finding_idx += 1;

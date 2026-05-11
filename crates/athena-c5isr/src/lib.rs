@@ -43,30 +43,52 @@ impl C5isrMapper for FactDrivenC5isrMapper {
     async fn assess(&self, op_id: &OperationId) -> Result<C5isrStatus, AthenaError> {
         let facts = self.fact_repo.list(op_id).await?;
 
+        // Match exact trait name or dotted prefix (e.g. "service.open_port" matches prefix "service.")
         let has = |trait_name: &str| -> bool {
-            facts.iter().any(|f| f.trait_name.0 == trait_name)
+            facts.iter().any(|f| f.trait_name.0 == trait_name || f.trait_name.0.starts_with(&format!("{trait_name}.")))
         };
 
-        let count = |trait_name: &str| -> usize {
-            facts.iter().filter(|f| f.trait_name.0 == trait_name).count()
+        let count_prefix = |prefix: &str| -> usize {
+            facts.iter().filter(|f| f.trait_name.0 == prefix || f.trait_name.0.starts_with(&format!("{prefix}."))).count()
         };
 
-        // Scoring heuristics derived from fact types
+        // Scoring heuristics derived from fact types.
+        // Supports both legacy exact names and dotted namespaced names (service.open_port, host.os, etc.)
         let mut status = C5isrStatus {
             // Command: credential access enables commanding the target
-            command: if has("valid_credential") { 0.8 } else { 0.2 },
-            // Control: active shell session or execution path
-            control: if has("open_port") && count("open_port") >= 1 { 0.6 } else { 0.1 },
-            // Communications: known services = comms channels mapped
-            communications: if has("service") || has("open_port") { 0.7 } else { 0.2 },
-            // Computers: OS/hostname identified
-            computers: if has("os") && has("hostname") { 0.9 } else if has("live_host") { 0.5 } else { 0.1 },
-            // Intelligence: vulnerability data
-            intelligence: if has("vulnerability") { 0.8 } else if has("kernel_version") { 0.4 } else { 0.2 },
+            command: if has("valid_credential") || has("access") { 0.8 } else { 0.2 },
+            // Control: open ports = execution paths exist
+            control: {
+                let n = count_prefix("service.open_port") + count_prefix("open_port");
+                if n >= 3 { 0.7 } else if n >= 1 { 0.5 } else { 0.1 }
+            },
+            // Communications: services enumerated = comms channels mapped
+            communications: {
+                if count_prefix("service.open_port") + count_prefix("open_port") >= 1
+                    || has("service")
+                {
+                    0.7
+                } else { 0.2 }
+            },
+            // Computers: OS / hostname / IP identified
+            computers: {
+                if (has("host.os") || has("os")) && (has("hostname") || has("network.host.ip")) {
+                    0.9
+                } else if has("network.host.ip") || has("live_host") || has("target_ip") {
+                    0.5
+                } else { 0.1 }
+            },
+            // Intelligence: vulnerability or versioned service data
+            intelligence: {
+                if has("web.vuln") || has("vulnerability") { 0.8 }
+                else if count_prefix("service.open_port") >= 5 { 0.5 }
+                else if has("kernel_version") { 0.4 }
+                else { 0.2 }
+            },
             // Surveillance: user enumeration and network mapping
             surveillance: {
-                let user_score = if has("local_user") { 0.5 } else { 0.0 };
-                let net_score = if has("network_segment") || has("live_host") { 0.5 } else { 0.0 };
+                let user_score = if has("local_user") || has("user") { 0.5 } else { 0.0 };
+                let net_score = if has("network_segment") || has("live_host") || has("network.host.ip") { 0.5 } else { 0.0 };
                 f32::min(user_score + net_score, 1.0)
             },
             overall: 0.0,

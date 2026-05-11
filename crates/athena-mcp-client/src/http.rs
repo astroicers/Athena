@@ -274,27 +274,40 @@ impl McpClient for StreamableMcpClient {
             }
         });
 
-        let resp = self.client
-            .post(&url)
-            .header("Accept", "application/json, text/event-stream")
-            .header("Content-Type", "application/json")
-            .header("mcp-session-id", &session_id)
-            .json(&body)
-            .send()
-            .await;
+        let send_request = |sid: &str| {
+            self.client
+                .post(&url)
+                .header("Accept", "application/json, text/event-stream")
+                .header("Content-Type", "application/json")
+                .header("mcp-session-id", sid)
+                .json(&body)
+                .send()
+        };
 
-        match resp {
+        let resp = send_request(&session_id).await;
+
+        // If the HTTP transport fails (stale session / TCP reset), clear the cached session
+        // and try once more with a fresh initialize handshake.
+        let resp = match resp {
             Err(e) => {
-                self.breaker_for(tool).record_failure();
-                Err(AthenaError::McpError(format!("HTTP error calling {tool}: {e}")))
+                tracing::debug!(tool, error = %e, "MCP call failed, evicting session cache and retrying");
+                self.sessions.remove(tool);
+                let new_sid = self.get_or_create_session(tool, &base_url).await
+                    .map_err(|e2| AthenaError::McpError(format!("re-initialize failed for {tool}: {e2}")))?;
+                send_request(&new_sid).await
+                    .map_err(|e2| AthenaError::McpError(format!("HTTP error calling {tool} after retry: {e2}")))?
             }
-            Ok(r) if !r.status().is_success() => {
+            Ok(r) => r,
+        };
+
+        match (resp.status().is_success(), resp) {
+            (false, r) => {
                 self.breaker_for(tool).record_failure();
                 let status = r.status();
                 let text = r.text().await.unwrap_or_default();
-                Err(AthenaError::McpError(format!("Tool {tool} returned {status}: {text}")))
+                return Err(AthenaError::McpError(format!("Tool {tool} returned {status}: {text}")));
             }
-            Ok(r) => {
+            (true, r) => {
                 // FastMCP returns text/event-stream even for single responses.
                 // Parse as text and extract the JSON from the `data: ` line.
                 let body_text = r.text().await

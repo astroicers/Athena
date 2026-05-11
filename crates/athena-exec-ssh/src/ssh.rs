@@ -115,30 +115,58 @@ impl SshExecutionEngine {
         Err(AthenaError::ExecutionFailed("Target has no hostname or IP".into()))
     }
 
-    // Map MITRE technique ID to a recon/exec command
+    /// Returns true if the technique has a known SSH command mapping.
+    pub fn supports_technique(technique_id: &str) -> bool {
+        let dummy = TechniqueParams { technique_id: technique_id.into(), params: serde_json::json!({}) };
+        Self::technique_to_command(technique_id, &dummy).is_some()
+    }
+
+    // Map MITRE technique ID to a shell command executable over SSH.
+    // Returns None for techniques that require a non-SSH channel (e.g. RDP GUI, VNC).
     fn technique_to_command(technique_id: &str, params: &TechniqueParams) -> Option<String> {
         match technique_id {
-            "T1046" => Some("ss -tlnp 2>/dev/null || netstat -tlnp 2>/dev/null".into()),
-            "T1082" => Some("uname -a && cat /etc/os-release 2>/dev/null".into()),
-            "T1083" => {
+            // Discovery
+            "T1046"      => Some("ss -tlnp 2>/dev/null || netstat -tlnp 2>/dev/null".into()),
+            "T1082"      => Some("uname -a && cat /etc/os-release 2>/dev/null".into()),
+            "T1083"      => {
                 let path = params.params.get("path")
                     .and_then(|v| v.as_str())
                     .unwrap_or("/tmp");
-                // Sanitize path: only allow alphanumeric, slash, dot, hyphen, underscore
                 let safe = path.chars().all(|c| c.is_alphanumeric() || "/.-_".contains(c));
                 if safe { Some(format!("ls -la {path}")) } else { None }
             }
-            "T1059.004" => {
-                let cmd = params.params.get("cmd")
-                    .and_then(|v| v.as_str());
-                // Only allow pre-approved safe commands for T1059.004
+            "T1016"      => Some("ip route show && cat /etc/resolv.conf 2>/dev/null".into()),
+            "T1033"      => Some("id && who".into()),
+            "T1069"      => Some("cat /etc/group".into()),
+            "T1087"      => Some("cat /etc/passwd | cut -d: -f1".into()),
+            "T1049"      => Some("ss -anp 2>/dev/null || netstat -anp 2>/dev/null".into()),
+            "T1201"      => Some("grep -E '^(PASS_MAX_DAYS|PASS_MIN_LEN|UID_MIN)' /etc/login.defs 2>/dev/null".into()),
+            // Lateral movement via SSH (T1021.004 = SSH as technique, running over existing SSH session)
+            "T1021.004"  => Some("id && uname -a && cat /etc/hostname".into()),
+            // Execution
+            "T1059.004"  => {
+                let cmd = params.params.get("cmd").and_then(|v| v.as_str());
+                cmd.and_then(|c| {
+                    let allowed = ["id", "whoami", "hostname", "pwd", "env", "uptime", "uname -a"];
+                    if allowed.contains(&c) { Some(c.to_string()) } else { None }
+                })
+            }
+            "T1059.003"  => {
+                let cmd = params.params.get("cmd").and_then(|v| v.as_str());
                 cmd.and_then(|c| {
                     let allowed = ["id", "whoami", "hostname", "pwd", "env", "uptime"];
                     if allowed.contains(&c) { Some(c.to_string()) } else { None }
                 })
             }
-            "T1016" => Some("ip route show && cat /etc/resolv.conf 2>/dev/null".into()),
-            "T1033" => Some("id && who".into()),
+            // Credential access — enumerate shadow if we have root
+            "T1003"      => Some("id && ls -la /etc/shadow 2>/dev/null".into()),
+            "T1078"      => Some("id && last | head -10".into()),
+            // Privilege escalation checks
+            "T1548.001"  => Some("find / -perm -4000 -type f 2>/dev/null | head -20".into()),
+            // Collection
+            "T1005"      => Some("find /home /root /tmp -name '*.txt' -o -name '*.conf' 2>/dev/null | head -20".into()),
+            // Techniques that cannot run over a shell (RDP GUI, VNC)
+            "T1021.001" | "T1021.005" => None,
             _ => None,
         }
     }

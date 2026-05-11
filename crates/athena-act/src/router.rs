@@ -49,11 +49,12 @@ impl ActRouter {
 
     // Route technique to best available engine
     fn route_technique(&self, technique_id: &str) -> EngineChoice {
-        // If there's an MCP mapping, prefer MCP for network-level recon techniques
+        // MCP handles network recon and remote tool techniques
         if self.mcp.is_some() && HttpMcpClient::technique_to_tool(technique_id).is_some() {
             return EngineChoice::Mcp;
         }
-        if self.ssh.is_some() {
+        // SSH handles shell-based techniques on the target
+        if self.ssh.is_some() && athena_exec_ssh::SshExecutionEngine::supports_technique(technique_id) {
             return EngineChoice::Ssh;
         }
         EngineChoice::None

@@ -124,6 +124,40 @@ impl OrientPhase for ClaudeOrientEngine {
     }
 }
 
+/// Skips LLM entirely — passes the observation summary straight through as the
+/// recommendation. Useful when the operator wants to run Act immediately without
+/// waiting for Claude, or when the LLM is unavailable in a disconnected environment.
+pub struct PassthroughOrient {
+    risk_score: f32,
+}
+
+impl PassthroughOrient {
+    pub fn new(risk_score: f32) -> Self {
+        Self { risk_score: risk_score.clamp(0.0, 1.0) }
+    }
+}
+
+impl Default for PassthroughOrient {
+    fn default() -> Self { Self::new(0.5) }
+}
+
+#[async_trait]
+impl OrientPhase for PassthroughOrient {
+    async fn analyze(
+        &self,
+        _op_id: &OperationId,
+        observation_summary: &str,
+        _attack_graph_summary: &str,
+    ) -> Result<OrientRecommendation, AthenaError> {
+        Ok(OrientRecommendation {
+            summary: observation_summary.chars().take(200).collect(),
+            recommended_techniques: vec![],
+            risk_score: self.risk_score,
+            rationale: "passthrough — no LLM analysis performed".into(),
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

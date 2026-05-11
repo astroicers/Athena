@@ -22,11 +22,30 @@ fn op_id(s: &str) -> Result<OperationId, ApiError> {
 
 // ── request / response DTOs ──────────────────────────────────────────────────
 
+/// Execution mode for a new OODA operation.
+/// - `normal` (default): full LLM-driven Orient → risk-gated Decide → Act
+/// - `operator_override`: skip LLM Orient and risk gate; run exactly the listed techniques
+#[derive(Deserialize, Default, PartialEq, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum OperationMode {
+    #[default]
+    Normal,
+    OperatorOverride,
+}
+
 #[derive(Deserialize, Default)]
 pub struct StartOperationRequest {
     pub name: Option<String>,
     pub target_ip: Option<String>,
     pub target_hostname: Option<String>,
+    /// See `OperationMode`
+    #[serde(default)]
+    pub mode: OperationMode,
+    /// Required when mode=operator_override: MITRE technique IDs to execute directly
+    #[serde(default)]
+    pub operator_techniques: Vec<String>,
+    /// Reason for operator override — recorded in audit log
+    pub override_reason: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -154,6 +173,37 @@ async fn run_iteration(
         }
     }
 
+    // Operator override mode: inject seed facts that OperatorDirectDecider reads
+    let is_override = req.mode == OperationMode::OperatorOverride;
+    if is_override {
+        if req.operator_techniques.is_empty() {
+            return Err(ApiError(athena_types::AthenaError::Internal(
+                "operator_override mode requires at least one technique in operator_techniques".into()
+            )));
+        }
+        let reason = req.override_reason.as_deref().unwrap_or("no reason provided");
+        // Store override intent as facts so ActRouter and audit logs can trace it
+        let _ = state.fact_repo.insert(Fact {
+            id: Uuid::new_v4(),
+            op_id: op_id.clone(),
+            trait_name: FactTrait("operator_override".into()),
+            value: FactValue::Text(format!(
+                "techniques={} reason={}",
+                req.operator_techniques.join(","),
+                reason,
+            )),
+            source: "api".into(),
+            confidence: 100,
+            collected_at: Utc::now(),
+        }).await;
+        tracing::warn!(
+            op_id = %op_id,
+            techniques = ?req.operator_techniques,
+            reason = reason,
+            "OPERATOR OVERRIDE: bypassing LLM Orient and risk gate"
+        );
+    }
+
     let op_name = req.name.as_deref().unwrap_or("unnamed");
     let facts_before = state.fact_repo.count(&op_id).await.unwrap_or(0);
     let (iter_id, _outcome) = state.engine.run_iteration(&op_id).await?;
@@ -167,6 +217,7 @@ async fn run_iteration(
         "total_facts": facts_after,
         "target_ip": req.target_ip,
         "target_hostname": req.target_hostname,
+        "mode": if is_override { "operator_override" } else { "normal" },
     })))
 }
 

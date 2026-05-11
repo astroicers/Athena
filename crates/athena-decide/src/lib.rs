@@ -120,6 +120,38 @@ impl DecidePhase for RiskMatrixDecider {
     }
 }
 
+/// Bypasses risk evaluation entirely — operator explicitly specifies techniques.
+/// Intended for red team scenarios where the operator knows exactly what to run
+/// and has already accepted the risk. Every use is recorded via risk_accepted=1.0
+/// so audit logs show a deliberate override, not an error.
+pub struct OperatorDirectDecider {
+    techniques: Vec<String>,
+    reason: String,
+}
+
+impl OperatorDirectDecider {
+    pub fn new(techniques: Vec<String>, reason: impl Into<String>) -> Self {
+        Self { techniques, reason: reason.into() }
+    }
+}
+
+#[async_trait]
+impl DecidePhase for OperatorDirectDecider {
+    async fn evaluate(
+        &self,
+        _op_id: &OperationId,
+        _recommendation: &OrientRecommendation,
+        _constraints: &OperationalConstraints,
+    ) -> Result<Decision, AthenaError> {
+        Ok(Decision {
+            approved: true,
+            techniques: self.techniques.clone(),
+            reason: format!("operator override: {}", self.reason),
+            risk_accepted: 1.0,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

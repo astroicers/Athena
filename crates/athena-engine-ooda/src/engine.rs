@@ -63,7 +63,7 @@ impl DecisionEngine for OodaEngine {
         }
 
         // ── Orient ────────────────────────────────────────────────────────────
-        info!(op_id = %op_id, "ORIENT: calling LLM...");
+        info!(op_id = %op_id, "ORIENT: entering phase");
         ctx = self.orient.run(ctx).await?;
         if let Some(rec) = &ctx.recommendation {
             info!(

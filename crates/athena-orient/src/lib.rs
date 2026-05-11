@@ -14,9 +14,25 @@ pub trait OrientPhase: Send + Sync {
         attack_graph_summary: &str,
     ) -> Result<OrientRecommendation, AthenaError>;
 
-    /// PhaseContext pipeline entry point. Default impl calls analyze.
+    /// PhaseContext pipeline entry point.
+    /// Skips LLM entirely when operator_override_techniques is set in extensions.
     async fn run(&self, mut ctx: PhaseContext) -> Result<PhaseContext, AthenaError> {
-        let rec = self.analyze(&ctx.op_id, &ctx.obs_summary, "").await?;
+        if ctx.operator_techniques().is_some() {
+            // Operator has pre-decided — no need to call LLM
+            ctx.recommendation = Some(OrientRecommendation {
+                summary: "operator override — LLM skipped".into(),
+                recommended_techniques: ctx.operator_techniques().unwrap_or_default(),
+                risk_score: 1.0,
+                rationale: "operator explicitly specified techniques".into(),
+            });
+            return Ok(ctx);
+        }
+        let graph = ctx.extensions
+            .get("attack_graph_summary")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_owned();
+        let rec = self.analyze(&ctx.op_id, &ctx.obs_summary, &graph).await?;
         ctx.recommendation = Some(rec);
         Ok(ctx)
     }

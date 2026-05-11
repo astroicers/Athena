@@ -26,10 +26,50 @@ impl DefaultObserver {
     pub fn new(fact_repo: Arc<dyn FactRepository>, mcp: Arc<dyn McpClient>) -> Self {
         Self { fact_repo, mcp }
     }
+
+    /// After collect+summarize, lift any operator_override fact into ctx.extensions
+    /// so DecidePhase::run() can bypass the risk gate without needing fact_repo access.
+    async fn lift_operator_override(&self, op_id: &OperationId, ctx: &mut PhaseContext) {
+        let facts = self.fact_repo.list(op_id).await.unwrap_or_default();
+        for f in &facts {
+            if f.trait_name.0 == "operator_override" {
+                if let FactValue::Text(raw) = &f.value {
+                    // raw = "techniques=T1046,T1059.004 reason=..."
+                    if let Some(tech_part) = raw.strip_prefix("techniques=") {
+                        let (techs_str, reason) = tech_part
+                            .split_once(" reason=")
+                            .unwrap_or((tech_part, "operator override"));
+                        let techs: Vec<serde_json::Value> = techs_str
+                            .split(',')
+                            .filter(|s| !s.is_empty())
+                            .map(|t| serde_json::Value::String(t.to_owned()))
+                            .collect();
+                        ctx.extensions.insert(
+                            "operator_override_techniques".into(),
+                            serde_json::Value::Array(techs),
+                        );
+                        ctx.extensions.insert(
+                            "operator_override_reason".into(),
+                            serde_json::Value::String(reason.to_owned()),
+                        );
+                    }
+                }
+                break;
+            }
+        }
+    }
 }
 
 #[async_trait]
 impl ObservePhase for DefaultObserver {
+    async fn run(&self, mut ctx: PhaseContext) -> Result<PhaseContext, AthenaError> {
+        let op_id = ctx.op_id.clone();
+        let _facts = self.collect(&op_id).await?;
+        ctx.obs_summary = self.summarize(&op_id).await?;
+        self.lift_operator_override(&op_id, &mut ctx).await;
+        Ok(ctx)
+    }
+
     async fn collect(&self, op_id: &OperationId) -> Result<Vec<Fact>, AthenaError> {
         // Read seed facts to determine scan target
         let existing = self.fact_repo.list(op_id).await.unwrap_or_default();

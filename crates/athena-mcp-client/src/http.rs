@@ -95,6 +95,10 @@ impl StreamableMcpClient {
         let client = Client::builder()
             .connect_timeout(std::time::Duration::from_secs(3))
             .timeout(std::time::Duration::from_secs(30))
+            // Disable connection pooling: FastMCP containers are long-lived but
+            // idle TCP connections get silently dropped after minutes, causing
+            // "error decoding response body" on the next reuse.
+            .pool_max_idle_per_host(0)
             .build()
             .unwrap_or_default();
         Self {

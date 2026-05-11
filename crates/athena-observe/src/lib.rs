@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use std::sync::Arc;
-use athena_types::{Fact, FactTrait, FactValue, OperationId, AthenaError};
+use athena_types::{Fact, FactTrait, FactValue, OperationId, AthenaError, PhaseContext};
 use athena_facts::FactRepository;
 use athena_mcp_client::McpClient;
 
@@ -8,6 +8,13 @@ use athena_mcp_client::McpClient;
 pub trait ObservePhase: Send + Sync {
     async fn collect(&self, op_id: &OperationId) -> Result<Vec<Fact>, AthenaError>;
     async fn summarize(&self, op_id: &OperationId) -> Result<String, AthenaError>;
+
+    /// PhaseContext pipeline entry point. Default impl calls collect+summarize.
+    async fn run(&self, mut ctx: PhaseContext) -> Result<PhaseContext, AthenaError> {
+        let _facts = self.collect(&ctx.op_id).await?;
+        ctx.obs_summary = self.summarize(&ctx.op_id).await?;
+        Ok(ctx)
+    }
 }
 
 pub struct DefaultObserver {

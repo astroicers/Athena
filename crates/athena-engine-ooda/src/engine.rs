@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use std::sync::Arc;
-use athena_types::{OperationId, OodaIterationId, ExecutionOutcome, AthenaError};
+use athena_types::{OperationId, OodaIterationId, ExecutionOutcome, AthenaError, PhaseContext};
 use athena_observe::ObservePhase;
 use athena_orient::OrientPhase;
 use athena_decide::DecidePhase;
@@ -47,42 +47,49 @@ impl DecisionEngine for OodaEngine {
         let iter_id = OodaIterationId::new();
         info!(op_id = %op_id, iter_id = %iter_id, "OODA iteration start");
 
-        // ── Observe ───────────────────────────────────────────────────────────
-        let facts = self.observe.collect(op_id).await?;
-        info!(op_id = %op_id, facts = facts.len(), "OBSERVE complete");
-        let obs_summary = self.observe.summarize(op_id).await?;
+        let mut ctx = PhaseContext::new(op_id.clone(), iter_id.clone());
 
-        // Attack graph (optional)
-        let graph_summary = if let Some(ag) = &self.attack_graph {
+        // ── Observe ───────────────────────────────────────────────────────────
+        ctx = self.observe.run(ctx).await?;
+        info!(op_id = %op_id, summary_len = ctx.obs_summary.len(), "OBSERVE complete");
+
+        // Attack graph injects into obs_summary extension so Orient sees it
+        if let Some(ag) = &self.attack_graph {
             let paths = ag.compute_paths(op_id, vec![]).await.unwrap_or_default();
-            ag.to_summary(&paths).await
-        } else {
-            String::new()
-        };
+            let graph_summary = ag.to_summary(&paths).await;
+            if !graph_summary.is_empty() {
+                ctx.extensions.insert("attack_graph_summary".into(), graph_summary.into());
+            }
+        }
 
         // ── Orient ────────────────────────────────────────────────────────────
         info!(op_id = %op_id, "ORIENT: calling LLM...");
-        let recommendation = self.orient.analyze(op_id, &obs_summary, &graph_summary).await?;
-        info!(
-            op_id = %op_id,
-            risk_score = recommendation.risk_score,
-            techniques = ?recommendation.recommended_techniques,
-            summary = %recommendation.summary,
-            "ORIENT complete"
-        );
+        ctx = self.orient.run(ctx).await?;
+        if let Some(rec) = &ctx.recommendation {
+            info!(
+                op_id = %op_id,
+                risk_score = rec.risk_score,
+                techniques = ?rec.recommended_techniques,
+                summary = %rec.summary,
+                "ORIENT complete"
+            );
+        }
 
         // ── Decide ────────────────────────────────────────────────────────────
-        let decision = self.decide.evaluate(op_id, &recommendation, &self.constraints).await?;
-        info!(
-            op_id = %op_id,
-            approved = decision.approved,
-            techniques = ?decision.techniques,
-            reason = %decision.reason,
-            "DECIDE complete"
-        );
+        ctx = self.decide.run(ctx, &self.constraints).await?;
+        if let Some(dec) = &ctx.decision {
+            info!(
+                op_id = %op_id,
+                approved = dec.approved,
+                techniques = ?dec.techniques,
+                reason = %dec.reason,
+                "DECIDE complete"
+            );
+        }
 
         // ── Act ───────────────────────────────────────────────────────────────
-        let outcome = self.act.execute(op_id, &decision, &iter_id).await?;
+        ctx = self.act.run(ctx).await?;
+        let outcome = ctx.into_outcome();
         for r in &outcome.results {
             if r.success {
                 info!(op_id = %op_id, technique = %r.technique_id, "ACT success");

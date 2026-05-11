@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use std::sync::Arc;
-use athena_types::{OperationId, OrientRecommendation, Decision, AthenaError};
+use athena_types::{OperationId, OrientRecommendation, Decision, AthenaError, PhaseContext};
 use athena_knowledge::constraint::OperationalConstraints;
 use athena_policy::PolicyEngine;
 use serde_json::json;
@@ -13,6 +13,30 @@ pub trait DecidePhase: Send + Sync {
         recommendation: &OrientRecommendation,
         constraints: &OperationalConstraints,
     ) -> Result<Decision, AthenaError>;
+
+    /// PhaseContext pipeline entry point.
+    /// Checks extensions for operator_override_techniques first; falls back to evaluate().
+    async fn run(&self, mut ctx: PhaseContext, constraints: &OperationalConstraints) -> Result<PhaseContext, AthenaError> {
+        // Operator override: bypass risk gate, use operator-specified techniques directly
+        if let Some(techs) = ctx.operator_techniques() {
+            let reason = ctx.extensions
+                .get("operator_override_reason")
+                .and_then(|v| v.as_str())
+                .unwrap_or("operator override")
+                .to_owned();
+            ctx.decision = Some(Decision {
+                approved: true,
+                techniques: techs,
+                reason: format!("operator override: {reason}"),
+                risk_accepted: 1.0,
+            });
+            return Ok(ctx);
+        }
+        let rec = ctx.require_recommendation()?;
+        let decision = self.evaluate(&ctx.op_id, rec, constraints).await?;
+        ctx.decision = Some(decision);
+        Ok(ctx)
+    }
 }
 
 pub struct RiskMatrixDecider {

@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use std::sync::Arc;
-use athena_types::{OperationId, OrientRecommendation, AthenaError};
+use athena_types::{OperationId, OrientRecommendation, AthenaError, PhaseContext};
 use athena_llm_client::{LlmClient, LlmRequest};
 use athena_pentest_kb::KnowledgeBase;
 use athena_skills_loader::SkillsLoader;
@@ -13,6 +13,13 @@ pub trait OrientPhase: Send + Sync {
         observation_summary: &str,
         attack_graph_summary: &str,
     ) -> Result<OrientRecommendation, AthenaError>;
+
+    /// PhaseContext pipeline entry point. Default impl calls analyze.
+    async fn run(&self, mut ctx: PhaseContext) -> Result<PhaseContext, AthenaError> {
+        let rec = self.analyze(&ctx.op_id, &ctx.obs_summary, "").await?;
+        ctx.recommendation = Some(rec);
+        Ok(ctx)
+    }
 }
 
 // 14 orient rules ported verbatim from v1 orient_engine.py system prompt

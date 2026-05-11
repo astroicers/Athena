@@ -48,7 +48,7 @@ pub struct ExecutionResult {
     pub new_facts: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ExecutionOutcome {
     pub results: Vec<ExecutionResult>,
     pub facts_collected: usize,

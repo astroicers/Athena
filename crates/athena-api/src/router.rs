@@ -53,6 +53,14 @@ pub struct StartSchedulerRequest {
     pub interval_secs: u64,
 }
 
+#[derive(Deserialize, Default)]
+pub struct ApproveOperationRequest {
+    /// Approver identifier recorded in audit trail (e.g. "team_lead", "operator_name")
+    #[serde(default = "default_approver")]
+    pub approved_by: String,
+}
+fn default_approver() -> String { "operator".into() }
+
 #[derive(Deserialize)]
 pub struct ConsumeOpsecRequest {
     pub cost: i32,
@@ -89,6 +97,7 @@ pub fn api_routes() -> Router<Arc<AppState>> {
         .route("/operations", get(list_operations).post(run_iteration))
         .route("/operations/:op_id/abort", post(abort_operation))
         .route("/operations/:op_id/iterate", post(run_iteration_for_op))
+        .route("/operations/:op_id/approve", post(approve_operation))
         // facts
         .route("/operations/:op_id/facts", get(list_facts))
         .route("/operations/:op_id/facts/count", get(count_facts))
@@ -245,6 +254,48 @@ async fn abort_operation(
     let op = op_id(&id)?;
     state.engine.abort(&op).await?;
     Ok(Json(json!({ "aborted": true, "op_id": id })))
+}
+
+/// Approve a blocked high-risk operation and immediately re-run the OODA iteration.
+/// Writes a `human_approved` fact that DecidePhase::run() detects to bypass the risk gate.
+/// The approver name is recorded in Decision.reason for audit trail.
+async fn approve_operation(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    body: Option<Json<ApproveOperationRequest>>,
+) -> Result<Json<Value>, ApiError> {
+    let req = body.map(|b| b.0).unwrap_or_default();
+    let op = op_id(&id)?;
+
+    // Write human_approved fact — Observe.lift_extensions() will pick this up next iteration
+    state.fact_repo.insert(Fact {
+        id: Uuid::new_v4(),
+        op_id: op.clone(),
+        trait_name: FactTrait("human_approved".into()),
+        value: FactValue::Text(req.approved_by.clone()),
+        source: "api".into(),
+        confidence: 100,
+        collected_at: Utc::now(),
+    }).await.map_err(|e| ApiError(e))?;
+
+    tracing::warn!(
+        op_id = %op,
+        approved_by = %req.approved_by,
+        "HUMAN APPROVAL: operator accepted risk, re-running OODA iteration"
+    );
+
+    let facts_before = state.fact_repo.count(&op).await.unwrap_or(0);
+    let (iter_id, _outcome) = state.engine.run_iteration(&op).await?;
+    let facts_after = state.fact_repo.count(&op).await.unwrap_or(0);
+    let _ = state.iter_store.record(&op, &iter_id, "approved-iterate").await;
+
+    Ok(Json(json!({
+        "op_id": id,
+        "iter_id": iter_id.to_string(),
+        "approved_by": req.approved_by,
+        "facts_collected": facts_after.saturating_sub(facts_before),
+        "total_facts": facts_after,
+    })))
 }
 
 async fn list_facts(

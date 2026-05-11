@@ -27,34 +27,46 @@ impl DefaultObserver {
         Self { fact_repo, mcp }
     }
 
-    /// After collect+summarize, lift any operator_override fact into ctx.extensions
-    /// so DecidePhase::run() can bypass the risk gate without needing fact_repo access.
-    async fn lift_operator_override(&self, op_id: &OperationId, ctx: &mut PhaseContext) {
+    /// After collect+summarize, lift control facts into ctx.extensions so downstream
+    /// phases (Orient, Decide) can short-circuit without re-querying fact_repo.
+    /// Lifts: operator_override → operator_override_techniques + operator_override_reason
+    ///        human_approved   → human_approved (approver name/id)
+    async fn lift_extensions(&self, op_id: &OperationId, ctx: &mut PhaseContext) {
         let facts = self.fact_repo.list(op_id).await.unwrap_or_default();
         for f in &facts {
-            if f.trait_name.0 == "operator_override" {
-                if let FactValue::Text(raw) = &f.value {
-                    // raw = "techniques=T1046,T1059.004 reason=..."
-                    if let Some(tech_part) = raw.strip_prefix("techniques=") {
-                        let (techs_str, reason) = tech_part
-                            .split_once(" reason=")
-                            .unwrap_or((tech_part, "operator override"));
-                        let techs: Vec<serde_json::Value> = techs_str
-                            .split(',')
-                            .filter(|s| !s.is_empty())
-                            .map(|t| serde_json::Value::String(t.to_owned()))
-                            .collect();
+            match f.trait_name.0.as_str() {
+                "operator_override" => {
+                    if let FactValue::Text(raw) = &f.value {
+                        // raw = "techniques=T1046,T1059.004 reason=..."
+                        if let Some(tech_part) = raw.strip_prefix("techniques=") {
+                            let (techs_str, reason) = tech_part
+                                .split_once(" reason=")
+                                .unwrap_or((tech_part, "operator override"));
+                            let techs: Vec<serde_json::Value> = techs_str
+                                .split(',')
+                                .filter(|s| !s.is_empty())
+                                .map(|t| serde_json::Value::String(t.to_owned()))
+                                .collect();
+                            ctx.extensions.insert(
+                                "operator_override_techniques".into(),
+                                serde_json::Value::Array(techs),
+                            );
+                            ctx.extensions.insert(
+                                "operator_override_reason".into(),
+                                serde_json::Value::String(reason.to_owned()),
+                            );
+                        }
+                    }
+                }
+                "human_approved" => {
+                    if let FactValue::Text(approver) = &f.value {
                         ctx.extensions.insert(
-                            "operator_override_techniques".into(),
-                            serde_json::Value::Array(techs),
-                        );
-                        ctx.extensions.insert(
-                            "operator_override_reason".into(),
-                            serde_json::Value::String(reason.to_owned()),
+                            "human_approved".into(),
+                            serde_json::Value::String(approver.clone()),
                         );
                     }
                 }
-                break;
+                _ => {}
             }
         }
     }
@@ -66,7 +78,7 @@ impl ObservePhase for DefaultObserver {
         let op_id = ctx.op_id.clone();
         let _facts = self.collect(&op_id).await?;
         ctx.obs_summary = self.summarize(&op_id).await?;
-        self.lift_operator_override(&op_id, &mut ctx).await;
+        self.lift_extensions(&op_id, &mut ctx).await;
         Ok(ctx)
     }
 

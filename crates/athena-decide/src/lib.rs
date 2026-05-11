@@ -15,7 +15,7 @@ pub trait DecidePhase: Send + Sync {
     ) -> Result<Decision, AthenaError>;
 
     /// PhaseContext pipeline entry point.
-    /// Checks extensions for operator_override_techniques first; falls back to evaluate().
+    /// Priority: operator_override > human_approved > normal risk evaluation.
     async fn run(&self, mut ctx: PhaseContext, constraints: &OperationalConstraints) -> Result<PhaseContext, AthenaError> {
         // Operator override: bypass risk gate, use operator-specified techniques directly
         if let Some(techs) = ctx.operator_techniques() {
@@ -29,6 +29,21 @@ pub trait DecidePhase: Send + Sync {
                 techniques: techs,
                 reason: format!("operator override: {reason}"),
                 risk_accepted: 1.0,
+            });
+            return Ok(ctx);
+        }
+        // Human approval: risk gate was previously triggered; operator has approved
+        if let Some(approved_by) = ctx.extensions.get("human_approved").and_then(|v| v.as_str()).map(|s| s.to_owned()) {
+            let rec = ctx.require_recommendation()?;
+            let all_techniques = rec.recommended_techniques.iter()
+                .filter(|t| !constraints.denied_techniques.contains(t))
+                .cloned()
+                .collect::<Vec<_>>();
+            ctx.decision = Some(Decision {
+                approved: !all_techniques.is_empty(),
+                techniques: all_techniques,
+                reason: format!("human approved by: {approved_by}"),
+                risk_accepted: rec.risk_score,
             });
             return Ok(ctx);
         }

@@ -1,6 +1,6 @@
 # ADR-118: PhaseContext — Shared Pipeline State for OODA Phase Composition
 
-**Status**: Draft
+**Status**: Accepted
 **Date**: 2026-05-11
 **Deciders**: Project lead
 

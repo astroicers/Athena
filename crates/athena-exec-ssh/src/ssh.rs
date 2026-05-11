@@ -34,7 +34,28 @@ impl SshExecutionEngine {
     }
 
     async fn run_command(&self, host: &str, command: &str) -> Result<String, AthenaError> {
-        let russh_config = Arc::new(client::Config::default());
+        // Extend algorithm support for legacy targets (e.g. Metasploitable 2 / OpenSSH 4.7p1)
+        // that only offer diffie-hellman-group1-sha1 KEX and ssh-rsa host key algorithm.
+        let preferred = russh::Preferred {
+            kex: std::borrow::Cow::Borrowed(&[
+                russh::kex::CURVE25519,
+                russh::kex::CURVE25519_PRE_RFC_8731,
+                russh::kex::DH_G14_SHA256,
+                russh::kex::DH_G14_SHA1,
+                russh::kex::DH_G1_SHA1,   // required for OpenSSH < 6.7
+            ]),
+            key: std::borrow::Cow::Borrowed(&[
+                russh::keys::key::ED25519,
+                russh::keys::key::RSA_SHA2_256,
+                russh::keys::key::RSA_SHA2_512,
+                russh::keys::key::SSH_RSA,  // legacy — required for OpenSSH < 7.0 host keys
+            ]),
+            ..russh::Preferred::DEFAULT
+        };
+        let russh_config = Arc::new(client::Config {
+            preferred,
+            ..client::Config::default()
+        });
 
         struct Handler;
         #[async_trait]

@@ -34,7 +34,7 @@ curl -s http://localhost:58000/api/status \
   "name": "recon-web-01",
   "target_ip": "203.0.113.10",           // 你擁有 / 授權的目標
   "target_hostname": "host.example.test",
-  "mode": "normal",                       // 或 "operator_override"
+  "mode": "normal",                       // 執行模式（預設 normal）
   "async": false,
   "credentials": [
     { "realm": "203.0.113.0/24", "username": "svc", "secret": "…", "kind": "password" }

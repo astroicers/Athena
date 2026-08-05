@@ -1,8 +1,0 @@
-; id
-| id
-`id`
-$(id)
-; cat /etc/passwd
-| cat /etc/passwd
-& whoami
-; uname -a

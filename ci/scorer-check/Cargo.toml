@@ -1,0 +1,17 @@
+# Compile-check the CapabilityScorer snippet documented in docs/extending.md
+# against the PUBLIC athena-sdk contract only — this is exactly the guarantee the
+# extension guide makes ("不需核心源碼 / 只依賴 athena-sdk"). If this builds, the
+# documented snippet is real; if athena-sdk's public API drifts, CI goes red.
+[package]
+name = "scorer-check"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+athena-sdk = { git = "https://github.com/astroicers/athena-sdk" }
+
+# Self-contained workspace root so this checker is never absorbed by a parent
+# workspace (it lives standalone in the public repo; this keeps `cargo build` here
+# hermetic either way).
+[workspace]

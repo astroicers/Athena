@@ -1,0 +1,14 @@
+# Example Athena tool manifest, validated in CI against the athena-tools schema.
+# Phase 1: external tools are targetless (OSINT / query). Full guide + example
+# container live in the athena-tools repo.
+manifest_version = "1"
+
+tool_name    = "example_query"
+container    = "example-osint"
+port         = 9130
+techniques   = ["T1596"]                       # MITRE ATT&CK: Search Open Technical Databases
+description  = "Targetless OSINT lookup (example community tool)"
+phase        = "observe"
+os_hint      = "any"
+params_hint  = "domain=<name>"
+sensitive    = false

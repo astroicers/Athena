@@ -1,0 +1,44 @@
+name: docs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  leak-gate:
+    name: public-safe leak gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan docs for private-core leakage
+        run: bash .github/scripts/leak-gate.sh
+
+  links:
+    name: internal link check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify relative markdown links resolve
+        run: bash .github/scripts/check-links.sh
+
+  markdownlint:
+    name: markdown lint (informational)
+    runs-on: ubuntu-latest
+    # Non-blocking, like the core repo's fmt check — style hints, not a hard gate.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DavidAnson/markdownlint-cli2-action@v16
+        with:
+          globs: |
+            README.md
+            docs/**/*.md

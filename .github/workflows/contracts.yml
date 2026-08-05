@@ -1,0 +1,57 @@
+name: contracts
+
+# Prove the teaching artifacts actually hold up against the published ecosystem:
+#   - the extension-guide scorer snippet compiles against the public athena-sdk
+#   - every example manifest validates against the athena-tools schema
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contracts-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scorer-snippet:
+    name: scorer snippet compiles (public SDK only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # athena-sdk pulls native-tls -> openssl on a clean runner.
+      - name: Install system deps
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libssl-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ci/scorer-check
+      - name: cargo build
+        working-directory: ci/scorer-check
+        run: cargo build --locked || cargo build
+
+  manifest-schema:
+    name: example manifests validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install validator
+        run: pip install check-jsonschema
+      - name: Fetch athena-tools schema + validate example manifests
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/athena-tool.schema.json \
+            https://raw.githubusercontent.com/astroicers/athena-tools/main/schema/athena-tool.schema.json
+          fail=0
+          for m in $(git ls-files 'examples/**/athena-tool.toml'); do
+            echo "validating $m"
+            python -c "import tomllib,json; json.dump(tomllib.load(open('$m','rb')), open('/tmp/m.json','w'))"
+            check-jsonschema --schemafile /tmp/athena-tool.schema.json /tmp/m.json || fail=1
+          done
+          exit "$fail"

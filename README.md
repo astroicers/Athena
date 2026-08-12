@@ -1,3 +1,5 @@
+
+
 ```
  █████╗ ████████╗██╗  ██╗███████╗███╗   ██╗ █████╗
 ██╔══██╗╚══██╔══╝██║  ██║██╔════╝████╗  ██║██╔══██╗
@@ -102,14 +104,20 @@ impl CapabilityScorer for QuietPreference {
 寫一份 manifest，Athena 就能**自動調度你的 MCP 工具、加工具不改核心**：
 
 ```toml
-# my-tool/athena-tool.toml
+# Example Athena tool manifest, validated in CI against the athena-tools schema.
+# Phase 1: external tools are targetless (OSINT / query). Full guide + example
+# container live in the athena-tools repo.
 manifest_version = "1"
-tool_name   = "example_query"
-container   = "example-osint"
-port        = 9130
-techniques  = ["T1596"]          # MITRE ATT&CK
-description = "Targetless OSINT lookup"
-phase       = "observe"
+
+tool_name    = "example_query"
+container    = "example-osint"
+port         = 9130
+techniques   = ["T1596"]                       # MITRE ATT&CK: Search Open Technical Databases
+description  = "Targetless OSINT lookup (example community tool)"
+phase        = "observe"
+os_hint      = "any"
+params_hint  = "domain=<name>"
+sensitive    = false
 ```
 
 流程：**發布（PR）→ 審核（manifest + 容器）→ operator opt-in 部署 → ORIENT 自動發現/調度**。→ schema 與範例容器見 [`athena-tools`](https://github.com/astroicers/athena-tools)。
@@ -191,3 +199,4 @@ phase       = "observe"
 
 ### 免責
 軟體按「現狀（AS IS）」提供，不含任何明示或默示之擔保（包含但不限於適售性、特定用途適用性、非侵權）。
+```

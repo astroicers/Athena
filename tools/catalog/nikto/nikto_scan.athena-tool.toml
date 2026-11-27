@@ -1,0 +1,12 @@
+# Athena tool manifest — see schema/athena-tool.schema.json and CONTRIBUTING.md for the format.
+
+manifest_version = "1"
+tool_name = "nikto_scan"
+container = "nikto"
+port = 9106
+techniques = ["T1190"]
+description = "Web server vulnerability and misconfiguration scan via nikto"
+phase = "observe"
+os_hint = "any"
+params_hint = ""
+sensitive = false

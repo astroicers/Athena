@@ -1,0 +1,12 @@
+# Athena tool manifest — see schema/athena-tool.schema.json and CONTRIBUTING.md for the format.
+
+manifest_version = "1"
+tool_name = "nmap_vuln_scan"
+container = "nmap"
+port = 8080
+techniques = ["T1190", "T1203"]
+description = "NSE vulnerability script scan; use after port scan to find CVEs on discovered services"
+phase = "observe"
+os_hint = "any"
+params_hint = ""
+sensitive = false

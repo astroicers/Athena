@@ -1,0 +1,12 @@
+# Athena tool manifest — see schema/athena-tool.schema.json and CONTRIBUTING.md for the format.
+
+manifest_version = "1"
+tool_name = "nmap_stealth_scan"
+container = "nmap"
+port = 8080
+techniques = ["T1595"]
+description = "Low-noise SYN scan with slow timing; use in environments with IDS/firewall"
+phase = "observe"
+os_hint = "any"
+params_hint = 'ports=range to scan, optional, defaults "1-1024". Example: {"ports":"1-1024"}'
+sensitive = false

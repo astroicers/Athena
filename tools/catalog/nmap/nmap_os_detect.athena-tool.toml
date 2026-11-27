@@ -1,0 +1,12 @@
+# Athena tool manifest — see schema/athena-tool.schema.json and CONTRIBUTING.md for the format.
+
+manifest_version = "1"
+tool_name = "nmap_os_detect"
+container = "nmap"
+port = 8080
+techniques = ["T1082"]
+description = "OS fingerprinting; use to confirm OS before selecting OS-specific exploits"
+phase = "observe"
+os_hint = "any"
+params_hint = ""
+sensitive = false

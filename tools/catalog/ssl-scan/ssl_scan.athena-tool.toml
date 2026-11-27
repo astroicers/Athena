@@ -1,0 +1,12 @@
+# Athena tool manifest — see schema/athena-tool.schema.json and CONTRIBUTING.md for the format.
+
+manifest_version = "1"
+tool_name = "ssl_scan"
+container = "ssl-scan"
+port = 9103
+techniques = ["T1040", "T1596.003"]
+description = "TLS/SSL certificate and cipher suite analysis"
+phase = "observe"
+os_hint = "any"
+params_hint = ""
+sensitive = false

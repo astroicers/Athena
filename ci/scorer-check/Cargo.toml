@@ -9,7 +9,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-athena-sdk = { git = "https://github.com/astroicers/athena-sdk" }
+athena-sdk = { path = "../../sdk" }
 
 # Self-contained workspace root so this checker is never absorbed by a parent
 # workspace (it lives standalone in the public repo; this keeps `cargo build` here

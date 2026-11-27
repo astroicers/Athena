@@ -5,6 +5,13 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    paths:
+      - 'README.md'
+      - 'docs/**'
+      - 'sdk/README.md'
+      - 'tools/README.md'
+      - '.github/scripts/**'
+      - '.github/workflows/docs.yml'
 
 permissions:
   contents: read
@@ -33,7 +40,6 @@ jobs:
   markdownlint:
     name: markdown lint (informational)
     runs-on: ubuntu-latest
-    # Non-blocking, like the core repo's fmt check — style hints, not a hard gate.
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
@@ -42,3 +48,5 @@ jobs:
           globs: |
             README.md
             docs/**/*.md
+            sdk/README.md
+            tools/README.md

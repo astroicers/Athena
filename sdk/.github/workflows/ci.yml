@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+name: ci
+on:
+  push: { branches: [main] }
+  pull_request: { branches: [main] }
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with: { components: clippy }
+      - run: cargo build --all-targets
+      - run: cargo test
+      - run: cargo clippy --all-targets -- -D warnings
+      - name: Run examples
+        run: |
+          for ex in quiet_scorer weighted_scorer multi_factor_scorer composite_selector decision_engine_concept; do
+            cargo run --example "$ex"
+          done

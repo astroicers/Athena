@@ -1,0 +1,12 @@
+# Athena tool manifest — see schema/athena-tool.schema.json and CONTRIBUTING.md for the format.
+
+manifest_version = "1"
+tool_name = "dns_enum"
+container = "dns-recon"
+port = 9102
+techniques = ["T1596.001", "T1018"]
+description = "DNS subdomain enumeration and zone transfer"
+phase = "observe"
+os_hint = "any"
+params_hint = ""
+sensitive = false

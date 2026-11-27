@@ -1,0 +1,12 @@
+# Athena tool manifest — see schema/athena-tool.schema.json and CONTRIBUTING.md for the format.
+
+manifest_version = "1"
+tool_name = "shodan_query"
+container = "osint"
+port = 9104
+techniques = ["T1596.005"]
+description = "Shodan asset discovery for target organization"
+phase = "observe"
+os_hint = "any"
+params_hint = ""
+sensitive = false

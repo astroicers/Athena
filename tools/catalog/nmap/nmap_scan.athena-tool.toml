@@ -1,0 +1,12 @@
+# Athena tool manifest — see schema/athena-tool.schema.json and CONTRIBUTING.md for the format.
+
+manifest_version = "1"
+tool_name = "nmap_scan"
+container = "nmap"
+port = 8080
+techniques = ["T1046", "T1595"]
+description = "Full nmap scan with configurable flags"
+phase = "observe"
+os_hint = "any"
+params_hint = 'scan_type=one of sV|sS|sU|sA|sN, ports=range e.g. "1-1024", os_detect=true|false, scripts=NSE category e.g. "vuln", timing=0-5. Example: {"scan_type":"sV","ports":"1-1024"}'
+sensitive = false

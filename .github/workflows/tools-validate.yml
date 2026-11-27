@@ -1,0 +1,65 @@
+name: tools-validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/**'
+      - '.github/workflows/tools-validate.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tools-validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  schema:
+    name: validate tool manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install validator
+        run: pip install check-jsonschema
+      - name: Validate every *athena-tool.toml against the schema
+        run: |
+          set -euo pipefail
+          fail=0
+          for m in $(git ls-files | grep -E '^tools/(catalog|examples)/.*athena-tool\.toml$'); do
+            echo "validating $m"
+            python -c "import tomllib,json; json.dump(tomllib.load(open('$m','rb')), open('/tmp/m.json','w'))"
+            check-jsonschema --schemafile tools/schema/athena-tool.schema.json /tmp/m.json || fail=1
+          done
+          exit $fail
+
+      - name: Catalog structural checks (container == dir, unique tool_name)
+        run: |
+          python - <<'PY'
+          import glob, os, sys, tomllib
+          from collections import defaultdict
+
+          fail = False
+          names = defaultdict(list)
+          for m in sorted(glob.glob("tools/catalog/**/*athena-tool.toml", recursive=True)):
+              with open(m, "rb") as fh:
+                  data = tomllib.load(fh)
+              parent = os.path.basename(os.path.dirname(m))
+              container = data.get("container")
+              if container != parent:
+                  print(f"CONTAINER MISMATCH: {m}: container={container!r} != dir {parent!r}")
+                  fail = True
+              names[data.get("tool_name")].append(m)
+
+          for name, paths in sorted(names.items()):
+              if len(paths) > 1:
+                  print(f"DUPLICATE tool_name {name!r} across: {paths}")
+                  fail = True
+
+          sys.exit(1 if fail else 0)
+          PY

@@ -1,0 +1,12 @@
+# Athena tool manifest — see schema/athena-tool.schema.json and CONTRIBUTING.md for the format.
+
+manifest_version = "1"
+tool_name = "whois_lookup"
+container = "osint"
+port = 9104
+techniques = ["T1590"]
+description = "Domain/IP WHOIS registration information"
+phase = "observe"
+os_hint = "any"
+params_hint = ""
+sensitive = false

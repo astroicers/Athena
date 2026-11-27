@@ -2,10 +2,10 @@
 
 Athena 對外提供**兩個**公開擴充點，讓你不改核心就能加東西：
 
-1. **自訂決策 scorer**——用 [`athena-sdk`](https://github.com/astroicers/athena-sdk) 的契約 trait，插一段自己的評分邏輯進「打哪招」的選擇層。
-2. **自訂工具 catalog**——用 [`athena-tools`](https://github.com/astroicers/athena-tools) 的 manifest 規格，發布一個 MCP 工具讓 Athena 自動調度。
+1. **自訂決策 scorer**——用 [`sdk/`](../sdk/) 的契約 trait，插一段自己的評分邏輯進「打哪招」的選擇層。
+2. **自訂工具 catalog**——用 [`tools/`](../tools/) 的 manifest 規格，發布一個 MCP 工具讓 Athena 自動調度。
 
-> 對外公開擴充點**就這兩個**。深入指南分別住在兩個 companion repo（本文交叉連結），這裡只給最短可用路徑。
+> 對外公開擴充點**就這兩個**。深入指南分別住在 `sdk/` 和 `tools/` 目錄，這裡只給最短可用路徑。
 
 ---
 
@@ -76,7 +76,7 @@ cargo run --example quiet_scorer
 
 > ℹ️ 上線前請**自行 clamp 第三方 scorer 的 `weight`**，避免單一評分器壓過其餘、扭曲決策。
 
-📖 **深入教學**（型別語意、契約穩定性、更多範例）→ [`athena-sdk` repo](https://github.com/astroicers/athena-sdk)（scorer 貢獻指南）。
+📖 **深入教學**（型別語意、契約穩定性、更多範例）→ [`sdk/`](../sdk/)（scorer 貢獻指南）。
 
 ---
 
@@ -101,7 +101,7 @@ params_hint = "domain=<name>"    # 選填
 
 - `techniques`：真實 MITRE ATT&CK ID（能力映射）。
 - `phase`：ORIENT 的提示——`observe`（偵查 / 列舉 / 查詢）、`act`（執行）、或 `both`。
-- 範例容器（`Dockerfile` + `server.py`，MCP 回 `{"facts":[…]}`）見 `athena-tools` repo 的 `examples/my-tool/`。
+- 範例容器（`Dockerfile` + `server.py`，MCP 回 `{"facts":[…]}`）見 `tools/examples/my-tool/`。
 - 本 repo 也附一份會通過 schema 驗證的 manifest：[`examples/my-tool/athena-tool.toml`](../examples/my-tool/athena-tool.toml)（CI 會對它跑 schema 驗證）。
 
 ### 載入
@@ -118,7 +118,7 @@ tool_manifest_dirs = ["/opt/athena/my-tools"]
 - 併入時以 `tool_name` 為鍵；與內建工具同名者會被拒絕（內建優先），壞掉的 manifest 會被跳過並記警告（fail-closed）。
 - 這是 **operator opt-in**：工具只有在你明確把目錄列進設定後才會被載入。
 
-📖 **深入教學**（schema 驗證 CI、`docker build` + 起 MCP、per-tool 審核流程）→ [`athena-tools` repo](https://github.com/astroicers/athena-tools)（工具貢獻指南）。
+📖 **深入教學**（schema 驗證 CI、`docker build` + 起 MCP、per-tool 審核流程）→ [`tools/`](../tools/)（工具貢獻指南）。
 
 ---
 

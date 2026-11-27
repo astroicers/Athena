@@ -1,0 +1,47 @@
+name: sdk
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'sdk/**'
+      - '.github/workflows/sdk-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sdk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: sdk build + test + clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system deps
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libssl-dev
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: sdk
+      - name: cargo build
+        working-directory: sdk
+        run: cargo build --all-targets
+      - name: cargo test
+        working-directory: sdk
+        run: cargo test
+      - name: cargo clippy
+        working-directory: sdk
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Run examples
+        working-directory: sdk
+        run: |
+          for ex in quiet_scorer weighted_scorer multi_factor_scorer composite_selector decision_engine_concept; do
+            cargo run --example "$ex"
+          done

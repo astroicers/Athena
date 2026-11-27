@@ -1,0 +1,12 @@
+# Athena tool manifest — see schema/athena-tool.schema.json and CONTRIBUTING.md for the format.
+
+manifest_version = "1"
+tool_name = "graphql_introspect"
+container = "api-fuzzer"
+port = 9105
+techniques = ["T1190", "T1595.002"]
+description = "GraphQL __schema introspection (type/field enumeration) via HTTP"
+phase = "both"
+os_hint = "any"
+params_hint = "target=GraphQL endpoint URL"
+sensitive = false

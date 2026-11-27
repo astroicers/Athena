@@ -1,0 +1,12 @@
+# Athena tool manifest — see schema/athena-tool.schema.json and CONTRIBUTING.md for the format.
+
+manifest_version = "1"
+tool_name = "api_fuzz_params"
+container = "api-fuzzer"
+port = 9105
+techniques = ["T1190", "T1595.002"]
+description = "HTTP POST-body/query-parameter value fuzzing via ffuf"
+phase = "both"
+os_hint = "any"
+params_hint = "target=fixed URL (no FUZZ); data=body containing exactly one FUZZ keyword"
+sensitive = false

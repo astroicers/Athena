@@ -1,0 +1,12 @@
+# Athena tool manifest — see schema/athena-tool.schema.json and CONTRIBUTING.md for the format.
+
+manifest_version = "1"
+tool_name = "nmap_full_scan"
+container = "nmap"
+port = 8080
+techniques = ["T1046"]
+description = "Complete scan (all ports, services, OS); use for thorough enumeration"
+phase = "observe"
+os_hint = "any"
+params_hint = ""
+sensitive = false

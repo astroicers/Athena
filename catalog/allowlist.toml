@@ -1,0 +1,18 @@
+# athena-tools public catalog allowlist.
+#
+# Only the containers listed here have their tool manifests published in this
+# public catalog. This list is the boundary for what capability metadata ships
+# in this repo.
+#
+# Tools are added conservatively: when in doubt, a tool stays OUT of this list
+# until it has been reviewed. Attack-type / dual-use / opsec-sensitive tools are
+# not published here.
+
+containers = [
+  "osint",        # certificate-transparency / asset / WHOIS — passive OSINT
+  "dns-recon",    # DNS subdomain enumeration
+  "ssl-scan",     # TLS certificate / cipher-suite analysis
+  "nikto",        # web-server misconfiguration scan
+  "api-fuzzer",   # HTTP content / parameter fuzzing
+  "nmap",         # port / service / OS discovery
+]

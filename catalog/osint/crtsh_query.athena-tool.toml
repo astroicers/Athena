@@ -1,0 +1,12 @@
+# Athena tool manifest — see schema/athena-tool.schema.json and CONTRIBUTING.md for the format.
+
+manifest_version = "1"
+tool_name = "crtsh_query"
+container = "osint"
+port = 9104
+techniques = ["T1596.001"]
+description = "Certificate transparency log subdomain discovery via crt.sh"
+phase = "observe"
+os_hint = "any"
+params_hint = ""
+sensitive = false

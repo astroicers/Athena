@@ -1,0 +1,7 @@
+athena-tools
+Copyright (c) 2026 astroicers
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Third-party tools packaged inside tool containers (nmap, nikto, ffuf, dnsutils, whois, gh, …)
+remain under their own upstream licenses; this repository does not relicense them.

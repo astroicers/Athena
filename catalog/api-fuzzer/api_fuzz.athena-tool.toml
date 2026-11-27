@@ -1,0 +1,12 @@
+# Athena tool manifest — see schema/athena-tool.schema.json and CONTRIBUTING.md for the format.
+
+manifest_version = "1"
+tool_name = "api_fuzz"
+container = "api-fuzzer"
+port = 9105
+techniques = ["T1190", "T1595.002"]
+description = "HTTP endpoint/path fuzzing via ffuf (content discovery)"
+phase = "both"
+os_hint = "any"
+params_hint = ""
+sensitive = false

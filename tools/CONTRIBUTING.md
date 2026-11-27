@@ -1,4 +1,4 @@
-# Contributing to athena-tools
+# Contributing to Athena Tools
 
 發布一個 MCP 工具，讓 Athena 自動調度它。合併需簽 **CLA**。
 

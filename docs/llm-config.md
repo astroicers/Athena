@@ -57,11 +57,14 @@ export ANTHROPIC_API_KEY=sk-ant-...
 模型名稱**可覆寫**（本文件刻意不寫死特定 model 字串——請以你要用的模型為準）。兩種方式，優先序由高到低：
 
 1. **環境變數 `ANTHROPIC_MODEL`** — 最高優先，套用於**所有**後端（名稱雖含 `ANTHROPIC` 但對 Ollama 路徑也生效）。
+
    ```bash
    export ANTHROPIC_MODEL="<your-model-name>"
    ```
+
 2. **設定檔 / 設定環境變數** — `athena.toml` 的 `[llm] default_model`，或等效的
    `ATHENA_LLM__DEFAULT_MODEL`：
+
    ```toml
    # athena.toml
    [llm]

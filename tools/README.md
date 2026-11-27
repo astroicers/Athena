@@ -11,7 +11,7 @@
 # athena-tools
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-roadmap-orange.svg)](#狀態)
+![Status](https://img.shields.io/badge/status-roadmap-orange.svg)
 
 > **Athena 的工具 catalog** — 發布一個 MCP 工具，讓 [Athena](https://github.com/astroicers/Athena) 的自主 OODA 迴圈**自動調度它**，而且**加工具不改核心**。
 

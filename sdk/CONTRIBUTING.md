@@ -1,4 +1,4 @@
-# Contributing to athena-sdk
+# Contributing to Athena SDK
 
 歡迎貢獻！在合併任何 PR 之前，貢獻者必須簽署 **CLA（Contributor License Agreement）**。
 

@@ -58,12 +58,12 @@ Athena 走**開放核心**——自主決策核心為商業授權（私有），
 
 | 專案 | 是什麼 | 你能做什麼 · 從哪開始 | 授權 |
 |------|--------|----------------------|------|
-| **Athena**（本 repo） | 產品門面 · 生態入口 · 文件 | 了解定位與功能、找到上手入口 | — |
-| [**athena-sdk**](https://github.com/astroicers/athena-sdk) | 模組契約 trait——用你的方式實作熱插拔模組（評分器 / 選擇器 / 可換的 AI 後端），**不需核心源碼** | 寫一個決策模組 → 見 [擴充教學](docs/extending.md) | Apache-2.0 |
-| [**athena-tools**](https://github.com/astroicers/athena-tools) | 工具 catalog + manifest 規格 + 範例容器——發布 MCP 工具給 Athena **自動調度、加工具不改核心** | 加一個工具 → 見 [擴充教學](docs/extending.md) | Apache-2.0 |
+| **Athena**（本 repo） | 產品門面 · 生態入口 · 文件 · SDK · 工具 catalog | 了解定位與功能、找到上手入口 | — |
+| [`sdk/`](sdk/) | 模組契約 trait——用你的方式實作熱插拔模組（評分器 / 選擇器 / 可換的 AI 後端），**不需核心源碼** | 寫一個決策模組 → 見 [擴充教學](docs/extending.md) | Apache-2.0 |
+| [`tools/`](tools/) | 工具 catalog + manifest 規格 + 範例容器——發布 MCP 工具給 Athena **自動調度、加工具不改核心** | 加一個工具 → 見 [擴充教學](docs/extending.md) | Apache-2.0 |
 | **athena-core** | 自主 OODA 商業引擎（模組化 Rust workspace）· **私有，洽談取得** | POC / 商業評估 → 洽談 | BSL 1.1 |
 
-> 🗺️ `athena-sdk` / `athena-tools` 已公開發佈、可獨立編譯；核心的自主 OODA 引擎維持私有商業授權。
+> 🗺️ SDK 與工具 catalog 已併入本 repo 的 `sdk/` 與 `tools/` 目錄（Apache-2.0）；核心的自主 OODA 引擎維持私有商業授權。
 
 ---
 
@@ -95,7 +95,7 @@ impl CapabilityScorer for QuietPreference {
 }
 ```
 
-→ 可跑範例與貢獻指南見 [`athena-sdk`](https://github.com/astroicers/athena-sdk)（`cargo run --example quiet_scorer`）。
+→ 可跑範例與貢獻指南見 [`sdk/`](sdk/)（`cd sdk && cargo run --example quiet_scorer`）。
 
 ### ② 用 `athena-tools` 加一個工具
 
@@ -112,7 +112,7 @@ description = "Targetless OSINT lookup"
 phase       = "observe"
 ```
 
-流程：**發布（PR）→ 審核（manifest + 容器）→ operator opt-in 部署 → ORIENT 自動發現/調度**。→ schema 與範例容器見 [`athena-tools`](https://github.com/astroicers/athena-tools)。
+流程：**發布（PR）→ 審核（manifest + 容器）→ operator opt-in 部署 → ORIENT 自動發現/調度**。→ schema 與範例容器見 [`tools/`](tools/)。
 
 ### ③ 試 `athena-core`
 
@@ -167,7 +167,7 @@ phase       = "observe"
 ## 如何取得 / 洽談
 
 - **商業授權 / POC 試點 / 合作**：`azz093093.830330@gmail.com`
-- **開源周邊**（SDK / 工具 catalog）：[`athena-sdk`](https://github.com/astroicers/athena-sdk) · [`athena-tools`](https://github.com/astroicers/athena-tools)。
+- **開源周邊**（SDK / 工具 catalog）：本 repo 的 [`sdk/`](sdk/) · [`tools/`](tools/) 目錄。
 
 ---
 
@@ -181,7 +181,9 @@ phase       = "observe"
 
 ### 授權
 - **核心（athena-core）**：Business Source License 1.1 — 非商業（個人 / 學術 / 教育 / CTF）免費、商業需另行取得授權、Change Date 後自動轉 Apache License 2.0。
-- **周邊（athena-sdk / athena-tools）**：Apache License 2.0。
+- **周邊（`sdk/` / `tools/`）**：Apache License 2.0。
+- **`sdk/`、`tools/`** 目錄：Apache License 2.0（各自保留獨立的 `LICENSE` 與 `NOTICE`）。
+- **根目錄**（本 repo 其餘部分）：授權見上方。
 
 ### Authorized Use Only
 本軟體為**攻擊性**資安工具，**僅供**：你**擁有**的系統，或已取得資產所有者**書面授權**（Statement of Work / Rules of Engagement）的紅隊演練；以及 CTF / 授權靶場 / 學術研究 / 資安教育。**嚴禁**未經授權對任何第三方系統、網路或資料進行掃描、入侵、橫移或資料外洩。使用者須自負遵守其所在司法管轄區法律之全部責任。作者與授權人對任何未經授權或違法之使用**不承擔任何責任**。

@@ -59,7 +59,7 @@ PATTERNS=("${BASELINE_PATTERNS[@]}" "${PRIVATE_PATTERNS[@]}")
 # .github is scanned too, so a denylisted term pasted into a workflow, script,
 # or issue template can no longer hide from the gate.
 TARGETS=()
-for t in README.md docs examples ci .github; do
+for t in README.md docs examples ci sdk tools .github; do
   [ -e "$t" ] && TARGETS+=("$t")
 done
 

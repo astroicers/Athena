@@ -28,8 +28,8 @@
 | 專案 | 是什麼 | 可見度 · 授權 |
 |------|--------|--------------|
 | [**Athena**](https://github.com/astroicers/Athena) | 產品門面 · 開源入口 | 🌐 公開 |
-| **athena-sdk** *(規劃中)* | 模組契約 trait | 🌐 Apache-2.0 |
-| **athena-tools**（本 repo） | 工具 catalog | 🌐 Apache-2.0 |
+| [`sdk/`](../sdk/) | 模組契約 trait | 🌐 Apache-2.0 |
+| **tools/**（本目錄） | 工具 catalog | 🌐 Apache-2.0 |
 | **athena-core** | 自主 OODA 商業引擎 · 洽談取得 | 🔒 BSL 1.1 |
 
 ---

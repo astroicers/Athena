@@ -13,6 +13,9 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-roadmap-orange.svg)](#狀態)
 
+> 📦 **本目錄已併入 [`astroicers/Athena`](https://github.com/astroicers/Athena) 的 `sdk/` 目錄。**
+> 這是 v0.1.0 的契約快照；正式版會在介面穩定後從主專案同步並發佈到 crates.io。
+
 > **Athena 熱插拔模組的公開契約 SDK** — 用你的方式擴充 Athena 的決策層，**不需核心源碼**。
 
 `athena-sdk` 是一組穩定的 Rust 契約 trait。依它實作，你就能為 [Athena](https://github.com/astroicers/Athena) 的自主 OODA 迴圈提供**可插拔模組**——而 Athena 的自主決策核心（`athena-core`）維持私有商業授權。
@@ -28,8 +31,8 @@
 | 專案 | 是什麼 | 可見度 · 授權 |
 |------|--------|--------------|
 | [**Athena**](https://github.com/astroicers/Athena) | 產品門面 · 開源入口 | 🌐 公開 |
-| **athena-sdk**（本 repo） | 模組契約 trait | 🌐 Apache-2.0 |
-| **athena-tools** *(規劃中)* | 工具 catalog | 🌐 Apache-2.0 |
+| **sdk/**（本目錄） | 模組契約 trait | 🌐 Apache-2.0 |
+| [`tools/`](../tools/) | 工具 catalog | 🌐 Apache-2.0 |
 | **athena-core** | 自主 OODA 商業引擎 · 洽談取得 | 🔒 BSL 1.1 |
 
 ---

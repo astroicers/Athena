@@ -78,6 +78,7 @@ curl -s http://localhost:58000/api/status \
 > ⚠️ 注意 method：`observe/summary`、`brief`、`opsec` 是 **`GET`**（不是 POST）。
 
 請求 body：
+
 - `/iterate` — 選填，同 `POST /api/operations` 的 body。
 - `/approve` — 選填 `{ "approved_by": "operator" }`。
 - `/scope/check` — `{ "hostname": "…", "ip": "203.0.113.10" }`（兩者皆選填）。

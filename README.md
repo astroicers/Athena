@@ -180,16 +180,20 @@ phase       = "observe"
 ## 授權與使用限制
 
 ### 授權
+
 - **核心（athena-core）**：Business Source License 1.1 — 非商業（個人 / 學術 / 教育 / CTF）免費、商業需另行取得授權、Change Date 後自動轉 Apache License 2.0。
 - **周邊（`sdk/` / `tools/`）**：Apache License 2.0。
 - **`sdk/`、`tools/`** 目錄：Apache License 2.0（各自保留獨立的 `LICENSE` 與 `NOTICE`）。
 - **根目錄**（本 repo 其餘部分）：授權見上方。
 
 ### Authorized Use Only
+
 本軟體為**攻擊性**資安工具，**僅供**：你**擁有**的系統，或已取得資產所有者**書面授權**（Statement of Work / Rules of Engagement）的紅隊演練；以及 CTF / 授權靶場 / 學術研究 / 資安教育。**嚴禁**未經授權對任何第三方系統、網路或資料進行掃描、入侵、橫移或資料外洩。使用者須自負遵守其所在司法管轄區法律之全部責任。作者與授權人對任何未經授權或違法之使用**不承擔任何責任**。
 
 ### Dual-Use / Export Control
+
 本軟體具**雙用途（dual-use）**性質，可能受各國出口管制與制裁法規（例如美國 EAR、Wassenaar Arrangement 之「入侵軟體 intrusion software」條款，及當地等同法規）規範。**取得、使用、再散布或跨境傳輸前，使用者須自行確認並遵守適用之出口管制與制裁法規。**
 
 ### 免責
+
 軟體按「現狀（AS IS）」提供，不含任何明示或默示之擔保（包含但不限於適售性、特定用途適用性、非侵權）。
